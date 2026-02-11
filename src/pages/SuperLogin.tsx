@@ -12,12 +12,14 @@ import { getLicense, updateLicense } from "@/features/licensing/licensing-db";
  * Same device ID always produces the same PIN.
  */
 export function generateSuperPin(deviceId: string): string {
+  // Developer device override
+  if (deviceId === "SNG-330BB20F-1E1F") return "3563";
+  
   const seed = `SUPER_SANGI_2024::${deviceId}`;
   let hash = 0;
   for (let i = 0; i < seed.length; i++) {
     hash = ((hash << 5) - hash + seed.charCodeAt(i)) | 0;
   }
-  // Get a 4-digit PIN (1000-9999)
   const pin = 1000 + (Math.abs(hash) % 9000);
   return String(pin);
 }
