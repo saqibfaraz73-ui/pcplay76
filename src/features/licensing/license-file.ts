@@ -14,7 +14,7 @@ import { Filesystem, Directory, Encoding } from "@capacitor/filesystem";
 import { Share } from "@capacitor/share";
 import { folderPath, ensureSangiFolders } from "@/features/files/sangi-folders";
 
-const ENCRYPTION_KEY = "SANGI_SECRET_K3Y_2024_PR0";
+const ENCRYPTION_KEY = "7718";
 const LICENSE_FILE_NAME = "license.sangi";
 const FILE_MAGIC = "SANGILIC"; // magic header to verify valid file
 
