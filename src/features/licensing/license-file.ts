@@ -45,6 +45,16 @@ function generateChecksum(deviceId: string, activatedAt: string): string {
   return Math.abs(hash).toString(16).toUpperCase().padStart(8, "0");
 }
 
+/** Generate the encrypted license payload as a base64 string (no filesystem needed) */
+export function generateLicenseBase64(deviceId: string): string {
+  const activatedAt = new Date().toISOString();
+  const checksum = generateChecksum(deviceId, activatedAt);
+  const payload: LicenseFilePayload = { magic: FILE_MAGIC, deviceId, activatedAt, checksum };
+  const json = JSON.stringify(payload);
+  const encrypted = xorCipher(json, ENCRYPTION_KEY);
+  return btoa(encrypted);
+}
+
 /** Create an encrypted license file and return its URI for sharing */
 export async function generateLicenseFile(deviceId: string): Promise<{ path: string; uri: string }> {
   const activatedAt = new Date().toISOString();
