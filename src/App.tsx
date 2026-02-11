@@ -124,7 +124,7 @@ const App = () => (
                 <Route
                   path="/pos/tables"
                   element={
-                    <ProtectedRoute allow={["cashier", "admin"]}>
+                    <ProtectedRoute allow={["cashier", "admin", "waiter"]}>
                       <PosTablesPage />
                     </ProtectedRoute>
                   }

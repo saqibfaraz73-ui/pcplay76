@@ -4,7 +4,9 @@ import { useAuth } from "@/auth/AuthProvider";
 const Index = () => {
   const { session } = useAuth();
   if (!session) return <Navigate to="/login" replace />;
-  return <Navigate to={session.role === "admin" ? "/admin" : "/pos"} replace />;
+  if (session.role === "admin") return <Navigate to="/admin" replace />;
+  if (session.role === "waiter") return <Navigate to="/pos/tables" replace />;
+  return <Navigate to="/pos" replace />;
 };
 
 export default Index;
