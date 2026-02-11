@@ -28,7 +28,7 @@ export default function SuperLogin() {
       getLicense().then((lic) => {
         setIsPremium(lic.isPremium);
         setLicensedDeviceId(lic.licensedDeviceId ?? "");
-        setCustomerDeviceId(lic.licensedDeviceId ?? "");
+        // Don't pre-fill customerDeviceId — always let the admin type the target device ID
       });
     }
   }, [authed]);
