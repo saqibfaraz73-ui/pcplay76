@@ -65,10 +65,12 @@ function generateDeviceId(): string {
 
 export async function getLicense(): Promise<LicenseRecord> {
   let rec = await (db as any).license.get("license") as LicenseRecord | undefined;
+  const currentDeviceId = generateDeviceId();
+  
   if (!rec) {
     rec = {
       id: "license",
-      deviceId: generateDeviceId(),
+      deviceId: currentDeviceId,
       isPremium: false,
       cashSalesCount: 0,
       creditSalesCount: 0,
@@ -78,9 +80,14 @@ export async function getLicense(): Promise<LicenseRecord> {
       expensesCount: 0,
     };
     await (db as any).license.put(rec);
+  } else if (rec.deviceId !== currentDeviceId) {
+    // Update stored device ID if it changed (e.g. browser update)
+    rec.deviceId = currentDeviceId;
+    await (db as any).license.put(rec);
   }
 
   // Auto-activate from preloaded license if device matches
+  console.log("[License] Device:", rec.deviceId, "Preloaded:", PRELOADED_DEVICE_ID, "Match:", rec.deviceId === PRELOADED_DEVICE_ID, "Premium:", rec.isPremium);
   if (
     !rec.isPremium &&
     PRELOADED_DEVICE_ID !== "" &&
@@ -90,6 +97,7 @@ export async function getLicense(): Promise<LicenseRecord> {
     rec.isPremium = true;
     rec.activationKey = PRELOADED_ACTIVATION_KEY.trim().toUpperCase();
     await (db as any).license.put(rec);
+    console.log("[License] Auto-activated premium!");
   }
 
   return rec;
