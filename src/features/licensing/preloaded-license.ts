@@ -11,5 +11,5 @@
  * Leave both empty ("") for the free/generic version.
  */
 
-export const PRELOADED_DEVICE_ID: string = "";
-export const PRELOADED_ACTIVATION_KEY: string = "";
+export const PRELOADED_DEVICE_ID: string = "SNG-330BB20F-1E1F";
+export const PRELOADED_ACTIVATION_KEY: string = "Sangi3563";
