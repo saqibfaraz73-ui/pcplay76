@@ -7,10 +7,10 @@ import { db } from "@/db/appDb";
 export type LicenseRecord = {
   id: "license";
   deviceId: string;
+  licensedDeviceId?: string; // The device ID this license is activated for
   activationKey?: string;
   isPremium: boolean;
-  upgradeMessage?: string; // customizable by super admin
-  // Usage counters per module
+  upgradeMessage?: string;
   cashSalesCount: number;
   creditSalesCount: number;
   deliverySalesCount: number;
@@ -80,6 +80,14 @@ export async function getLicense(): Promise<LicenseRecord> {
     await (db as any).license.put(rec);
   }
 
+  // Premium only valid if current device matches the licensed device
+  if (rec.isPremium && rec.licensedDeviceId) {
+    const currentDeviceId = rec.deviceId;
+    if (currentDeviceId !== rec.licensedDeviceId) {
+      // Device mismatch — not premium on this device
+      return { ...rec, isPremium: false };
+    }
+  }
 
   return rec;
 }

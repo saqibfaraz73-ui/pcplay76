@@ -7,22 +7,8 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { getLicense, updateLicense } from "@/features/licensing/licensing-db";
 
-/**
- * Generate a deterministic 4-digit super PIN from a device ID.
- * Same device ID always produces the same PIN.
- */
-export function generateSuperPin(deviceId: string): string {
-  // Developer device override
-  if (deviceId === "SNG-330BB20F-1E1F") return "3563";
-  
-  const seed = `SUPER_SANGI_2024::${deviceId}`;
-  let hash = 0;
-  for (let i = 0; i < seed.length; i++) {
-    hash = ((hash << 5) - hash + seed.charCodeAt(i)) | 0;
-  }
-  const pin = 1000 + (Math.abs(hash) % 9000);
-  return String(pin);
-}
+/** Master PIN — only the developer knows this */
+const MASTER_PIN = "3563";
 
 export default function SuperLogin() {
   const { toast } = useToast();
@@ -30,28 +16,25 @@ export default function SuperLogin() {
 
   const [authed, setAuthed] = React.useState(false);
   const [pin, setPin] = React.useState("");
-  const [deviceId, setDeviceId] = React.useState("");
-  const [expectedPin, setExpectedPin] = React.useState("");
+  const [customerDeviceId, setCustomerDeviceId] = React.useState("");
   const [isPremium, setIsPremium] = React.useState(false);
+  const [licensedDeviceId, setLicensedDeviceId] = React.useState("");
   const [loading, setLoading] = React.useState(false);
 
-  // Load device ID on mount
-  React.useEffect(() => {
-    getLicense().then((lic) => {
-      setDeviceId(lic.deviceId);
-      setExpectedPin(generateSuperPin(lic.deviceId));
-    });
-  }, []);
-
+  // Load current license state after auth
   React.useEffect(() => {
     if (authed) {
-      getLicense().then((lic) => setIsPremium(lic.isPremium));
+      getLicense().then((lic) => {
+        setIsPremium(lic.isPremium);
+        setLicensedDeviceId(lic.licensedDeviceId ?? "");
+        setCustomerDeviceId(lic.licensedDeviceId ?? "");
+      });
     }
   }, [authed]);
 
   const onLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (pin === expectedPin) {
+    if (pin === MASTER_PIN) {
       setAuthed(true);
     } else {
       toast({ title: "Invalid PIN", variant: "destructive" });
@@ -59,11 +42,16 @@ export default function SuperLogin() {
   };
 
   const handleActivate = async () => {
+    if (!customerDeviceId.trim()) {
+      toast({ title: "Enter a Device ID first", variant: "destructive" });
+      return;
+    }
     setLoading(true);
     try {
-      await updateLicense({ isPremium: true });
+      await updateLicense({ isPremium: true, licensedDeviceId: customerDeviceId.trim() });
       setIsPremium(true);
-      toast({ title: "Premium activated on this device!" });
+      setLicensedDeviceId(customerDeviceId.trim());
+      toast({ title: `Premium activated for ${customerDeviceId.trim()}` });
     } finally {
       setLoading(false);
     }
@@ -72,8 +60,10 @@ export default function SuperLogin() {
   const handleDeactivate = async () => {
     setLoading(true);
     try {
-      await updateLicense({ isPremium: false, activationKey: undefined });
+      await updateLicense({ isPremium: false, licensedDeviceId: "" });
       setIsPremium(false);
+      setLicensedDeviceId("");
+      setCustomerDeviceId("");
       toast({ title: "Premium deactivated" });
     } finally {
       setLoading(false);
@@ -86,14 +76,10 @@ export default function SuperLogin() {
         <Card className="w-full">
           <CardHeader>
             <CardTitle>Super Admin</CardTitle>
-            <CardDescription>Restricted access</CardDescription>
+            <CardDescription>Developer access only</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={onLogin} className="space-y-4">
-              <div className="space-y-2">
-                <Label>Device ID</Label>
-                <Input value={deviceId} readOnly className="font-mono text-xs bg-muted" />
-              </div>
               <div className="space-y-2">
                 <Label>Super PIN</Label>
                 <Input type="password" inputMode="numeric" maxLength={4} value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 4))} autoComplete="off" placeholder="4-digit PIN" />
@@ -118,21 +104,39 @@ export default function SuperLogin() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Premium Activation</CardTitle>
-          <CardDescription>Instantly activate or deactivate premium on this device.</CardDescription>
+          <CardTitle>Device Premium Activation</CardTitle>
+          <CardDescription>Enter the customer's Device ID to activate premium. The built APK will only work as premium on that specific device.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label>Customer Device ID</Label>
+            <Input
+              value={customerDeviceId}
+              onChange={(e) => setCustomerDeviceId(e.target.value.trim())}
+              placeholder="e.g. SNG-XXXXXXXX-XXXX"
+              className="font-mono text-xs"
+            />
+          </div>
+
+          {licensedDeviceId && (
+            <div className="rounded-md border bg-muted/50 p-3 space-y-1 text-sm">
+              <p className="text-muted-foreground">Currently licensed to:</p>
+              <p className="font-mono font-medium">{licensedDeviceId}</p>
+            </div>
+          )}
+
           <div className="flex items-center gap-3">
             <div className={`h-3 w-3 rounded-full ${isPremium ? "bg-green-500" : "bg-red-500"}`} />
             <span className="text-sm font-medium">{isPremium ? "Premium Active" : "Free Version"}</span>
           </div>
+
           {isPremium ? (
             <Button variant="destructive" className="w-full" onClick={handleDeactivate} disabled={loading}>
               {loading ? "Processing..." : "Deactivate Premium"}
             </Button>
           ) : (
-            <Button className="w-full" onClick={handleActivate} disabled={loading}>
-              {loading ? "Processing..." : "Activate Premium"}
+            <Button className="w-full" onClick={handleActivate} disabled={loading || !customerDeviceId.trim()}>
+              {loading ? "Processing..." : "Activate Premium for this Device"}
             </Button>
           )}
         </CardContent>
