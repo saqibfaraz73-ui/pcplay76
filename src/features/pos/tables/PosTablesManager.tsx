@@ -19,6 +19,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ItemImageThumb } from "@/features/pos/ItemImageThumb";
 import { makeId } from "@/features/admin/id";
 import { printTableKot } from "@/features/pos/tables/table-print";
+import { printReceiptFromOrder } from "@/features/pos/receipt-print";
 import { Printer, Save, CreditCard, Users, X, Plus, Minus, UtensilsCrossed, ClipboardList } from "lucide-react";
 import { format } from "date-fns";
 
@@ -444,12 +445,32 @@ export function PosTablesManager() {
 
       if (shouldPrint) {
         try {
-          await printTableKot({
-            tableNumber: selectedTable?.tableNumber ?? "?",
-            waiterName: waitersById[currentTableOrder.waiterId]?.name ?? "?",
-            items: currentTableOrder.lines.map((l) => ({ itemId: l.itemId, name: l.name, unitPrice: l.unitPrice, qty: l.qty })),
-            settings,
-          });
+          const receiptOrder = {
+            id: currentTableOrder.id,
+            receiptNo,
+            cashier: session?.username ?? "Unknown",
+            paymentMethod: paymentMethod as any,
+            creditCustomerId: paymentMethod === "credit" ? custId : undefined,
+            lines: currentTableOrder.lines.map((l) => ({
+              itemId: l.itemId,
+              name: l.name,
+              qty: l.qty,
+              unitPrice: l.unitPrice,
+              subtotal: l.subtotal,
+            })),
+            subtotal: currentTableOrder.subtotal,
+            discountTotal: finalDiscount,
+            taxAmount: finalTax,
+            serviceChargeAmount: finalService,
+            total: finalTotal,
+            status: "completed" as const,
+            createdAt: currentTableOrder.createdAt,
+            workPeriodId: currentWorkPeriod?.id,
+          };
+          const custName = paymentMethod === "credit" && custId
+            ? customers.find((c) => c.id === custId)?.name
+            : undefined;
+          await printReceiptFromOrder(receiptOrder as any, { creditCustomerName: custName });
           toast({ title: "Receipt printed" });
         } catch (printErr: any) {
           toast({ title: "Print failed", description: printErr?.message ?? String(printErr), variant: "destructive" });
