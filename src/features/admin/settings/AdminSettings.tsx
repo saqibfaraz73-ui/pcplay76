@@ -294,46 +294,44 @@ export function AdminSettings() {
 
           {!isPremium && (
             <div className="border-t pt-3 space-y-3">
+              <input
+                type="file"
+                accept=".sangi"
+                className="hidden"
+                ref={(el) => { (window as any).__licFileInput = el; }}
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  try {
+                    const text = await file.text();
+                    const decoded = decodeLicenseBase64(text);
+                    if (!decoded) {
+                      toast({ title: "Invalid license file", description: "The file is invalid or corrupted.", variant: "destructive" });
+                      return;
+                    }
+                    if (decoded.deviceId !== deviceId) {
+                      toast({ title: "License mismatch", description: "This license file is for a different device.", variant: "destructive" });
+                      return;
+                    }
+                    await updateLicense({ isPremium: true, licensedDeviceId: decoded.deviceId });
+                    setIsPremium(true);
+                    toast({ title: "🎉 Premium Activated!", description: "Your device is now premium." });
+                  } catch {
+                    toast({ title: "Could not read file", variant: "destructive" });
+                  }
+                  e.target.value = "";
+                }}
+              />
               <Button
                 variant="outline"
                 className="w-full"
-                onClick={() => setShowLicenseImport(!showLicenseImport)}
+                onClick={() => (window as any).__licFileInput?.click()}
               >
-                📄 Import License
+                📄 Import License File
               </Button>
-              {showLicenseImport && (
-                <div className="space-y-2">
-                  <Label>Paste license text received from support:</Label>
-                  <Input
-                    value={licenseText}
-                    onChange={(e) => setLicenseText(e.target.value)}
-                    placeholder="Paste license text here..."
-                    className="font-mono text-xs"
-                  />
-                  <Button
-                    className="w-full"
-                    disabled={!licenseText.trim()}
-                    onClick={async () => {
-                      const decoded = decodeLicenseBase64(licenseText);
-                      if (!decoded) {
-                        toast({ title: "Invalid license", description: "The license text is invalid or corrupted.", variant: "destructive" });
-                        return;
-                      }
-                      if (decoded.deviceId !== deviceId) {
-                        toast({ title: "License mismatch", description: "This license is for a different device.", variant: "destructive" });
-                        return;
-                      }
-                      await updateLicense({ isPremium: true, licensedDeviceId: decoded.deviceId });
-                      setIsPremium(true);
-                      setShowLicenseImport(false);
-                      setLicenseText("");
-                      toast({ title: "🎉 Premium Activated!", description: "Your device is now premium." });
-                    }}
-                  >
-                    Activate Premium
-                  </Button>
-                </div>
-              )}
+              <p className="text-xs text-muted-foreground">
+                Select the <code className="bg-muted px-1 rounded">license.sangi</code> file received from support.
+              </p>
             </div>
           )}
         </CardContent>
