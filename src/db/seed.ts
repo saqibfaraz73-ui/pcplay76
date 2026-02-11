@@ -7,7 +7,18 @@ function id(prefix: string) {
 
 export async function ensureSeedData() {
   const hasAnyCategory = (await db.categories.count()) > 0;
-  if (!hasAnyCategory) {
+  const hasNewSeed = hasAnyCategory
+    ? !!(await db.categories.where("name").equals("Fast Food").first())
+    : false;
+
+  if (!hasAnyCategory || !hasNewSeed) {
+    // Clear old seed data if present
+    if (hasAnyCategory && !hasNewSeed) {
+      await db.items.clear();
+      await db.categories.clear();
+      await db.inventory.clear();
+    }
+
     const now = Date.now();
     const catFastFood: Category = { id: id("cat"), name: "Fast Food", createdAt: now };
     const catGrocery: Category = { id: id("cat"), name: "Grocery", createdAt: now };
