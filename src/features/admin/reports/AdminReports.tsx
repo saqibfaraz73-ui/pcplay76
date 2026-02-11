@@ -167,7 +167,7 @@ function buildSalesPdf(args: {
     { label: "Total Cancelled", value: formatIntMoney(totalCancelledAmount), color: [200, 0, 0] },
     { label: "Total Discount", value: formatIntMoney(overallDiscount), color: [200, 0, 0] },
     { label: "Total Expenses", value: formatIntMoney(totalExpenses), color: [200, 0, 0] },
-    { label: "Remaining Balance", value: formatIntMoney(remainingBalance), color: [0, 120, 0] },
+    { label: "Remaining Balance", value: formatIntMoney(remainingBalance), color: remainingBalance >= 0 ? [0, 120, 0] : [200, 0, 0] },
   ];
 
   const cols = 4;
