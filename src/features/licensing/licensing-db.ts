@@ -1,9 +1,10 @@
 /**
  * Licensing DB table stored in Dexie alongside existing app data.
- * Premium is activated via Super Admin login (device-specific PIN).
+ * Premium is activated via Super Admin login (device-specific PIN)
+ * or via PRELOADED_DEVICE_ID baked into the APK build.
  */
 import { db } from "@/db/appDb";
-
+import { PRELOADED_DEVICE_ID } from "./preloaded-license";
 export type LicenseRecord = {
   id: "license";
   deviceId: string;
@@ -66,10 +67,14 @@ export async function getLicense(): Promise<LicenseRecord> {
   let rec = await (db as any).license.get("license") as LicenseRecord | undefined;
   
   if (!rec) {
+    const deviceId = generateDeviceId();
+    // Auto-activate if a preloaded device ID matches this device
+    const preloadMatch = PRELOADED_DEVICE_ID && PRELOADED_DEVICE_ID === deviceId;
     rec = {
       id: "license",
-      deviceId: generateDeviceId(),
-      isPremium: false,
+      deviceId,
+      isPremium: preloadMatch,
+      licensedDeviceId: preloadMatch ? PRELOADED_DEVICE_ID : undefined,
       cashSalesCount: 0,
       creditSalesCount: 0,
       deliverySalesCount: 0,
@@ -80,11 +85,15 @@ export async function getLicense(): Promise<LicenseRecord> {
     await (db as any).license.put(rec);
   }
 
+  // Also check preloaded ID for existing records that aren't yet activated
+  if (!rec.isPremium && PRELOADED_DEVICE_ID && PRELOADED_DEVICE_ID === rec.deviceId) {
+    rec = { ...rec, isPremium: true, licensedDeviceId: PRELOADED_DEVICE_ID };
+    await (db as any).license.put(rec);
+  }
+
   // Premium only valid if current device matches the licensed device
   if (rec.isPremium && rec.licensedDeviceId) {
-    const currentDeviceId = rec.deviceId;
-    if (currentDeviceId !== rec.licensedDeviceId) {
-      // Device mismatch — not premium on this device
+    if (rec.deviceId !== rec.licensedDeviceId) {
       return { ...rec, isPremium: false };
     }
   }
