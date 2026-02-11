@@ -181,11 +181,15 @@ export function generateKeyForDevice(deviceId: string): string {
 }
 
 export async function activatePremium(key: string, deviceId: string): Promise<boolean> {
-  const expected = generateKeyForDevice(deviceId);
   const normalizedKey = key.trim().toUpperCase();
-  const preloadedKey = PRELOADED_ACTIVATION_KEY.trim().toUpperCase();
-  // Accept deterministic key OR preloaded key (preloaded key works for its assigned device, or any device if preloaded device matches current)
-  if (normalizedKey === expected || normalizedKey === preloadedKey) {
+  // For the preloaded device, accept the preloaded key directly
+  if (PRELOADED_DEVICE_ID !== "" && deviceId === PRELOADED_DEVICE_ID && normalizedKey === PRELOADED_ACTIVATION_KEY.trim().toUpperCase()) {
+    await updateLicense({ isPremium: true, activationKey: normalizedKey });
+    return true;
+  }
+  // For all other devices, accept only the deterministic generated key
+  const expected = generateKeyForDevice(deviceId);
+  if (normalizedKey === expected) {
     await updateLicense({ isPremium: true, activationKey: normalizedKey });
     return true;
   }
