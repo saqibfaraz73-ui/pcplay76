@@ -163,10 +163,14 @@ export async function canMakeSale(module: SalesModule): Promise<{ allowed: boole
   return { allowed: true, message: "" };
 }
 
+/**
+ * Increment sale count WITHOUT calling getLicense() (which does filesystem I/O).
+ * This is safe to call inside a Dexie transaction because it only touches IndexedDB.
+ */
 export async function incrementSaleCount(module: SalesModule): Promise<void> {
-  const lic = await getLicense();
-  if (lic.isPremium) return;
+  const rec = await (db as any).license.get("license") as LicenseRecord | undefined;
+  if (!rec || rec.isPremium) return;
   const key = moduleKey[module];
-  await updateLicense({ [key]: (lic[key] as number) + 1 } as any);
+  await (db as any).license.put({ ...rec, [key]: ((rec[key] as number) ?? 0) + 1 });
 }
 
