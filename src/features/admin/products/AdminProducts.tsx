@@ -1,0 +1,655 @@
+import React from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { db } from "@/db/appDb";
+import type { Category, MenuItem, Settings, StockUnit, ItemVariation } from "@/db/schema";
+import { STOCK_UNITS } from "@/db/schema";
+import { useToast } from "@/hooks/use-toast";
+import { parseNonDecimalInt, formatIntMoney } from "@/features/pos/format";
+import { makeId } from "@/features/admin/id";
+import { ItemImagePicker } from "@/features/admin/products/ItemImagePicker";
+import { CalendarIcon, Download, Upload } from "lucide-react";
+import { format } from "date-fns";
+import { cn } from "@/lib/utils";
+import { exportMenuItemsToExcel, importMenuItemsFromCSV, downloadExcel } from "./menu-import-export";
+
+type EditMode =
+  | { type: "none" }
+  | { type: "category"; category?: Category }
+  | { type: "item"; item?: MenuItem };
+
+export function AdminProducts() {
+  const { toast } = useToast();
+  const [categories, setCategories] = React.useState<Category[]>([]);
+  const [items, setItems] = React.useState<MenuItem[]>([]);
+  const [settings, setSettings] = React.useState<Settings | null>(null);
+  const [open, setOpen] = React.useState(false);
+  const [mode, setMode] = React.useState<EditMode>({ type: "none" });
+
+  // Delete confirmation state
+  const [deleteConfirm, setDeleteConfirm] = React.useState<
+    | { type: "category"; category: Category }
+    | { type: "item"; item: MenuItem }
+    | null
+  >(null);
+
+  const [catName, setCatName] = React.useState("");
+
+  const [itemName, setItemName] = React.useState("");
+  const [itemCategoryId, setItemCategoryId] = React.useState<string>("");
+  const [itemPrice, setItemPrice] = React.useState<number>(0);
+  const [itemBuyingPrice, setItemBuyingPrice] = React.useState<number>(0);
+  const [itemImagePath, setItemImagePath] = React.useState<string>("");
+  const [itemTrackInventory, setItemTrackInventory] = React.useState(true);
+  const [itemStockUnit, setItemStockUnit] = React.useState<StockUnit>("pcs");
+  const [itemInitialStock, setItemInitialStock] = React.useState<number>(0);
+  const [itemIdDraft, setItemIdDraft] = React.useState<string>("");
+  const [itemExpiryDate, setItemExpiryDate] = React.useState<Date | undefined>(undefined);
+  const [itemVariations, setItemVariations] = React.useState<ItemVariation[]>([]);
+  const importInputRef = React.useRef<HTMLInputElement>(null);
+
+  const refresh = React.useCallback(async () => {
+    const [cats, its, s] = await Promise.all([
+      db.categories.orderBy("createdAt").toArray(),
+      db.items.orderBy("createdAt").toArray(),
+      db.settings.get("app"),
+    ]);
+    setCategories(cats);
+    setItems(its);
+    setSettings(s ?? null);
+    setItemCategoryId((prev) => prev || cats[0]?.id || "");
+  }, []);
+
+  React.useEffect(() => {
+    void refresh();
+  }, [refresh]);
+
+  const openNewCategory = () => {
+    setMode({ type: "category" });
+    setCatName("");
+    setOpen(true);
+  };
+
+  const openEditCategory = (category: Category) => {
+    setMode({ type: "category", category });
+    setCatName(category.name);
+    setOpen(true);
+  };
+
+  const openNewItem = () => {
+    setMode({ type: "item" });
+    const id = makeId("item");
+    setItemIdDraft(id);
+    setItemName("");
+    setItemPrice(0);
+    setItemBuyingPrice(0);
+    setItemImagePath("");
+    setItemTrackInventory(true);
+    setItemStockUnit("pcs");
+    setItemInitialStock(0);
+    setItemExpiryDate(undefined);
+    setItemVariations([]);
+    setItemCategoryId(categories[0]?.id ?? "");
+    setOpen(true);
+  };
+
+  const openEditItem = async (item: MenuItem) => {
+    setMode({ type: "item", item });
+    setItemIdDraft(item.id);
+    setItemName(item.name);
+    setItemCategoryId(item.categoryId);
+    setItemPrice(Math.round(item.price));
+    setItemBuyingPrice(item.buyingPrice ? Math.round(item.buyingPrice) : 0);
+    setItemImagePath(item.imagePath ?? "");
+    setItemTrackInventory(!!item.trackInventory);
+    setItemStockUnit(item.stockUnit ?? "pcs");
+    setItemExpiryDate(item.expiryDate ? new Date(item.expiryDate) : undefined);
+    setItemVariations(item.variations ?? []);
+    // Load current stock for editing
+    const inv = await db.inventory.get(item.id);
+    setItemInitialStock(inv?.quantity ?? 0);
+    setOpen(true);
+  };
+
+  const save = async () => {
+    try {
+      if (mode.type === "category") {
+        const name = catName.trim();
+        if (!name) throw new Error("Category name is required.");
+        const now = Date.now();
+        if (mode.category) {
+          await db.categories.put({ ...mode.category, name });
+        } else {
+          await db.categories.put({ id: makeId("cat"), name, createdAt: now });
+        }
+        toast({ title: "Saved" });
+        setOpen(false);
+        await refresh();
+        return;
+      }
+
+      if (mode.type === "item") {
+        const name = itemName.trim();
+        if (!name) throw new Error("Item name is required.");
+        if (!itemCategoryId) throw new Error("Category is required.");
+        const now = Date.now();
+
+        const id = mode.item?.id ?? itemIdDraft ?? makeId("item");
+
+        const next: MenuItem = {
+          id,
+          categoryId: itemCategoryId,
+          name,
+          price: Math.round(itemPrice),
+          buyingPrice: itemBuyingPrice > 0 ? Math.round(itemBuyingPrice) : undefined,
+          imagePath: itemImagePath ? itemImagePath : undefined,
+          trackInventory: itemTrackInventory,
+          stockUnit: itemStockUnit !== "pcs" ? itemStockUnit : undefined,
+          expiryDate: itemExpiryDate ? itemExpiryDate.getTime() : undefined,
+          variations: itemVariations.length > 0 ? itemVariations.filter(v => v.name.trim() && v.price > 0) : undefined,
+          createdAt: mode.item?.createdAt ?? now,
+        };
+        await db.items.put(next);
+
+        // Create/update inventory row for tracked items
+        if (itemTrackInventory) {
+          const initial = Math.max(0, Math.round(itemInitialStock));
+          await db.inventory.put({ itemId: next.id, quantity: initial, updatedAt: now });
+        }
+
+        toast({ title: "Saved" });
+        setOpen(false);
+        await refresh();
+      }
+    } catch (e: any) {
+      toast({ title: "Could not save", description: e?.message ?? String(e), variant: "destructive" });
+    }
+  };
+
+  const confirmDeleteCategory = async (category: Category) => {
+    // Prevent deleting if items exist in category
+    const count = await db.items.where("categoryId").equals(category.id).count();
+    if (count > 0) {
+      toast({
+        title: "Cannot delete category",
+        description: "This category still has items. Move/delete items first.",
+        variant: "destructive",
+      });
+      return;
+    }
+    await db.categories.delete(category.id);
+    toast({ title: "Deleted" });
+    setDeleteConfirm(null);
+    await refresh();
+  };
+
+  const confirmDeleteItem = async (item: MenuItem) => {
+    await db.items.delete(item.id);
+    await db.inventory.delete(item.id);
+    toast({ title: "Deleted" });
+    setDeleteConfirm(null);
+    await refresh();
+  };
+
+  const handleExport = async () => {
+    try {
+      const blob = await exportMenuItemsToExcel();
+      downloadExcel(blob, `menu_items_${format(new Date(), "yyyy-MM-dd")}.xlsx`);
+      toast({ title: "Menu exported successfully" });
+    } catch (e: any) {
+      toast({ title: "Export failed", description: e?.message ?? String(e), variant: "destructive" });
+    }
+  };
+
+  const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const text = await file.text();
+      const result = await importMenuItemsFromCSV(text);
+      
+      if (result.success) {
+        toast({ 
+          title: "Import completed",
+          description: `Created ${result.categoriesCreated} categories, ${result.itemsCreated} items. Updated ${result.itemsUpdated} items.`,
+        });
+        await refresh();
+      }
+      
+      if (result.errors.length > 0) {
+        console.warn("Import errors:", result.errors);
+        toast({
+          title: result.success ? "Import completed with warnings" : "Import failed",
+          description: result.errors.slice(0, 3).join("\n"),
+          variant: result.success ? "default" : "destructive",
+        });
+      }
+    } catch (e: any) {
+      toast({ title: "Import failed", description: e?.message ?? String(e), variant: "destructive" });
+    }
+    
+    // Reset input
+    if (importInputRef.current) {
+      importInputRef.current.value = "";
+    }
+  };
+
+  return (
+    <div className="grid gap-4 lg:grid-cols-2">
+      <Card>
+        <CardHeader className="flex flex-row items-start justify-between gap-3">
+          <div>
+            <CardTitle>Categories</CardTitle>
+            <CardDescription>Create, edit, and delete menu categories.</CardDescription>
+          </div>
+          <Button onClick={openNewCategory}>New</Button>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          {categories.length === 0 ? (
+            <div className="text-sm text-muted-foreground">No categories yet.</div>
+          ) : (
+            categories.map((c) => (
+              <div key={c.id} className="flex items-center justify-between gap-2 rounded-md border p-2">
+                <div className="min-w-0">
+                  <div className="truncate text-sm font-medium">{c.name}</div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="sm" onClick={() => openEditCategory(c)}>
+                    Edit
+                  </Button>
+                  <Button variant="destructive" size="sm" onClick={() => setDeleteConfirm({ type: "category", category: c })}>
+                    Delete
+                  </Button>
+                </div>
+              </div>
+            ))
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="flex flex-row items-start justify-between gap-3">
+          <div>
+            <CardTitle>Menu Items</CardTitle>
+            <CardDescription>Create, edit, and delete items. Prices are integers (no decimals).</CardDescription>
+          </div>
+          <div className="flex items-center gap-2">
+            <input
+              ref={importInputRef}
+              type="file"
+              accept=".csv"
+              onChange={handleImportFile}
+              className="hidden"
+            />
+            <Button variant="outline" size="sm" onClick={() => importInputRef.current?.click()}>
+              <Upload className="h-4 w-4 mr-1" />
+              Import
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => void handleExport()} disabled={items.length === 0}>
+              <Download className="h-4 w-4 mr-1" />
+              Export
+            </Button>
+            <Button onClick={openNewItem} disabled={categories.length === 0}>
+              New
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          {items.length === 0 ? (
+            <div className="text-sm text-muted-foreground">No items yet.</div>
+          ) : (
+            items.map((i) => {
+              const cat = categories.find((c) => c.id === i.categoryId)?.name ?? "—";
+              const profit =
+                typeof i.buyingPrice === "number" && i.buyingPrice > 0 ? Math.round(i.price - i.buyingPrice) : null;
+              const expiryStr = i.expiryDate ? format(new Date(i.expiryDate), "dd MMM yyyy") : null;
+              const isExpired = i.expiryDate && i.expiryDate < Date.now();
+              return (
+                <div key={i.id} className="flex items-center justify-between gap-2 rounded-md border p-2">
+                  <div className="min-w-0">
+                    <div className="truncate text-sm font-medium">{i.name}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {cat} • Sell {formatIntMoney(i.price)}
+                      {typeof i.buyingPrice === "number" && i.buyingPrice > 0 ? (
+                        <> • Buy {formatIntMoney(i.buyingPrice)}</>
+                      ) : null}
+                      {profit !== null ? <> • Profit {formatIntMoney(profit)}</> : null} •{" "}
+                      {i.trackInventory ? `Stock tracked${i.stockUnit && i.stockUnit !== "pcs" ? ` (${i.stockUnit})` : ""}` : "No stock"}
+                      {i.variations && i.variations.length > 0 ? (
+                        <> • {i.variations.length} variant{i.variations.length > 1 ? "s" : ""}</>
+                      ) : null}
+                      {expiryStr ? (
+                        <span className={cn(isExpired && "text-destructive")}> • Exp: {expiryStr}</span>
+                      ) : null}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button variant="outline" size="sm" onClick={() => openEditItem(i)}>
+                      Edit
+                    </Button>
+                    <Button variant="destructive" size="sm" onClick={() => setDeleteConfirm({ type: "item", item: i })}>
+                      Delete
+                    </Button>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Edit dialog */}
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {mode.type === "category"
+                ? mode.category
+                  ? "Edit Category"
+                  : "New Category"
+                : mode.type === "item"
+                  ? mode.item
+                    ? "Edit Item"
+                    : "New Item"
+                  : ""}
+            </DialogTitle>
+          </DialogHeader>
+
+          {mode.type === "category" ? (
+            <div className="grid gap-3">
+              <div className="space-y-2">
+                <Label htmlFor="catName">Category name</Label>
+                <Input id="catName" value={catName} onChange={(e) => setCatName(e.target.value)} />
+              </div>
+            </div>
+          ) : null}
+
+          {mode.type === "item" ? (
+            <div className="grid gap-3">
+              <ItemImagePicker
+                itemId={itemIdDraft}
+                imagePath={itemImagePath || undefined}
+                onChangeImagePath={setItemImagePath}
+              />
+
+              <div className="space-y-2">
+                <Label htmlFor="itemName">Item name</Label>
+                <Input id="itemName" value={itemName} onChange={(e) => setItemName(e.target.value)} />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="itemCategory">Category</Label>
+                <select
+                  id="itemCategory"
+                  value={itemCategoryId}
+                  onChange={(e) => setItemCategoryId(e.target.value)}
+                  className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+                >
+                  {categories.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="itemPrice">Price</Label>
+                <Input
+                  id="itemPrice"
+                  inputMode="numeric"
+                  value={itemPrice === 0 ? "" : String(itemPrice)}
+                  placeholder="0"
+                  onChange={(e) => setItemPrice(parseNonDecimalInt(e.target.value))}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="itemBuyingPrice">Buying price (optional)</Label>
+                <Input
+                  id="itemBuyingPrice"
+                  inputMode="numeric"
+                  value={itemBuyingPrice === 0 ? "" : String(itemBuyingPrice)}
+                  placeholder="Leave empty"
+                  onChange={(e) => setItemBuyingPrice(parseNonDecimalInt(e.target.value))}
+                />
+                {itemBuyingPrice > 0 && itemPrice > 0 ? (
+                  <div className="text-xs text-muted-foreground">
+                    Profit preview: {formatIntMoney(Math.round(itemPrice - itemBuyingPrice))}
+                  </div>
+                ) : null}
+              </div>
+
+              <div className="flex items-center justify-between gap-3 rounded-md border p-3">
+                <div>
+                  <div className="text-sm font-medium">Track inventory</div>
+                  <div className="text-xs text-muted-foreground">If enabled, sales will decrement stock.</div>
+                </div>
+                <Switch checked={itemTrackInventory} onCheckedChange={setItemTrackInventory} />
+              </div>
+
+              {itemTrackInventory ? (
+                <div className="space-y-2">
+                  <Label htmlFor="stockUnit">Stock unit</Label>
+                  <select
+                    id="stockUnit"
+                    value={itemStockUnit}
+                    onChange={(e) => setItemStockUnit(e.target.value as StockUnit)}
+                    className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+                  >
+                    {STOCK_UNITS.map((u) => (
+                      <option key={u.value} value={u.value}>
+                        {u.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ) : null}
+
+              {itemTrackInventory ? (
+                <div className="space-y-2">
+                  <Label htmlFor="initialStock">
+                    {mode.item ? "Current stock" : "Initial stock (optional)"}
+                  </Label>
+                  <Input
+                    id="initialStock"
+                    inputMode="numeric"
+                    value={itemInitialStock === 0 ? "" : String(itemInitialStock)}
+                    placeholder="0"
+                    onChange={(e) => setItemInitialStock(parseNonDecimalInt(e.target.value))}
+                  />
+                </div>
+              ) : null}
+
+              {/* Variations */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label>Variations (optional)</Label>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setItemVariations((prev) => [...prev, { name: "", price: 0 }])}
+                  >
+                    + Add Variant
+                  </Button>
+                </div>
+                {itemVariations.length > 0 && (
+                  <div className="space-y-2">
+                    {itemVariations.map((v, idx) => (
+                      <div key={idx} className="space-y-1 rounded-md border p-2">
+                        <div className="flex items-center gap-2">
+                          <Input
+                            placeholder="e.g. Small"
+                            value={v.name}
+                            onChange={(e) => {
+                              const next = [...itemVariations];
+                              next[idx] = { ...next[idx], name: e.target.value };
+                              setItemVariations(next);
+                            }}
+                            className="flex-1"
+                          />
+                          <Input
+                            placeholder="Sell Price"
+                            inputMode="numeric"
+                            value={v.price === 0 ? "" : String(v.price)}
+                            onChange={(e) => {
+                              const next = [...itemVariations];
+                              next[idx] = { ...next[idx], price: parseNonDecimalInt(e.target.value) };
+                              setItemVariations(next);
+                            }}
+                            className="w-24"
+                          />
+                          <Button
+                            type="button"
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => setItemVariations((prev) => prev.filter((_, i) => i !== idx))}
+                          >
+                            ×
+                          </Button>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Input
+                            placeholder="Buy Price"
+                            inputMode="numeric"
+                            value={v.buyingPrice === undefined || v.buyingPrice === 0 ? "" : String(v.buyingPrice)}
+                            onChange={(e) => {
+                              const next = [...itemVariations];
+                              next[idx] = { ...next[idx], buyingPrice: parseNonDecimalInt(e.target.value) || undefined };
+                              setItemVariations(next);
+                            }}
+                            className="w-24"
+                          />
+                          {itemTrackInventory && (
+                            <Input
+                              placeholder="Stock"
+                              inputMode="numeric"
+                              value={v.stock === undefined || v.stock === 0 ? "" : String(v.stock)}
+                              onChange={(e) => {
+                                const next = [...itemVariations];
+                                next[idx] = { ...next[idx], stock: parseNonDecimalInt(e.target.value) || undefined };
+                                setItemVariations(next);
+                              }}
+                              className="w-20"
+                            />
+                          )}
+                          {v.buyingPrice && v.price > 0 ? (
+                            <span className="text-xs text-muted-foreground whitespace-nowrap">
+                              Profit: {formatIntMoney(v.price - v.buyingPrice)}
+                            </span>
+                          ) : null}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Expiry date picker */}
+              {settings?.expiryDateEnabled && (
+                <div className="space-y-2">
+                  <Label>Expiry date (optional)</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-full justify-start text-left font-normal",
+                          !itemExpiryDate && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {itemExpiryDate ? format(itemExpiryDate, "PPP") : "Pick a date"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={itemExpiryDate}
+                        onSelect={setItemExpiryDate}
+                        initialFocus
+                        className="p-3 pointer-events-auto"
+                      />
+                    </PopoverContent>
+                  </Popover>
+                  {itemExpiryDate && (
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={() => setItemExpiryDate(undefined)}
+                      className="text-xs"
+                    >
+                      Clear expiry date
+                    </Button>
+                  )}
+                </div>
+              )}
+            </div>
+          ) : null}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpen(false)}>
+              Close
+            </Button>
+            <Button onClick={() => void save()}>Save</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete confirmation dialog */}
+      <AlertDialog open={!!deleteConfirm} onOpenChange={(open) => !open && setDeleteConfirm(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Delete {deleteConfirm?.type === "category" ? "Category" : "Item"}?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete{" "}
+              <strong>
+                {deleteConfirm?.type === "category"
+                  ? deleteConfirm.category.name
+                  : deleteConfirm?.type === "item"
+                    ? deleteConfirm.item.name
+                    : ""}
+              </strong>
+              ? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                if (deleteConfirm?.type === "category") {
+                  void confirmDeleteCategory(deleteConfirm.category);
+                } else if (deleteConfirm?.type === "item") {
+                  void confirmDeleteItem(deleteConfirm.item);
+                }
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+}

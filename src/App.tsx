@@ -5,6 +5,24 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
+import Login from "./pages/Login";
+import SuperLogin from "./pages/SuperLogin";
+
+import PosDashboard from "./pages/PosDashboard";
+import PosOrders from "./pages/PosOrders";
+import PosExpenses from "./pages/PosExpenses";
+import PosCreditLodge from "./pages/PosCreditLodge";
+import PosPartyLodge from "./pages/PosPartyLodge";
+import AdminDashboard from "./pages/AdminDashboard";
+import AdminPrinterPage from "./pages/AdminPrinterPage";
+import AdminReportsPage from "./pages/AdminReportsPage";
+import AdminSettingsPage from "./pages/AdminSettingsPage";
+import AdminDeliveryPage from "./pages/AdminDeliveryPage";
+import PosTablesPage from "./pages/PosTablesPage";
+import { AuthProvider } from "@/auth/AuthProvider";
+import { ProtectedRoute } from "@/auth/ProtectedRoute";
+import { AppShell } from "@/layout/AppShell";
+import { WorkPeriodProvider } from "@/features/pos/WorkPeriodProvider";
 
 const queryClient = new QueryClient();
 
@@ -13,13 +31,112 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
+      <AuthProvider>
+        <WorkPeriodProvider>
+          <BrowserRouter>
+            <AppShell>
+              <Routes>
+                <Route path="/" element={<Index />} />
+                <Route path="/login" element={<Login />} />
+                <Route path="/super-admin" element={<SuperLogin />} />
+
+
+                <Route
+                  path="/pos"
+                  element={
+                    <ProtectedRoute allow={["cashier", "admin"]}>
+                      <PosDashboard />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/pos/orders"
+                  element={
+                    <ProtectedRoute allow={["cashier", "admin"]}>
+                      <PosOrders />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/pos/expenses"
+                  element={
+                    <ProtectedRoute allow={["cashier", "admin"]}>
+                      <PosExpenses />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/pos/credit-lodge"
+                  element={
+                    <ProtectedRoute allow={["cashier", "admin"]}>
+                      <PosCreditLodge />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/pos/party-lodge"
+                  element={
+                    <ProtectedRoute allow={["cashier", "admin"]}>
+                      <PosPartyLodge />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/admin"
+                  element={
+                    <ProtectedRoute allow={["admin"]}>
+                      <AdminDashboard />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/admin/printer"
+                  element={
+                    <ProtectedRoute allow={["admin"]}>
+                      <AdminPrinterPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/admin/reports"
+                  element={
+                    <ProtectedRoute allow={["admin"]}>
+                      <AdminReportsPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/admin/settings"
+                  element={
+                    <ProtectedRoute allow={["admin"]}>
+                      <AdminSettingsPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/admin/delivery"
+                  element={
+                    <ProtectedRoute allow={["admin"]}>
+                      <AdminDeliveryPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/pos/tables"
+                  element={
+                    <ProtectedRoute allow={["cashier", "admin"]}>
+                      <PosTablesPage />
+                    </ProtectedRoute>
+                  }
+                />
+
+                {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </AppShell>
+          </BrowserRouter>
+        </WorkPeriodProvider>
+      </AuthProvider>
     </TooltipProvider>
   </QueryClientProvider>
 );
