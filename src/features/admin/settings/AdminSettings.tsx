@@ -272,16 +272,14 @@ export function AdminSettings() {
         </CardHeader>
         <CardContent className="space-y-3">
           <div
-            className={`rounded-md border bg-muted/50 px-4 py-3 font-mono text-sm tracking-wider ${isPremium ? "select-none" : "select-all cursor-pointer"}`}
-            style={isPremium ? { userSelect: "none", WebkitUserSelect: "none" } as React.CSSProperties : undefined}
-            
-            onClick={!isPremium ? () => {
+            className="rounded-md border bg-muted/50 px-4 py-3 font-mono text-sm tracking-wider select-all cursor-pointer"
+            onClick={() => {
               navigator.clipboard?.writeText(deviceId);
               toast({ title: "Device ID copied" });
-            } : undefined}
+            }}
           >
             {deviceId || "Loading..."}
-            {!isPremium && <p className="text-xs text-muted-foreground mt-1 font-sans">Tap to copy</p>}
+            <p className="text-xs text-muted-foreground mt-1 font-sans">Tap to copy</p>
           </div>
 
           {isPremium && (
