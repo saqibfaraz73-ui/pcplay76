@@ -1,0 +1,28 @@
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { AdminProducts } from "@/features/admin/products/AdminProducts";
+import { AdminInventory } from "@/features/admin/inventory/AdminInventory";
+import { AdminCustomers } from "@/features/admin/customers/AdminCustomers";
+import { AdminBackupRestore } from "@/features/admin/backup/AdminBackupRestore";
+
+export default function AdminDashboard() {
+  return (
+    <div className="space-y-4">
+      <header>
+        <h1 className="text-2xl font-semibold">Admin</h1>
+        <p className="text-sm text-muted-foreground">Manage products, inventory, customers, and backups.</p>
+      </header>
+      <Tabs defaultValue="products">
+        <TabsList className="flex w-full flex-wrap justify-start gap-1">
+          <TabsTrigger value="products">Products</TabsTrigger>
+          <TabsTrigger value="inventory">Inventory</TabsTrigger>
+          <TabsTrigger value="customers">Customers</TabsTrigger>
+          <TabsTrigger value="backup">Backup</TabsTrigger>
+        </TabsList>
+        <TabsContent value="products"><AdminProducts /></TabsContent>
+        <TabsContent value="inventory"><AdminInventory /></TabsContent>
+        <TabsContent value="customers"><AdminCustomers /></TabsContent>
+        <TabsContent value="backup"><AdminBackupRestore /></TabsContent>
+      </Tabs>
+    </div>
+  );
+}

@@ -1,0 +1,260 @@
+import Dexie, { type Table } from "dexie";
+import type {
+  AdminAccount,
+  Category,
+  Counter,
+  CreditCustomer,
+  CreditPayment,
+  DeliveryCustomer,
+  DeliveryPerson,
+  Expense,
+  InventoryAdjustment,
+  InventoryRow,
+  MenuItem,
+  Order,
+  RestaurantTable,
+  Settings,
+  StaffAccount,
+  Supplier,
+  SupplierArrival,
+  SupplierPayment,
+  TableOrder,
+  Waiter,
+  WorkPeriod,
+} from "./schema";
+import type { LicenseRecord } from "@/features/licensing/licensing-db";
+
+export class SangiPosDb extends Dexie {
+  categories!: Table<Category, string>;
+  items!: Table<MenuItem, string>;
+  inventory!: Table<InventoryRow, string>;
+  inventoryAdjustments!: Table<InventoryAdjustment, string>;
+  customers!: Table<CreditCustomer, string>;
+  creditPayments!: Table<CreditPayment, string>;
+  orders!: Table<Order, string>;
+  workPeriods!: Table<WorkPeriod, string>;
+  expenses!: Table<Expense, string>;
+  suppliers!: Table<Supplier, string>;
+  supplierPayments!: Table<SupplierPayment, string>;
+  supplierArrivals!: Table<SupplierArrival, string>;
+  deliveryPersons!: Table<DeliveryPerson, string>;
+  deliveryCustomers!: Table<DeliveryCustomer, string>;
+  waiters!: Table<Waiter, string>;
+  restaurantTables!: Table<RestaurantTable, string>;
+  tableOrders!: Table<TableOrder, string>;
+  adminAccount!: Table<AdminAccount, "admin">;
+  staffAccounts!: Table<StaffAccount, string>;
+  license!: Table<LicenseRecord, "license">;
+  settings!: Table<Settings, "app">;
+  counters!: Table<Counter, "receipt">;
+
+  constructor() {
+    super("sangi_pos_db_v1");
+    this.version(1).stores({
+      categories: "id, name, createdAt",
+      items: "id, categoryId, name, price, createdAt",
+      inventory: "itemId, quantity, updatedAt",
+      customers: "id, name, createdAt",
+      orders: "id, receiptNo, status, paymentMethod, createdAt",
+      settings: "id",
+      counters: "id",
+    });
+
+    this.version(2).stores({
+      categories: "id, name, createdAt",
+      items: "id, categoryId, name, price, createdAt",
+      inventory: "itemId, quantity, updatedAt",
+      inventoryAdjustments: "id, itemId, createdAt",
+      customers: "id, name, createdAt",
+      orders: "id, receiptNo, status, paymentMethod, createdAt",
+      settings: "id",
+      counters: "id",
+    });
+
+    this.version(3).stores({
+      categories: "id, name, createdAt",
+      items: "id, categoryId, name, price, createdAt",
+      inventory: "itemId, quantity, updatedAt",
+      inventoryAdjustments: "id, itemId, createdAt",
+      customers: "id, name, createdAt",
+      orders: "id, receiptNo, status, paymentMethod, createdAt",
+      settings: "id",
+      counters: "id",
+    });
+
+    this.version(4).stores({
+      categories: "id, name, createdAt",
+      items: "id, categoryId, name, price, createdAt",
+      inventory: "itemId, quantity, updatedAt",
+      inventoryAdjustments: "id, itemId, createdAt",
+      customers: "id, name, createdAt",
+      creditPayments: "id, customerId, createdAt",
+      orders: "id, receiptNo, status, paymentMethod, workPeriodId, createdAt",
+      workPeriods: "id, cashier, startedAt, isClosed",
+      settings: "id",
+      counters: "id",
+    });
+
+    this.version(5).stores({
+      categories: "id, name, createdAt",
+      items: "id, categoryId, name, price, createdAt",
+      inventory: "itemId, quantity, updatedAt",
+      inventoryAdjustments: "id, itemId, createdAt",
+      customers: "id, name, createdAt",
+      creditPayments: "id, customerId, createdAt",
+      orders: "id, receiptNo, status, paymentMethod, workPeriodId, createdAt",
+      workPeriods: "id, cashier, startedAt, isClosed",
+      expenses: "id, name, createdAt, workPeriodId",
+      settings: "id",
+      counters: "id",
+    });
+
+    // v6: add suppliers and supplier payments
+    this.version(6).stores({
+      categories: "id, name, createdAt",
+      items: "id, categoryId, name, price, createdAt",
+      inventory: "itemId, quantity, updatedAt",
+      inventoryAdjustments: "id, itemId, createdAt",
+      customers: "id, name, createdAt",
+      creditPayments: "id, customerId, createdAt",
+      orders: "id, receiptNo, status, paymentMethod, workPeriodId, createdAt",
+      workPeriods: "id, cashier, startedAt, isClosed",
+      expenses: "id, name, createdAt, workPeriodId",
+      suppliers: "id, name, createdAt",
+      supplierPayments: "id, supplierId, createdAt",
+      settings: "id",
+      counters: "id",
+    });
+
+    // v7: add delivery persons
+    this.version(7).stores({
+      categories: "id, name, createdAt",
+      items: "id, categoryId, name, price, createdAt",
+      inventory: "itemId, quantity, updatedAt",
+      inventoryAdjustments: "id, itemId, createdAt",
+      customers: "id, name, createdAt",
+      creditPayments: "id, customerId, createdAt",
+      orders: "id, receiptNo, status, paymentMethod, workPeriodId, deliveryPersonId, createdAt",
+      workPeriods: "id, cashier, startedAt, isClosed",
+      expenses: "id, name, createdAt, workPeriodId",
+      suppliers: "id, name, createdAt",
+      supplierPayments: "id, supplierId, createdAt",
+      deliveryPersons: "id, name, createdAt",
+      settings: "id",
+      counters: "id",
+    });
+
+    // v8: add delivery customers
+    this.version(8).stores({
+      categories: "id, name, createdAt",
+      items: "id, categoryId, name, price, createdAt",
+      inventory: "itemId, quantity, updatedAt",
+      inventoryAdjustments: "id, itemId, createdAt",
+      customers: "id, name, createdAt",
+      creditPayments: "id, customerId, createdAt",
+      orders: "id, receiptNo, status, paymentMethod, workPeriodId, deliveryPersonId, createdAt",
+      workPeriods: "id, cashier, startedAt, isClosed",
+      expenses: "id, name, createdAt, workPeriodId",
+      suppliers: "id, name, createdAt",
+      supplierPayments: "id, supplierId, createdAt",
+      deliveryPersons: "id, name, createdAt",
+      deliveryCustomers: "id, name, createdAt",
+      settings: "id",
+      counters: "id",
+    });
+
+    // v9: add supplier arrivals
+    this.version(9).stores({
+      categories: "id, name, createdAt",
+      items: "id, categoryId, name, price, createdAt",
+      inventory: "itemId, quantity, updatedAt",
+      inventoryAdjustments: "id, itemId, createdAt",
+      customers: "id, name, createdAt",
+      creditPayments: "id, customerId, createdAt",
+      orders: "id, receiptNo, status, paymentMethod, workPeriodId, deliveryPersonId, createdAt",
+      workPeriods: "id, cashier, startedAt, isClosed",
+      expenses: "id, name, createdAt, workPeriodId",
+      suppliers: "id, name, createdAt",
+      supplierPayments: "id, supplierId, createdAt",
+      supplierArrivals: "id, supplierId, createdAt",
+      deliveryPersons: "id, name, createdAt",
+      deliveryCustomers: "id, name, createdAt",
+      settings: "id",
+      counters: "id",
+    });
+
+    // v10: add table management (waiters, tables, table orders)
+    this.version(10).stores({
+      categories: "id, name, createdAt",
+      items: "id, categoryId, name, price, createdAt",
+      inventory: "itemId, quantity, updatedAt",
+      inventoryAdjustments: "id, itemId, createdAt",
+      customers: "id, name, createdAt",
+      creditPayments: "id, customerId, createdAt",
+      orders: "id, receiptNo, status, paymentMethod, workPeriodId, deliveryPersonId, createdAt",
+      workPeriods: "id, cashier, startedAt, isClosed",
+      expenses: "id, name, createdAt, workPeriodId",
+      suppliers: "id, name, createdAt",
+      supplierPayments: "id, supplierId, createdAt",
+      supplierArrivals: "id, supplierId, createdAt",
+      deliveryPersons: "id, name, createdAt",
+      deliveryCustomers: "id, name, createdAt",
+      waiters: "id, name, createdAt",
+      restaurantTables: "id, tableNumber, createdAt",
+      tableOrders: "id, tableId, waiterId, status, createdAt, completedAt",
+      settings: "id",
+      counters: "id",
+    });
+    // v11: add admin account and staff accounts (registration-based auth)
+    this.version(11).stores({
+      categories: "id, name, createdAt",
+      items: "id, categoryId, name, price, createdAt",
+      inventory: "itemId, quantity, updatedAt",
+      inventoryAdjustments: "id, itemId, createdAt",
+      customers: "id, name, createdAt",
+      creditPayments: "id, customerId, createdAt",
+      orders: "id, receiptNo, status, paymentMethod, workPeriodId, deliveryPersonId, createdAt",
+      workPeriods: "id, cashier, startedAt, isClosed",
+      expenses: "id, name, createdAt, workPeriodId",
+      suppliers: "id, name, createdAt",
+      supplierPayments: "id, supplierId, createdAt",
+      supplierArrivals: "id, supplierId, createdAt",
+      deliveryPersons: "id, name, createdAt",
+      deliveryCustomers: "id, name, createdAt",
+      waiters: "id, name, createdAt",
+      restaurantTables: "id, tableNumber, createdAt",
+      tableOrders: "id, tableId, waiterId, status, createdAt, completedAt",
+      adminAccount: "id",
+      staffAccounts: "id, name, role, createdAt",
+      settings: "id",
+      counters: "id",
+    });
+    // v12: add license table for device ID & premium activation
+    this.version(12).stores({
+      categories: "id, name, createdAt",
+      items: "id, categoryId, name, price, createdAt",
+      inventory: "itemId, quantity, updatedAt",
+      inventoryAdjustments: "id, itemId, createdAt",
+      customers: "id, name, createdAt",
+      creditPayments: "id, customerId, createdAt",
+      orders: "id, receiptNo, status, paymentMethod, workPeriodId, deliveryPersonId, createdAt",
+      workPeriods: "id, cashier, startedAt, isClosed",
+      expenses: "id, name, createdAt, workPeriodId",
+      suppliers: "id, name, createdAt",
+      supplierPayments: "id, supplierId, createdAt",
+      supplierArrivals: "id, supplierId, createdAt",
+      deliveryPersons: "id, name, createdAt",
+      deliveryCustomers: "id, name, createdAt",
+      waiters: "id, name, createdAt",
+      restaurantTables: "id, tableNumber, createdAt",
+      tableOrders: "id, tableId, waiterId, status, createdAt, completedAt",
+      adminAccount: "id",
+      staffAccounts: "id, name, role, createdAt",
+      license: "id",
+      settings: "id",
+      counters: "id",
+    });
+  }
+}
+
+export const db = new SangiPosDb();
