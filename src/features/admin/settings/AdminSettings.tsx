@@ -12,8 +12,9 @@ import { Filesystem, Directory } from "@capacitor/filesystem";
 import { Capacitor } from "@capacitor/core";
 import { AdminTablesWaiters } from "@/features/admin/tables/AdminTablesWaiters";
 import { Trash2, Plus } from "lucide-react";
-import { getLicense } from "@/features/licensing/licensing-db";
+import { getLicense, updateLicense } from "@/features/licensing/licensing-db";
 import { UpgradeDialog } from "@/features/licensing/UpgradeDialog";
+import { decodeLicenseBase64 } from "@/features/licensing/license-file";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -85,6 +86,8 @@ export function AdminSettings() {
   const [logoPath, setLogoPath] = React.useState<string | undefined>();
   const [deviceId, setDeviceId] = React.useState("");
   const [isPremium, setIsPremium] = React.useState(false);
+  const [licenseText, setLicenseText] = React.useState("");
+  const [showLicenseImport, setShowLicenseImport] = React.useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const load = React.useCallback(async () => {
@@ -286,6 +289,51 @@ export function AdminSettings() {
             <div className="flex items-center gap-2 text-sm text-green-600 font-medium">
               <div className="h-2.5 w-2.5 rounded-full bg-green-500" />
               Premium Active
+            </div>
+          )}
+
+          {!isPremium && (
+            <div className="border-t pt-3 space-y-3">
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => setShowLicenseImport(!showLicenseImport)}
+              >
+                📄 Import License
+              </Button>
+              {showLicenseImport && (
+                <div className="space-y-2">
+                  <Label>Paste license text received from support:</Label>
+                  <Input
+                    value={licenseText}
+                    onChange={(e) => setLicenseText(e.target.value)}
+                    placeholder="Paste license text here..."
+                    className="font-mono text-xs"
+                  />
+                  <Button
+                    className="w-full"
+                    disabled={!licenseText.trim()}
+                    onClick={async () => {
+                      const decoded = decodeLicenseBase64(licenseText);
+                      if (!decoded) {
+                        toast({ title: "Invalid license", description: "The license text is invalid or corrupted.", variant: "destructive" });
+                        return;
+                      }
+                      if (decoded.deviceId !== deviceId) {
+                        toast({ title: "License mismatch", description: "This license is for a different device.", variant: "destructive" });
+                        return;
+                      }
+                      await updateLicense({ isPremium: true, licensedDeviceId: decoded.deviceId });
+                      setIsPremium(true);
+                      setShowLicenseImport(false);
+                      setLicenseText("");
+                      toast({ title: "🎉 Premium Activated!", description: "Your device is now premium." });
+                    }}
+                  >
+                    Activate Premium
+                  </Button>
+                </div>
+              )}
             </div>
           )}
         </CardContent>

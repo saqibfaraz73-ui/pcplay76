@@ -108,40 +108,51 @@ export async function shareLicenseFile(uri: string) {
   });
 }
 
+/** Decrypt a base64 license string and return payload if valid */
+export function decodeLicenseBase64(base64: string): { deviceId: string; activatedAt: string } | null {
+  try {
+    const encrypted = atob(base64.trim());
+    const json = xorCipher(encrypted, ENCRYPTION_KEY);
+    const payload: LicenseFilePayload = JSON.parse(json);
+    if (payload.magic !== FILE_MAGIC) return null;
+    const expectedChecksum = generateChecksum(payload.deviceId, payload.activatedAt);
+    if (payload.checksum !== expectedChecksum) return null;
+    return { deviceId: payload.deviceId, activatedAt: payload.activatedAt };
+  } catch {
+    return null;
+  }
+}
+
 /** Try to read and decrypt a license file from the Sangi Pos folder.
  *  Returns the device ID if valid, null otherwise. */
 export async function readLicenseFile(): Promise<{ deviceId: string; activatedAt: string } | null> {
-  // Check multiple possible locations
+  // Check multiple possible locations and directories
   const possiblePaths = [
     `${folderPath("Backup")}/${LICENSE_FILE_NAME}`,
     `Sangi Pos/${LICENSE_FILE_NAME}`,
+    LICENSE_FILE_NAME,
   ];
 
-  for (const path of possiblePaths) {
-    try {
-      const result = await Filesystem.readFile({
-        directory: Directory.Documents,
-        path,
-        encoding: Encoding.UTF8,
-      });
+  // Try both Documents (app-private) and ExternalStorage (user-visible) directories
+  const directories = [Directory.Documents, Directory.ExternalStorage];
 
-      const base64 = typeof result.data === "string" ? result.data : "";
-      if (!base64) continue;
+  for (const dir of directories) {
+    for (const path of possiblePaths) {
+      try {
+        const result = await Filesystem.readFile({
+          directory: dir,
+          path,
+          encoding: Encoding.UTF8,
+        });
 
-      const encrypted = atob(base64);
-      const json = xorCipher(encrypted, ENCRYPTION_KEY);
-      const payload: LicenseFilePayload = JSON.parse(json);
+        const base64 = typeof result.data === "string" ? result.data : "";
+        if (!base64) continue;
 
-      // Verify magic header
-      if (payload.magic !== FILE_MAGIC) continue;
-
-      // Verify checksum
-      const expectedChecksum = generateChecksum(payload.deviceId, payload.activatedAt);
-      if (payload.checksum !== expectedChecksum) continue;
-
-      return { deviceId: payload.deviceId, activatedAt: payload.activatedAt };
-    } catch {
-      // File doesn't exist or can't be read — try next path
+        const decoded = decodeLicenseBase64(base64);
+        if (decoded) return decoded;
+      } catch {
+        // File doesn't exist or can't be read — try next
+      }
     }
   }
 
