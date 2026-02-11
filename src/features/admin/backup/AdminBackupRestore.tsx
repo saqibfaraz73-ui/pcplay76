@@ -5,11 +5,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { db } from "@/db/appDb";
 import { useToast } from "@/hooks/use-toast";
-import { ensureSangiFolders, shareFile, writeTextFile, folderPath } from "@/features/files/sangi-folders";
+import { ensureSangiFolders, shareFile, writeTextFile } from "@/features/files/sangi-folders";
 import { Share } from "@capacitor/share";
 import { Capacitor } from "@capacitor/core";
 import { markBackupDone } from "./BackupReminder";
-import { Filesystem, Directory, Encoding } from "@capacitor/filesystem";
 import { CloudUpload } from "lucide-react";
 
 type BackupPayloadV1 = {
@@ -29,7 +28,14 @@ type BackupPayloadV1 = {
     workPeriods?: any[];
     suppliers?: any[];
     supplierPayments?: any[];
-    itemImages?: { path: string; data: string }[]; // base64 image data
+    supplierArrivals?: any[];
+    deliveryPersons?: any[];
+    deliveryCustomers?: any[];
+    waiters?: any[];
+    restaurantTables?: any[];
+    tableOrders?: any[];
+    adminAccount?: any[];
+    staffAccounts?: any[];
   };
 };
 
@@ -42,29 +48,12 @@ export function AdminBackupRestore() {
     try {
       await ensureSangiFolders();
 
-      // Collect item images as base64
-      const items = await db.items.toArray();
-      const itemImages: { path: string; data: string }[] = [];
-      if (Capacitor.isNativePlatform()) {
-        for (const item of items) {
-          if (!item.imagePath) continue;
-          try {
-            const res = await Filesystem.readFile({ directory: Directory.Documents, path: item.imagePath });
-            if (typeof res.data === "string") {
-              itemImages.push({ path: item.imagePath, data: res.data });
-            }
-          } catch {
-            // Skip if image file not found
-          }
-        }
-      }
-
       const payload: BackupPayloadV1 = {
         version: 1,
         createdAt: Date.now(),
         data: {
           categories: await db.categories.toArray(),
-          items,
+          items: await db.items.toArray(),
           inventory: await db.inventory.toArray(),
           inventoryAdjustments: await db.inventoryAdjustments.toArray(),
           customers: await db.customers.toArray(),
@@ -76,7 +65,14 @@ export function AdminBackupRestore() {
           workPeriods: await db.workPeriods.toArray(),
           suppliers: await db.suppliers.toArray(),
           supplierPayments: await db.supplierPayments.toArray(),
-          itemImages: itemImages.length > 0 ? itemImages : undefined,
+          supplierArrivals: await db.supplierArrivals.toArray(),
+          deliveryPersons: await db.deliveryPersons.toArray(),
+          deliveryCustomers: await db.deliveryCustomers.toArray(),
+          waiters: await db.waiters.toArray(),
+          restaurantTables: await db.restaurantTables.toArray(),
+          tableOrders: await db.tableOrders.toArray(),
+          adminAccount: await db.adminAccount.toArray(),
+          staffAccounts: await db.staffAccounts.toArray(),
         },
       };
       const fileName = `backup_${payload.createdAt}.json`;
@@ -84,7 +80,7 @@ export function AdminBackupRestore() {
       setLastBackupUri(uri);
       setLastBackupTitle(fileName);
       markBackupDone();
-      toast({ title: "Backup created", description: `${fileName}${itemImages.length > 0 ? ` (${itemImages.length} images included)` : ""}` });
+      toast({ title: "Backup created", description: fileName });
     } catch (e: any) {
       toast({ title: "Backup failed", description: e?.message ?? String(e), variant: "destructive" });
     }
@@ -106,6 +102,14 @@ export function AdminBackupRestore() {
         db.expenses,
         db.suppliers,
         db.supplierPayments,
+        db.supplierArrivals,
+        db.deliveryPersons,
+        db.deliveryCustomers,
+        db.waiters,
+        db.restaurantTables,
+        db.tableOrders,
+        db.adminAccount,
+        db.staffAccounts,
         db.settings,
         db.counters,
       ],
@@ -122,6 +126,14 @@ export function AdminBackupRestore() {
           db.expenses.clear(),
           db.suppliers.clear(),
           db.supplierPayments.clear(),
+          db.supplierArrivals.clear(),
+          db.deliveryPersons.clear(),
+          db.deliveryCustomers.clear(),
+          db.waiters.clear(),
+          db.restaurantTables.clear(),
+          db.tableOrders.clear(),
+          db.adminAccount.clear(),
+          db.staffAccounts.clear(),
           db.settings.clear(),
           db.counters.clear(),
         ]);
@@ -136,41 +148,18 @@ export function AdminBackupRestore() {
         if (payload.data.expenses?.length) await db.expenses.bulkAdd(payload.data.expenses);
         if (payload.data.suppliers?.length) await db.suppliers.bulkAdd(payload.data.suppliers);
         if (payload.data.supplierPayments?.length) await db.supplierPayments.bulkAdd(payload.data.supplierPayments);
+        if (payload.data.supplierArrivals?.length) await db.supplierArrivals.bulkAdd(payload.data.supplierArrivals);
+        if (payload.data.deliveryPersons?.length) await db.deliveryPersons.bulkAdd(payload.data.deliveryPersons);
+        if (payload.data.deliveryCustomers?.length) await db.deliveryCustomers.bulkAdd(payload.data.deliveryCustomers);
+        if (payload.data.waiters?.length) await db.waiters.bulkAdd(payload.data.waiters);
+        if (payload.data.restaurantTables?.length) await db.restaurantTables.bulkAdd(payload.data.restaurantTables);
+        if (payload.data.tableOrders?.length) await db.tableOrders.bulkAdd(payload.data.tableOrders);
+        if (payload.data.adminAccount?.length) await db.adminAccount.bulkAdd(payload.data.adminAccount);
+        if (payload.data.staffAccounts?.length) await db.staffAccounts.bulkAdd(payload.data.staffAccounts);
         await db.settings.bulkAdd(payload.data.settings);
         await db.counters.bulkAdd(payload.data.counters);
       },
     );
-
-    // Restore item images to filesystem
-    if (Capacitor.isNativePlatform() && payload.data.itemImages?.length) {
-      await ensureSangiFolders();
-      const itemsDir = `${folderPath("Images")}/items`;
-      try {
-        await Filesystem.mkdir({ directory: Directory.Documents, path: itemsDir, recursive: true });
-      } catch { /* exists */ }
-      // Create .nomedia to hide from gallery
-      try {
-        await Filesystem.writeFile({
-          directory: Directory.Documents,
-          path: `${itemsDir}/.nomedia`,
-          data: "",
-          encoding: Encoding.UTF8,
-        });
-      } catch { /* ignore */ }
-
-      for (const img of payload.data.itemImages) {
-        try {
-          await Filesystem.writeFile({
-            directory: Directory.Documents,
-            path: img.path,
-            data: img.data,
-            recursive: true,
-          });
-        } catch {
-          // Skip failed image restores
-        }
-      }
-    }
   };
 
   const onRestoreFile = async (file: File) => {
