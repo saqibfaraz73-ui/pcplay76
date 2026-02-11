@@ -71,19 +71,32 @@ export async function generateLicenseFile(deviceId: string): Promise<{ path: str
   const encrypted = xorCipher(json, ENCRYPTION_KEY);
   const base64 = btoa(encrypted);
 
-  await ensureSangiFolders();
-  const path = `${folderPath("Backup")}/${LICENSE_FILE_NAME}`;
+  // Try Documents first, then Cache as fallback (avoids permission issues on newer Android)
+  const attempts: { directory: Directory; path: string }[] = [
+    { directory: Directory.Documents, path: `${folderPath("Backup")}/${LICENSE_FILE_NAME}` },
+    { directory: Directory.Cache, path: LICENSE_FILE_NAME },
+  ];
 
-  await Filesystem.writeFile({
-    directory: Directory.Documents,
-    path,
-    data: base64,
-    encoding: Encoding.UTF8,
-    recursive: true,
-  });
+  for (const attempt of attempts) {
+    try {
+      if (attempt.directory === Directory.Documents) {
+        await ensureSangiFolders();
+      }
+      await Filesystem.writeFile({
+        directory: attempt.directory,
+        path: attempt.path,
+        data: base64,
+        encoding: Encoding.UTF8,
+        recursive: true,
+      });
+      const uriResult = await Filesystem.getUri({ directory: attempt.directory, path: attempt.path });
+      return { path: attempt.path, uri: uriResult.uri };
+    } catch {
+      // Try next directory
+    }
+  }
 
-  const uriResult = await Filesystem.getUri({ directory: Directory.Documents, path });
-  return { path, uri: uriResult.uri };
+  throw new Error("Could not write license file to any directory");
 }
 
 /** Share the license file with the customer */
