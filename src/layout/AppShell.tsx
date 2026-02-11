@@ -40,7 +40,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [tableManagementEnabled, setTableManagementEnabled] = React.useState(false);
 
   React.useEffect(() => {
-    // Load settings to check if table management is enabled
     (async () => {
       const s = await db.settings.get("app");
       setTableManagementEnabled(!!s?.tableManagementEnabled);
@@ -53,10 +52,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   });
 
   const isAdmin = session?.role === "admin";
+  const isWaiter = session?.role === "waiter";
 
   const visibleNavItems = React.useMemo(() => {
+    if (isWaiter) return [];
     return navItems.filter((n) => (isAdmin ? true : !n.adminOnly));
-  }, [isAdmin]);
+  }, [isAdmin, isWaiter]);
 
   const isActive = (path: string) =>
     location.pathname === path || location.pathname.startsWith(`${path}/`);
@@ -102,66 +103,25 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                               </Link>
                             );
                           })}
-                          <Link
-                            to="/pos/orders"
-                            className={cn(
-                              "flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors",
-                              isActive("/pos/orders")
-                                ? "bg-accent text-accent-foreground"
-                                : "text-muted-foreground hover:text-foreground",
-                            )}
-                          >
-                            <ClipboardList className="h-4 w-4" />
-                            Orders
-                          </Link>
-                          <Link
-                            to="/pos/expenses"
-                            className={cn(
-                              "flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors",
-                              isActive("/pos/expenses")
-                                ? "bg-accent text-accent-foreground"
-                                : "text-muted-foreground hover:text-foreground",
-                            )}
-                          >
-                            <DollarSign className="h-4 w-4" />
-                            Expenses
-                          </Link>
-                          <Link
-                            to="/pos/credit-lodge"
-                            className={cn(
-                              "flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors",
-                              isActive("/pos/credit-lodge")
-                                ? "bg-accent text-accent-foreground"
-                                : "text-muted-foreground hover:text-foreground",
-                            )}
-                          >
-                            <Users className="h-4 w-4" />
-                            Credit Lodge
-                          </Link>
-                          <Link
-                            to="/pos/party-lodge"
-                            className={cn(
-                              "flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors",
-                              isActive("/pos/party-lodge")
-                                ? "bg-accent text-accent-foreground"
-                                : "text-muted-foreground hover:text-foreground",
-                            )}
-                          >
-                            <Truck className="h-4 w-4" />
-                            Party Lodge
-                          </Link>
-                          {tableManagementEnabled && (
-                            <Link
-                              to="/pos/tables"
-                              className={cn(
-                                "flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors",
-                                isActive("/pos/tables")
-                                  ? "bg-accent text-accent-foreground"
-                                  : "text-muted-foreground hover:text-foreground",
-                              )}
-                            >
-                              <UtensilsCrossed className="h-4 w-4" />
-                              Tables
+                          {!isWaiter && (
+                            <>
+                              <Link to="/pos/orders" className={cn("flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors", isActive("/pos/orders") ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground")}>
+                                <ClipboardList className="h-4 w-4" /> Orders
+                              </Link>
+                              <Link to="/pos/expenses" className={cn("flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors", isActive("/pos/expenses") ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground")}>
+                                <DollarSign className="h-4 w-4" /> Expenses
+                              </Link>
+                              <Link to="/pos/credit-lodge" className={cn("flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors", isActive("/pos/credit-lodge") ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground")}>
+                                <Users className="h-4 w-4" /> Credit Lodge
+                              </Link>
+                              <Link to="/pos/party-lodge" className={cn("flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors", isActive("/pos/party-lodge") ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground")}>
+                                <Truck className="h-4 w-4" /> Party Lodge
+                              </Link>
+                            </>
+                          )}
+                          {(tableManagementEnabled || isWaiter) && (
+                            <Link to="/pos/tables" className={cn("flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors", isActive("/pos/tables") ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground")}>
+                              <UtensilsCrossed className="h-4 w-4" /> Tables
                             </Link>
                           )}
 
@@ -223,60 +183,24 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                       {n.label}
                     </Link>
                   ))}
-                  <Link
-                    to="/pos/orders"
-                    className={cn(
-                      "rounded-md px-3 py-2 text-sm transition-colors",
-                      isActive("/pos/orders")
-                        ? "bg-accent text-accent-foreground"
-                        : "text-muted-foreground hover:text-foreground",
-                    )}
-                  >
-                    Orders
-                  </Link>
-                  <Link
-                    to="/pos/expenses"
-                    className={cn(
-                      "rounded-md px-3 py-2 text-sm transition-colors",
-                      isActive("/pos/expenses")
-                        ? "bg-accent text-accent-foreground"
-                        : "text-muted-foreground hover:text-foreground",
-                    )}
-                  >
-                    Expenses
-                  </Link>
-                  <Link
-                    to="/pos/credit-lodge"
-                    className={cn(
-                      "rounded-md px-3 py-2 text-sm transition-colors",
-                      isActive("/pos/credit-lodge")
-                        ? "bg-accent text-accent-foreground"
-                        : "text-muted-foreground hover:text-foreground",
-                    )}
-                  >
-                    Credit Lodge
-                  </Link>
-                  <Link
-                    to="/pos/party-lodge"
-                    className={cn(
-                      "rounded-md px-3 py-2 text-sm transition-colors",
-                      isActive("/pos/party-lodge")
-                        ? "bg-accent text-accent-foreground"
-                        : "text-muted-foreground hover:text-foreground",
-                    )}
-                  >
-                    Party Lodge
-                  </Link>
-                  {tableManagementEnabled && (
-                    <Link
-                      to="/pos/tables"
-                      className={cn(
-                        "rounded-md px-3 py-2 text-sm transition-colors",
-                        isActive("/pos/tables")
-                          ? "bg-accent text-accent-foreground"
-                          : "text-muted-foreground hover:text-foreground",
-                      )}
-                    >
+                  {!isWaiter && (
+                    <>
+                      <Link to="/pos/orders" className={cn("rounded-md px-3 py-2 text-sm transition-colors", isActive("/pos/orders") ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground")}>
+                        Orders
+                      </Link>
+                      <Link to="/pos/expenses" className={cn("rounded-md px-3 py-2 text-sm transition-colors", isActive("/pos/expenses") ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground")}>
+                        Expenses
+                      </Link>
+                      <Link to="/pos/credit-lodge" className={cn("rounded-md px-3 py-2 text-sm transition-colors", isActive("/pos/credit-lodge") ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground")}>
+                        Credit Lodge
+                      </Link>
+                      <Link to="/pos/party-lodge" className={cn("rounded-md px-3 py-2 text-sm transition-colors", isActive("/pos/party-lodge") ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground")}>
+                        Party Lodge
+                      </Link>
+                    </>
+                  )}
+                  {(tableManagementEnabled || isWaiter) && (
+                    <Link to="/pos/tables" className={cn("rounded-md px-3 py-2 text-sm transition-colors", isActive("/pos/tables") ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground")}>
                       Tables
                     </Link>
                   )}
