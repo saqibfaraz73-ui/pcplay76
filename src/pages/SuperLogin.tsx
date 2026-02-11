@@ -7,18 +7,39 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { getLicense, updateLicense } from "@/features/licensing/licensing-db";
 
-const SUPER_USER = "6250";
-const SUPER_PASS = "3563";
+/**
+ * Generate a deterministic 4-digit super PIN from a device ID.
+ * Same device ID always produces the same PIN.
+ */
+export function generateSuperPin(deviceId: string): string {
+  const seed = `SUPER_SANGI_2024::${deviceId}`;
+  let hash = 0;
+  for (let i = 0; i < seed.length; i++) {
+    hash = ((hash << 5) - hash + seed.charCodeAt(i)) | 0;
+  }
+  // Get a 4-digit PIN (1000-9999)
+  const pin = 1000 + (Math.abs(hash) % 9000);
+  return String(pin);
+}
 
 export default function SuperLogin() {
   const { toast } = useToast();
   const navigate = useNavigate();
 
   const [authed, setAuthed] = React.useState(false);
-  const [username, setUsername] = React.useState("");
-  const [password, setPassword] = React.useState("");
+  const [pin, setPin] = React.useState("");
+  const [deviceId, setDeviceId] = React.useState("");
+  const [expectedPin, setExpectedPin] = React.useState("");
   const [isPremium, setIsPremium] = React.useState(false);
   const [loading, setLoading] = React.useState(false);
+
+  // Load device ID on mount
+  React.useEffect(() => {
+    getLicense().then((lic) => {
+      setDeviceId(lic.deviceId);
+      setExpectedPin(generateSuperPin(lic.deviceId));
+    });
+  }, []);
 
   React.useEffect(() => {
     if (authed) {
@@ -28,10 +49,10 @@ export default function SuperLogin() {
 
   const onLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (username === SUPER_USER && password === SUPER_PASS) {
+    if (pin === expectedPin) {
       setAuthed(true);
     } else {
-      toast({ title: "Invalid credentials", variant: "destructive" });
+      toast({ title: "Invalid PIN", variant: "destructive" });
     }
   };
 
@@ -68,12 +89,12 @@ export default function SuperLogin() {
           <CardContent>
             <form onSubmit={onLogin} className="space-y-4">
               <div className="space-y-2">
-                <Label>Username</Label>
-                <Input value={username} onChange={(e) => setUsername(e.target.value)} autoComplete="off" />
+                <Label>Device ID</Label>
+                <Input value={deviceId} readOnly className="font-mono text-xs bg-muted" />
               </div>
               <div className="space-y-2">
-                <Label>Password</Label>
-                <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="off" />
+                <Label>Super PIN</Label>
+                <Input type="password" inputMode="numeric" maxLength={4} value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 4))} autoComplete="off" placeholder="4-digit PIN" />
               </div>
               <Button type="submit" className="w-full">Login</Button>
             </form>
