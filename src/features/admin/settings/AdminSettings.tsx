@@ -12,7 +12,7 @@ import { Filesystem, Directory } from "@capacitor/filesystem";
 import { Capacitor } from "@capacitor/core";
 import { AdminTablesWaiters } from "@/features/admin/tables/AdminTablesWaiters";
 import { Trash2, Plus } from "lucide-react";
-import { getLicense, activatePremium } from "@/features/licensing/licensing-db";
+import { getLicense } from "@/features/licensing/licensing-db";
 import { UpgradeDialog } from "@/features/licensing/UpgradeDialog";
 import {
   AlertDialog,
@@ -85,9 +85,7 @@ export function AdminSettings() {
   const [logoPath, setLogoPath] = React.useState<string | undefined>();
   const [deviceId, setDeviceId] = React.useState("");
   const [isPremium, setIsPremium] = React.useState(false);
-  const [maskedKey, setMaskedKey] = React.useState("");
   const fileInputRef = React.useRef<HTMLInputElement>(null);
-  const activationKeyRef = React.useRef<HTMLInputElement>(null);
 
   const load = React.useCallback(async () => {
     await ensureSeedData();
@@ -135,12 +133,6 @@ export function AdminSettings() {
     const lic = await getLicense();
     setDeviceId(lic.deviceId);
     setIsPremium(lic.isPremium);
-    if (lic.activationKey) {
-      // Show only first half of key, mask the rest
-      const k = lic.activationKey;
-      const half = Math.ceil(k.length / 2);
-      setMaskedKey(k.slice(0, half) + "•".repeat(k.length - half));
-    }
   }, []);
 
   React.useEffect(() => {
@@ -292,37 +284,12 @@ export function AdminSettings() {
             {!isPremium && <p className="text-xs text-muted-foreground mt-1 font-sans">Tap to copy</p>}
           </div>
 
-          {isPremium && maskedKey ? (
-            <div className="space-y-1">
-              <Label className="text-xs text-muted-foreground">Activation Key</Label>
-              <div className="rounded-md border bg-muted/50 px-4 py-3 font-mono text-sm tracking-wider select-none" style={{ userSelect: "none", WebkitUserSelect: "none" }}>
-                {maskedKey}
-              </div>
+          {isPremium && (
+            <div className="flex items-center gap-2 text-sm text-green-600 font-medium">
+              <div className="h-2.5 w-2.5 rounded-full bg-green-500" />
+              Premium Active
             </div>
-          ) : !isPremium ? (
-            <div className="flex gap-2 items-end">
-              <div className="flex-1 space-y-1">
-                <Label htmlFor="activationKey" className="text-xs">Activation Key</Label>
-                <Input id="activationKey" placeholder="Enter key to activate premium" ref={activationKeyRef} />
-              </div>
-              <Button
-                variant="outline"
-                onClick={async () => {
-                  const key = activationKeyRef.current?.value?.trim();
-                  if (!key) { toast({ title: "Enter a key", variant: "destructive" }); return; }
-                  const ok = await activatePremium(key, deviceId);
-                  if (ok) {
-                    toast({ title: "Premium activated!" });
-                    void load();
-                  } else {
-                    toast({ title: "Invalid key", variant: "destructive" });
-                  }
-                }}
-              >
-                Activate
-              </Button>
-            </div>
-          ) : null}
+          )}
         </CardContent>
       </Card>
 

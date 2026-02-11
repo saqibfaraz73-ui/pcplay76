@@ -1,9 +1,8 @@
 /**
  * Licensing DB table stored in Dexie alongside existing app data.
- * We store: deviceId, activationKey, premium status, usage counts, and upgrade message.
+ * Premium is activated via Super Admin login (device-specific PIN).
  */
 import { db } from "@/db/appDb";
-import { PRELOADED_DEVICE_ID, PRELOADED_ACTIVATION_KEY } from "./preloaded-license";
 
 export type LicenseRecord = {
   id: "license";
@@ -81,17 +80,6 @@ export async function getLicense(): Promise<LicenseRecord> {
     await (db as any).license.put(rec);
   }
 
-  // Auto-activate from preloaded license if device matches
-  if (
-    !rec.isPremium &&
-    PRELOADED_DEVICE_ID !== "" &&
-    PRELOADED_ACTIVATION_KEY !== "" &&
-    rec.deviceId === PRELOADED_DEVICE_ID
-  ) {
-    rec.isPremium = true;
-    rec.activationKey = PRELOADED_ACTIVATION_KEY.trim().toUpperCase();
-    await (db as any).license.put(rec);
-  }
 
   return rec;
 }
@@ -151,40 +139,3 @@ export async function incrementSaleCount(module: SalesModule): Promise<void> {
   await updateLicense({ [key]: (lic[key] as number) + 1 } as any);
 }
 
-/**
- * Deterministic key generation from a device ID.
- * Same device ID always produces the same key.
- * Used by Super Admin to generate keys and by the app to validate them.
- */
-const KEY_SECRET = "SANGI_POS_2024_PRO";
-
-export function generateKeyForDevice(deviceId: string): string {
-  const seed = `${KEY_SECRET}::${deviceId}`;
-  let h1 = 7919;
-  let h2 = 104729;
-  for (let i = 0; i < seed.length; i++) {
-    const c = seed.charCodeAt(i);
-    h1 = ((h1 << 5) - h1 + c) | 0;
-    h2 = ((h2 << 5) + h2 + c) | 0;
-  }
-  const p1 = Math.abs(h1).toString(36).toUpperCase().slice(0, 4);
-  const p2 = Math.abs(h2).toString(36).toUpperCase().slice(0, 4);
-  const p3 = Math.abs(h1 ^ h2).toString(36).toUpperCase().slice(0, 4);
-  return `${p1}-${p2}-${p3}`;
-}
-
-export async function activatePremium(key: string, deviceId: string): Promise<boolean> {
-  const normalizedKey = key.trim().toUpperCase();
-  // For the preloaded device, accept the preloaded key directly
-  if (PRELOADED_DEVICE_ID !== "" && deviceId === PRELOADED_DEVICE_ID && normalizedKey === PRELOADED_ACTIVATION_KEY.trim().toUpperCase()) {
-    await updateLicense({ isPremium: true, activationKey: normalizedKey });
-    return true;
-  }
-  // For all other devices, accept only the deterministic generated key
-  const expected = generateKeyForDevice(deviceId);
-  if (normalizedKey === expected) {
-    await updateLicense({ isPremium: true, activationKey: normalizedKey });
-    return true;
-  }
-  return false;
-}

@@ -1,15 +1,8 @@
 /**
- * PRE-LOADED LICENSE — Edit before building a customer's APK.
- *
- * How to use:
- * 1. Customer installs the free APK and sends you their Device ID.
- * 2. Open Super Admin → paste Device ID → generate key.
- * 3. Fill in PRELOADED_DEVICE_ID and PRELOADED_ACTIVATION_KEY below.
- * 4. Build the APK → send to customer.
- * 5. The app will auto-activate on matching device.
- *
- * Leave both empty ("") for the free/generic version.
+ * PRE-LOADED LICENSE — No longer used.
+ * Premium is now activated via Super Admin login (device-specific PIN).
+ * Kept for backward compatibility with existing DB records.
  */
 
-export const PRELOADED_DEVICE_ID: string = "SNG-330BB20F-1E1F";
-export const PRELOADED_ACTIVATION_KEY: string = "Sangi3563";
+export const PRELOADED_DEVICE_ID: string = "";
+export const PRELOADED_ACTIVATION_KEY: string = "";
