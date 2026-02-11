@@ -5,6 +5,7 @@
  */
 import { db } from "@/db/appDb";
 import { PRELOADED_DEVICE_ID } from "./preloaded-license";
+import { readLicenseFile } from "./license-file";
 export type LicenseRecord = {
   id: "license";
   deviceId: string;
@@ -89,6 +90,19 @@ export async function getLicense(): Promise<LicenseRecord> {
   if (!rec.isPremium && PRELOADED_DEVICE_ID && PRELOADED_DEVICE_ID === rec.deviceId) {
     rec = { ...rec, isPremium: true, licensedDeviceId: PRELOADED_DEVICE_ID };
     await (db as any).license.put(rec);
+  }
+
+  // Check for encrypted license file activation
+  if (!rec.isPremium) {
+    try {
+      const licFile = await readLicenseFile();
+      if (licFile && licFile.deviceId === rec.deviceId) {
+        rec = { ...rec, isPremium: true, licensedDeviceId: licFile.deviceId };
+        await (db as any).license.put(rec);
+      }
+    } catch {
+      // License file not found or invalid — ignore
+    }
   }
 
   // Premium only valid if current device matches the licensed device

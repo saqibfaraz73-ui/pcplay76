@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { getLicense, updateLicense } from "@/features/licensing/licensing-db";
+import { generateLicenseFile, shareLicenseFile } from "@/features/licensing/license-file";
 
 /** Master PIN — only the developer knows this */
 const MASTER_PIN = "3563";
@@ -65,6 +66,28 @@ export default function SuperLogin() {
       setLicensedDeviceId("");
       setCustomerDeviceId("");
       toast({ title: "Premium deactivated" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGenerateFile = async () => {
+    if (!customerDeviceId.trim()) {
+      toast({ title: "Enter a Device ID first", variant: "destructive" });
+      return;
+    }
+    setLoading(true);
+    try {
+      const { uri } = await generateLicenseFile(customerDeviceId.trim());
+      toast({ title: "License file created!" });
+      // Auto-share the file
+      try {
+        await shareLicenseFile(uri);
+      } catch {
+        toast({ title: "File saved to Sangi Pos/Backup folder", description: "Share manually if needed" });
+      }
+    } catch (err: any) {
+      toast({ title: "Failed to create file", description: err?.message, variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -139,6 +162,16 @@ export default function SuperLogin() {
               {loading ? "Processing..." : "Activate Premium for this Device"}
             </Button>
           )}
+
+          <div className="border-t pt-4 mt-4">
+            <p className="text-sm text-muted-foreground mb-3">Or generate an encrypted license file to send to the customer:</p>
+            <Button variant="outline" className="w-full" onClick={handleGenerateFile} disabled={loading || !customerDeviceId.trim()}>
+              {loading ? "Processing..." : "📄 Generate & Share License File"}
+            </Button>
+            <p className="text-xs text-muted-foreground mt-2">
+              Customer places <code className="bg-muted px-1 rounded">license.sangi</code> in their Sangi Pos/Backup folder, then reopens the app.
+            </p>
+          </div>
         </CardContent>
       </Card>
     </div>
