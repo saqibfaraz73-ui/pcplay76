@@ -87,13 +87,9 @@ export async function getLicense(): Promise<LicenseRecord> {
     PRELOADED_ACTIVATION_KEY !== "" &&
     rec.deviceId === PRELOADED_DEVICE_ID
   ) {
-    const normalizedKey = PRELOADED_ACTIVATION_KEY.trim().toUpperCase();
-    const expected = generateKeyForDevice(rec.deviceId);
-    if (normalizedKey === expected || normalizedKey === PRELOADED_ACTIVATION_KEY.trim().toUpperCase()) {
-      rec.isPremium = true;
-      rec.activationKey = PRELOADED_ACTIVATION_KEY.trim().toUpperCase();
-      await (db as any).license.put(rec);
-    }
+    rec.isPremium = true;
+    rec.activationKey = PRELOADED_ACTIVATION_KEY.trim().toUpperCase();
+    await (db as any).license.put(rec);
   }
 
   return rec;
