@@ -39,12 +39,24 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   const [tableManagementEnabled, setTableManagementEnabled] = React.useState(false);
 
-  React.useEffect(() => {
-    (async () => {
-      const s = await db.settings.get("app");
-      setTableManagementEnabled(!!s?.tableManagementEnabled);
-    })();
+  const loadTableSetting = React.useCallback(async () => {
+    const s = await db.settings.get("app");
+    setTableManagementEnabled(!!s?.tableManagementEnabled);
   }, []);
+
+  // Also reload when route changes (e.g. navigating away from settings)
+  React.useEffect(() => { loadTableSetting(); }, [location.pathname, loadTableSetting]);
+
+  // Re-check when user navigates back or app regains focus
+  React.useEffect(() => {
+    const refresh = () => void loadTableSetting();
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", refresh);
+    };
+  }, [loadTableSetting]);
 
   const { exitConfirmOpen, cancelExit, confirmExit } = useAndroidBackExitConfirm({
     confirmOnPaths: ["/pos", "/login"],
