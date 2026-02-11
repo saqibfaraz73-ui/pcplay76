@@ -24,6 +24,12 @@ import iceCreamImg from "@/assets/stock-images/ice-cream.jpg";
 import chipsImg from "@/assets/stock-images/chips.jpg";
 import sandwichImg from "@/assets/stock-images/sandwich.jpg";
 import dalImg from "@/assets/stock-images/dal.jpg";
+import washingPowderImg from "@/assets/stock-images/washing-powder.jpg";
+import shampooImg from "@/assets/stock-images/shampoo.jpg";
+import soapImg from "@/assets/stock-images/soap.jpg";
+import toothpasteImg from "@/assets/stock-images/toothpaste.jpg";
+import cookingOilImg from "@/assets/stock-images/cooking-oil.jpg";
+import dishwashImg from "@/assets/stock-images/dishwash.jpg";
 
 export type StockImage = { key: string; label: string; src: string };
 
@@ -35,7 +41,9 @@ export const STOCK_IMAGES: StockImage[] = [
   { key: "stock://chips.jpg", label: "Chips / Snacks", src: chipsImg },
   { key: "stock://coca-cola-bottle.jpg", label: "Coca-Cola Bottle", src: cocaColaBottleImg },
   { key: "stock://coca-cola-glass.png", label: "Coca-Cola Glass", src: cocaColaGlassImg },
+  { key: "stock://cooking-oil.jpg", label: "Cooking Oil", src: cookingOilImg },
   { key: "stock://dal.jpg", label: "Dal / Lentils", src: dalImg },
+  { key: "stock://dishwash.jpg", label: "Dish Wash", src: dishwashImg },
   { key: "stock://fried-chicken.jpg", label: "Fried Chicken", src: friedChickenImg },
   { key: "stock://fries.jpg", label: "French Fries", src: friesImg },
   { key: "stock://hotdog.jpg", label: "Hot Dog", src: hotdogImg },
@@ -51,8 +59,12 @@ export const STOCK_IMAGES: StockImage[] = [
   { key: "stock://salad.jpg", label: "Salad", src: saladImg },
   { key: "stock://sandwich.jpg", label: "Sandwich", src: sandwichImg },
   { key: "stock://seekh-kebab.jpg", label: "Seekh Kebab", src: seekhKebabImg },
+  { key: "stock://shampoo.jpg", label: "Shampoo", src: shampooImg },
   { key: "stock://shawarma.jpg", label: "Shawarma / Wrap", src: shawarmaImg },
+  { key: "stock://soap.jpg", label: "Soap", src: soapImg },
   { key: "stock://tea.jpg", label: "Tea / Coffee", src: teaImg },
+  { key: "stock://toothpaste.jpg", label: "Toothpaste", src: toothpasteImg },
+  { key: "stock://washing-powder.jpg", label: "Washing Powder", src: washingPowderImg },
   { key: "stock://water.jpg", label: "Water Bottle", src: waterImg },
 ];
 
