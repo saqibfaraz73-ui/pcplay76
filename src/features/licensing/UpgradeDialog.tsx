@@ -2,6 +2,7 @@ import React from "react";
 import {
   AlertDialog,
   AlertDialogAction,
+  AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
@@ -79,6 +80,7 @@ export function UpgradeDialog({ open, onOpenChange, message }: UpgradeDialogProp
           </div>
         </div>
         <AlertDialogFooter>
+          <AlertDialogCancel>Close</AlertDialogCancel>
           <AlertDialogAction onClick={handleActivate} disabled={loading}>
             {loading ? "Activating..." : "Activate"}
           </AlertDialogAction>
