@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { getLicense, updateLicense } from "@/features/licensing/licensing-db";
-import { generateLicenseFile, shareLicenseFile } from "@/features/licensing/license-file";
+import { generateLicenseFile, shareLicenseFile, generateLicenseBase64 } from "@/features/licensing/license-file";
 
 /** Master PIN — only the developer knows this */
 const MASTER_PIN = "3563";
@@ -78,16 +78,23 @@ export default function SuperLogin() {
     }
     setLoading(true);
     try {
+      // Try native file generation + share first
       const { uri } = await generateLicenseFile(customerDeviceId.trim());
       toast({ title: "License file created!" });
-      // Auto-share the file
       try {
         await shareLicenseFile(uri);
       } catch {
         toast({ title: "File saved to Sangi Pos/Backup folder", description: "Share manually if needed" });
       }
-    } catch (err: any) {
-      toast({ title: "Failed to create file", description: err?.message, variant: "destructive" });
+    } catch {
+      // Fallback: copy encrypted data to clipboard so user can share via messaging
+      try {
+        const base64 = generateLicenseBase64(customerDeviceId.trim());
+        await navigator.clipboard.writeText(base64);
+        toast({ title: "License data copied to clipboard!", description: "Send this text to the customer. They save it as 'license.sangi' in Sangi Pos/Backup folder." });
+      } catch (err2: any) {
+        toast({ title: "Could not generate license", description: err2?.message, variant: "destructive" });
+      }
     } finally {
       setLoading(false);
     }
