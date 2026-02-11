@@ -60,7 +60,7 @@ export function UpgradeDialog({ open, onOpenChange, message }: UpgradeDialogProp
         </AlertDialogHeader>
         <div className="rounded-md border bg-muted/50 p-3 space-y-1 text-sm">
           <p className="font-medium">Contact us to get your activation key:</p>
-          <p>📧 Email: <a href="mailto:saqibsangi2@gmail.com" className="text-primary underline">saqibsangi2@gmail.com</a></p>
+          <p>📧 Email: <a href="mailto:sangiaipos@gmail.com" className="text-primary underline">sangiaipos@gmail.com</a></p>
           <p>📱 WhatsApp: <a href="https://wa.me/923041593340" target="_blank" rel="noopener noreferrer" className="text-primary underline">+92 304 1593340</a></p>
         </div>
         <div className="space-y-3 py-2">
