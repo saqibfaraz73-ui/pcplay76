@@ -510,6 +510,89 @@ export default function PosPartyLodge() {
     return doc;
   };
 
+  const buildArrivalsReportPdf = () => {
+    const doc = new jsPDF({ unit: "pt", format: "a4" });
+    const pageW = doc.internal.pageSize.getWidth();
+    const left = 40;
+    const right = pageW - 40;
+    let y = 48;
+    const lineH = 14;
+    const pageH = 780;
+    const checkPage = (needed = lineH * 2) => { if (y + needed > pageH) { doc.addPage(); y = 48; } };
+
+    const restaurantName = settings?.restaurantName ?? "SANGI POS";
+    doc.setFontSize(16); doc.setFont("helvetica", "bold"); doc.text("Arrivals Report", left, y); y += 20;
+    doc.setFontSize(10); doc.setFont("helvetica", "normal");
+    doc.text(`${restaurantName} • ${filterFrom} → ${filterTo}`, left, y); y += 24;
+
+    const [fy, fm, fd] = filterFrom.split("-").map(Number);
+    const [ty, tm, td] = filterTo.split("-").map(Number);
+    const fromTs = new Date(fy, fm - 1, fd).getTime();
+    const toTs = new Date(ty, tm - 1, td, 23, 59, 59, 999).getTime();
+
+    let grandTotal = 0;
+
+    for (const sup of suppliers) {
+      const supArrivals = arrivals
+        .filter((a) => a.supplierId === sup.id && a.createdAt >= fromTs && a.createdAt <= toTs)
+        .sort((a, b) => a.createdAt - b.createdAt);
+      if (supArrivals.length === 0) continue;
+
+      const supTotal = supArrivals.reduce((s, a) => s + a.total, 0);
+      grandTotal += supTotal;
+
+      checkPage(40 + supArrivals.length * lineH);
+      doc.setFontSize(11); doc.setFont("helvetica", "bold"); doc.setTextColor(0);
+      doc.text(sup.name, left, y);
+      doc.text(`Total: ${formatIntMoney(supTotal)}`, right, y, { align: "right" }); y += 14;
+
+      doc.setFontSize(8); doc.setFont("helvetica", "bold"); doc.setTextColor(80);
+      doc.text("#", left + 4, y); doc.text("Item", left + 20, y); doc.text("Qty", left + 140, y); doc.text("Price", left + 190, y); doc.text("Total", left + 260, y); doc.text("Date", right - 10, y, { align: "right" }); y += 10;
+      doc.setDrawColor(200); doc.line(left, y - 4, right, y - 4);
+      doc.setFont("helvetica", "normal"); doc.setTextColor(0);
+
+      supArrivals.forEach((a, idx) => {
+        checkPage();
+        doc.setFontSize(8);
+        doc.text(String(idx + 1), left + 4, y);
+        doc.text((a.itemName ?? "").slice(0, 18), left + 20, y);
+        doc.text(`${a.qty} ${a.unit || ""}`, left + 140, y);
+        doc.text(formatIntMoney(a.unitPrice), left + 190, y);
+        doc.text(formatIntMoney(a.total), left + 260, y);
+        doc.text(new Date(a.createdAt).toLocaleDateString(), right - 10, y, { align: "right" });
+        y += lineH;
+      });
+      y += 12;
+    }
+
+    // Grand total
+    checkPage(30);
+    doc.setDrawColor(0); doc.line(left, y, right, y); y += 14;
+    doc.setFontSize(12); doc.setFont("helvetica", "bold"); doc.setTextColor(0);
+    doc.text("Grand Total Arrivals:", left, y);
+    doc.text(formatIntMoney(grandTotal), right, y, { align: "right" });
+
+    return doc;
+  };
+
+  const shareArrivalsPdf = async () => {
+    try {
+      if (arrivals.length === 0) { toast({ title: "No arrivals to export", variant: "destructive" }); return; }
+      const doc = buildArrivalsReportPdf();
+      const bytes = doc.output("arraybuffer");
+      const fileName = `arrivals_report_${filterFrom}_${filterTo}.pdf`;
+      if (Capacitor.isNativePlatform()) {
+        const saved = await writePdfFile({ folder: "Sales Report", fileName, pdfBytes: new Uint8Array(bytes) });
+        await shareFile({ title: "Arrivals Report", uri: saved.uri });
+      } else {
+        doc.save(fileName);
+        toast({ title: "Arrivals Report PDF downloaded" });
+      }
+    } catch (e: any) {
+      toast({ title: "PDF failed", description: e?.message ?? String(e), variant: "destructive" });
+    }
+  };
+
   const shareSingleSupplierPdf = async (sup: Supplier) => {
     try {
       const doc = buildSingleSupplierPdf(sup);
@@ -702,10 +785,16 @@ export default function PosPartyLodge() {
               <Input id="plTo" type="date" value={filterTo} onChange={(e) => setFilterTo(e.target.value)} className="h-8 text-sm" />
             </div>
           </div>
-          <Button variant="outline" size="sm" onClick={() => void sharePartyPdf()} disabled={suppliers.length === 0}>
-            <Share2 className="h-4 w-4 mr-1" />
-            Share PDF
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" size="sm" onClick={() => void sharePartyPdf()} disabled={suppliers.length === 0}>
+              <Share2 className="h-4 w-4 mr-1" />
+              Share Full PDF
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => void shareArrivalsPdf()} disabled={arrivals.length === 0}>
+              <PackagePlus className="h-4 w-4 mr-1" />
+              Share Arrivals PDF
+            </Button>
+          </div>
         </CardContent>
       </Card>
 
