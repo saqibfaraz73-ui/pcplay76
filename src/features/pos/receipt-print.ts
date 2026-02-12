@@ -206,7 +206,10 @@ async function buildKotReceipt(order: Order, settings: Settings): Promise<string
   out.push(lr("Grand Total:", money(order.total)));
   out.push(hr);
   out.push(center("Thank you, come again!"));
-  out.push("\n\n\n");
+
+  const contentLines = 8 + order.lines.length + 5; // header(8) + items + footer(5)
+  const feedCount = getFeedLinesForSize(settings, contentLines);
+  out.push("\n".repeat(feedCount));
   out.push("\x1dV\x41\x03"); // partial cut
 
   return out.join("\n");
