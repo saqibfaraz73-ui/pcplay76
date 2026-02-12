@@ -399,8 +399,44 @@ function buildSalesPdf(args: {
     if (bkCompleted.length > 0) {
       y += 4;
       row("Time-Based Bookings", formatIntMoney(bkTotal), true);
+      const bkTotalHours = bkCompleted.reduce((s, o) => s + o.durationHours, 0);
+      row("Total Hours Booked", `${bkTotalHours}h`);
       row("Booking Advance Received", formatIntMoney(bkAdvanceTotal));
       if (bkCancelled.length > 0) row(`Cancelled (${bkCancelled.length})`, formatIntMoney(bkCancelledTotal), false, [200, 0, 0]);
+
+      // Revenue by bookable item
+      const byBookItem: Record<string, { name: string; count: number; hours: number; revenue: number }> = {};
+      for (const o of bkCompleted) {
+        if (!byBookItem[o.bookableItemId]) byBookItem[o.bookableItemId] = { name: o.bookableItemName, count: 0, hours: 0, revenue: 0 };
+        byBookItem[o.bookableItemId].count += 1;
+        byBookItem[o.bookableItemId].hours += o.durationHours;
+        byBookItem[o.bookableItemId].revenue += o.total;
+      }
+      const bookItemBreakdown = Object.values(byBookItem).sort((a, b) => b.revenue - a.revenue);
+      if (bookItemBreakdown.length > 0) {
+        y += 6;
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "bold");
+        doc.text("Revenue by Bookable Item", left, y);
+        y += 14;
+        doc.setFontSize(8); doc.setFont("helvetica", "bold"); doc.setTextColor(80);
+        doc.text("Item", left + 4, y);
+        doc.text("Bookings", left + contentWidth * 0.4, y);
+        doc.text("Hours", left + contentWidth * 0.55, y);
+        doc.text("Revenue", left + contentWidth * 0.75, y);
+        y += 10;
+        separator();
+        doc.setFont("helvetica", "normal"); doc.setTextColor(0);
+        for (const r of bookItemBreakdown) {
+          checkPage();
+          doc.setFontSize(9);
+          doc.text(r.name.slice(0, 30), left + 4, y);
+          doc.text(String(r.count), left + contentWidth * 0.4, y);
+          doc.text(`${r.hours}h`, left + contentWidth * 0.55, y);
+          doc.text(formatIntMoney(r.revenue), left + contentWidth * 0.75, y);
+          y += lineH;
+        }
+      }
     }
   }
 

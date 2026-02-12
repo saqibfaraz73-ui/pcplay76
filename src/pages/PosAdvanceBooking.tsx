@@ -20,7 +20,10 @@ import { useToast } from "@/hooks/use-toast";
 import { formatIntMoney } from "@/features/pos/format";
 import { makeId } from "@/features/admin/id";
 import { printAdvanceReceipt, printAdvanceKot, printBookingReceipt } from "@/features/pos/advance-receipt";
-import { Plus, Trash2, X, Check, Ban, Printer, FileText } from "lucide-react";
+import { buildBookingLodgePdf } from "@/features/admin/reports/booking-lodge-pdf";
+import { writePdfFile, shareFile } from "@/features/files/sangi-folders";
+import { Capacitor } from "@capacitor/core";
+import { Plus, Trash2, X, Check, Ban, Printer, FileText, Share2 } from "lucide-react";
 
 /* ─── helpers ─── */
 function calcEndTime(start: string, durationHours: number): string {
@@ -45,6 +48,124 @@ async function getNextCounter(id: "advanceOrder" | "bookingOrder"): Promise<numb
     await db.counters.put({ id, next: next + 1 });
     return next;
   });
+}
+
+/* ─── Booking Lodge Sub-component ─── */
+function BookingLodgeSection({ bookingOrders, settings }: { bookingOrders: BookingOrder[]; settings: Settings | null }) {
+  const { toast } = useToast();
+  const now = Date.now();
+  const [lodgeFrom, setLodgeFrom] = React.useState(toDateInputValue(now));
+  const [lodgeTo, setLodgeTo] = React.useState(toDateInputValue(now));
+
+  const filteredBookings = React.useMemo(() => {
+    const fromTs = new Date(lodgeFrom).setHours(0, 0, 0, 0);
+    const toTs = new Date(lodgeTo).setHours(23, 59, 59, 999);
+    return bookingOrders.filter((o) => o.createdAt >= fromTs && o.createdAt <= toTs);
+  }, [bookingOrders, lodgeFrom, lodgeTo]);
+
+  const completed = filteredBookings.filter((o) => o.status !== "cancelled");
+  const totalHours = completed.reduce((s, o) => s + o.durationHours, 0);
+  const totalRevenue = completed.reduce((s, o) => s + o.total, 0);
+
+  // Group by bookable item
+  const byItem = React.useMemo(() => {
+    const map: Record<string, { name: string; count: number; hours: number; revenue: number }> = {};
+    for (const o of completed) {
+      if (!map[o.bookableItemId]) map[o.bookableItemId] = { name: o.bookableItemName, count: 0, hours: 0, revenue: 0 };
+      map[o.bookableItemId].count += 1;
+      map[o.bookableItemId].hours += o.durationHours;
+      map[o.bookableItemId].revenue += o.total;
+    }
+    return Object.values(map).sort((a, b) => b.revenue - a.revenue);
+  }, [completed]);
+
+  const sharePdf = async () => {
+    try {
+      const restaurantName = settings?.restaurantName || "SANGI POS";
+      const doc = buildBookingLodgePdf({
+        restaurantName,
+        fromLabel: lodgeFrom,
+        toLabel: lodgeTo,
+        bookingOrders: filteredBookings,
+      });
+      const bytes = doc.output("arraybuffer");
+      const fileName = `booking_lodge_${lodgeFrom}_${lodgeTo}.pdf`;
+
+      if (Capacitor.isNativePlatform()) {
+        const saved = await writePdfFile({ folder: "Sales Report", fileName, pdfBytes: new Uint8Array(bytes) });
+        await shareFile({ title: "Booking Lodge Report", uri: saved.uri });
+      } else {
+        doc.save(fileName);
+        toast({ title: "PDF downloaded" });
+      }
+    } catch (e: any) {
+      toast({ title: "PDF failed", description: e?.message, variant: "destructive" });
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base">Booking Lodge</CardTitle>
+        <CardDescription>View booking summary by date range and share as PDF.</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <div className="grid grid-cols-[1fr_1fr_auto] gap-2 items-end">
+          <div className="space-y-1">
+            <Label className="text-xs">From</Label>
+            <Input type="date" value={lodgeFrom} onChange={(e) => setLodgeFrom(e.target.value)} />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">To</Label>
+            <Input type="date" value={lodgeTo} onChange={(e) => setLodgeTo(e.target.value)} />
+          </div>
+          <Button size="sm" variant="outline" className="gap-1" onClick={() => void sharePdf()}>
+            <Share2 className="h-3.5 w-3.5" /> Share PDF
+          </Button>
+        </div>
+
+        {filteredBookings.length > 0 && (
+          <div className="space-y-2">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-sm">
+              <div className="rounded-md border p-2">
+                <div className="text-xs text-muted-foreground">Bookings</div>
+                <div className="font-semibold">{completed.length}</div>
+              </div>
+              <div className="rounded-md border p-2">
+                <div className="text-xs text-muted-foreground">Total Hours</div>
+                <div className="font-semibold">{totalHours}h</div>
+              </div>
+              <div className="rounded-md border p-2">
+                <div className="text-xs text-muted-foreground">Total Revenue</div>
+                <div className="font-semibold">{formatIntMoney(totalRevenue)}</div>
+              </div>
+            </div>
+
+            {byItem.length > 0 && (
+              <div className="overflow-auto rounded-md border">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted/50">
+                    <tr><th className="px-3 py-1.5 text-left font-medium">Item</th><th className="px-3 py-1.5 text-left font-medium">Bookings</th><th className="px-3 py-1.5 text-left font-medium">Hours</th><th className="px-3 py-1.5 text-left font-medium">Revenue</th></tr>
+                  </thead>
+                  <tbody>
+                    {byItem.map((r) => (
+                      <tr key={r.name} className="border-t">
+                        <td className="px-3 py-1.5">{r.name}</td>
+                        <td className="px-3 py-1.5">{r.count}</td>
+                        <td className="px-3 py-1.5">{r.hours}h</td>
+                        <td className="px-3 py-1.5">{formatIntMoney(r.revenue)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+        {filteredBookings.length === 0 && <p className="text-xs text-muted-foreground">No bookings in selected range.</p>}
+      </CardContent>
+    </Card>
+  );
 }
 
 export default function PosAdvanceBooking() {
@@ -445,7 +566,7 @@ export default function PosAdvanceBooking() {
                     <Input value={newBIName} onChange={(e) => setNewBIName(e.target.value)} placeholder="e.g. Room A" />
                   </div>
                   <div className="space-y-1">
-                    <Label className="text-xs">Price</Label>
+                    <Label className="text-xs">Price (optional)</Label>
                     <Input type="number" inputMode="numeric" value={newBIPrice} onChange={(e) => setNewBIPrice(e.target.value)} placeholder="0" className="w-24" />
                   </div>
                   <Button onClick={() => void addBookableItem()} size="sm" className="gap-1"><Plus className="h-3 w-3" /> Add</Button>
@@ -472,6 +593,9 @@ export default function PosAdvanceBooking() {
 
           <Button onClick={openBookDlg} disabled={bookableItems.length === 0} className="gap-1"><Plus className="h-4 w-4" /> New Booking</Button>
           {bookableItems.length === 0 && <p className="text-xs text-muted-foreground">Admin needs to add bookable items first.</p>}
+
+          {/* Booking Lodge - date range share PDF */}
+          <BookingLodgeSection bookingOrders={bookingOrders} settings={settings} />
 
           {bookingOrders.length === 0 ? (
             <p className="text-sm text-muted-foreground">No bookings yet.</p>
