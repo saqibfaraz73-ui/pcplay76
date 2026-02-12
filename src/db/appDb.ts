@@ -25,6 +25,7 @@ import type {
   Waiter,
   WorkPeriod,
 } from "./schema";
+import type { AdvanceOrder, BookableItem, BookingOrder } from "./booking-schema";
 import type { LicenseRecord } from "@/features/licensing/licensing-db";
 
 export class SangiPosDb extends Dexie {
@@ -51,6 +52,9 @@ export class SangiPosDb extends Dexie {
   adminAccount!: Table<AdminAccount, "admin">;
   staffAccounts!: Table<StaffAccount, string>;
   license!: Table<LicenseRecord, "license">;
+  advanceOrders!: Table<AdvanceOrder, string>;
+  bookableItems!: Table<BookableItem, string>;
+  bookingOrders!: Table<BookingOrder, string>;
   settings!: Table<Settings, "app">;
   counters!: Table<Counter, CounterId>;
 
@@ -311,6 +315,38 @@ export class SangiPosDb extends Dexie {
       adminAccount: "id",
       staffAccounts: "id, name, role, createdAt",
       license: "id",
+      settings: "id",
+      counters: "id",
+    });
+
+    // v15: add advance/booking orders
+    this.version(15).stores({
+      categories: "id, name, createdAt",
+      items: "id, categoryId, name, price, createdAt",
+      inventory: "itemId, quantity, updatedAt",
+      inventoryAdjustments: "id, itemId, createdAt",
+      customers: "id, name, createdAt",
+      creditPayments: "id, customerId, createdAt",
+      orders: "id, receiptNo, status, paymentMethod, workPeriodId, deliveryPersonId, createdAt",
+      workPeriods: "id, cashier, startedAt, isClosed",
+      expenses: "id, name, createdAt, workPeriodId",
+      suppliers: "id, name, createdAt",
+      supplierPayments: "id, supplierId, createdAt",
+      supplierArrivals: "id, supplierId, receiptNo, createdAt",
+      exportCustomers: "id, name, createdAt",
+      exportSales: "id, customerId, receiptNo, createdAt",
+      exportPayments: "id, customerId, createdAt",
+      deliveryPersons: "id, name, createdAt",
+      deliveryCustomers: "id, name, createdAt",
+      waiters: "id, name, createdAt",
+      restaurantTables: "id, tableNumber, createdAt",
+      tableOrders: "id, tableId, waiterId, status, createdAt, completedAt",
+      adminAccount: "id",
+      staffAccounts: "id, name, role, createdAt",
+      license: "id",
+      advanceOrders: "id, status, createdAt",
+      bookableItems: "id, name, createdAt",
+      bookingOrders: "id, bookableItemId, status, date, createdAt",
       settings: "id",
       counters: "id",
     });

@@ -68,6 +68,10 @@ export function AdminSettings() {
   const [waiterLoginEnabled, setWaiterLoginEnabled] = React.useState(false);
   const [tableSelectionDisabled, setTableSelectionDisabled] = React.useState(false);
 
+  // Advance/Booking settings
+  const [advanceBookingEnabled, setAdvanceBookingEnabled] = React.useState(false);
+  const [showAdvanceBookingInReports, setShowAdvanceBookingInReports] = React.useState(false);
+
   // Admin account
   const [adminAccount, setAdminAccount] = React.useState<AdminAccount | null>(null);
   const [adminName, setAdminName] = React.useState("");
@@ -118,6 +122,8 @@ export function AdminSettings() {
     setTableManagementEnabled(!!s.tableManagementEnabled);
     setWaiterLoginEnabled(!!s.waiterLoginEnabled);
     setTableSelectionDisabled(!!s.tableSelectionDisabled);
+    setAdvanceBookingEnabled(!!s.advanceBookingEnabled);
+    setShowAdvanceBookingInReports(!!s.showAdvanceBookingInReports);
     setLogoPath(s.receiptLogoPath);
 
     // Load admin account
@@ -191,6 +197,8 @@ export function AdminSettings() {
         tableManagementEnabled,
         waiterLoginEnabled,
         tableSelectionDisabled,
+        advanceBookingEnabled,
+        showAdvanceBookingInReports,
         receiptLogoPath: logoPath,
         updatedAt: Date.now(),
       };
@@ -565,6 +573,35 @@ export function AdminSettings() {
               <AdminTablesWaiters />
             </div>
           )}
+        </CardContent>
+      </Card>
+
+      {/* Advance/Booking Settings */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Advance / Booking Orders</CardTitle>
+          <CardDescription>Enable advance item sales and time-based booking features.</CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-4">
+          <div className="flex items-center justify-between gap-3 rounded-md border p-3">
+            <div>
+              <div className="text-sm font-medium">Enable Advance/Booking</div>
+              <div className="text-xs text-muted-foreground">Add "Advance/Booking" to the POS menu for advance sales and time-based bookings.</div>
+            </div>
+            <Switch checked={advanceBookingEnabled} onCheckedChange={setAdvanceBookingEnabled} />
+          </div>
+          {advanceBookingEnabled && (
+            <div className="flex items-center justify-between gap-3 rounded-md border p-3">
+              <div>
+                <div className="text-sm font-medium">Show in reports</div>
+                <div className="text-xs text-muted-foreground">Include advance/booking totals in the sales report and PDF.</div>
+              </div>
+              <Switch checked={showAdvanceBookingInReports} onCheckedChange={setShowAdvanceBookingInReports} />
+            </div>
+          )}
+          <div className="flex justify-end">
+            <Button onClick={() => void save()} disabled={!settings}>Save</Button>
+          </div>
         </CardContent>
       </Card>
 

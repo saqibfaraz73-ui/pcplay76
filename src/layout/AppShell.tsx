@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/auth/AuthProvider";
-import { Menu, Printer, BarChart3, Settings, ShoppingCart, ClipboardList, Users, DollarSign, Truck, UtensilsCrossed } from "lucide-react";
+import { Menu, Printer, BarChart3, Settings, ShoppingCart, ClipboardList, Users, DollarSign, Truck, UtensilsCrossed, CalendarCheck } from "lucide-react";
 import { useAndroidBackExitConfirm } from "@/hooks/useAndroidBackExitConfirm";
 import appLogo from "@/assets/app-logo.jpg";
 import { db } from "@/db/appDb";
@@ -38,10 +38,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
 
   const [tableManagementEnabled, setTableManagementEnabled] = React.useState(false);
+  const [advanceBookingEnabled, setAdvanceBookingEnabled] = React.useState(false);
 
   const loadTableSetting = React.useCallback(async () => {
     const s = await db.settings.get("app");
     setTableManagementEnabled(!!s?.tableManagementEnabled);
+    setAdvanceBookingEnabled(!!s?.advanceBookingEnabled);
   }, []);
 
   // Also reload when route changes (e.g. navigating away from settings)
@@ -136,6 +138,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                               <UtensilsCrossed className="h-4 w-4" /> Tables
                             </Link>
                           )}
+                          {advanceBookingEnabled && !isWaiter && (
+                            <Link to="/pos/advance-booking" className={cn("flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors", isActive("/pos/advance-booking") ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground")}>
+                              <CalendarCheck className="h-4 w-4" /> Advance/Booking
+                            </Link>
+                          )}
 
                           {/* Admin sub-navigation */}
                           {isAdmin ? (
@@ -214,6 +221,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   {(tableManagementEnabled || isWaiter) && (
                     <Link to="/pos/tables" className={cn("rounded-md px-3 py-2 text-sm transition-colors", isActive("/pos/tables") ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground")}>
                       Tables
+                    </Link>
+                  )}
+                  {advanceBookingEnabled && !isWaiter && (
+                    <Link to="/pos/advance-booking" className={cn("rounded-md px-3 py-2 text-sm transition-colors", isActive("/pos/advance-booking") ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground")}>
+                      Advance/Booking
                     </Link>
                   )}
                   {isAdmin

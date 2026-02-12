@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { db } from "@/db/appDb";
 import type { CreditCustomer, DeliveryPerson, Expense, ExportCustomer, ExportSale, MenuItem, Order, RestaurantTable, Settings, TableOrder, Waiter, WorkPeriod } from "@/db/schema";
+import type { AdvanceOrder, BookingOrder } from "@/db/booking-schema";
 import { useToast } from "@/hooks/use-toast";
 import { formatIntMoney } from "@/features/pos/format";
 import { writePdfFile, shareFile } from "@/features/files/sangi-folders";
@@ -54,6 +55,8 @@ function buildSalesPdf(args: {
   settings: Settings | null;
   exportSales?: ExportSale[];
   exportCustomers?: ExportCustomer[];
+  advanceOrders?: AdvanceOrder[];
+  bookingOrders?: BookingOrder[];
 }) {
   const doc = new jsPDF({ unit: "pt", format: "a4" });
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -149,14 +152,30 @@ function buildSalesPdf(args: {
   const exportCancelledTotal = exportCancelled.reduce((s, e) => s + e.total, 0);
   const exportCustomersById = Object.fromEntries(exportCustomersData.map((c) => [c.id, c]));
 
-  const overallSales = takeawayTotal + deliveryTotal + tableSalesTotal + creditTotal + tableCreditTotal + (showExport ? exportTotal : 0);
+  // Advance/Booking
+  const showAdvBooking = args.settings?.showAdvanceBookingInReports ?? false;
+  const advOrders = args.advanceOrders ?? [];
+  const bkOrders = args.bookingOrders ?? [];
+  const advCompleted = advOrders.filter((o) => o.status !== "cancelled");
+  const advCancelled = advOrders.filter((o) => o.status === "cancelled");
+  const advTotal = advCompleted.reduce((s, o) => s + o.total, 0);
+  const advAdvanceTotal = advCompleted.reduce((s, o) => s + o.advancePayment, 0);
+  const advCancelledTotal = advCancelled.reduce((s, o) => s + o.total, 0);
+  const bkCompleted = bkOrders.filter((o) => o.status !== "cancelled");
+  const bkCancelled = bkOrders.filter((o) => o.status === "cancelled");
+  const bkTotal = bkCompleted.reduce((s, o) => s + o.price, 0);
+  const bkAdvanceTotal = bkCompleted.reduce((s, o) => s + o.advancePayment, 0);
+  const bkCancelledTotal = bkCancelled.reduce((s, o) => s + o.price, 0);
+  const advBookingTotal = advTotal + bkTotal;
+
+  const overallSales = takeawayTotal + deliveryTotal + tableSalesTotal + creditTotal + tableCreditTotal + (showExport ? exportTotal : 0) + (showAdvBooking ? advBookingTotal : 0);
   const overallDiscount = takeawayDiscount + deliveryDiscount + tableDiscount + creditDiscount + tableCreditDiscount;
   const totalExpenses = args.expenses.reduce((s, e) => s + e.amount, 0);
 
   const totalCreditSales = creditTotal + tableCreditTotal;
   const totalCreditDiscount = creditDiscount + tableCreditDiscount;
   const totalCreditCancelled = creditCancelledTotal + tableCreditCancelledTotal;
-  const totalCancelledAmount = takeawayCancelledTotal + deliveryCancelledTotal + tableCancelledTotal + totalCreditCancelled + (showExport ? exportCancelledTotal : 0);
+  const totalCancelledAmount = takeawayCancelledTotal + deliveryCancelledTotal + tableCancelledTotal + totalCreditCancelled + (showExport ? exportCancelledTotal : 0) + (showAdvBooking ? advCancelledTotal + bkCancelledTotal : 0);
   const remainingBalance = overallSales - overallDiscount - totalExpenses;
 
   // Title
@@ -181,6 +200,7 @@ function buildSalesPdf(args: {
     ...(tableEnabled ? [{ label: "Table Sales", value: formatIntMoney(tableSalesTotal) }] : []),
     { label: "Credit Sales", value: formatIntMoney(totalCreditSales) },
     ...(showExport ? [{ label: "Export Sales", value: formatIntMoney(exportTotal) }] : []),
+    ...(showAdvBooking ? [{ label: "Advance/Booking", value: formatIntMoney(advBookingTotal) }] : []),
     { label: "Total Cancelled", value: formatIntMoney(totalCancelledAmount), color: [200, 0, 0] as [number, number, number] },
     { label: "Total Discount", value: formatIntMoney(overallDiscount), color: [200, 0, 0] as [number, number, number] },
     { label: "Total Expenses", value: formatIntMoney(totalExpenses), color: [200, 0, 0] as [number, number, number] },
@@ -368,6 +388,22 @@ function buildSalesPdf(args: {
     }
   }
 
+  // ===== ADVANCE/BOOKING =====
+  if (showAdvBooking && (advCompleted.length > 0 || bkCompleted.length > 0)) {
+    heading("Advance / Booking Orders");
+    if (advCompleted.length > 0) {
+      row("Advance Item Sales", formatIntMoney(advTotal), true);
+      row("Advance Payments Received", formatIntMoney(advAdvanceTotal));
+      if (advCancelled.length > 0) row(`Cancelled (${advCancelled.length})`, formatIntMoney(advCancelledTotal), false, [200, 0, 0]);
+    }
+    if (bkCompleted.length > 0) {
+      y += 4;
+      row("Time-Based Bookings", formatIntMoney(bkTotal), true);
+      row("Booking Advance Received", formatIntMoney(bkAdvanceTotal));
+      if (bkCancelled.length > 0) row(`Cancelled (${bkCancelled.length})`, formatIntMoney(bkCancelledTotal), false, [200, 0, 0]);
+    }
+  }
+
   // ===== OVERALL SUMMARY =====
   heading("Overall Summary");
   separator();
@@ -376,6 +412,7 @@ function buildSalesPdf(args: {
   if (tableEnabled) row("Table Sales", formatIntMoney(tableSalesTotal));
   row("Credit Sales", formatIntMoney(totalCreditSales));
   if (showExport) row("Export Sales", formatIntMoney(exportTotal));
+  if (showAdvBooking) row("Advance/Booking", formatIntMoney(advBookingTotal));
   y += 4;
   row("Overall Sales", formatIntMoney(overallSales), true);
   row("Minus Overall Discounts", `-${formatIntMoney(overallDiscount)}`, false, [200, 0, 0]);
@@ -495,12 +532,16 @@ export function AdminReports() {
     expenses: Expense[];
     tableOrders: TableOrder[];
     exportSales: ExportSale[];
+    advanceOrders: AdvanceOrder[];
+    bookingOrders: BookingOrder[];
   }>({
     loading: false,
     orders: [],
     expenses: [],
     tableOrders: [],
     exportSales: [],
+    advanceOrders: [],
+    bookingOrders: [],
   });
 
   const [lastExport, setLastExport] = React.useState<{
@@ -579,6 +620,16 @@ export function AdminReports() {
     return all.filter((s) => s.createdAt >= fromTs && s.createdAt <= toTs);
   };
 
+  const fetchAdvanceOrdersInRange = async (fromTs: number, toTs: number) => {
+    const all = await db.advanceOrders.toArray();
+    return all.filter((o) => o.createdAt >= fromTs && o.createdAt <= toTs);
+  };
+
+  const fetchBookingOrdersInRange = async (fromTs: number, toTs: number) => {
+    const all = await db.bookingOrders.toArray();
+    return all.filter((o) => o.createdAt >= fromTs && o.createdAt <= toTs);
+  };
+
   const loadSalesPreview = async () => {
     try {
       setSalesPreview((p) => ({ ...p, loading: true }));
@@ -587,22 +638,29 @@ export function AdminReports() {
       let expenses: Expense[];
       let tableOrders: TableOrder[];
       let expSales: ExportSale[];
+      let fromTs: number;
+      let toTs: number;
       if (filterType === "workPeriod" && selectedWorkPeriodId) {
         orders = await fetchOrdersByWorkPeriod(selectedWorkPeriodId);
         expenses = await fetchExpensesByWorkPeriod(selectedWorkPeriodId);
         tableOrders = await fetchTableOrdersByWorkPeriod(selectedWorkPeriodId);
         const wp = workPeriods.find((w) => w.id === selectedWorkPeriodId);
-        expSales = wp ? await fetchExportSalesInRange(wp.startedAt, wp.endedAt ?? Date.now()) : [];
+        fromTs = wp?.startedAt ?? Date.now();
+        toTs = wp?.endedAt ?? Date.now();
+        expSales = wp ? await fetchExportSalesInRange(fromTs, toTs) : [];
       } else {
-        const fromTs = startOfDay(parseDateInput(from));
-        const toTs = endOfDay(parseDateInput(to));
+        fromTs = startOfDay(parseDateInput(from));
+        toTs = endOfDay(parseDateInput(to));
         orders = await fetchOrdersInRange(fromTs, toTs);
         expenses = await fetchExpensesInRange(fromTs, toTs);
         tableOrders = await fetchTableOrdersInRange(fromTs, toTs);
         expSales = await fetchExportSalesInRange(fromTs, toTs);
       }
+
+      const advOrders = await fetchAdvanceOrdersInRange(fromTs, toTs);
+      const bkOrders = await fetchBookingOrdersInRange(fromTs, toTs);
       
-      setSalesPreview({ loading: false, orders, expenses, tableOrders, exportSales: expSales });
+      setSalesPreview({ loading: false, orders, expenses, tableOrders, exportSales: expSales, advanceOrders: advOrders, bookingOrders: bkOrders });
     } catch (e: any) {
       setSalesPreview((p) => ({ ...p, loading: false }));
       toast({ title: "Preview failed", description: e?.message ?? String(e), variant: "destructive" });
@@ -634,6 +692,8 @@ export function AdminReports() {
         : await fetchTableOrdersInRange(fromTs, toTs);
 
       const expSales = await fetchExportSalesInRange(fromTs, toTs);
+      const advOrders = await fetchAdvanceOrdersInRange(fromTs, toTs);
+      const bkOrders = await fetchBookingOrdersInRange(fromTs, toTs);
 
       const doc = buildSalesPdf({
         restaurantName: settings?.restaurantName ?? "SANGI POS",
@@ -650,6 +710,8 @@ export function AdminReports() {
         settings,
         exportSales: expSales,
         exportCustomers,
+        advanceOrders: advOrders,
+        bookingOrders: bkOrders,
       });
       const bytes = doc.output("arraybuffer");
       const fileName = `sales_${toDateInputValue(fromTs)}_${toDateInputValue(toTs)}.pdf`;
@@ -732,6 +794,8 @@ export function AdminReports() {
         settings={settings}
         exportSales={salesPreview.exportSales}
         exportCustomers={exportCustomers}
+        advanceOrders={salesPreview.advanceOrders}
+        bookingOrders={salesPreview.bookingOrders}
       />
 
       <Card>

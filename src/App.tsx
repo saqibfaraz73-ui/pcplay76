@@ -19,6 +19,7 @@ import AdminReportsPage from "./pages/AdminReportsPage";
 import AdminSettingsPage from "./pages/AdminSettingsPage";
 import AdminDeliveryPage from "./pages/AdminDeliveryPage";
 import PosTablesPage from "./pages/PosTablesPage";
+import PosAdvanceBooking from "./pages/PosAdvanceBooking";
 import { AuthProvider } from "@/auth/AuthProvider";
 import { ProtectedRoute } from "@/auth/ProtectedRoute";
 import { AppShell } from "@/layout/AppShell";
@@ -126,6 +127,14 @@ const App = () => (
                   element={
                     <ProtectedRoute allow={["cashier", "admin", "waiter"]}>
                       <PosTablesPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/pos/advance-booking"
+                  element={
+                    <ProtectedRoute allow={["cashier", "admin"]}>
+                      <PosAdvanceBooking />
                     </ProtectedRoute>
                   }
                 />
