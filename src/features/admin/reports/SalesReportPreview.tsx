@@ -378,6 +378,18 @@ export function SalesReportPreview({
           const bkTotal = bkCompleted.reduce((s, o) => s + o.price, 0);
           const bkAdvance = bkCompleted.reduce((s, o) => s + o.advancePayment, 0);
           const bkCancelledTotal = bkCancelled.reduce((s, o) => s + o.price, 0);
+          const bkTotalHours = bkCompleted.reduce((s, o) => s + o.durationHours, 0);
+
+          // Group bookings by item
+          const byItem: Record<string, { name: string; count: number; hours: number; revenue: number }> = {};
+          for (const o of bkCompleted) {
+            if (!byItem[o.bookableItemId]) byItem[o.bookableItemId] = { name: o.bookableItemName, count: 0, hours: 0, revenue: 0 };
+            byItem[o.bookableItemId].count += 1;
+            byItem[o.bookableItemId].hours += o.durationHours;
+            byItem[o.bookableItemId].revenue += o.total;
+          }
+          const itemBreakdown = Object.values(byItem).sort((a, b) => b.revenue - a.revenue);
+
           return (
             <div className="space-y-2">
               <div className="text-sm font-semibold">Advance / Booking Orders</div>
@@ -407,6 +419,10 @@ export function SalesReportPreview({
                       <div className="text-base font-semibold">{formatIntMoney(bkTotal)}</div>
                     </div>
                     <div className="rounded-md border p-3">
+                      <div className="text-xs text-muted-foreground">Total Hours Booked</div>
+                      <div className="text-base font-semibold">{bkTotalHours}h</div>
+                    </div>
+                    <div className="rounded-md border p-3">
                       <div className="text-xs text-muted-foreground">Booking Advance Received</div>
                       <div className="text-base font-semibold">{formatIntMoney(bkAdvance)}</div>
                     </div>
@@ -419,6 +435,35 @@ export function SalesReportPreview({
                   </div>
                 )}
               </div>
+
+              {/* Revenue by Bookable Item */}
+              {itemBreakdown.length > 0 && (
+                <div className="space-y-1">
+                  <div className="text-xs font-medium text-muted-foreground">Revenue by Bookable Item</div>
+                  <div className="overflow-auto rounded-md border">
+                    <table className="w-full text-sm">
+                      <thead className="bg-muted/40">
+                        <tr className="text-left">
+                          <th className="px-3 py-2 font-medium">Item</th>
+                          <th className="whitespace-nowrap px-3 py-2 font-medium">Bookings</th>
+                          <th className="whitespace-nowrap px-3 py-2 font-medium">Hours</th>
+                          <th className="whitespace-nowrap px-3 py-2 font-medium">Revenue</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {itemBreakdown.map((r) => (
+                          <tr key={r.name} className="border-t">
+                            <td className="px-3 py-2">{r.name}</td>
+                            <td className="whitespace-nowrap px-3 py-2">{r.count}</td>
+                            <td className="whitespace-nowrap px-3 py-2">{r.hours}h</td>
+                            <td className="whitespace-nowrap px-3 py-2 font-medium">{formatIntMoney(r.revenue)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
             </div>
           );
         })()}
