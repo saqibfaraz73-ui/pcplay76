@@ -1,5 +1,6 @@
 import type { Settings } from "@/db/schema";
 import { btConnect, btSend, isNativeAndroid } from "@/features/pos/bluetooth-printer";
+import { usbSend } from "@/features/pos/usb-printer";
 import { db } from "@/db/appDb";
 
 type KotItem = {
@@ -52,14 +53,22 @@ export async function printTableKot(args: {
   if (!settings) {
     throw new Error("Settings not loaded. Please configure printer in Admin > Printer.");
   }
-  if (settings.printerConnection !== "bluetooth") {
-    throw new Error("Printer not configured. Go to Admin > Printer and set Connection to Bluetooth.");
-  }
-  if (!settings.printerAddress) {
-    throw new Error("No printer selected. Go to Admin > Printer, refresh paired devices, and select your printer.");
+  const conn = settings.printerConnection ?? "none";
+  if (conn !== "bluetooth" && conn !== "usb") {
+    throw new Error("Printer not configured. Go to Admin > Printer and set Connection to Bluetooth or USB.");
   }
 
   const escPos = buildKotEscPos(tableNumber, waiterName, items);
+
+  if (conn === "usb") {
+    await usbSend(escPos);
+    return;
+  }
+
+  // Bluetooth
+  if (!settings.printerAddress) {
+    throw new Error("No printer selected. Go to Admin > Printer, refresh paired devices, and select your printer.");
+  }
   await btConnect(settings.printerAddress);
   await btSend(escPos);
 }
