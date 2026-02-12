@@ -407,38 +407,47 @@ export function buildCreditItemsPdf(args: {
     balanceMap.set(ev.id, runningBal);
   }
 
-  // Purchase orders table (newest first)
-  doc.setFontSize(9); doc.setFont("helvetica", "bold"); doc.setTextColor(0);
-  doc.text("Purchase Orders", left, y); y += 14;
-
-  doc.setFontSize(7); doc.setFont("helvetica", "bold"); doc.setTextColor(80);
-  doc.text("#", left + 4, y);
-  doc.text("Order #", left + 16, y);
-  doc.text("Date", left + 56, y);
-  doc.text("Items", left + contentWidth * 0.38, y);
-  doc.text("Bill", left + contentWidth * 0.65, y);
-  doc.text("Balance After", left + contentWidth * 0.8, y);
-  y += 10;
-  doc.setDrawColor(200); doc.line(left, y - 4, right, y - 4);
-  doc.setFont("helvetica", "normal"); doc.setTextColor(0);
-
+  // Purchase orders with item details (newest first)
   const sortedOrders = [...completed].sort((a, b) => b.createdAt - a.createdAt);
-  sortedOrders.forEach((o, idx) => {
-    checkPage(lineH + 10);
-    const balAfter = balanceMap.get(o.id) ?? 0;
-    const itemNames = o.lines.map((l) => `${l.name}×${l.qty}`).join(", ");
 
-    doc.setFontSize(7); doc.setTextColor(0);
-    doc.text(String(idx + 1), left + 4, y);
-    doc.text(`#${o.receiptNo}`, left + 16, y);
-    doc.text(new Date(o.createdAt).toLocaleDateString(), left + 56, y);
-    doc.text(itemNames.slice(0, 30), left + contentWidth * 0.38, y);
-    doc.setFont("helvetica", "bold");
-    doc.text(formatIntMoney(o.total), left + contentWidth * 0.65, y);
+  sortedOrders.forEach((o, idx) => {
+    const balAfter = balanceMap.get(o.id) ?? 0;
+    const neededLines = o.lines.length * 12 + 50;
+    checkPage(neededLines);
+
+    // Order header
+    doc.setFontSize(9); doc.setFont("helvetica", "bold"); doc.setTextColor(0);
+    doc.text(`${idx + 1}. Order #${o.receiptNo}`, left, y);
+    doc.text(new Date(o.createdAt).toLocaleDateString() + " " + new Date(o.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: true }), left + 120, y);
+    doc.text(`Bill: ${formatIntMoney(o.total)}`, left + contentWidth * 0.6, y);
     doc.setTextColor(balAfter > 0 ? 200 : 0, balAfter > 0 ? 50 : 150, balAfter > 0 ? 50 : 50);
-    doc.text(formatIntMoney(balAfter), left + contentWidth * 0.8, y);
-    doc.setFont("helvetica", "normal"); doc.setTextColor(0);
-    y += lineH;
+    doc.text(`Bal: ${formatIntMoney(balAfter)}`, left + contentWidth * 0.82, y);
+    doc.setTextColor(0);
+    y += 12;
+
+    // Item detail header
+    doc.setFontSize(7); doc.setFont("helvetica", "bold"); doc.setTextColor(100);
+    doc.text("Item", left + 12, y);
+    doc.text("Price", left + contentWidth * 0.5, y);
+    doc.text("Qty", left + contentWidth * 0.68, y);
+    doc.text("Subtotal", left + contentWidth * 0.82, y);
+    y += 9;
+    doc.setDrawColor(220); doc.line(left + 10, y - 4, right, y - 4);
+
+    // Item rows
+    doc.setFont("helvetica", "normal"); doc.setTextColor(0); doc.setFontSize(8);
+    for (const l of o.lines) {
+      checkPage(12);
+      doc.text(l.name.slice(0, 28), left + 12, y);
+      doc.text(formatIntMoney(l.unitPrice), left + contentWidth * 0.5, y);
+      doc.text(String(l.qty), left + contentWidth * 0.68, y);
+      doc.text(formatIntMoney(l.subtotal), left + contentWidth * 0.82, y);
+      y += 12;
+    }
+
+    // Order total line
+    doc.setDrawColor(200); doc.line(left + 10, y - 2, right, y - 2);
+    y += 8;
   });
 
   // Items summary section
