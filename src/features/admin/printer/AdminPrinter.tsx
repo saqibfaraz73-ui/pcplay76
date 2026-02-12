@@ -16,6 +16,12 @@ import {
   isNativeAndroid,
   type PairedBluetoothDevice,
 } from "@/features/pos/bluetooth-printer";
+import {
+  usbListDevices,
+  usbConnect,
+  usbDisconnect,
+  type UsbDevice,
+} from "@/features/pos/usb-printer";
 
 const RECEIPT_SIZES: { value: ReceiptSize; label: string }[] = [
   { value: "2x2", label: '2×2 inch' },
@@ -63,6 +69,10 @@ export function AdminPrinter() {
 
   const [paired, setPaired] = React.useState<PairedBluetoothDevice[]>([]);
   const [btBusy, setBtBusy] = React.useState(false);
+
+  const [usbDevices, setUsbDevices] = React.useState<UsbDevice[]>([]);
+  const [usbBusy, setUsbBusy] = React.useState(false);
+  const [selectedUsb, setSelectedUsb] = React.useState("");
 
   const load = React.useCallback(async () => {
     await ensureSeedData();
@@ -138,6 +148,51 @@ export function AdminPrinter() {
     }
   };
 
+  // ---- USB handlers ----
+  const loadUsbDevices = async () => {
+    setUsbBusy(true);
+    try {
+      const devices = await usbListDevices();
+      setUsbDevices(devices);
+      if (devices.length === 0) {
+        toast({ title: "No USB printers found", description: "Connect a printer via USB OTG cable and try again." });
+      }
+    } catch (e: any) {
+      toast({ title: "USB error", description: e?.message ?? String(e), variant: "destructive" });
+    } finally {
+      setUsbBusy(false);
+    }
+  };
+
+  const connectUsb = async () => {
+    const dev = selectedUsb || printerAddress;
+    if (!dev.trim()) {
+      toast({ title: "Select a printer", description: "Choose a USB device first.", variant: "destructive" });
+      return;
+    }
+    setUsbBusy(true);
+    try {
+      await usbConnect(dev.trim());
+      setPrinterAddress(dev.trim());
+      toast({ title: "USB printer connected" });
+    } catch (e: any) {
+      toast({ title: "Could not connect", description: e?.message ?? String(e), variant: "destructive" });
+    } finally {
+      setUsbBusy(false);
+    }
+  };
+
+  const disconnectUsb = async () => {
+    setUsbBusy(true);
+    try {
+      await usbDisconnect();
+      toast({ title: "USB printer disconnected" });
+    } catch (e: any) {
+      toast({ title: "Could not disconnect", description: e?.message ?? String(e), variant: "destructive" });
+    } finally {
+      setUsbBusy(false);
+    }
+  };
   const disconnect = async () => {
     setBtBusy(true);
     try {
@@ -171,6 +226,7 @@ export function AdminPrinter() {
               >
                 <option value="none">None</option>
                 <option value="bluetooth">Bluetooth</option>
+                <option value="usb">USB (OTG)</option>
               </select>
             </div>
             <div className="space-y-2">
@@ -224,6 +280,51 @@ export function AdminPrinter() {
                   Connect
                 </Button>
                 <Button variant="outline" onClick={() => void disconnect()} disabled={btBusy || !settings || !isNativeAndroid()}>
+                  Disconnect
+                </Button>
+              </div>
+            </div>
+          ) : null}
+
+          {connection === "usb" ? (
+            <div className="space-y-3 rounded-md border p-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <div className="text-sm font-medium">USB OTG Printer</div>
+                  <div className="text-xs text-muted-foreground">
+                    {isNativeAndroid()
+                      ? "Connect a thermal printer via USB OTG cable."
+                      : "USB OTG connection works only inside the installed Android app."}
+                  </div>
+                </div>
+                <Button variant="outline" onClick={() => void loadUsbDevices()} disabled={usbBusy || !settings}>
+                  Refresh USB devices
+                </Button>
+              </div>
+
+              <div className="grid gap-2">
+                <Label htmlFor="usbDevice">USB Devices</Label>
+                <select
+                  id="usbDevice"
+                  value={selectedUsb}
+                  onChange={(e) => setSelectedUsb(e.target.value)}
+                  className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+                >
+                  <option value="">Select printer…</option>
+                  {usbDevices.map((d) => (
+                    <option key={d.deviceName} value={d.deviceName}>
+                      {(d.productName || d.manufacturerName || "USB Printer") + ` (${d.vendorId}:${d.productId})`}
+                    </option>
+                  ))}
+                </select>
+                <div className="text-xs text-muted-foreground">Tip: Connect the printer via OTG cable, then tap Refresh.</div>
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                <Button onClick={() => void connectUsb()} disabled={usbBusy || !settings || !isNativeAndroid()}>
+                  Connect
+                </Button>
+                <Button variant="outline" onClick={() => void disconnectUsb()} disabled={usbBusy || !settings || !isNativeAndroid()}>
                   Disconnect
                 </Button>
               </div>
