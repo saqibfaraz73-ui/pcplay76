@@ -24,6 +24,9 @@ import {
 } from "@/features/pos/usb-printer";
 
 const RECEIPT_SIZES: { value: ReceiptSize; label: string }[] = [
+  { value: "1x1", label: '1×1 inch' },
+  { value: "2x1", label: '2×1 inch' },
+  { value: "3x1", label: '3×1 inch' },
   { value: "2x2", label: '2×2 inch' },
   { value: "2x3", label: '2×3 inch' },
   { value: "2x4", label: '2×4 inch' },
@@ -32,6 +35,9 @@ const RECEIPT_SIZES: { value: ReceiptSize; label: string }[] = [
 
 // Map receipt size to height in pixels for preview (96 DPI: 1 inch = 96px)
 const RECEIPT_HEIGHT_MAP: Record<ReceiptSize, number> = {
+  "1x1": 96,   // 1 inch
+  "2x1": 96,   // 1 inch
+  "3x1": 96,   // 1 inch
   "2x2": 192,  // 2 inches
   "2x3": 288,  // 3 inches
   "2x4": 384,  // 4 inches

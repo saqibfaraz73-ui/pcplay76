@@ -29,6 +29,9 @@ function escapeHtml(s: string) {
 function getFeedLinesForSize(settings: Settings, contentLines: number): number {
   const lineHeightInch = 0.125;
   const sizeMap: Record<string, number> = {
+    "1x1": 1,
+    "2x1": 1,
+    "3x1": 1,
     "2x2": 2,
     "2x3": 3,
     "2x4": 4,
