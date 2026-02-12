@@ -38,6 +38,7 @@ function buildAdvanceEscPos(order: AdvanceOrder, settings: Settings): string {
     order.customerName ? line(`Customer: ${order.customerName}`) : null,
     order.customerPhone ? line(`Phone: ${order.customerPhone}`) : null,
     order.customerAddress ? line(`Address: ${order.customerAddress}`) : null,
+    order.deliveryDate ? line(`Delivery: ${new Date(order.deliveryDate).toLocaleDateString()}${order.deliveryTime ? " " + order.deliveryTime : ""}`) : null,
     hr,
   ].filter(Boolean) as string[];
 

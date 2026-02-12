@@ -24,6 +24,8 @@ export type AdvanceOrder = {
   customerName?: string;
   customerPhone?: string;
   customerAddress?: string;
+  deliveryDate?: string;   // optional delivery date "YYYY-MM-DD"
+  deliveryTime?: string;   // optional delivery time "HH:mm"
   cancelledReason?: string;
   cashier?: string;
   workPeriodId?: string;
