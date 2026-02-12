@@ -53,12 +53,21 @@ async function buildEscPosReceipt(
     creditCustomerName?: string;
     deliveryPersonName?: string;
     deliveryCustomerName?: string;
+    centered?: boolean;
   }
 ): Promise<string> {
   const width = settings.paperSize === "80" ? 48 : 32;
   const hr = "-".repeat(width);
 
-  const line = (s = "") => s.slice(0, width).padEnd(width, " ");
+  const centered = opts?.centered ?? false;
+  const line = (s = "") => {
+    const trimmed = s.slice(0, width);
+    if (centered) {
+      const pad = Math.max(0, Math.floor((width - trimmed.length) / 2));
+      return " ".repeat(pad) + trimmed;
+    }
+    return trimmed.padEnd(width, " ");
+  };
   const money = (n: number) => formatIntMoney(n);
 
   const title = settings.restaurantName || "SANGI POS";
@@ -239,7 +248,10 @@ export async function printReceiptFromOrder(
       throw new Error("Printer not configured. Go to Admin > Printer and set Connection to Bluetooth or USB.");
     }
 
-    const text = await buildEscPosReceipt(order, settings, opts);
+    const text = await buildEscPosReceipt(order, settings, {
+      ...opts,
+      centered: conn === "usb",
+    });
 
     if (conn === "usb") {
       try {
