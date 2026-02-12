@@ -744,6 +744,80 @@ export default function PosPartyLodge() {
     }
   };
 
+  const buildSingleArrivalsPdf = (sup: Supplier) => {
+    const doc = new jsPDF({ unit: "pt", format: "a4" });
+    const pageW = doc.internal.pageSize.getWidth();
+    const left = 40; const right = pageW - 40;
+    let y = 48; const lineH = 14; const pageH = 780;
+    const checkPage = (needed = lineH * 2) => { if (y + needed > pageH) { doc.addPage(); y = 48; } };
+    const restaurantName = settings?.restaurantName ?? "SANGI POS";
+
+    doc.setFontSize(16); doc.setFont("helvetica", "bold"); doc.text(`Arrivals: ${sup.name}`, left, y); y += 20;
+    doc.setFontSize(10); doc.setFont("helvetica", "normal");
+    doc.text(`${restaurantName} • ${filterFrom} → ${filterTo}`, left, y); y += 24;
+
+    const [fy, fm, fd] = filterFrom.split("-").map(Number);
+    const [ty, tm, td] = filterTo.split("-").map(Number);
+    const fromTs = new Date(fy, fm - 1, fd).getTime();
+    const toTs = new Date(ty, tm - 1, td, 23, 59, 59, 999).getTime();
+
+    const supArrivals = arrivals.filter((a) => a.supplierId === sup.id && a.createdAt >= fromTs && a.createdAt <= toTs).sort((a, b) => a.createdAt - b.createdAt);
+    const balance = getSupplierBalance(sup);
+    const totalArrivalsInRange = supArrivals.reduce((s, a) => s + a.total, 0);
+
+    // Running balance
+    const paymentsAfterRange = payments.filter((p) => p.supplierId === sup.id && p.createdAt > toTs).reduce((s, p) => s + p.amount, 0);
+    const arrivalsAfterRange = arrivals.filter((a) => a.supplierId === sup.id && a.createdAt > toTs).reduce((s, a) => s + a.total, 0);
+    const balanceAtEndOfRange = balance + paymentsAfterRange - arrivalsAfterRange;
+    let runningBal = balanceAtEndOfRange;
+    const balAfter: number[] = [];
+    for (let i = supArrivals.length - 1; i >= 0; i--) { balAfter[i] = runningBal; runningBal -= supArrivals[i].total; }
+
+    doc.setFontSize(11); doc.setFont("helvetica", "bold"); doc.setTextColor(0);
+    doc.text(sup.name, left, y); doc.text(`Balance: ${formatIntMoney(balance)}`, right, y, { align: "right" }); y += 14;
+    if (sup.contact) { doc.setFontSize(9); doc.setFont("helvetica", "normal"); doc.setTextColor(100); doc.text(`Contact: ${sup.contact}`, left, y); y += 12; }
+    doc.setFontSize(9); doc.setTextColor(0); doc.text(`Total Arrivals (in range): ${formatIntMoney(totalArrivalsInRange)}`, left, y); y += 16;
+
+    if (supArrivals.length > 0) {
+      doc.setFontSize(8); doc.setFont("helvetica", "bold"); doc.setTextColor(80);
+      doc.text("#", left + 4, y); doc.text("Item", left + 20, y); doc.text("Qty", left + 130, y); doc.text("Price", left + 180, y); doc.text("Total", left + 240, y); doc.text("Date", left + 320, y); doc.text("Bal After", right - 10, y, { align: "right" }); y += 10;
+      doc.setDrawColor(200); doc.line(left, y - 4, right, y - 4);
+      doc.setFont("helvetica", "normal"); doc.setTextColor(0);
+      supArrivals.forEach((a, idx) => {
+        checkPage(); doc.setFontSize(8);
+        doc.text(String(idx + 1), left + 4, y);
+        doc.text((a.itemName ?? "").slice(0, 16), left + 20, y);
+        doc.text(`${a.qty} ${a.unit || ""}`, left + 130, y);
+        doc.text(formatIntMoney(a.unitPrice), left + 180, y);
+        doc.text(formatIntMoney(a.total), left + 240, y);
+        doc.text(new Date(a.createdAt).toLocaleDateString(), left + 320, y);
+        doc.text(formatIntMoney(balAfter[idx]), right - 10, y, { align: "right" });
+        y += lineH;
+      });
+    } else {
+      doc.setFontSize(8); doc.setTextColor(120); doc.text("No arrivals in this period", left + 10, y); y += lineH;
+    }
+    return doc;
+  };
+
+  const shareSingleArrivalsPdf = async (sup: Supplier) => {
+    try {
+      const doc = buildSingleArrivalsPdf(sup);
+      const bytes = doc.output("arraybuffer");
+      const safeName = sup.name.replace(/[^a-zA-Z0-9]/g, "_").slice(0, 30);
+      const fileName = `arrivals_${safeName}_${filterFrom}_${filterTo}.pdf`;
+      if (Capacitor.isNativePlatform()) {
+        const saved = await writePdfFile({ folder: "Sales Report", fileName, pdfBytes: new Uint8Array(bytes) });
+        await shareFile({ title: `Arrivals: ${sup.name}`, uri: saved.uri });
+      } else {
+        doc.save(fileName);
+        toast({ title: `${sup.name} Arrivals PDF downloaded` });
+      }
+    } catch (e: any) {
+      toast({ title: "PDF failed", description: e?.message ?? String(e), variant: "destructive" });
+    }
+  };
+
   const shareSingleSupplierPdf = async (sup: Supplier) => {
     try {
       const doc = buildSingleSupplierPdf(sup);
@@ -839,6 +913,10 @@ export default function PosPartyLodge() {
                     <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => void shareSingleSupplierPdf(sup)}>
                       <Share2 className="h-3 w-3 mr-1" />
                       PDF
+                    </Button>
+                    <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => void shareSingleArrivalsPdf(sup)}>
+                      <PackagePlus className="h-3 w-3 mr-1" />
+                      Arrivals PDF
                     </Button>
                     <Button variant="ghost" size="sm" className="text-xs h-7 text-destructive" onClick={() => setDeleteTarget(sup)}>
                       <Trash2 className="h-3 w-3" />
