@@ -1087,7 +1087,6 @@ export function ExportPartySection() {
             <Button variant="outline" onClick={() => void saveSale("share")} disabled={saleTotal <= 0}>
               <Share2 className="h-3.5 w-3.5 mr-1" /> Save & Share
             </Button>
-            <Button onClick={() => void saveSale()} disabled={saleTotal <= 0}>Add to Balance</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

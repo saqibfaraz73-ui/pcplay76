@@ -1288,9 +1288,6 @@ export default function PosPartyLodge() {
             <Button variant="outline" onClick={() => void saveArrival("share")} disabled={arrivalTotal <= 0}>
               <Share2 className="h-3.5 w-3.5 mr-1" /> Save & Share
             </Button>
-            <Button onClick={() => void saveArrival()} disabled={arrivalTotal <= 0}>
-              Add to Balance
-            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
