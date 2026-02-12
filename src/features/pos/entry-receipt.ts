@@ -2,10 +2,20 @@ import { formatIntMoney } from "@/features/pos/format";
 import { btConnect, btSend, isNativeAndroid } from "@/features/pos/bluetooth-printer";
 import { usbSend } from "@/features/pos/usb-printer";
 import { db } from "@/db/appDb";
-import type { Settings } from "@/db/schema";
+import type { Settings, CounterId } from "@/db/schema";
 import { Capacitor } from "@capacitor/core";
 import { shareFile, writePdfFile } from "@/features/files/sangi-folders";
 import jsPDF from "jspdf";
+
+/** Get and increment a sequential counter for arrivals or export sales */
+export async function getNextEntryNo(counterId: CounterId): Promise<number> {
+  return await db.transaction("rw", db.counters, async () => {
+    const row = await db.counters.get(counterId);
+    const next = row?.next ?? 1;
+    await db.counters.put({ id: counterId, next: next + 1 });
+    return next;
+  });
+}
 
 export type EntryLine = {
   itemName: string;
@@ -17,6 +27,7 @@ export type EntryLine = {
 
 export type EntryReceiptData = {
   type: "arrival" | "sale";
+  receiptNo?: number;
   partyName: string;
   lines: EntryLine[];
   grandTotal: number;
@@ -57,6 +68,7 @@ function buildEscPos(data: EntryReceiptData, settings: Settings): string {
     settings.showAddress && settings.address ? line(settings.address) : null,
     settings.showPhone && settings.phone ? line(settings.phone) : null,
     line(label),
+    data.receiptNo ? line(`Entry #: ${data.receiptNo}`) : null,
     hr,
     line(`Party: ${data.partyName}`),
     line(`Date: ${dateStr}`),
@@ -131,7 +143,8 @@ export async function printEntryReceipt(data: EntryReceiptData) {
 
   const html = `<div style="font-family:monospace;max-width:320px;margin:auto;padding:16px">
     <div style="font-weight:bold;font-size:16px;margin-bottom:4px">${settings?.restaurantName || "SANGI POS"}</div>
-    <div style="font-weight:bold;margin-bottom:8px">${label}</div>
+    <div style="font-weight:bold;margin-bottom:4px">${label}</div>
+    ${data.receiptNo ? `<div style="margin-bottom:4px">Entry #: ${data.receiptNo}</div>` : ""}
     <div>Party: ${data.partyName}</div>
     <div>Date: ${data.date.toLocaleString()}</div>
     <hr/>
@@ -170,6 +183,12 @@ export async function shareEntryReceipt(data: EntryReceiptData) {
   doc.setFontSize(10);
   doc.text(label, left, y);
   y += 14;
+  if (data.receiptNo) {
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    doc.text(`Entry #: ${data.receiptNo}`, left, y);
+    y += 12;
+  }
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
   doc.text(`Party: ${data.partyName}`, left, y);

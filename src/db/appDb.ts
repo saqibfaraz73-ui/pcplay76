@@ -2,7 +2,7 @@ import Dexie, { type Table } from "dexie";
 import type {
   AdminAccount,
   Category,
-  Counter,
+  Counter, CounterId,
   CreditCustomer,
   CreditPayment,
   DeliveryCustomer,
@@ -52,7 +52,7 @@ export class SangiPosDb extends Dexie {
   staffAccounts!: Table<StaffAccount, string>;
   license!: Table<LicenseRecord, "license">;
   settings!: Table<Settings, "app">;
-  counters!: Table<Counter, "receipt">;
+  counters!: Table<Counter, CounterId>;
 
   constructor() {
     super("sangi_pos_db_v1");
@@ -273,6 +273,35 @@ export class SangiPosDb extends Dexie {
       supplierArrivals: "id, supplierId, createdAt",
       exportCustomers: "id, name, createdAt",
       exportSales: "id, customerId, createdAt",
+      exportPayments: "id, customerId, createdAt",
+      deliveryPersons: "id, name, createdAt",
+      deliveryCustomers: "id, name, createdAt",
+      waiters: "id, name, createdAt",
+      restaurantTables: "id, tableNumber, createdAt",
+      tableOrders: "id, tableId, waiterId, status, createdAt, completedAt",
+      adminAccount: "id",
+      staffAccounts: "id, name, role, createdAt",
+      license: "id",
+      settings: "id",
+      counters: "id",
+    });
+
+    // v14: add receiptNo to supplierArrivals and exportSales
+    this.version(14).stores({
+      categories: "id, name, createdAt",
+      items: "id, categoryId, name, price, createdAt",
+      inventory: "itemId, quantity, updatedAt",
+      inventoryAdjustments: "id, itemId, createdAt",
+      customers: "id, name, createdAt",
+      creditPayments: "id, customerId, createdAt",
+      orders: "id, receiptNo, status, paymentMethod, workPeriodId, deliveryPersonId, createdAt",
+      workPeriods: "id, cashier, startedAt, isClosed",
+      expenses: "id, name, createdAt, workPeriodId",
+      suppliers: "id, name, createdAt",
+      supplierPayments: "id, supplierId, createdAt",
+      supplierArrivals: "id, supplierId, receiptNo, createdAt",
+      exportCustomers: "id, name, createdAt",
+      exportSales: "id, customerId, receiptNo, createdAt",
       exportPayments: "id, customerId, createdAt",
       deliveryPersons: "id, name, createdAt",
       deliveryCustomers: "id, name, createdAt",

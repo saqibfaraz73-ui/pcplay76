@@ -18,7 +18,7 @@ import { formatIntMoney, parseNonDecimalInt } from "@/features/pos/format";
 import { writePdfFile, shareFile } from "@/features/files/sangi-folders";
 import { Capacitor } from "@capacitor/core";
 import { Plus, Trash2, Share2, CreditCard, Banknote, PackagePlus, Upload, Download, Printer } from "lucide-react";
-import { printEntryReceipt, shareEntryReceipt, type EntryReceiptData } from "@/features/pos/entry-receipt";
+import { printEntryReceipt, shareEntryReceipt, getNextEntryNo, type EntryReceiptData } from "@/features/pos/entry-receipt";
 import { importExportSalesFromExcel, importSalesForCustomer, downloadImportTemplate, downloadPartyImportTemplate } from "@/features/party-import/party-import";
 import { canMakeSale, incrementSaleCount } from "@/features/licensing/licensing-db";
 import { UpgradeDialog } from "@/features/licensing/UpgradeDialog";
@@ -282,7 +282,9 @@ export function ExportPartySection() {
       const cust = saleMode.customer;
       let totalAdded = 0;
 
+      const entryNo = await getNextEntryNo("exportSale");
       const receiptData = buildSaleReceiptData();
+      if (receiptData) receiptData.receiptNo = entryNo;
 
       await db.transaction("rw", [db.exportCustomers, db.exportSales], async () => {
         for (const it of validItems) {
@@ -291,6 +293,7 @@ export function ExportPartySection() {
           const sale: ExportSale = {
             id: makeId("esal"),
             customerId: cust.id,
+            receiptNo: entryNo,
             itemName: it.itemName.trim() || cust.itemName || "—",
             qty: it.qty,
             unit: it.unit || undefined,
@@ -304,7 +307,7 @@ export function ExportPartySection() {
         await db.exportCustomers.update(cust.id, { totalBalance: cust.totalBalance + totalAdded });
       });
 
-      toast({ title: "Export sale recorded", description: `${validItems.length} item(s) totalling ${formatIntMoney(totalAdded)}` });
+      toast({ title: `Sale #${entryNo} recorded`, description: `${validItems.length} item(s) totalling ${formatIntMoney(totalAdded)}` });
       setSaleMode({ open: false });
       await refresh();
 
@@ -317,6 +320,17 @@ export function ExportPartySection() {
       toast({ title: "Could not save", description: e?.message ?? String(e), variant: "destructive" });
     }
   };
+
+  // Helper to build receipt data from a saved sale for reprinting
+  const buildReceiptFromSale = (s: ExportSale, customerName: string): EntryReceiptData => ({
+    type: "sale",
+    receiptNo: s.receiptNo,
+    partyName: customerName,
+    lines: [{ itemName: s.itemName, qty: s.qty, unit: s.unit, unitPrice: s.unitPrice, total: s.total }],
+    grandTotal: s.total,
+    note: s.note,
+    date: new Date(s.createdAt),
+  });
 
   // ─── PDF ───
   const buildExportPdf = () => {
@@ -861,11 +875,17 @@ export function ExportPartySection() {
                 <div className="text-sm text-muted-foreground">No sales recorded yet.</div>
               ) : (
                 <div className="space-y-2">
-                  {selectedSales.map((s, idx) => (
+                  {selectedSales.map((s, idx) => {
+                    const rd = buildReceiptFromSale(s, selectedCustomer.name);
+                    return (
                     <div key={s.id} className="rounded-md border p-2 text-sm">
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-2">
-                          <span className="text-xs text-muted-foreground">{selectedSales.length - idx}</span>
+                          {s.receiptNo ? (
+                            <span className="text-xs font-bold text-primary">#{s.receiptNo}</span>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">{selectedSales.length - idx}</span>
+                          )}
                           <span className="font-medium">{s.itemName}</span>
                         </div>
                         <span className="font-bold text-green-600">{formatIntMoney(s.total)}</span>
@@ -873,8 +893,17 @@ export function ExportPartySection() {
                       <div className="text-xs text-muted-foreground mt-1">{s.qty} {s.unit || "units"} × {formatIntMoney(s.unitPrice)}</div>
                       {s.note && <div className="text-xs text-muted-foreground">{s.note}</div>}
                       <div className="text-xs text-muted-foreground">{new Date(s.createdAt).toLocaleDateString()} {new Date(s.createdAt).toLocaleTimeString()}</div>
+                      <div className="flex gap-1 mt-1.5">
+                        <Button variant="outline" size="sm" className="text-xs h-6 px-2" onClick={() => void printEntryReceipt(rd).catch((e: any) => toast({ title: "Print failed", description: e?.message, variant: "destructive" }))}>
+                          <Printer className="h-3 w-3 mr-1" /> Print
+                        </Button>
+                        <Button variant="outline" size="sm" className="text-xs h-6 px-2" onClick={() => void shareEntryReceipt(rd).catch((e: any) => toast({ title: "Share failed", description: e?.message, variant: "destructive" }))}>
+                          <Share2 className="h-3 w-3 mr-1" /> Share
+                        </Button>
+                      </div>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
