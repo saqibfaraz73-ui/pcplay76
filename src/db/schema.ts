@@ -197,6 +197,40 @@ export type SupplierArrival = {
   createdAt: number;
 };
 
+// ─── Export Party (wholesale buyers) ────────────────────
+
+export type ExportCustomer = {
+  id: string;
+  name: string;
+  contact?: string;
+  itemName?: string;
+  stockUnit?: StockUnit;
+  unitPrice?: number;
+  totalBalance: number; // amount owed BY the buyer
+  createdAt: number;
+};
+
+export type ExportSale = {
+  id: string;
+  customerId: string;
+  itemName: string;
+  qty: number;
+  unit?: string;
+  unitPrice: number;
+  total: number;
+  note?: string;
+  createdAt: number;
+};
+
+export type ExportPayment = {
+  id: string;
+  customerId: string;
+  amount: number;
+  paymentType?: SupplierPaymentType;
+  note?: string;
+  createdAt: number;
+};
+
 export type ChargeType = "percent" | "fixed";
 
 export type Settings = {
@@ -245,6 +279,7 @@ export type Settings = {
   tableManagementEnabled?: boolean;
   waiterLoginEnabled?: boolean; // if true, waiters can log in separately
   tableSelectionDisabled?: boolean; // if true, skip table selection (waiter-only mode)
+  showExportInReports?: boolean; // show export party sales in main reports
   updatedAt: number;
 };
 
