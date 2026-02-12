@@ -25,7 +25,8 @@ import { makeId } from "@/features/admin/id";
 import { formatIntMoney, parseNonDecimalInt } from "@/features/pos/format";
 import { writePdfFile, shareFile } from "@/features/files/sangi-folders";
 import { Capacitor } from "@capacitor/core";
-import { Plus, Trash2, Share2, CreditCard, Banknote, PackagePlus } from "lucide-react";
+import { Plus, Trash2, Share2, CreditCard, Banknote, PackagePlus, Upload, Download } from "lucide-react";
+import { importArrivalsFromExcel, downloadImportTemplate } from "@/features/party-import/party-import";
 import { canMakeSale, incrementSaleCount } from "@/features/licensing/licensing-db";
 import { UpgradeDialog } from "@/features/licensing/UpgradeDialog";
 import { ExportPartySection } from "@/features/export-party/ExportPartySection";
@@ -43,6 +44,8 @@ export default function PosPartyLodge() {
   const [payments, setPayments] = React.useState<SupplierPayment[]>([]);
   const [arrivals, setArrivals] = React.useState<SupplierArrival[]>([]);
   const [settings, setSettings] = React.useState<Settings | null>(null);
+
+  const arrivalFileRef = React.useRef<HTMLInputElement>(null);
 
   const [supplierMode, setSupplierMode] = React.useState<SupplierMode>({ open: false });
   const [payMode, setPayMode] = React.useState<PayMode>({ open: false });
@@ -854,6 +857,20 @@ export default function PosPartyLodge() {
     }
   };
 
+  const handleArrivalImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const res = await importArrivalsFromExcel(file);
+      await refresh();
+      if (res.errors.length) toast({ title: `Imported ${res.imported} arrivals`, description: res.errors.join("\n"), variant: res.imported ? "default" : "destructive" });
+      else toast({ title: `Imported ${res.imported} arrivals successfully` });
+    } catch (err: any) {
+      toast({ title: "Import failed", description: err?.message ?? String(err), variant: "destructive" });
+    }
+    e.target.value = "";
+  };
+
   // ─── Render ───────────────────────────────────────────
 
   return (
@@ -863,11 +880,20 @@ export default function PosPartyLodge() {
           <h1 className="text-xl font-semibold">Party Lodge</h1>
           <p className="text-sm text-muted-foreground">Manage suppliers & payments</p>
         </div>
-        <Button onClick={openNew}>
-          <Plus className="h-4 w-4 mr-1" />
-          Add Supplier
-        </Button>
+        <div className="flex gap-1.5">
+          <Button variant="outline" size="sm" onClick={() => downloadImportTemplate("arrivals")} title="Download template">
+            <Download className="h-4 w-4" />
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => arrivalFileRef.current?.click()} title="Import arrivals from Excel">
+            <Upload className="h-4 w-4" />
+          </Button>
+          <Button onClick={openNew}>
+            <Plus className="h-4 w-4 mr-1" />
+            Add Supplier
+          </Button>
+        </div>
       </div>
+      <input ref={arrivalFileRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleArrivalImport} />
 
       {/* Search */}
       <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search suppliers…" />
