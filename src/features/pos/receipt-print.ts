@@ -1,6 +1,7 @@
 import type { Order, Settings } from "@/db/schema";
 import { formatIntMoney } from "@/features/pos/format";
 import { btConnect, btSend, isNativeAndroid } from "@/features/pos/bluetooth-printer";
+import { usbSend } from "@/features/pos/usb-printer";
 import { generateLogoEscPos } from "@/features/pos/escpos-image";
 import { db } from "@/db/appDb";
 import { format } from "date-fns";
@@ -229,15 +230,28 @@ export async function printReceiptFromOrder(
     if (!settings) {
       throw new Error("Settings not loaded. Please configure printer in Admin > Printer.");
     }
-    if (settings.printerConnection !== "bluetooth") {
-      throw new Error("Printer not configured. Go to Admin > Printer and set Connection to Bluetooth.");
+    const conn = settings.printerConnection ?? "none";
+    if (conn !== "bluetooth" && conn !== "usb") {
+      throw new Error("Printer not configured. Go to Admin > Printer and set Connection to Bluetooth or USB.");
     }
+
+    const text = await buildEscPosReceipt(order, settings, opts);
+
+    if (conn === "usb") {
+      try {
+        await usbSend(text);
+      } catch (usbErr: any) {
+        console.error("USB print error:", usbErr);
+        throw new Error(usbErr?.message || "USB printing failed. Check printer connection.");
+      }
+      return;
+    }
+
+    // Bluetooth
     if (!settings.printerAddress) {
       throw new Error("No printer selected. Go to Admin > Printer, refresh paired devices, and select your printer.");
     }
-
     try {
-      const text = await buildEscPosReceipt(order, settings, opts);
       await btConnect(settings.printerAddress);
       await btSend(text);
     } catch (btError: any) {
@@ -308,11 +322,19 @@ export async function printKotFromOrder(order: Order) {
   if (!isNativeAndroid()) return;
 
   const settings = await getSettingsSafe();
-  if (!settings?.printerAddress) {
-    throw new Error("Printer not configured");
+  if (!settings) throw new Error("Printer not configured");
+  
+  const conn = settings.printerConnection ?? "none";
+  const text = await buildKotReceipt(order, settings);
+
+  if (conn === "usb") {
+    await usbSend(text);
+    return;
   }
 
-  const text = await buildKotReceipt(order, settings);
+  if (!settings.printerAddress) {
+    throw new Error("Printer not configured");
+  }
   await btConnect(settings.printerAddress);
   await btSend(text);
 }
