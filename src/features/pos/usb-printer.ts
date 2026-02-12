@@ -62,9 +62,20 @@ export async function usbRequestPermission(deviceName: string): Promise<boolean>
 
 export async function usbConnect(deviceName: string): Promise<void> {
   if (!isNativeAndroid()) throw new Error("USB printing requires the Android app.");
+
+  // Request permission – the native side waits for the user to tap Allow/Deny
   const granted = await usbRequestPermission(deviceName);
   if (!granted) throw new Error("USB permission denied. Please allow USB access and try again.");
-  await UsbPrinter.connect({ deviceName });
+
+  // Permission granted, now connect
+  try {
+    await UsbPrinter.connect({ deviceName });
+  } catch (connectErr: any) {
+    // If connect fails right after permission grant, wait briefly and retry once
+    // (some devices need a moment after permission is granted)
+    await new Promise((r) => setTimeout(r, 500));
+    await UsbPrinter.connect({ deviceName });
+  }
 }
 
 export async function usbDisconnect(): Promise<void> {
