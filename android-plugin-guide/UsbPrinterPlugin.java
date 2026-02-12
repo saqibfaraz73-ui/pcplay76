@@ -120,10 +120,12 @@ public class UsbPrinterPlugin extends Plugin {
         }
 
         pendingPermissionCall = call;
+        Intent intent = new Intent(ACTION_USB_PERMISSION);
+        intent.setPackage(getContext().getPackageName());
         PendingIntent permissionIntent = PendingIntent.getBroadcast(
                 getContext(), 0,
-                new Intent(ACTION_USB_PERMISSION),
-                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_MUTABLE
+                intent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
         );
         usbManager.requestPermission(device, permissionIntent);
     }
