@@ -583,6 +583,80 @@ export function ExportPartySection() {
     return doc;
   };
 
+  const buildSingleSalesPdf = (cust: ExportCustomer) => {
+    const doc = new jsPDF({ unit: "pt", format: "a4" });
+    const pageW = doc.internal.pageSize.getWidth();
+    const left = 40; const right = pageW - 40;
+    let y = 48; const lineH = 14; const pageH = 780;
+    const checkPage = (needed = lineH * 2) => { if (y + needed > pageH) { doc.addPage(); y = 48; } };
+    const restaurantName = settings?.restaurantName ?? "SANGI POS";
+
+    doc.setFontSize(16); doc.setFont("helvetica", "bold"); doc.text(`Sales: ${cust.name}`, left, y); y += 20;
+    doc.setFontSize(10); doc.setFont("helvetica", "normal");
+    doc.text(`${restaurantName} • ${filterFrom} → ${filterTo}`, left, y); y += 24;
+
+    const [fy, fm, fd] = filterFrom.split("-").map(Number);
+    const [ty, tm, td] = filterTo.split("-").map(Number);
+    const fromTs = new Date(fy, fm - 1, fd).getTime();
+    const toTs = new Date(ty, tm - 1, td, 23, 59, 59, 999).getTime();
+
+    const custSales = sales.filter((s) => s.customerId === cust.id && s.createdAt >= fromTs && s.createdAt <= toTs).sort((a, b) => a.createdAt - b.createdAt);
+    const balance = getBalance(cust);
+    const totalSalesInRange = custSales.reduce((s, a) => s + a.total, 0);
+
+    // Running balance
+    const paymentsAfterRange = payments.filter((p) => p.customerId === cust.id && p.createdAt > toTs).reduce((s, p) => s + p.amount, 0);
+    const salesAfterRange = sales.filter((s) => s.customerId === cust.id && s.createdAt > toTs).reduce((s, a) => s + a.total, 0);
+    const balanceAtEndOfRange = balance + paymentsAfterRange - salesAfterRange;
+    let runningBal = balanceAtEndOfRange;
+    const balAfter: number[] = [];
+    for (let i = custSales.length - 1; i >= 0; i--) { balAfter[i] = runningBal; runningBal -= custSales[i].total; }
+
+    doc.setFontSize(11); doc.setFont("helvetica", "bold"); doc.setTextColor(0);
+    doc.text(cust.name, left, y); doc.text(`Balance: ${formatIntMoney(balance)}`, right, y, { align: "right" }); y += 14;
+    if (cust.contact) { doc.setFontSize(9); doc.setFont("helvetica", "normal"); doc.setTextColor(100); doc.text(`Contact: ${cust.contact}`, left, y); y += 12; }
+    doc.setFontSize(9); doc.setTextColor(0); doc.text(`Total Sales (in range): ${formatIntMoney(totalSalesInRange)}`, left, y); y += 16;
+
+    if (custSales.length > 0) {
+      doc.setFontSize(8); doc.setFont("helvetica", "bold"); doc.setTextColor(80);
+      doc.text("#", left + 4, y); doc.text("Item", left + 20, y); doc.text("Qty", left + 130, y); doc.text("Price", left + 180, y); doc.text("Total", left + 240, y); doc.text("Date", left + 320, y); doc.text("Bal After", right - 10, y, { align: "right" }); y += 10;
+      doc.setDrawColor(200); doc.line(left, y - 4, right, y - 4);
+      doc.setFont("helvetica", "normal"); doc.setTextColor(0);
+      custSales.forEach((s, idx) => {
+        checkPage(); doc.setFontSize(8);
+        doc.text(String(idx + 1), left + 4, y);
+        doc.text((s.itemName ?? "").slice(0, 16), left + 20, y);
+        doc.text(`${s.qty} ${s.unit || ""}`, left + 130, y);
+        doc.text(formatIntMoney(s.unitPrice), left + 180, y);
+        doc.text(formatIntMoney(s.total), left + 240, y);
+        doc.text(new Date(s.createdAt).toLocaleDateString(), left + 320, y);
+        doc.text(formatIntMoney(balAfter[idx]), right - 10, y, { align: "right" });
+        y += lineH;
+      });
+    } else {
+      doc.setFontSize(8); doc.setTextColor(120); doc.text("No sales in this period", left + 10, y); y += lineH;
+    }
+    return doc;
+  };
+
+  const shareSingleSalesPdf = async (cust: ExportCustomer) => {
+    try {
+      const doc = buildSingleSalesPdf(cust);
+      const bytes = doc.output("arraybuffer");
+      const safeName = cust.name.replace(/[^a-zA-Z0-9]/g, "_").slice(0, 30);
+      const fileName = `sales_${safeName}_${filterFrom}_${filterTo}.pdf`;
+      if (Capacitor.isNativePlatform()) {
+        const saved = await writePdfFile({ folder: "Sales Report", fileName, pdfBytes: new Uint8Array(bytes) });
+        await shareFile({ title: `Sales: ${cust.name}`, uri: saved.uri });
+      } else {
+        doc.save(fileName);
+        toast({ title: `${cust.name} Sales PDF downloaded` });
+      }
+    } catch (e: any) {
+      toast({ title: "PDF failed", description: e?.message ?? String(e), variant: "destructive" });
+    }
+  };
+
   const shareSingleCustomerPdf = async (cust: ExportCustomer) => {
     try {
       const doc = buildSingleCustomerPdf(cust);
@@ -687,6 +761,9 @@ export function ExportPartySection() {
                     <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => openEdit(cust)}>Edit</Button>
                     <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => void shareSingleCustomerPdf(cust)}>
                       <Share2 className="h-3 w-3 mr-1" /> PDF
+                    </Button>
+                    <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => void shareSingleSalesPdf(cust)}>
+                      <PackagePlus className="h-3 w-3 mr-1" /> Sales PDF
                     </Button>
                     <Button variant="ghost" size="sm" className="text-xs h-7 text-destructive" onClick={() => setDeleteTarget(cust)}>
                       <Trash2 className="h-3 w-3" />
