@@ -26,7 +26,7 @@ import { formatIntMoney, parseNonDecimalInt } from "@/features/pos/format";
 import { writePdfFile, shareFile } from "@/features/files/sangi-folders";
 import { Capacitor } from "@capacitor/core";
 import { Plus, Trash2, Share2, CreditCard, Banknote, PackagePlus, Upload, Download, Printer } from "lucide-react";
-import { printEntryReceipt, shareEntryReceipt, type EntryReceiptData } from "@/features/pos/entry-receipt";
+import { printEntryReceipt, shareEntryReceipt, getNextEntryNo, type EntryReceiptData } from "@/features/pos/entry-receipt";
 import { importArrivalsFromExcel, importArrivalsForSupplier, downloadImportTemplate, downloadPartyImportTemplate } from "@/features/party-import/party-import";
 import { canMakeSale, incrementSaleCount } from "@/features/licensing/licensing-db";
 import { UpgradeDialog } from "@/features/licensing/UpgradeDialog";
@@ -330,7 +330,9 @@ export default function PosPartyLodge() {
       const sup = arrivalMode.supplier;
       let totalAdded = 0;
 
+      const entryNo = await getNextEntryNo("arrival");
       const receiptData = buildArrivalReceiptData();
+      if (receiptData) receiptData.receiptNo = entryNo;
 
       await db.transaction("rw", [db.suppliers, db.supplierArrivals], async () => {
         for (const it of validItems) {
@@ -339,6 +341,7 @@ export default function PosPartyLodge() {
           const arrival: SupplierArrival = {
             id: makeId("sarr"),
             supplierId: sup.id,
+            receiptNo: entryNo,
             itemName: it.itemName.trim() || sup.itemName || "—",
             qty: it.qty,
             unit: it.unit || undefined,
@@ -355,7 +358,7 @@ export default function PosPartyLodge() {
       });
 
       toast({
-        title: "Supply arrival recorded",
+        title: `Arrival #${entryNo} recorded`,
         description: `${validItems.length} item(s) totalling ${formatIntMoney(totalAdded)} added to balance`,
       });
       setArrivalMode({ open: false });
@@ -370,6 +373,17 @@ export default function PosPartyLodge() {
       toast({ title: "Could not save", description: e?.message ?? String(e), variant: "destructive" });
     }
   };
+
+  // Helper to build receipt data from a saved arrival for reprinting
+  const buildReceiptFromArrival = (a: SupplierArrival, supplierName: string): EntryReceiptData => ({
+    type: "arrival",
+    receiptNo: a.receiptNo,
+    partyName: supplierName,
+    lines: [{ itemName: a.itemName, qty: a.qty, unit: a.unit, unitPrice: a.unitPrice, total: a.total }],
+    grandTotal: a.total,
+    note: a.note,
+    date: new Date(a.createdAt),
+  });
 
   // ─── PDF ──────────────────────────────────────────────
 
@@ -1019,11 +1033,17 @@ export default function PosPartyLodge() {
                 <div className="text-sm text-muted-foreground">No arrivals recorded yet.</div>
               ) : (
                 <div className="space-y-2">
-                  {selectedArrivals.map((a, idx) => (
+                  {selectedArrivals.map((a, idx) => {
+                    const rd = buildReceiptFromArrival(a, selectedSupplier.name);
+                    return (
                     <div key={a.id} className="rounded-md border p-2 text-sm">
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-2">
-                          <span className="text-xs text-muted-foreground">{selectedArrivals.length - idx}</span>
+                          {a.receiptNo ? (
+                            <span className="text-xs font-bold text-primary">#{a.receiptNo}</span>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">{selectedArrivals.length - idx}</span>
+                          )}
                           <span className="font-medium">{a.itemName}</span>
                         </div>
                         <span className="font-bold text-destructive">{formatIntMoney(a.total)}</span>
@@ -1033,8 +1053,17 @@ export default function PosPartyLodge() {
                       </div>
                       {a.note && <div className="text-xs text-muted-foreground">{a.note}</div>}
                       <div className="text-xs text-muted-foreground">{new Date(a.createdAt).toLocaleDateString()} {new Date(a.createdAt).toLocaleTimeString()}</div>
+                      <div className="flex gap-1 mt-1.5">
+                        <Button variant="outline" size="sm" className="text-xs h-6 px-2" onClick={() => void printEntryReceipt(rd).catch((e: any) => toast({ title: "Print failed", description: e?.message, variant: "destructive" }))}>
+                          <Printer className="h-3 w-3 mr-1" /> Print
+                        </Button>
+                        <Button variant="outline" size="sm" className="text-xs h-6 px-2" onClick={() => void shareEntryReceipt(rd).catch((e: any) => toast({ title: "Share failed", description: e?.message, variant: "destructive" }))}>
+                          <Share2 className="h-3 w-3 mr-1" /> Share
+                        </Button>
+                      </div>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>

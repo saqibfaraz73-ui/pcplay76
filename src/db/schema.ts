@@ -188,6 +188,7 @@ export type SupplierPayment = {
 export type SupplierArrival = {
   id: string;
   supplierId: string;
+  receiptNo?: number;
   itemName: string;
   qty: number;
   unit?: string;
@@ -213,6 +214,7 @@ export type ExportCustomer = {
 export type ExportSale = {
   id: string;
   customerId: string;
+  receiptNo?: number;
   itemName: string;
   qty: number;
   unit?: string;
@@ -356,7 +358,9 @@ export type StaffAccount = {
   createdAt: number;
 };
 
+export type CounterId = "receipt" | "arrival" | "exportSale";
+
 export type Counter = {
-  id: "receipt";
+  id: CounterId;
   next: number;
 };
