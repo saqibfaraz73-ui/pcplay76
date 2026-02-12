@@ -10,7 +10,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { db } from "@/db/appDb";
-import type { ExportCustomer, ExportSale, ExportPayment, Settings } from "@/db/schema";
+import type { ExportCustomer, ExportSale, ExportPayment, Settings, MenuItem } from "@/db/schema";
 import { STOCK_UNITS } from "@/db/schema";
 import { useToast } from "@/hooks/use-toast";
 import { makeId } from "@/features/admin/id";
@@ -54,6 +54,7 @@ export function ExportPartySection() {
   const [sales, setSales] = React.useState<ExportSale[]>([]);
   const [payments, setPayments] = React.useState<ExportPayment[]>([]);
   const [settings, setSettings] = React.useState<Settings | null>(null);
+  const [menuItems, setMenuItems] = React.useState<MenuItem[]>([]);
 
   const salesFileRef = React.useRef<HTMLInputElement>(null);
   const [importForCustomer, setImportForCustomer] = React.useState<ExportCustomer | null>(null);
@@ -100,16 +101,18 @@ export function ExportPartySection() {
   const [query, setQuery] = React.useState("");
 
   const refresh = React.useCallback(async () => {
-    const [custs, sls, pays, s] = await Promise.all([
+    const [custs, sls, pays, s, items] = await Promise.all([
       db.exportCustomers.orderBy("createdAt").toArray(),
       db.exportSales.orderBy("createdAt").toArray(),
       db.exportPayments.orderBy("createdAt").toArray(),
       db.settings.get("app"),
+      db.items.orderBy("name").toArray(),
     ]);
     setCustomers(custs);
     setSales(sls);
     setPayments(pays);
     setSettings(s ?? null);
+    setMenuItems(items);
   }, []);
 
   React.useEffect(() => { void refresh(); }, [refresh]);
@@ -1106,6 +1109,26 @@ export function ExportPartySection() {
                     </div>
                     <div className="space-y-1">
                       <Label className="text-xs">Item Name (optional)</Label>
+                      {menuItems.length > 0 && (
+                        <select
+                          value=""
+                          onChange={(e) => {
+                            const selected = menuItems.find((m) => m.id === e.target.value);
+                            if (selected) {
+                              updateSaleItem(it.key, {
+                                itemName: selected.name,
+                                unitPrice: selected.price,
+                              });
+                            }
+                          }}
+                          className="h-8 w-full rounded-md border bg-background px-2 text-xs mb-1"
+                        >
+                          <option value="">— Pick from menu —</option>
+                          {menuItems.map((m) => (
+                            <option key={m.id} value={m.id}>{m.name} ({formatIntMoney(m.price)})</option>
+                          ))}
+                        </select>
+                      )}
                       <Input value={it.itemName} onChange={(e) => updateSaleItem(it.key, { itemName: e.target.value })} placeholder="e.g., Rice" className="h-8 text-sm" />
                     </div>
                     <div className="flex items-center gap-2">
