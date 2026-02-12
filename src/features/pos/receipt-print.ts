@@ -1,5 +1,5 @@
 import type { Order, Settings } from "@/db/schema";
-import { formatIntMoney } from "@/features/pos/format";
+import { formatIntMoney, fmtDateTime } from "@/features/pos/format";
 import { btConnect, btSend, isNativeAndroid } from "@/features/pos/bluetooth-printer";
 import { usbSend } from "@/features/pos/usb-printer";
 import { generateLogoEscPos } from "@/features/pos/escpos-image";
@@ -59,7 +59,7 @@ async function buildEscPosReceipt(
   const money = (n: number) => formatIntMoney(n);
 
   const title = settings.restaurantName || "SANGI POS";
-  const when = new Date(order.createdAt).toLocaleString();
+  const when = fmtDateTime(order.createdAt);
   let payLabel = order.paymentMethod.toUpperCase();
   if (order.paymentMethod === "credit" && opts?.creditCustomerName) {
     payLabel = `CREDIT: ${opts.creditCustomerName}`;
@@ -263,7 +263,7 @@ export async function printReceiptFromOrder(
   }
 
   // Fallback: browser print
-  const when = new Date(order.createdAt).toLocaleString();
+  const when = fmtDateTime(order.createdAt);
   const paymentLabel =
     order.paymentMethod === "credit" && opts?.creditCustomerName
       ? `CREDIT • ${opts.creditCustomerName}`

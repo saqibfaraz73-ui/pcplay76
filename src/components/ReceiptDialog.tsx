@@ -2,7 +2,7 @@ import * as React from "react";
 import type { CreditCustomer, DeliveryPerson, Order, ReceiptSize, Settings } from "@/db/schema";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { formatIntMoney } from "@/features/pos/format";
+import { formatIntMoney, fmtDateTime } from "@/features/pos/format";
 import { printReceiptFromOrder } from "@/features/pos/receipt-print";
 import { useToast } from "@/hooks/use-toast";
 import { Printer, Share2 } from "lucide-react";
@@ -68,7 +68,7 @@ function buildReceiptPdf(order: Order, opts?: { creditCustomerName?: string; del
     doc.line(left, y - 3, left + width, y - 3);
   };
 
-  const when = new Date(order.createdAt).toLocaleString();
+   const when = fmtDateTime(order.createdAt);
   let payLabel = order.paymentMethod.toUpperCase();
   if (order.paymentMethod === "credit" && opts?.creditCustomerName) {
     payLabel = `CREDIT: ${opts.creditCustomerName}`;

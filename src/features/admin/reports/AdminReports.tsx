@@ -9,7 +9,7 @@ import { db } from "@/db/appDb";
 import type { CreditCustomer, DeliveryPerson, Expense, ExportCustomer, ExportSale, MenuItem, Order, RestaurantTable, Settings, TableOrder, Waiter, WorkPeriod } from "@/db/schema";
 import type { AdvanceOrder, BookingOrder } from "@/db/booking-schema";
 import { useToast } from "@/hooks/use-toast";
-import { formatIntMoney } from "@/features/pos/format";
+import { formatIntMoney, fmtDate, fmtDateTime, fmtTime12 } from "@/features/pos/format";
 import { writePdfFile, shareFile } from "@/features/files/sangi-folders";
 import { SalesReportPreview } from "@/features/admin/reports/SalesReportPreview";
 
@@ -476,7 +476,7 @@ function buildSalesPdf(args: {
       const label = e.note ? `${e.name} (${e.note})` : e.name;
       doc.text(label.slice(0, 45), left + 24, y);
       doc.text(formatIntMoney(e.amount), left + contentWidth * 0.65, y);
-      doc.text(new Date(e.createdAt).toLocaleDateString(), right - 10, y, { align: "right" });
+      doc.text(fmtDate(e.createdAt), right - 10, y, { align: "right" });
       y += lineH;
     });
   }
@@ -798,8 +798,8 @@ export function AdminReports() {
                   <option value="">Select…</option>
                   {workPeriods.map((wp) => (
                     <option key={wp.id} value={wp.id}>
-                      {wp.cashier} • {new Date(wp.startedAt).toLocaleString()}
-                      {wp.endedAt ? ` → ${new Date(wp.endedAt).toLocaleTimeString()}` : " (active)"}
+                      {wp.cashier} • {fmtDateTime(wp.startedAt)}
+                      {wp.endedAt ? ` → ${fmtTime12(new Date(wp.endedAt).toTimeString().slice(0,5))}` : " (active)"}
                     </option>
                   ))}
                 </select>

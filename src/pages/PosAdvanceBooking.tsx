@@ -17,7 +17,7 @@ import type { MenuItem, Settings } from "@/db/schema";
 import type { AdvanceOrder, AdvanceOrderLine, BookableItem, BookingOrder } from "@/db/booking-schema";
 import { useAuth } from "@/auth/AuthProvider";
 import { useToast } from "@/hooks/use-toast";
-import { formatIntMoney } from "@/features/pos/format";
+import { formatIntMoney, fmtDate, fmtDateTime, fmtTime12 } from "@/features/pos/format";
 import { makeId } from "@/features/admin/id";
 import { printAdvanceReceipt, printAdvanceKot, printBookingReceipt } from "@/features/pos/advance-receipt";
 import { buildBookingLodgePdf } from "@/features/admin/reports/booking-lodge-pdf";
@@ -26,24 +26,6 @@ import { Capacitor } from "@capacitor/core";
 import { Plus, Trash2, X, Check, Ban, Printer, FileText, Share2 } from "lucide-react";
 
 /* ─── helpers ─── */
-const fmtDate = (ts: number | string) => {
-  const d = new Date(ts);
-  return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
-};
-const fmtDateTime = (ts: number) => {
-  const d = new Date(ts);
-  const date = fmtDate(ts);
-  let h = d.getHours(); const m = d.getMinutes();
-  const ampm = h >= 12 ? "PM" : "AM";
-  h = h % 12 || 12;
-  return `${date} ${h}:${String(m).padStart(2, "0")} ${ampm}`;
-};
-const fmtTime12 = (t: string) => {
-  const [h24, m] = t.split(":").map(Number);
-  const ampm = h24 >= 12 ? "PM" : "AM";
-  const h = h24 % 12 || 12;
-  return `${h}:${String(m).padStart(2, "0")} ${ampm}`;
-};
 
 function calcEndTime(start: string, durationHours: number): string {
   const [h, m] = start.split(":").map(Number);

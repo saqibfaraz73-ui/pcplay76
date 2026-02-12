@@ -1,7 +1,7 @@
 import * as React from "react";
 import type { CreditCustomer, DeliveryPerson, Expense, ExportCustomer, ExportSale, MenuItem, Order, RestaurantTable, Settings, TableOrder, Waiter } from "@/db/schema";
 import type { AdvanceOrder, BookingOrder } from "@/db/booking-schema";
-import { formatIntMoney } from "@/features/pos/format";
+import { formatIntMoney, fmtDate } from "@/features/pos/format";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ReportOrderList } from "@/features/admin/reports/ReportOrderList";
 
@@ -501,7 +501,7 @@ export function SalesReportPreview({
                         {e.note && <span className="text-xs text-muted-foreground ml-1">({e.note})</span>}
                       </td>
                       <td className="whitespace-nowrap px-3 py-2 text-destructive font-medium">{formatIntMoney(e.amount)}</td>
-                      <td className="whitespace-nowrap px-3 py-2 text-muted-foreground">{new Date(e.createdAt).toLocaleDateString()}</td>
+                      <td className="whitespace-nowrap px-3 py-2 text-muted-foreground">{fmtDate(e.createdAt)}</td>
                     </tr>
                   ))}
                 </tbody>

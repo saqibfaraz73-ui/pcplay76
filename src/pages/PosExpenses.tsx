@@ -22,7 +22,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useWorkPeriod } from "@/features/pos/WorkPeriodProvider";
 import { useAuth } from "@/auth/AuthProvider";
 import { makeId } from "@/features/admin/id";
-import { formatIntMoney, parseNonDecimalInt } from "@/features/pos/format";
+import { formatIntMoney, parseNonDecimalInt, fmtDate, fmtDateTime } from "@/features/pos/format";
 import { writePdfFile, shareFile } from "@/features/files/sangi-folders";
 import { Capacitor } from "@capacitor/core";
 import { Plus, Trash2, Share2 } from "lucide-react";
@@ -138,7 +138,7 @@ export default function PosExpenses() {
       const label = e.note ? `${e.name} (${e.note})` : e.name;
       doc.text(label.slice(0, 40), left + 30, y);
       doc.text(formatIntMoney(e.amount), right - 100, y);
-      doc.text(new Date(e.createdAt).toLocaleDateString(), right - 30, y, { align: "right" });
+      doc.text(fmtDate(e.createdAt), right - 30, y, { align: "right" });
       y += lineH;
     });
 
@@ -295,7 +295,7 @@ export default function PosExpenses() {
                   </div>
                   {e.note && <div className="text-xs text-muted-foreground mt-0.5">{e.note}</div>}
                   <div className="text-xs text-muted-foreground mt-0.5">
-                    {new Date(e.createdAt).toLocaleDateString()} {new Date(e.createdAt).toLocaleTimeString()}
+                    {fmtDateTime(e.createdAt)}
                   </div>
                 </div>
                 <div className="flex items-center gap-2">

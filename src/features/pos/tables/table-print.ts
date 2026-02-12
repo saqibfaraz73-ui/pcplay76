@@ -2,6 +2,7 @@ import type { Settings } from "@/db/schema";
 import { btConnect, btSend, isNativeAndroid } from "@/features/pos/bluetooth-printer";
 import { usbSend } from "@/features/pos/usb-printer";
 import { db } from "@/db/appDb";
+import { fmtDateTime, fmtTime12 } from "@/features/pos/format";
 
 type KotItem = {
   name: string;
@@ -74,7 +75,7 @@ export async function printTableKot(args: {
 }
 
 function buildKotHtml(tableNumber: string, waiterName: string, items: KotItem[]): string {
-  const now = new Date().toLocaleString();
+  const now = fmtDateTime(Date.now());
   const itemsHtml = items
     .map((item) => `<div class="item"><span>${item.name}</span><span>x${item.qty}</span></div>`)
     .join("");
@@ -96,7 +97,7 @@ function buildKotEscPos(tableNumber: string, waiterName: string, items: KotItem[
   const width = 32; // 58mm thermal printer
   const hr = "-".repeat(width);
   const now = new Date();
-  const timeStr = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  const timeStr = fmtTime12(now.toTimeString().slice(0, 5));
 
   const center = (s: string) => {
     const pad = Math.max(0, Math.floor((width - s.length) / 2));
