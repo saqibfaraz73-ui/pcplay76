@@ -26,7 +26,7 @@ import { formatIntMoney, parseNonDecimalInt } from "@/features/pos/format";
 import { writePdfFile, shareFile } from "@/features/files/sangi-folders";
 import { Capacitor } from "@capacitor/core";
 import { Plus, Trash2, Share2, CreditCard, Banknote, PackagePlus, Upload, Download } from "lucide-react";
-import { importArrivalsFromExcel, downloadImportTemplate } from "@/features/party-import/party-import";
+import { importArrivalsFromExcel, importArrivalsForSupplier, downloadImportTemplate, downloadPartyImportTemplate } from "@/features/party-import/party-import";
 import { canMakeSale, incrementSaleCount } from "@/features/licensing/licensing-db";
 import { UpgradeDialog } from "@/features/licensing/UpgradeDialog";
 import { ExportPartySection } from "@/features/export-party/ExportPartySection";
@@ -46,6 +46,7 @@ export default function PosPartyLodge() {
   const [settings, setSettings] = React.useState<Settings | null>(null);
 
   const arrivalFileRef = React.useRef<HTMLInputElement>(null);
+  const [importForSupplier, setImportForSupplier] = React.useState<Supplier | null>(null);
 
   const [supplierMode, setSupplierMode] = React.useState<SupplierMode>({ open: false });
   const [payMode, setPayMode] = React.useState<PayMode>({ open: false });
@@ -861,7 +862,10 @@ export default function PosPartyLodge() {
     const file = e.target.files?.[0];
     if (!file) return;
     try {
-      const res = await importArrivalsFromExcel(file);
+      const sup = importForSupplier;
+      const res = sup
+        ? await importArrivalsForSupplier(file, sup.id)
+        : await importArrivalsFromExcel(file);
       await refresh();
       if (res.errors.length) toast({ title: `Imported ${res.imported} arrivals`, description: res.errors.join("\n"), variant: res.imported ? "default" : "destructive" });
       else toast({ title: `Imported ${res.imported} arrivals successfully` });
@@ -869,6 +873,7 @@ export default function PosPartyLodge() {
       toast({ title: "Import failed", description: err?.message ?? String(err), variant: "destructive" });
     }
     e.target.value = "";
+    setImportForSupplier(null);
   };
 
   // ─── Render ───────────────────────────────────────────
@@ -880,18 +885,10 @@ export default function PosPartyLodge() {
           <h1 className="text-xl font-semibold">Party Lodge</h1>
           <p className="text-sm text-muted-foreground">Manage suppliers & payments</p>
         </div>
-        <div className="flex gap-1.5">
-          <Button variant="outline" size="sm" onClick={() => downloadImportTemplate("arrivals")} title="Download template">
-            <Download className="h-4 w-4" />
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => arrivalFileRef.current?.click()} title="Import arrivals from Excel">
-            <Upload className="h-4 w-4" />
-          </Button>
-          <Button onClick={openNew}>
-            <Plus className="h-4 w-4 mr-1" />
-            Add Supplier
-          </Button>
-        </div>
+        <Button onClick={openNew}>
+          <Plus className="h-4 w-4 mr-1" />
+          Add Supplier
+        </Button>
       </div>
       <input ref={arrivalFileRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleArrivalImport} />
 
@@ -943,6 +940,14 @@ export default function PosPartyLodge() {
                     <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => void shareSingleArrivalsPdf(sup)}>
                       <PackagePlus className="h-3 w-3 mr-1" />
                       Arrivals PDF
+                    </Button>
+                    <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => downloadPartyImportTemplate(sup.name)} title="Download import template">
+                      <Download className="h-3 w-3 mr-1" />
+                      Template
+                    </Button>
+                    <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => { setImportForSupplier(sup); arrivalFileRef.current?.click(); }} title="Import arrivals from Excel">
+                      <Upload className="h-3 w-3 mr-1" />
+                      Import
                     </Button>
                     <Button variant="ghost" size="sm" className="text-xs h-7 text-destructive" onClick={() => setDeleteTarget(sup)}>
                       <Trash2 className="h-3 w-3" />

@@ -160,6 +160,112 @@ export async function importExportSalesFromExcel(file: File): Promise<PartyImpor
   return result;
 }
 
+/** Import arrivals for a single supplier (no Party Name column needed) */
+export async function importArrivalsForSupplier(file: File, supplierId: string): Promise<PartyImportResult> {
+  const rows = await readRows(file);
+  const result: PartyImportResult = { success: false, imported: 0, errors: [] };
+
+  if (rows.length < 2) {
+    result.errors.push("File is empty or has no data rows.");
+    return result;
+  }
+
+  const supplier = await db.suppliers.get(supplierId);
+  if (!supplier) { result.errors.push("Supplier not found."); return result; }
+
+  const now = Date.now();
+
+  for (let i = 1; i < rows.length; i++) {
+    const cells = rows[i];
+    if (!cells || cells.every((c) => !String(c).trim())) continue;
+
+    const itemName = String(cells[0] ?? "").trim();
+    const qty = parseFloat(String(cells[1] ?? "0")) || 0;
+    const unit = String(cells[2] ?? "").trim();
+    const unitPrice = parseFloat(String(cells[3] ?? "0")) || 0;
+    let total = parseFloat(String(cells[4] ?? "0")) || 0;
+    const note = String(cells[5] ?? "").trim();
+
+    if (!itemName) { result.errors.push(`Row ${i + 1}: Item Name is required.`); continue; }
+
+    if (!total && qty && unitPrice) total = qty * unitPrice;
+    if (!total) { result.errors.push(`Row ${i + 1}: Total is zero.`); continue; }
+
+    const arrival: SupplierArrival = {
+      id: makeId("arr"),
+      supplierId: supplier.id,
+      itemName,
+      qty,
+      unit: unit || undefined,
+      unitPrice,
+      total: Math.round(total),
+      note: note || undefined,
+      createdAt: now,
+    };
+    await db.supplierArrivals.put(arrival);
+    await db.suppliers.update(supplier.id, { totalBalance: supplier.totalBalance + Math.round(total) });
+    supplier.totalBalance += Math.round(total);
+    result.imported++;
+  }
+
+  result.success = result.imported > 0;
+  return result;
+}
+
+/** Import sales for a single export customer (no Party Name column needed) */
+export async function importSalesForCustomer(file: File, customerId: string): Promise<PartyImportResult> {
+  const rows = await readRows(file);
+  const result: PartyImportResult = { success: false, imported: 0, errors: [] };
+
+  if (rows.length < 2) {
+    result.errors.push("File is empty or has no data rows.");
+    return result;
+  }
+
+  const customer = await db.exportCustomers.get(customerId);
+  if (!customer) { result.errors.push("Buyer not found."); return result; }
+
+  const now = Date.now();
+
+  for (let i = 1; i < rows.length; i++) {
+    const cells = rows[i];
+    if (!cells || cells.every((c) => !String(c).trim())) continue;
+
+    const itemName = String(cells[0] ?? "").trim();
+    const qty = parseFloat(String(cells[1] ?? "0")) || 0;
+    const unit = String(cells[2] ?? "").trim();
+    const unitPrice = parseFloat(String(cells[3] ?? "0")) || 0;
+    let total = parseFloat(String(cells[4] ?? "0")) || 0;
+    const note = String(cells[5] ?? "").trim();
+
+    if (!itemName) { result.errors.push(`Row ${i + 1}: Item Name is required.`); continue; }
+
+    if (!total && qty && unitPrice) total = qty * unitPrice;
+    if (!total) { result.errors.push(`Row ${i + 1}: Total is zero.`); continue; }
+
+    const sale: ExportSale = {
+      id: makeId("es"),
+      customerId: customer.id,
+      itemName,
+      qty,
+      unit: unit || undefined,
+      unitPrice,
+      total: Math.round(total),
+      note: note || undefined,
+      createdAt: now,
+    };
+    await db.exportSales.put(sale);
+    await db.exportCustomers.update(customer.id, { totalBalance: customer.totalBalance + Math.round(total) });
+    customer.totalBalance += Math.round(total);
+    result.imported++;
+  }
+
+  result.success = result.imported > 0;
+  return result;
+}
+
+const PARTY_IMPORT_HEADERS = ["Item Name", "Quantity", "Unit", "Unit Price", "Total", "Note"];
+
 /** Generate a sample/template Excel file for download */
 export function downloadImportTemplate(type: "arrivals" | "sales") {
   const ws = XLSX.utils.aoa_to_sheet([
@@ -174,6 +280,26 @@ export function downloadImportTemplate(type: "arrivals" | "sales") {
   const a = document.createElement("a");
   a.href = url;
   a.download = `${type}_import_template.xlsx`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+/** Generate a per-party template (no Party Name column) */
+export function downloadPartyImportTemplate(partyName: string) {
+  const ws = XLSX.utils.aoa_to_sheet([
+    PARTY_IMPORT_HEADERS,
+    ["Rice", "50", "kg", "100", "", "sample note"],
+  ]);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, partyName.slice(0, 31));
+  const buf = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+  const blob = new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${partyName}_import_template.xlsx`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
