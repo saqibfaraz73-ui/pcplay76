@@ -71,7 +71,7 @@ async function buildEscPosReceipt(
   const money = (n: number) => formatIntMoney(n);
 
   const title = settings.restaurantName || "SANGI POS";
-  const when = new Date(order.createdAt).toLocaleString();
+  const when = new Date(order.createdAt).toLocaleString([], { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: true });
   let payLabel = order.paymentMethod.toUpperCase();
   if (order.paymentMethod === "credit" && opts?.creditCustomerName) {
     payLabel = `CREDIT: ${opts.creditCustomerName}`;
@@ -281,7 +281,7 @@ export async function printReceiptFromOrder(
   }
 
   // Fallback: browser print
-  const when = new Date(order.createdAt).toLocaleString();
+  const when = new Date(order.createdAt).toLocaleString([], { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: true });
   const paymentLabel =
     order.paymentMethod === "credit" && opts?.creditCustomerName
       ? `CREDIT • ${opts.creditCustomerName}`
