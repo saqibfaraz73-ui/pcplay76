@@ -13,7 +13,7 @@ export type AdvanceOrderLine = {
 
 export type AdvanceOrder = {
   id: string;
-  receiptNo?: number;
+  receiptNo: number;
   status: AdvanceOrderStatus;
   lines: AdvanceOrderLine[];
   subtotal: number;
@@ -43,7 +43,7 @@ export type BookingOrderStatus = "pending" | "completed" | "cancelled";
 
 export type BookingOrder = {
   id: string;
-  receiptNo?: number;
+  receiptNo: number;
   bookableItemId: string;
   bookableItemName: string;
   status: BookingOrderStatus;
