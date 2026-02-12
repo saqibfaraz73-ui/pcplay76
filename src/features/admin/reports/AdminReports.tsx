@@ -161,6 +161,7 @@ function buildSalesPdf(args: {
   // ===== SUMMARY BOXES =====
   const boxData: { label: string; value: string; color?: [number, number, number] }[] = [
     { label: "Total Sales", value: formatIntMoney(overallSales) },
+    { label: "Take Away Sales", value: formatIntMoney(takeawayTotal) },
     { label: "Delivery Sales", value: formatIntMoney(deliveryTotal) },
     { label: "Table Sales", value: formatIntMoney(tableSalesTotal) },
     { label: "Credit Sales", value: formatIntMoney(totalCreditSales) },
