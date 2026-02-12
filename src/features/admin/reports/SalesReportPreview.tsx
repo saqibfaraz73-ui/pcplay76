@@ -1,5 +1,5 @@
 import * as React from "react";
-import type { CreditCustomer, DeliveryPerson, Expense, MenuItem, Order, RestaurantTable, Settings, TableOrder, Waiter } from "@/db/schema";
+import type { CreditCustomer, DeliveryPerson, Expense, ExportCustomer, ExportSale, MenuItem, Order, RestaurantTable, Settings, TableOrder, Waiter } from "@/db/schema";
 import { formatIntMoney } from "@/features/pos/format";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ReportOrderList } from "@/features/admin/reports/ReportOrderList";
@@ -17,6 +17,8 @@ type Props = {
   tables?: RestaurantTable[];
   settings?: Settings | null;
   waiters?: Waiter[];
+  exportSales?: ExportSale[];
+  exportCustomers?: ExportCustomer[];
 };
 
 export function SalesReportPreview({ 
@@ -32,9 +34,12 @@ export function SalesReportPreview({
   tables = [],
   waiters = [],
   settings,
+  exportSales = [],
+  exportCustomers = [],
 }: Props) {
   const deliveryEnabled = settings?.deliveryEnabled ?? true;
   const tableEnabled = settings?.tableManagementEnabled ?? true;
+  const showExport = settings?.showExportInReports ?? false;
 
   const completed = React.useMemo(() => orders.filter((o) => o.status === "completed"), [orders]);
   const cancelled = React.useMemo(() => orders.filter((o) => o.status === "cancelled"), [orders]);
@@ -301,6 +306,60 @@ export function SalesReportPreview({
             </div>
           </div>
         )}
+
+        {/* Export Sales Section */}
+        {showExport && exportSales.length > 0 && (() => {
+          const exportCompleted = exportSales.filter((s) => !s.cancelled);
+          const exportCancelledList = exportSales.filter((s) => s.cancelled);
+          const exportTotal = exportCompleted.reduce((s, e) => s + e.total, 0);
+          const exportCancelledTotal = exportCancelledList.reduce((s, e) => s + e.total, 0);
+          const exportCustsById = Object.fromEntries(exportCustomers.map((c) => [c.id, c]));
+          const byExpCust: Record<string, { name: string; total: number; count: number }> = {};
+          for (const s of exportCompleted) {
+            if (!byExpCust[s.customerId]) byExpCust[s.customerId] = { name: exportCustsById[s.customerId]?.name ?? s.customerId, total: 0, count: 0 };
+            byExpCust[s.customerId].total += s.total;
+            byExpCust[s.customerId].count += 1;
+          }
+          return (
+            <div className="space-y-2">
+              <div className="text-sm font-semibold">Export Sales</div>
+              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="rounded-md border p-3">
+                  <div className="text-xs text-muted-foreground">Export Sales Total</div>
+                  <div className="text-base font-semibold">{formatIntMoney(exportTotal)}</div>
+                </div>
+                {exportCancelledList.length > 0 && (
+                  <div className="rounded-md border p-3">
+                    <div className="text-xs text-muted-foreground">Export Cancelled</div>
+                    <div className="text-base font-semibold text-destructive">{exportCancelledList.length} ({formatIntMoney(exportCancelledTotal)})</div>
+                  </div>
+                )}
+              </div>
+              {Object.keys(byExpCust).length > 0 && (
+                <div className="overflow-auto rounded-md border">
+                  <table className="w-full text-sm">
+                    <thead className="bg-muted/40">
+                      <tr className="text-left">
+                        <th className="px-3 py-2 font-medium">Buyer</th>
+                        <th className="whitespace-nowrap px-3 py-2 font-medium">Sales</th>
+                        <th className="whitespace-nowrap px-3 py-2 font-medium">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {Object.values(byExpCust).sort((a, b) => a.name.localeCompare(b.name)).map((c) => (
+                        <tr key={c.name} className="border-t">
+                          <td className="px-3 py-2">{c.name}</td>
+                          <td className="whitespace-nowrap px-3 py-2">{c.count}</td>
+                          <td className="whitespace-nowrap px-3 py-2 font-medium">{formatIntMoney(c.total)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          );
+        })()}
 
         {/* Expenses summary */}
         {expenses.length > 0 && (

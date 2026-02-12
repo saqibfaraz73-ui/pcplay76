@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { db } from "@/db/appDb";
-import type { CreditCustomer, DeliveryPerson, Expense, MenuItem, Order, RestaurantTable, Settings, TableOrder, Waiter, WorkPeriod } from "@/db/schema";
+import type { CreditCustomer, DeliveryPerson, Expense, ExportCustomer, ExportSale, MenuItem, Order, RestaurantTable, Settings, TableOrder, Waiter, WorkPeriod } from "@/db/schema";
 import { useToast } from "@/hooks/use-toast";
 import { formatIntMoney } from "@/features/pos/format";
 import { writePdfFile, shareFile } from "@/features/files/sangi-folders";
@@ -52,6 +52,8 @@ function buildSalesPdf(args: {
   tables: RestaurantTable[];
   waiters: Waiter[];
   settings: Settings | null;
+  exportSales?: ExportSale[];
+  exportCustomers?: ExportCustomer[];
 }) {
   const doc = new jsPDF({ unit: "pt", format: "a4" });
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -137,14 +139,24 @@ function buildSalesPdf(args: {
   const tableCreditDiscount = tableCreditCompleted.reduce((s, o) => s + o.discountTotal, 0);
   const tableCreditCancelledTotal = tableCreditCancelled.reduce((s, o) => s + o.total, 0);
 
-  const overallSales = takeawayTotal + deliveryTotal + tableSalesTotal + creditTotal + tableCreditTotal;
+  // Export sales
+  const showExport = args.settings?.showExportInReports ?? false;
+  const exportSalesData = args.exportSales ?? [];
+  const exportCustomersData = args.exportCustomers ?? [];
+  const exportCompleted = exportSalesData.filter((s) => !s.cancelled);
+  const exportCancelled = exportSalesData.filter((s) => s.cancelled);
+  const exportTotal = exportCompleted.reduce((s, e) => s + e.total, 0);
+  const exportCancelledTotal = exportCancelled.reduce((s, e) => s + e.total, 0);
+  const exportCustomersById = Object.fromEntries(exportCustomersData.map((c) => [c.id, c]));
+
+  const overallSales = takeawayTotal + deliveryTotal + tableSalesTotal + creditTotal + tableCreditTotal + (showExport ? exportTotal : 0);
   const overallDiscount = takeawayDiscount + deliveryDiscount + tableDiscount + creditDiscount + tableCreditDiscount;
   const totalExpenses = args.expenses.reduce((s, e) => s + e.amount, 0);
 
   const totalCreditSales = creditTotal + tableCreditTotal;
   const totalCreditDiscount = creditDiscount + tableCreditDiscount;
   const totalCreditCancelled = creditCancelledTotal + tableCreditCancelledTotal;
-  const totalCancelledAmount = takeawayCancelledTotal + deliveryCancelledTotal + tableCancelledTotal + totalCreditCancelled;
+  const totalCancelledAmount = takeawayCancelledTotal + deliveryCancelledTotal + tableCancelledTotal + totalCreditCancelled + (showExport ? exportCancelledTotal : 0);
   const remainingBalance = overallSales - overallDiscount - totalExpenses;
 
   // Title
@@ -168,6 +180,7 @@ function buildSalesPdf(args: {
     ...(deliveryEnabled ? [{ label: "Delivery Sales", value: formatIntMoney(deliveryTotal) }] : []),
     ...(tableEnabled ? [{ label: "Table Sales", value: formatIntMoney(tableSalesTotal) }] : []),
     { label: "Credit Sales", value: formatIntMoney(totalCreditSales) },
+    ...(showExport ? [{ label: "Export Sales", value: formatIntMoney(exportTotal) }] : []),
     { label: "Total Cancelled", value: formatIntMoney(totalCancelledAmount), color: [200, 0, 0] as [number, number, number] },
     { label: "Total Discount", value: formatIntMoney(overallDiscount), color: [200, 0, 0] as [number, number, number] },
     { label: "Total Expenses", value: formatIntMoney(totalExpenses), color: [200, 0, 0] as [number, number, number] },
@@ -331,6 +344,30 @@ function buildSalesPdf(args: {
     }
   }
 
+  // ===== EXPORT SALES =====
+  if (showExport && exportCompleted.length > 0) {
+    heading("Export Sales");
+    row("Export Sales Total", formatIntMoney(exportTotal), true);
+    if (exportCancelled.length > 0) {
+      row(`Cancelled (${exportCancelled.length})`, formatIntMoney(exportCancelledTotal), false, [200, 0, 0]);
+    }
+
+    // By customer
+    const byExpCust: Record<string, { total: number; count: number }> = {};
+    for (const s of exportCompleted) {
+      if (!byExpCust[s.customerId]) byExpCust[s.customerId] = { total: 0, count: 0 };
+      byExpCust[s.customerId].total += s.total;
+      byExpCust[s.customerId].count += 1;
+    }
+    y += 4;
+    for (const [cid, data] of Object.entries(byExpCust).sort((a, b) =>
+      (exportCustomersById[a[0]]?.name ?? "").localeCompare(exportCustomersById[b[0]]?.name ?? "")
+    )) {
+      const name = exportCustomersById[cid]?.name ?? cid;
+      row(`${name} (${data.count})`, formatIntMoney(data.total));
+    }
+  }
+
   // ===== OVERALL SUMMARY =====
   heading("Overall Summary");
   separator();
@@ -338,6 +375,7 @@ function buildSalesPdf(args: {
   if (deliveryEnabled) row("Delivery Sales", formatIntMoney(deliveryTotal));
   if (tableEnabled) row("Table Sales", formatIntMoney(tableSalesTotal));
   row("Credit Sales", formatIntMoney(totalCreditSales));
+  if (showExport) row("Export Sales", formatIntMoney(exportTotal));
   y += 4;
   row("Overall Sales", formatIntMoney(overallSales), true);
   row("Minus Overall Discounts", `-${formatIntMoney(overallDiscount)}`, false, [200, 0, 0]);
@@ -443,6 +481,7 @@ export function AdminReports() {
   const [workPeriods, setWorkPeriods] = React.useState<WorkPeriod[]>([]);
   const [tables, setTables] = React.useState<RestaurantTable[]>([]);
   const [waiters, setWaiters] = React.useState<Waiter[]>([]);
+  const [exportCustomers, setExportCustomers] = React.useState<ExportCustomer[]>([]);
 
   const now = Date.now();
   const [filterType, setFilterType] = React.useState<"date" | "workPeriod">("date");
@@ -455,11 +494,13 @@ export function AdminReports() {
     orders: Order[]; 
     expenses: Expense[];
     tableOrders: TableOrder[];
+    exportSales: ExportSale[];
   }>({
     loading: false,
     orders: [],
     expenses: [],
     tableOrders: [],
+    exportSales: [],
   });
 
   const [lastExport, setLastExport] = React.useState<{
@@ -471,20 +512,24 @@ export function AdminReports() {
 
   React.useEffect(() => {
     (async () => {
-      const s = await db.settings.get("app");
+      const [s, cs, dps, its, wps, tbls, wtrs, expCs] = await Promise.all([
+        db.settings.get("app"),
+        db.customers.orderBy("createdAt").toArray(),
+        db.deliveryPersons.orderBy("createdAt").toArray(),
+        db.items.orderBy("createdAt").toArray(),
+        db.workPeriods.orderBy("startedAt").reverse().limit(50).toArray(),
+        db.restaurantTables.orderBy("createdAt").toArray(),
+        db.waiters.orderBy("createdAt").toArray(),
+        db.exportCustomers.orderBy("createdAt").toArray(),
+      ]);
       setSettings(s ?? null);
-      const cs = await db.customers.orderBy("createdAt").toArray();
-      const dps = await db.deliveryPersons.orderBy("createdAt").toArray();
-      const its = await db.items.orderBy("createdAt").toArray();
-      const wps = await db.workPeriods.orderBy("startedAt").reverse().limit(50).toArray();
-      const tbls = await db.restaurantTables.orderBy("createdAt").toArray();
-      const wtrs = await db.waiters.orderBy("createdAt").toArray();
       setCustomers(cs);
       setDeliveryPersons(dps);
       setItems(its);
       setWorkPeriods(wps);
       setTables(tbls);
       setWaiters(wtrs);
+      setExportCustomers(expCs);
     })();
   }, []);
 
@@ -529,6 +574,11 @@ export function AdminReports() {
     });
   };
 
+  const fetchExportSalesInRange = async (fromTs: number, toTs: number) => {
+    const all = await db.exportSales.toArray();
+    return all.filter((s) => s.createdAt >= fromTs && s.createdAt <= toTs);
+  };
+
   const loadSalesPreview = async () => {
     try {
       setSalesPreview((p) => ({ ...p, loading: true }));
@@ -536,19 +586,23 @@ export function AdminReports() {
       let orders: Order[];
       let expenses: Expense[];
       let tableOrders: TableOrder[];
+      let expSales: ExportSale[];
       if (filterType === "workPeriod" && selectedWorkPeriodId) {
         orders = await fetchOrdersByWorkPeriod(selectedWorkPeriodId);
         expenses = await fetchExpensesByWorkPeriod(selectedWorkPeriodId);
         tableOrders = await fetchTableOrdersByWorkPeriod(selectedWorkPeriodId);
+        const wp = workPeriods.find((w) => w.id === selectedWorkPeriodId);
+        expSales = wp ? await fetchExportSalesInRange(wp.startedAt, wp.endedAt ?? Date.now()) : [];
       } else {
         const fromTs = startOfDay(parseDateInput(from));
         const toTs = endOfDay(parseDateInput(to));
         orders = await fetchOrdersInRange(fromTs, toTs);
         expenses = await fetchExpensesInRange(fromTs, toTs);
         tableOrders = await fetchTableOrdersInRange(fromTs, toTs);
+        expSales = await fetchExportSalesInRange(fromTs, toTs);
       }
       
-      setSalesPreview({ loading: false, orders, expenses, tableOrders });
+      setSalesPreview({ loading: false, orders, expenses, tableOrders, exportSales: expSales });
     } catch (e: any) {
       setSalesPreview((p) => ({ ...p, loading: false }));
       toast({ title: "Preview failed", description: e?.message ?? String(e), variant: "destructive" });
@@ -579,6 +633,8 @@ export function AdminReports() {
         ? await fetchTableOrdersByWorkPeriod(selectedWorkPeriodId)
         : await fetchTableOrdersInRange(fromTs, toTs);
 
+      const expSales = await fetchExportSalesInRange(fromTs, toTs);
+
       const doc = buildSalesPdf({
         restaurantName: settings?.restaurantName ?? "SANGI POS",
         from: fromTs,
@@ -592,6 +648,8 @@ export function AdminReports() {
         tables,
         waiters,
         settings,
+        exportSales: expSales,
+        exportCustomers,
       });
       const bytes = doc.output("arraybuffer");
       const fileName = `sales_${toDateInputValue(fromTs)}_${toDateInputValue(toTs)}.pdf`;
@@ -672,6 +730,8 @@ export function AdminReports() {
         tables={tables}
         waiters={waiters}
         settings={settings}
+        exportSales={salesPreview.exportSales}
+        exportCustomers={exportCustomers}
       />
 
       <Card>
