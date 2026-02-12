@@ -17,7 +17,8 @@ import { makeId } from "@/features/admin/id";
 import { formatIntMoney, parseNonDecimalInt } from "@/features/pos/format";
 import { writePdfFile, shareFile } from "@/features/files/sangi-folders";
 import { Capacitor } from "@capacitor/core";
-import { Plus, Trash2, Share2, CreditCard, Banknote, PackagePlus, Upload, Download } from "lucide-react";
+import { Plus, Trash2, Share2, CreditCard, Banknote, PackagePlus, Upload, Download, Printer } from "lucide-react";
+import { printEntryReceipt, shareEntryReceipt, type EntryReceiptData } from "@/features/pos/entry-receipt";
 import { importExportSalesFromExcel, importSalesForCustomer, downloadImportTemplate, downloadPartyImportTemplate } from "@/features/party-import/party-import";
 import { canMakeSale, incrementSaleCount } from "@/features/licensing/licensing-db";
 import { UpgradeDialog } from "@/features/licensing/UpgradeDialog";
@@ -242,13 +243,35 @@ export function ExportPartySection() {
     return saleItems.reduce((sum, it) => sum + getItemTotal(it), 0);
   }, [saleMode.open, saleItems]);
 
-  const saveSale = async () => {
+  const buildSaleReceiptData = (): EntryReceiptData | null => {
+    if (!saleMode.open) return null;
+    const validItems = saleItems.filter((it) => it.useManualTotal ? it.manualTotal > 0 : (it.qty > 0 && it.unitPrice > 0));
+    if (validItems.length === 0) return null;
+    return {
+      type: "sale",
+      partyName: saleMode.customer.name,
+      lines: validItems.map((it) => ({
+        itemName: it.itemName.trim() || saleMode.customer.itemName || "—",
+        qty: it.qty,
+        unit: it.unit || undefined,
+        unitPrice: it.unitPrice,
+        total: getItemTotal(it),
+      })),
+      grandTotal: saleTotal,
+      note: saleNote.trim() || undefined,
+      date: new Date(),
+    };
+  };
+
+  const saveSale = async (postAction?: "print" | "share") => {
     if (!saleMode.open) return;
     try {
       const validItems = saleItems.filter((it) => it.useManualTotal ? it.manualTotal > 0 : (it.qty > 0 && it.unitPrice > 0));
       if (validItems.length === 0) throw new Error("Add at least one item with valid amounts");
       const cust = saleMode.customer;
       let totalAdded = 0;
+
+      const receiptData = buildSaleReceiptData();
 
       await db.transaction("rw", [db.exportCustomers, db.exportSales], async () => {
         for (const it of validItems) {
@@ -273,6 +296,16 @@ export function ExportPartySection() {
       toast({ title: "Export sale recorded", description: `${validItems.length} item(s) totalling ${formatIntMoney(totalAdded)}` });
       setSaleMode({ open: false });
       await refresh();
+
+      if (receiptData && postAction === "print") {
+        try { await printEntryReceipt(receiptData); } catch (pe: any) {
+          toast({ title: "Print failed", description: pe?.message ?? String(pe), variant: "destructive" });
+        }
+      } else if (receiptData && postAction === "share") {
+        try { await shareEntryReceipt(receiptData); } catch (se: any) {
+          toast({ title: "Share failed", description: se?.message ?? String(se), variant: "destructive" });
+        }
+      }
     } catch (e: any) {
       toast({ title: "Could not save", description: e?.message ?? String(e), variant: "destructive" });
     }
@@ -1046,8 +1079,14 @@ export function ExportPartySection() {
               </>
             )}
           </div>
-          <DialogFooter>
+          <DialogFooter className="flex-col sm:flex-row gap-1.5">
             <Button variant="outline" onClick={() => setSaleMode({ open: false })}>Cancel</Button>
+            <Button variant="outline" onClick={() => void saveSale("print")} disabled={saleTotal <= 0}>
+              <Printer className="h-3.5 w-3.5 mr-1" /> Save & Print
+            </Button>
+            <Button variant="outline" onClick={() => void saveSale("share")} disabled={saleTotal <= 0}>
+              <Share2 className="h-3.5 w-3.5 mr-1" /> Save & Share
+            </Button>
             <Button onClick={() => void saveSale()} disabled={saleTotal <= 0}>Add to Balance</Button>
           </DialogFooter>
         </DialogContent>

@@ -25,7 +25,8 @@ import { makeId } from "@/features/admin/id";
 import { formatIntMoney, parseNonDecimalInt } from "@/features/pos/format";
 import { writePdfFile, shareFile } from "@/features/files/sangi-folders";
 import { Capacitor } from "@capacitor/core";
-import { Plus, Trash2, Share2, CreditCard, Banknote, PackagePlus, Upload, Download } from "lucide-react";
+import { Plus, Trash2, Share2, CreditCard, Banknote, PackagePlus, Upload, Download, Printer } from "lucide-react";
+import { printEntryReceipt, shareEntryReceipt, type EntryReceiptData } from "@/features/pos/entry-receipt";
 import { importArrivalsFromExcel, importArrivalsForSupplier, downloadImportTemplate, downloadPartyImportTemplate } from "@/features/party-import/party-import";
 import { canMakeSale, incrementSaleCount } from "@/features/licensing/licensing-db";
 import { UpgradeDialog } from "@/features/licensing/UpgradeDialog";
@@ -287,7 +288,27 @@ export default function PosPartyLodge() {
     return arrivalItems.reduce((sum, it) => sum + getItemTotal(it), 0);
   }, [arrivalMode.open, arrivalItems]);
 
-  const saveArrival = async () => {
+  const buildArrivalReceiptData = (): EntryReceiptData | null => {
+    if (!arrivalMode.open) return null;
+    const validItems = arrivalItems.filter((it) => it.useManualTotal ? it.manualTotal > 0 : (it.qty > 0 && it.unitPrice > 0));
+    if (validItems.length === 0) return null;
+    return {
+      type: "arrival",
+      partyName: arrivalMode.supplier.name,
+      lines: validItems.map((it) => ({
+        itemName: it.itemName.trim() || arrivalMode.supplier.itemName || "—",
+        qty: it.qty,
+        unit: it.unit || undefined,
+        unitPrice: it.unitPrice,
+        total: getItemTotal(it),
+      })),
+      grandTotal: arrivalTotal,
+      note: arrivalNote.trim() || undefined,
+      date: new Date(),
+    };
+  };
+
+  const saveArrival = async (postAction?: "print" | "share") => {
     if (!arrivalMode.open) return;
     try {
       const validItems = arrivalItems.filter((it) => {
@@ -297,6 +318,8 @@ export default function PosPartyLodge() {
       if (validItems.length === 0) throw new Error("Add at least one item with valid amounts");
       const sup = arrivalMode.supplier;
       let totalAdded = 0;
+
+      const receiptData = buildArrivalReceiptData();
 
       await db.transaction("rw", [db.suppliers, db.supplierArrivals], async () => {
         for (const it of validItems) {
@@ -326,6 +349,17 @@ export default function PosPartyLodge() {
       });
       setArrivalMode({ open: false });
       await refresh();
+
+      // Post-save action
+      if (receiptData && postAction === "print") {
+        try { await printEntryReceipt(receiptData); } catch (pe: any) {
+          toast({ title: "Print failed", description: pe?.message ?? String(pe), variant: "destructive" });
+        }
+      } else if (receiptData && postAction === "share") {
+        try { await shareEntryReceipt(receiptData); } catch (se: any) {
+          toast({ title: "Share failed", description: se?.message ?? String(se), variant: "destructive" });
+        }
+      }
     } catch (e: any) {
       toast({ title: "Could not save", description: e?.message ?? String(e), variant: "destructive" });
     }
@@ -1246,12 +1280,15 @@ export default function PosPartyLodge() {
               </>
             )}
           </div>
-          <DialogFooter>
+          <DialogFooter className="flex-col sm:flex-row gap-1.5">
             <Button variant="outline" onClick={() => setArrivalMode({ open: false })}>Cancel</Button>
-            <Button
-              onClick={() => void saveArrival()}
-              disabled={arrivalTotal <= 0}
-            >
+            <Button variant="outline" onClick={() => void saveArrival("print")} disabled={arrivalTotal <= 0}>
+              <Printer className="h-3.5 w-3.5 mr-1" /> Save & Print
+            </Button>
+            <Button variant="outline" onClick={() => void saveArrival("share")} disabled={arrivalTotal <= 0}>
+              <Share2 className="h-3.5 w-3.5 mr-1" /> Save & Share
+            </Button>
+            <Button onClick={() => void saveArrival()} disabled={arrivalTotal <= 0}>
               Add to Balance
             </Button>
           </DialogFooter>
