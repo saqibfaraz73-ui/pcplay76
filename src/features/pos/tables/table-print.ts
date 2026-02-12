@@ -58,7 +58,7 @@ export async function printTableKot(args: {
     throw new Error("Printer not configured. Go to Admin > Printer and set Connection to Bluetooth or USB.");
   }
 
-  const escPos = buildKotEscPos(tableNumber, waiterName, items);
+  const escPos = buildKotEscPos(tableNumber, waiterName, items, settings);
 
   if (conn === "usb") {
     await usbSend(escPos);
@@ -92,7 +92,20 @@ function buildKotHtml(tableNumber: string, waiterName: string, items: KotItem[])
   `;
 }
 
-function buildKotEscPos(tableNumber: string, waiterName: string, items: KotItem[]): string {
+function getFeedLinesForKot(settings: Settings | null, contentLines: number): number {
+  const lineHeightInch = 0.125;
+  const sizeMap: Record<string, number> = {
+    "1x1": 1, "2x1": 1, "3x1": 1,
+    "2x2": 2, "2x3": 3, "2x4": 4, "2x5": 5,
+  };
+  const targetHeight = sizeMap[settings?.receiptSize ?? "2x3"] ?? 3;
+  const contentHeight = contentLines * lineHeightInch;
+  const remainingInches = Math.max(0, targetHeight - contentHeight);
+  const feedLines = Math.floor(remainingInches / lineHeightInch);
+  return Math.max(3, feedLines);
+}
+
+function buildKotEscPos(tableNumber: string, waiterName: string, items: KotItem[], settings: Settings | null): string {
   const width = 32; // 58mm thermal printer
   const hr = "-".repeat(width);
   const now = new Date();
@@ -105,11 +118,9 @@ function buildKotEscPos(tableNumber: string, waiterName: string, items: KotItem[
 
   const out: string[] = [];
   
-  // Initialize printer
-  out.push("\x1b@");         // init
-  out.push("\x1b3\x18");     // tight line spacing
+  out.push("\x1b@");
+  out.push("\x1b3\x18");
   
-  // Header - centered
   out.push(center("KITCHEN ORDER"));
   out.push(hr);
   out.push(center(`Table: ${tableNumber}`));
@@ -117,17 +128,17 @@ function buildKotEscPos(tableNumber: string, waiterName: string, items: KotItem[
   out.push(center(timeStr));
   out.push(hr);
 
-  // Items - name and quantity only
   for (const item of items) {
-    const line = `${item.name}`.padEnd(width - 4) + `x${item.qty}`;
+    const line = item.name.slice(0, 16).padEnd(width - 4) + `x${item.qty}`;
     out.push(line.slice(0, width));
   }
 
   out.push(hr);
-  out.push("");
-  out.push("");
-  out.push("");
-  out.push("\x1dV\x41\x03"); // partial cut
+
+  const contentLines = 6 + items.length + 1;
+  const feedCount = getFeedLinesForKot(settings, contentLines);
+  out.push("\n".repeat(feedCount));
+  out.push("\x1dV\x41\x03");
 
   return out.join("\n");
 }
