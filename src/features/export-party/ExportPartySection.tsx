@@ -17,7 +17,8 @@ import { makeId } from "@/features/admin/id";
 import { formatIntMoney, parseNonDecimalInt } from "@/features/pos/format";
 import { writePdfFile, shareFile } from "@/features/files/sangi-folders";
 import { Capacitor } from "@capacitor/core";
-import { Plus, Trash2, Share2, CreditCard, Banknote, PackagePlus } from "lucide-react";
+import { Plus, Trash2, Share2, CreditCard, Banknote, PackagePlus, Upload, Download } from "lucide-react";
+import { importExportSalesFromExcel, downloadImportTemplate } from "@/features/party-import/party-import";
 import { canMakeSale, incrementSaleCount } from "@/features/licensing/licensing-db";
 import { UpgradeDialog } from "@/features/licensing/UpgradeDialog";
 
@@ -52,6 +53,8 @@ export function ExportPartySection() {
   const [sales, setSales] = React.useState<ExportSale[]>([]);
   const [payments, setPayments] = React.useState<ExportPayment[]>([]);
   const [settings, setSettings] = React.useState<Settings | null>(null);
+
+  const salesFileRef = React.useRef<HTMLInputElement>(null);
 
   const [customerMode, setCustomerMode] = React.useState<CustomerMode>({ open: false });
   const [payMode, setPayMode] = React.useState<PayMode>({ open: false });
@@ -701,6 +704,20 @@ export function ExportPartySection() {
     toast({ title: !current ? "Export sales will appear in reports" : "Export sales hidden from reports" });
   };
 
+  const handleSalesImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const res = await importExportSalesFromExcel(file);
+      await refresh();
+      if (res.errors.length) toast({ title: `Imported ${res.imported} sales`, description: res.errors.join("\n"), variant: res.imported ? "default" : "destructive" });
+      else toast({ title: `Imported ${res.imported} sales successfully` });
+    } catch (err: any) {
+      toast({ title: "Import failed", description: err?.message ?? String(err), variant: "destructive" });
+    }
+    e.target.value = "";
+  };
+
   // ─── Render ───
   return (
     <div className="space-y-4">
@@ -709,8 +726,17 @@ export function ExportPartySection() {
           <h2 className="text-lg font-semibold">Export Party</h2>
           <p className="text-xs text-muted-foreground">Wholesale buyers you sell to</p>
         </div>
-        <Button size="sm" onClick={openNew}><Plus className="h-4 w-4 mr-1" /> Add Buyer</Button>
+        <div className="flex gap-1.5">
+          <Button variant="outline" size="sm" onClick={() => downloadImportTemplate("sales")} title="Download template">
+            <Download className="h-4 w-4" />
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => salesFileRef.current?.click()} title="Import sales from Excel">
+            <Upload className="h-4 w-4" />
+          </Button>
+          <Button size="sm" onClick={openNew}><Plus className="h-4 w-4 mr-1" /> Add Buyer</Button>
+        </div>
       </div>
+      <input ref={salesFileRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleSalesImport} />
 
       {/* Report toggle */}
       <div className="flex items-center gap-2 rounded-md border p-2">
