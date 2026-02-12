@@ -286,6 +286,9 @@ export type Settings = {
   waiterLoginEnabled?: boolean; // if true, waiters can log in separately
   tableSelectionDisabled?: boolean; // if true, skip table selection (waiter-only mode)
   showExportInReports?: boolean; // show export party sales in main reports
+  // Advance/Booking settings
+  advanceBookingEnabled?: boolean;
+  showAdvanceBookingInReports?: boolean;
   updatedAt: number;
 };
 

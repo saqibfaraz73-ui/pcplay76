@@ -1,0 +1,596 @@
+import React from "react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog";
+import { db } from "@/db/appDb";
+import type { MenuItem, Settings } from "@/db/schema";
+import type { AdvanceOrder, AdvanceOrderLine, BookableItem, BookingOrder } from "@/db/booking-schema";
+import { useAuth } from "@/auth/AuthProvider";
+import { useToast } from "@/hooks/use-toast";
+import { formatIntMoney } from "@/features/pos/format";
+import { makeId } from "@/features/admin/id";
+import { Plus, Trash2, X, Check, Ban } from "lucide-react";
+
+/* ─── helpers ─── */
+function calcEndTime(start: string, durationHours: number): string {
+  const [h, m] = start.split(":").map(Number);
+  const totalMin = h * 60 + m + Math.round(durationHours * 60);
+  const eh = Math.floor(totalMin / 60) % 24;
+  const em = totalMin % 60;
+  return `${String(eh).padStart(2, "0")}:${String(em).padStart(2, "0")}`;
+}
+
+function toDateInputValue(ts: number) {
+  const d = new Date(ts);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+export default function PosAdvanceBooking() {
+  const { session } = useAuth();
+  const { toast } = useToast();
+  const [menuItems, setMenuItems] = React.useState<MenuItem[]>([]);
+  const [advanceOrders, setAdvanceOrders] = React.useState<AdvanceOrder[]>([]);
+  const [bookableItems, setBookableItems] = React.useState<BookableItem[]>([]);
+  const [bookingOrders, setBookingOrders] = React.useState<BookingOrder[]>([]);
+  const [settings, setSettings] = React.useState<Settings | null>(null);
+
+  const refresh = React.useCallback(async () => {
+    const [items, aOrders, bItems, bOrders, s] = await Promise.all([
+      db.items.orderBy("name").toArray(),
+      db.advanceOrders.orderBy("createdAt").reverse().toArray(),
+      db.bookableItems.orderBy("name").toArray(),
+      db.bookingOrders.orderBy("createdAt").reverse().toArray(),
+      db.settings.get("app"),
+    ]);
+    setMenuItems(items);
+    setAdvanceOrders(aOrders);
+    setBookableItems(bItems);
+    setBookingOrders(bOrders);
+    setSettings(s ?? null);
+  }, []);
+
+  React.useEffect(() => { void refresh(); }, [refresh]);
+
+  /* ─── Advance Item Sale Dialog ─── */
+  const [advDlg, setAdvDlg] = React.useState(false);
+  const [advLines, setAdvLines] = React.useState<(AdvanceOrderLine & { key: string })[]>([]);
+  const [advManualTotal, setAdvManualTotal] = React.useState<string>("");
+  const [advAdvance, setAdvAdvance] = React.useState("");
+  const [advCustName, setAdvCustName] = React.useState("");
+  const [advCustPhone, setAdvCustPhone] = React.useState("");
+  const [advCustAddress, setAdvCustAddress] = React.useState("");
+
+  const openAdvDlg = () => {
+    setAdvLines([{ key: "1", name: "", qty: 1, unitPrice: 0, subtotal: 0, unit: "pcs" }]);
+    setAdvManualTotal("");
+    setAdvAdvance("");
+    setAdvCustName("");
+    setAdvCustPhone("");
+    setAdvCustAddress("");
+    setAdvDlg(true);
+  };
+
+  const updateAdvLine = (key: string, patch: Partial<AdvanceOrderLine>) => {
+    setAdvLines((prev) =>
+      prev.map((l) => {
+        if (l.key !== key) return l;
+        const next = { ...l, ...patch };
+        next.subtotal = Math.round(next.unitPrice) * next.qty;
+        return next;
+      }),
+    );
+  };
+
+  const advCalcTotal = advLines.reduce((s, l) => s + l.subtotal, 0);
+  const advTotal = advManualTotal ? Number(advManualTotal) || 0 : advCalcTotal;
+  const advRemaining = Math.max(0, advTotal - (Number(advAdvance) || 0));
+
+  const saveAdvance = async () => {
+    if (advLines.every((l) => !l.name.trim())) {
+      toast({ title: "Add at least one item", variant: "destructive" });
+      return;
+    }
+    const lines = advLines.filter((l) => l.name.trim()).map(({ key, ...rest }) => rest);
+    const order: AdvanceOrder = {
+      id: makeId("adv"),
+      status: "pending",
+      lines,
+      subtotal: advCalcTotal,
+      total: advTotal,
+      advancePayment: Number(advAdvance) || 0,
+      remainingPayment: advRemaining,
+      customerName: advCustName.trim() || undefined,
+      customerPhone: advCustPhone.trim() || undefined,
+      customerAddress: advCustAddress.trim() || undefined,
+      cashier: session?.username,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    };
+    await db.advanceOrders.put(order);
+    toast({ title: "Advance order saved" });
+    setAdvDlg(false);
+    void refresh();
+  };
+
+  /* ─── Time-Based Booking Dialog ─── */
+  const [bookDlg, setBookDlg] = React.useState(false);
+  const [bookItemId, setBookItemId] = React.useState("");
+  const [bookDate, setBookDate] = React.useState(toDateInputValue(Date.now()));
+  const [bookStart, setBookStart] = React.useState("09:00");
+  const [bookDuration, setBookDuration] = React.useState("1");
+  const [bookAdvance, setBookAdvance] = React.useState("");
+  const [bookCustName, setBookCustName] = React.useState("");
+  const [bookCustPhone, setBookCustPhone] = React.useState("");
+  const [bookCustAddress, setBookCustAddress] = React.useState("");
+
+  const selectedBookItem = bookableItems.find((b) => b.id === bookItemId);
+  const bookEndTime = calcEndTime(bookStart, Number(bookDuration) || 0);
+  const bookPrice = selectedBookItem?.price ?? 0;
+  const bookRemaining = Math.max(0, bookPrice - (Number(bookAdvance) || 0));
+
+  const openBookDlg = () => {
+    setBookItemId(bookableItems[0]?.id ?? "");
+    setBookDate(toDateInputValue(Date.now()));
+    setBookStart("09:00");
+    setBookDuration("1");
+    setBookAdvance("");
+    setBookCustName("");
+    setBookCustPhone("");
+    setBookCustAddress("");
+    setBookDlg(true);
+  };
+
+  // Check for overlapping bookings
+  const getOverlaps = () => {
+    if (!bookItemId) return [];
+    const dateTs = new Date(bookDate).setHours(0, 0, 0, 0);
+    const dur = Number(bookDuration) || 0;
+    const [sh, sm] = bookStart.split(":").map(Number);
+    const startMin = sh * 60 + sm;
+    const endMin = startMin + Math.round(dur * 60);
+    return bookingOrders.filter((o) => {
+      if (o.bookableItemId !== bookItemId || o.status === "cancelled") return false;
+      const oDate = new Date(o.date).setHours(0, 0, 0, 0);
+      if (oDate !== dateTs) return false;
+      const [oh, om] = o.startTime.split(":").map(Number);
+      const oStart = oh * 60 + om;
+      const oEnd = oStart + Math.round(o.durationHours * 60);
+      return startMin < oEnd && endMin > oStart;
+    });
+  };
+
+  const saveBooking = async () => {
+    if (!bookItemId || !selectedBookItem) {
+      toast({ title: "Select a bookable item", variant: "destructive" });
+      return;
+    }
+    const overlaps = getOverlaps();
+    // Warn handled in UI, user can still proceed
+
+    const order: BookingOrder = {
+      id: makeId("bkng"),
+      bookableItemId: bookItemId,
+      bookableItemName: selectedBookItem.name,
+      status: "pending",
+      date: new Date(bookDate).setHours(0, 0, 0, 0),
+      startTime: bookStart,
+      durationHours: Number(bookDuration) || 1,
+      endTime: bookEndTime,
+      price: bookPrice,
+      advancePayment: Number(bookAdvance) || 0,
+      remainingPayment: bookRemaining,
+      customerName: bookCustName.trim() || undefined,
+      customerPhone: bookCustPhone.trim() || undefined,
+      customerAddress: bookCustAddress.trim() || undefined,
+      cashier: session?.username,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    };
+    await db.bookingOrders.put(order);
+    toast({ title: "Booking saved" });
+    setBookDlg(false);
+    void refresh();
+  };
+
+  /* ─── Status changes ─── */
+  const [cancelId, setCancelId] = React.useState<{ id: string; type: "advance" | "booking" } | null>(null);
+  const [cancelReason, setCancelReason] = React.useState("");
+
+  const completeAdvance = async (id: string) => {
+    const o = await db.advanceOrders.get(id);
+    if (!o || o.status !== "pending") return;
+    await db.advanceOrders.update(id, { status: "completed", updatedAt: Date.now() });
+    toast({ title: "Order completed" });
+    void refresh();
+  };
+
+  const completeBooking = async (id: string) => {
+    const o = await db.bookingOrders.get(id);
+    if (!o || o.status !== "pending") return;
+    await db.bookingOrders.update(id, { status: "completed", updatedAt: Date.now() });
+    toast({ title: "Booking completed" });
+    void refresh();
+  };
+
+  const doCancelOrder = async () => {
+    if (!cancelId || !cancelReason.trim()) {
+      toast({ title: "Reason is required", variant: "destructive" });
+      return;
+    }
+    if (cancelId.type === "advance") {
+      await db.advanceOrders.update(cancelId.id, { status: "cancelled", cancelledReason: cancelReason.trim(), updatedAt: Date.now() });
+    } else {
+      await db.bookingOrders.update(cancelId.id, { status: "cancelled", cancelledReason: cancelReason.trim(), updatedAt: Date.now() });
+    }
+    toast({ title: "Cancelled" });
+    setCancelId(null);
+    setCancelReason("");
+    void refresh();
+  };
+
+  /* ─── Bookable Items Management (admin only) ─── */
+  const isAdmin = session?.role === "admin";
+  const [newBIName, setNewBIName] = React.useState("");
+  const [newBIPrice, setNewBIPrice] = React.useState("");
+
+  const addBookableItem = async () => {
+    if (!newBIName.trim()) return;
+    const item: BookableItem = {
+      id: makeId("bi"),
+      name: newBIName.trim(),
+      price: Number(newBIPrice) || 0,
+      createdAt: Date.now(),
+    };
+    await db.bookableItems.put(item);
+    setNewBIName("");
+    setNewBIPrice("");
+    toast({ title: "Bookable item added" });
+    void refresh();
+  };
+
+  const deleteBookableItem = async (id: string) => {
+    await db.bookableItems.delete(id);
+    toast({ title: "Removed" });
+    void refresh();
+  };
+
+  const statusColor = (s: string) => {
+    if (s === "completed") return "default";
+    if (s === "cancelled") return "destructive";
+    return "secondary";
+  };
+
+  return (
+    <div className="space-y-4">
+      <header>
+        <h1 className="text-2xl font-semibold">Advance / Booking Orders</h1>
+        <p className="text-sm text-muted-foreground">Manage advance item sales and time-based bookings.</p>
+      </header>
+
+      <Tabs defaultValue="advance">
+        <TabsList>
+          <TabsTrigger value="advance">Advance Item Sales</TabsTrigger>
+          <TabsTrigger value="booking">Time-Based Booking</TabsTrigger>
+        </TabsList>
+
+        {/* ═══ ADVANCE ITEM SALES TAB ═══ */}
+        <TabsContent value="advance" className="space-y-4">
+          <Button onClick={openAdvDlg} className="gap-1"><Plus className="h-4 w-4" /> New Advance Order</Button>
+
+          {advanceOrders.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No advance orders yet.</p>
+          ) : (
+            <div className="space-y-2">
+              {advanceOrders.map((o) => (
+                <Card key={o.id} className={o.status === "cancelled" ? "opacity-60" : ""}>
+                  <CardContent className="pt-4 space-y-2">
+                    <div className="flex items-start justify-between gap-2 flex-wrap">
+                      <div>
+                        <div className="text-sm font-medium">
+                          {o.lines.map((l) => l.name).join(", ") || "Advance Order"}
+                        </div>
+                        {o.customerName && <div className="text-xs text-muted-foreground">{o.customerName} {o.customerPhone ? `• ${o.customerPhone}` : ""}</div>}
+                        <div className="text-xs text-muted-foreground">{new Date(o.createdAt).toLocaleString()}</div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge variant={statusColor(o.status)}>{o.status}</Badge>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 text-sm">
+                      <div><span className="text-muted-foreground">Total:</span> {formatIntMoney(o.total)}</div>
+                      <div><span className="text-muted-foreground">Advance:</span> {formatIntMoney(o.advancePayment)}</div>
+                      <div><span className="text-muted-foreground">Remaining:</span> {formatIntMoney(o.remainingPayment)}</div>
+                    </div>
+                    {o.cancelledReason && <div className="text-xs text-destructive">Reason: {o.cancelledReason}</div>}
+                    {o.status === "pending" && (
+                      <div className="flex gap-2 pt-1">
+                        <Button size="sm" variant="outline" className="gap-1" onClick={() => completeAdvance(o.id)}><Check className="h-3 w-3" /> Complete</Button>
+                        <Button size="sm" variant="outline" className="gap-1 text-destructive" onClick={() => { setCancelId({ id: o.id, type: "advance" }); setCancelReason(""); }}><Ban className="h-3 w-3" /> Cancel</Button>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </TabsContent>
+
+        {/* ═══ TIME-BASED BOOKING TAB ═══ */}
+        <TabsContent value="booking" className="space-y-4">
+          {/* Bookable Items Management (admin) */}
+          {isAdmin && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">Bookable Items</CardTitle>
+                <CardDescription>Add items that can be booked by time (e.g. Room, Court).</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="grid grid-cols-[1fr_auto_auto] gap-2 items-end">
+                  <div className="space-y-1">
+                    <Label className="text-xs">Name</Label>
+                    <Input value={newBIName} onChange={(e) => setNewBIName(e.target.value)} placeholder="e.g. Room A" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Price</Label>
+                    <Input type="number" inputMode="numeric" value={newBIPrice} onChange={(e) => setNewBIPrice(e.target.value)} placeholder="0" className="w-24" />
+                  </div>
+                  <Button onClick={() => void addBookableItem()} size="sm" className="gap-1"><Plus className="h-3 w-3" /> Add</Button>
+                </div>
+                {bookableItems.length > 0 && (
+                  <div className="rounded-md border">
+                    <table className="w-full text-sm">
+                      <thead><tr className="border-b bg-muted/50"><th className="px-3 py-1.5 text-left font-medium">Name</th><th className="px-3 py-1.5 text-left font-medium">Price</th><th className="px-3 py-1.5 w-10"></th></tr></thead>
+                      <tbody>
+                        {bookableItems.map((bi) => (
+                          <tr key={bi.id} className="border-b last:border-0">
+                            <td className="px-3 py-1.5">{bi.name}</td>
+                            <td className="px-3 py-1.5">{formatIntMoney(bi.price)}</td>
+                            <td className="px-3 py-1.5"><Button variant="ghost" size="icon" onClick={() => deleteBookableItem(bi.id)}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button></td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          <Button onClick={openBookDlg} disabled={bookableItems.length === 0} className="gap-1"><Plus className="h-4 w-4" /> New Booking</Button>
+          {bookableItems.length === 0 && <p className="text-xs text-muted-foreground">Admin needs to add bookable items first.</p>}
+
+          {bookingOrders.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No bookings yet.</p>
+          ) : (
+            <div className="space-y-2">
+              {bookingOrders.map((o) => (
+                <Card key={o.id} className={o.status === "cancelled" ? "opacity-60" : ""}>
+                  <CardContent className="pt-4 space-y-2">
+                    <div className="flex items-start justify-between gap-2 flex-wrap">
+                      <div>
+                        <div className="text-sm font-medium">{o.bookableItemName}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {new Date(o.date).toLocaleDateString()} • {o.startTime} → {o.endTime} ({o.durationHours}h)
+                        </div>
+                        {o.customerName && <div className="text-xs text-muted-foreground">{o.customerName} {o.customerPhone ? `• ${o.customerPhone}` : ""}</div>}
+                      </div>
+                      <Badge variant={statusColor(o.status)}>{o.status}</Badge>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 text-sm">
+                      <div><span className="text-muted-foreground">Price:</span> {formatIntMoney(o.price)}</div>
+                      <div><span className="text-muted-foreground">Advance:</span> {formatIntMoney(o.advancePayment)}</div>
+                      <div><span className="text-muted-foreground">Remaining:</span> {formatIntMoney(o.remainingPayment)}</div>
+                    </div>
+                    {o.cancelledReason && <div className="text-xs text-destructive">Reason: {o.cancelledReason}</div>}
+                    {o.status === "pending" && (
+                      <div className="flex gap-2 pt-1">
+                        <Button size="sm" variant="outline" className="gap-1" onClick={() => completeBooking(o.id)}><Check className="h-3 w-3" /> Complete</Button>
+                        <Button size="sm" variant="outline" className="gap-1 text-destructive" onClick={() => { setCancelId({ id: o.id, type: "booking" }); setCancelReason(""); }}><Ban className="h-3 w-3" /> Cancel</Button>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
+
+      {/* ═══ ADVANCE ORDER DIALOG ═══ */}
+      <Dialog open={advDlg} onOpenChange={setAdvDlg}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>New Advance Order</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            {advLines.map((it, idx) => (
+              <div key={it.key} className="space-y-2 rounded-md border p-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-medium text-muted-foreground">Item {idx + 1}</span>
+                  {advLines.length > 1 && (
+                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setAdvLines((p) => p.filter((l) => l.key !== it.key))}><X className="h-3 w-3" /></Button>
+                  )}
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Pick from menu (optional)</Label>
+                  <select
+                    value=""
+                    onChange={(e) => {
+                      const sel = menuItems.find((m) => m.id === e.target.value);
+                      if (sel) updateAdvLine(it.key, { itemId: sel.id, name: sel.name, unitPrice: sel.price });
+                    }}
+                    className="h-9 w-full rounded-md border bg-background px-2 text-sm"
+                  >
+                    <option value="">— Pick from menu —</option>
+                    {menuItems.map((m) => <option key={m.id} value={m.id}>{m.name} ({formatIntMoney(m.price)})</option>)}
+                  </select>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <Label className="text-xs">Item Name</Label>
+                    <Input value={it.name} onChange={(e) => updateAdvLine(it.key, { name: e.target.value })} placeholder="Item name" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Unit Price</Label>
+                    <Input type="number" inputMode="numeric" value={it.unitPrice || ""} onChange={(e) => updateAdvLine(it.key, { unitPrice: Number(e.target.value) || 0 })} />
+                  </div>
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="space-y-1">
+                    <Label className="text-xs">Qty</Label>
+                    <Input type="number" inputMode="numeric" value={it.qty} onChange={(e) => updateAdvLine(it.key, { qty: Math.max(1, Number(e.target.value) || 1) })} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Unit</Label>
+                    <select value={it.unit || "pcs"} onChange={(e) => updateAdvLine(it.key, { unit: e.target.value })} className="h-9 w-full rounded-md border bg-background px-2 text-sm">
+                      <option value="pcs">Pieces</option>
+                      <option value="kg">Kg</option>
+                      <option value="ltr">Liters</option>
+                      <option value="ft">Feet</option>
+                      <option value="m">Meters</option>
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Subtotal</Label>
+                    <div className="h-9 flex items-center text-sm font-medium">{formatIntMoney(it.subtotal)}</div>
+                  </div>
+                </div>
+              </div>
+            ))}
+            <Button variant="outline" size="sm" className="gap-1" onClick={() => setAdvLines((p) => [...p, { key: String(Date.now()), name: "", qty: 1, unitPrice: 0, subtotal: 0, unit: "pcs" }])}>
+              <Plus className="h-3 w-3" /> Add Item
+            </Button>
+
+            <div className="grid grid-cols-2 gap-3 border-t pt-3">
+              <div className="space-y-1">
+                <Label className="text-xs">Calculated Total</Label>
+                <div className="text-sm font-semibold">{formatIntMoney(advCalcTotal)}</div>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Manual Total (optional)</Label>
+                <Input type="number" inputMode="numeric" value={advManualTotal} onChange={(e) => setAdvManualTotal(e.target.value)} placeholder="Override" />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label className="text-xs">Advance Payment</Label>
+                <Input type="number" inputMode="numeric" value={advAdvance} onChange={(e) => setAdvAdvance(e.target.value)} placeholder="0" />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Remaining</Label>
+                <div className="h-9 flex items-center text-sm font-semibold">{formatIntMoney(advRemaining)}</div>
+              </div>
+            </div>
+
+            <div className="space-y-2 border-t pt-3">
+              <Label className="text-xs font-medium text-muted-foreground">Customer (optional)</Label>
+              <div className="grid grid-cols-2 gap-2">
+                <Input value={advCustName} onChange={(e) => setAdvCustName(e.target.value)} placeholder="Name" />
+                <Input value={advCustPhone} onChange={(e) => setAdvCustPhone(e.target.value)} placeholder="Phone" inputMode="tel" />
+              </div>
+              <Input value={advCustAddress} onChange={(e) => setAdvCustAddress(e.target.value)} placeholder="Address" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAdvDlg(false)}>Cancel</Button>
+            <Button onClick={() => void saveAdvance()}>Save Order</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ═══ BOOKING DIALOG ═══ */}
+      <Dialog open={bookDlg} onOpenChange={setBookDlg}>
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>New Booking</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <Label className="text-xs">Select Item</Label>
+              <select value={bookItemId} onChange={(e) => setBookItemId(e.target.value)} className="h-10 w-full rounded-md border bg-background px-3 text-sm">
+                {bookableItems.map((b) => <option key={b.id} value={b.id}>{b.name} — {formatIntMoney(b.price)}</option>)}
+              </select>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label className="text-xs">Date</Label>
+                <Input type="date" value={bookDate} onChange={(e) => setBookDate(e.target.value)} />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Start Time</Label>
+                <Input type="time" value={bookStart} onChange={(e) => setBookStart(e.target.value)} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label className="text-xs">Duration (hours)</Label>
+                <Input type="number" inputMode="decimal" step="0.5" value={bookDuration} onChange={(e) => setBookDuration(e.target.value)} placeholder="1" />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">End Time</Label>
+                <div className="h-10 flex items-center text-sm font-semibold border rounded-md px-3 bg-muted/30">{bookEndTime}</div>
+              </div>
+            </div>
+
+            {/* Overlap warning */}
+            {getOverlaps().length > 0 && (
+              <div className="rounded-md border border-yellow-500/50 bg-yellow-50 dark:bg-yellow-900/20 p-2 text-xs text-yellow-700 dark:text-yellow-400">
+                ⚠️ This item is already booked at overlapping times on this date. You can still proceed.
+              </div>
+            )}
+
+            <div className="grid grid-cols-3 gap-3 border-t pt-3">
+              <div className="space-y-1">
+                <Label className="text-xs">Price</Label>
+                <div className="h-9 flex items-center text-sm font-semibold">{formatIntMoney(bookPrice)}</div>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Advance</Label>
+                <Input type="number" inputMode="numeric" value={bookAdvance} onChange={(e) => setBookAdvance(e.target.value)} placeholder="0" />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Remaining</Label>
+                <div className="h-9 flex items-center text-sm font-semibold">{formatIntMoney(bookRemaining)}</div>
+              </div>
+            </div>
+
+            <div className="space-y-2 border-t pt-3">
+              <Label className="text-xs font-medium text-muted-foreground">Customer (optional)</Label>
+              <div className="grid grid-cols-2 gap-2">
+                <Input value={bookCustName} onChange={(e) => setBookCustName(e.target.value)} placeholder="Name" />
+                <Input value={bookCustPhone} onChange={(e) => setBookCustPhone(e.target.value)} placeholder="Phone" inputMode="tel" />
+              </div>
+              <Input value={bookCustAddress} onChange={(e) => setBookCustAddress(e.target.value)} placeholder="Address" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBookDlg(false)}>Cancel</Button>
+            <Button onClick={() => void saveBooking()}>Save Booking</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ═══ CANCEL DIALOG ═══ */}
+      <AlertDialog open={!!cancelId} onOpenChange={() => setCancelId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cancel {cancelId?.type === "advance" ? "Order" : "Booking"}?</AlertDialogTitle>
+            <AlertDialogDescription>This action cannot be undone. Please provide a reason.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <Input value={cancelReason} onChange={(e) => setCancelReason(e.target.value)} placeholder="Reason for cancellation" />
+          <AlertDialogFooter>
+            <AlertDialogCancel>Back</AlertDialogCancel>
+            <AlertDialogAction onClick={() => void doCancelOrder()} disabled={!cancelReason.trim()}>Confirm Cancel</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+}

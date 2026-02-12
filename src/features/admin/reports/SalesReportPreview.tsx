@@ -1,5 +1,6 @@
 import * as React from "react";
 import type { CreditCustomer, DeliveryPerson, Expense, ExportCustomer, ExportSale, MenuItem, Order, RestaurantTable, Settings, TableOrder, Waiter } from "@/db/schema";
+import type { AdvanceOrder, BookingOrder } from "@/db/booking-schema";
 import { formatIntMoney } from "@/features/pos/format";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ReportOrderList } from "@/features/admin/reports/ReportOrderList";
@@ -19,6 +20,8 @@ type Props = {
   waiters?: Waiter[];
   exportSales?: ExportSale[];
   exportCustomers?: ExportCustomer[];
+  advanceOrders?: AdvanceOrder[];
+  bookingOrders?: BookingOrder[];
 };
 
 export function SalesReportPreview({ 
@@ -36,6 +39,8 @@ export function SalesReportPreview({
   settings,
   exportSales = [],
   exportCustomers = [],
+  advanceOrders = [],
+  bookingOrders = [],
 }: Props) {
   const deliveryEnabled = settings?.deliveryEnabled ?? true;
   const tableEnabled = settings?.tableManagementEnabled ?? true;
@@ -357,6 +362,63 @@ export function SalesReportPreview({
                   </table>
                 </div>
               )}
+            </div>
+          );
+        })()}
+
+        {/* Advance/Booking Section */}
+        {(settings?.showAdvanceBookingInReports ?? false) && (advanceOrders.length > 0 || bookingOrders.length > 0) && (() => {
+          const advCompleted = advanceOrders.filter((o) => o.status !== "cancelled");
+          const advCancelled = advanceOrders.filter((o) => o.status === "cancelled");
+          const advTotal = advCompleted.reduce((s, o) => s + o.total, 0);
+          const advAdvance = advCompleted.reduce((s, o) => s + o.advancePayment, 0);
+          const advCancelledTotal = advCancelled.reduce((s, o) => s + o.total, 0);
+          const bkCompleted = bookingOrders.filter((o) => o.status !== "cancelled");
+          const bkCancelled = bookingOrders.filter((o) => o.status === "cancelled");
+          const bkTotal = bkCompleted.reduce((s, o) => s + o.price, 0);
+          const bkAdvance = bkCompleted.reduce((s, o) => s + o.advancePayment, 0);
+          const bkCancelledTotal = bkCancelled.reduce((s, o) => s + o.price, 0);
+          return (
+            <div className="space-y-2">
+              <div className="text-sm font-semibold">Advance / Booking Orders</div>
+              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                {advCompleted.length > 0 && (
+                  <>
+                    <div className="rounded-md border p-3">
+                      <div className="text-xs text-muted-foreground">Advance Item Sales</div>
+                      <div className="text-base font-semibold">{formatIntMoney(advTotal)}</div>
+                    </div>
+                    <div className="rounded-md border p-3">
+                      <div className="text-xs text-muted-foreground">Advance Received</div>
+                      <div className="text-base font-semibold">{formatIntMoney(advAdvance)}</div>
+                    </div>
+                  </>
+                )}
+                {advCancelled.length > 0 && (
+                  <div className="rounded-md border p-3">
+                    <div className="text-xs text-muted-foreground">Advance Cancelled</div>
+                    <div className="text-base font-semibold text-destructive">{advCancelled.length} ({formatIntMoney(advCancelledTotal)})</div>
+                  </div>
+                )}
+                {bkCompleted.length > 0 && (
+                  <>
+                    <div className="rounded-md border p-3">
+                      <div className="text-xs text-muted-foreground">Time-Based Bookings</div>
+                      <div className="text-base font-semibold">{formatIntMoney(bkTotal)}</div>
+                    </div>
+                    <div className="rounded-md border p-3">
+                      <div className="text-xs text-muted-foreground">Booking Advance Received</div>
+                      <div className="text-base font-semibold">{formatIntMoney(bkAdvance)}</div>
+                    </div>
+                  </>
+                )}
+                {bkCancelled.length > 0 && (
+                  <div className="rounded-md border p-3">
+                    <div className="text-xs text-muted-foreground">Booking Cancelled</div>
+                    <div className="text-base font-semibold text-destructive">{bkCancelled.length} ({formatIntMoney(bkCancelledTotal)})</div>
+                  </div>
+                )}
+              </div>
             </div>
           );
         })()}
