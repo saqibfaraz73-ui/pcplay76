@@ -17,6 +17,7 @@ export type AdvanceOrder = {
   status: AdvanceOrderStatus;
   lines: AdvanceOrderLine[];
   subtotal: number;
+  discountAmount: number;
   total: number;
   advancePayment: number;
   remainingPayment: number;
@@ -51,6 +52,8 @@ export type BookingOrder = {
   durationHours: number; // e.g. 1.5
   endTime: string; // e.g. "10:30"
   price: number;
+  discountAmount: number;
+  total: number; // price - discount
   advancePayment: number;
   remainingPayment: number;
   customerName?: string;

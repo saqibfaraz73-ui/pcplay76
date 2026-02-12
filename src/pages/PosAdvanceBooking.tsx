@@ -67,6 +67,7 @@ export default function PosAdvanceBooking() {
   const [advDlg, setAdvDlg] = React.useState(false);
   const [advLines, setAdvLines] = React.useState<(AdvanceOrderLine & { key: string })[]>([]);
   const [advManualTotal, setAdvManualTotal] = React.useState<string>("");
+  const [advDiscount, setAdvDiscount] = React.useState("");
   const [advAdvance, setAdvAdvance] = React.useState("");
   const [advCustName, setAdvCustName] = React.useState("");
   const [advCustPhone, setAdvCustPhone] = React.useState("");
@@ -75,6 +76,7 @@ export default function PosAdvanceBooking() {
   const openAdvDlg = () => {
     setAdvLines([{ key: "1", name: "", qty: 1, unitPrice: 0, subtotal: 0, unit: "pcs" }]);
     setAdvManualTotal("");
+    setAdvDiscount("");
     setAdvAdvance("");
     setAdvCustName("");
     setAdvCustPhone("");
@@ -94,7 +96,9 @@ export default function PosAdvanceBooking() {
   };
 
   const advCalcTotal = advLines.reduce((s, l) => s + l.subtotal, 0);
-  const advTotal = advManualTotal ? Number(advManualTotal) || 0 : advCalcTotal;
+  const advDiscountAmt = Math.min(Math.max(0, Number(advDiscount) || 0), advCalcTotal);
+  const advPreTotal = advManualTotal ? Number(advManualTotal) || 0 : advCalcTotal;
+  const advTotal = Math.max(0, advPreTotal - advDiscountAmt);
   const advRemaining = Math.max(0, advTotal - (Number(advAdvance) || 0));
 
   const saveAdvance = async () => {
@@ -108,6 +112,7 @@ export default function PosAdvanceBooking() {
       status: "pending",
       lines,
       subtotal: advCalcTotal,
+      discountAmount: advDiscountAmt,
       total: advTotal,
       advancePayment: Number(advAdvance) || 0,
       remainingPayment: advRemaining,
@@ -130,6 +135,7 @@ export default function PosAdvanceBooking() {
   const [bookDate, setBookDate] = React.useState(toDateInputValue(Date.now()));
   const [bookStart, setBookStart] = React.useState("09:00");
   const [bookDuration, setBookDuration] = React.useState("1");
+  const [bookDiscount, setBookDiscount] = React.useState("");
   const [bookAdvance, setBookAdvance] = React.useState("");
   const [bookCustName, setBookCustName] = React.useState("");
   const [bookCustPhone, setBookCustPhone] = React.useState("");
@@ -138,13 +144,16 @@ export default function PosAdvanceBooking() {
   const selectedBookItem = bookableItems.find((b) => b.id === bookItemId);
   const bookEndTime = calcEndTime(bookStart, Number(bookDuration) || 0);
   const bookPrice = selectedBookItem?.price ?? 0;
-  const bookRemaining = Math.max(0, bookPrice - (Number(bookAdvance) || 0));
+  const bookDiscountAmt = Math.min(Math.max(0, Number(bookDiscount) || 0), bookPrice);
+  const bookTotal = Math.max(0, bookPrice - bookDiscountAmt);
+  const bookRemaining = Math.max(0, bookTotal - (Number(bookAdvance) || 0));
 
   const openBookDlg = () => {
     setBookItemId(bookableItems[0]?.id ?? "");
     setBookDate(toDateInputValue(Date.now()));
     setBookStart("09:00");
     setBookDuration("1");
+    setBookDiscount("");
     setBookAdvance("");
     setBookCustName("");
     setBookCustPhone("");
@@ -189,6 +198,8 @@ export default function PosAdvanceBooking() {
       durationHours: Number(bookDuration) || 1,
       endTime: bookEndTime,
       price: bookPrice,
+      discountAmount: bookDiscountAmt,
+      total: bookTotal,
       advancePayment: Number(bookAdvance) || 0,
       remainingPayment: bookRemaining,
       customerName: bookCustName.trim() || undefined,
@@ -308,8 +319,9 @@ export default function PosAdvanceBooking() {
                         <Badge variant={statusColor(o.status)}>{o.status}</Badge>
                       </div>
                     </div>
-                    <div className="grid grid-cols-3 gap-2 text-sm">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-sm">
                       <div><span className="text-muted-foreground">Total:</span> {formatIntMoney(o.total)}</div>
+                      {(o.discountAmount ?? 0) > 0 && <div><span className="text-muted-foreground">Discount:</span> {formatIntMoney(o.discountAmount)}</div>}
                       <div><span className="text-muted-foreground">Advance:</span> {formatIntMoney(o.advancePayment)}</div>
                       <div><span className="text-muted-foreground">Remaining:</span> {formatIntMoney(o.remainingPayment)}</div>
                     </div>
@@ -388,8 +400,10 @@ export default function PosAdvanceBooking() {
                       </div>
                       <Badge variant={statusColor(o.status)}>{o.status}</Badge>
                     </div>
-                    <div className="grid grid-cols-3 gap-2 text-sm">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-sm">
                       <div><span className="text-muted-foreground">Price:</span> {formatIntMoney(o.price)}</div>
+                      {(o.discountAmount ?? 0) > 0 && <div><span className="text-muted-foreground">Discount:</span> {formatIntMoney(o.discountAmount)}</div>}
+                      <div><span className="text-muted-foreground">Total:</span> {formatIntMoney(o.total)}</div>
                       <div><span className="text-muted-foreground">Advance:</span> {formatIntMoney(o.advancePayment)}</div>
                       <div><span className="text-muted-foreground">Remaining:</span> {formatIntMoney(o.remainingPayment)}</div>
                     </div>
@@ -482,7 +496,11 @@ export default function PosAdvanceBooking() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-3 gap-3">
+              <div className="space-y-1">
+                <Label className="text-xs">Discount</Label>
+                <Input type="number" inputMode="numeric" value={advDiscount} onChange={(e) => setAdvDiscount(e.target.value)} placeholder="0" />
+              </div>
               <div className="space-y-1">
                 <Label className="text-xs">Advance Payment</Label>
                 <Input type="number" inputMode="numeric" value={advAdvance} onChange={(e) => setAdvAdvance(e.target.value)} placeholder="0" />
@@ -548,10 +566,20 @@ export default function PosAdvanceBooking() {
               </div>
             )}
 
-            <div className="grid grid-cols-3 gap-3 border-t pt-3">
+            <div className="grid grid-cols-2 gap-3 border-t pt-3">
               <div className="space-y-1">
                 <Label className="text-xs">Price</Label>
                 <div className="h-9 flex items-center text-sm font-semibold">{formatIntMoney(bookPrice)}</div>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Discount</Label>
+                <Input type="number" inputMode="numeric" value={bookDiscount} onChange={(e) => setBookDiscount(e.target.value)} placeholder="0" />
+              </div>
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              <div className="space-y-1">
+                <Label className="text-xs">Total</Label>
+                <div className="h-9 flex items-center text-sm font-semibold">{formatIntMoney(bookTotal)}</div>
               </div>
               <div className="space-y-1">
                 <Label className="text-xs">Advance</Label>
