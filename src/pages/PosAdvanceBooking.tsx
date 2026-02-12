@@ -203,6 +203,8 @@ export default function PosAdvanceBooking() {
   const [advCustName, setAdvCustName] = React.useState("");
   const [advCustPhone, setAdvCustPhone] = React.useState("");
   const [advCustAddress, setAdvCustAddress] = React.useState("");
+  const [advDeliveryDate, setAdvDeliveryDate] = React.useState("");
+  const [advDeliveryTime, setAdvDeliveryTime] = React.useState("");
 
   const openAdvDlg = () => {
     setAdvLines([{ key: "1", name: "", qty: 0, unitPrice: 0, subtotal: 0, unit: "pcs" }]);
@@ -212,6 +214,8 @@ export default function PosAdvanceBooking() {
     setAdvCustName("");
     setAdvCustPhone("");
     setAdvCustAddress("");
+    setAdvDeliveryDate("");
+    setAdvDeliveryTime("");
     setAdvDlg(true);
   };
 
@@ -257,6 +261,8 @@ export default function PosAdvanceBooking() {
       customerName: advCustName.trim() || undefined,
       customerPhone: advCustPhone.trim() || undefined,
       customerAddress: advCustAddress.trim() || undefined,
+      deliveryDate: advDeliveryDate || undefined,
+      deliveryTime: advDeliveryTime || undefined,
       cashier: session?.username,
       createdAt: Date.now(),
       updatedAt: Date.now(),
@@ -521,6 +527,11 @@ export default function PosAdvanceBooking() {
                           Adv #{o.receiptNo} — {o.lines.map((l) => l.name).join(", ") || "Advance Order"}
                         </div>
                         {o.customerName && <div className="text-xs text-muted-foreground">{o.customerName} {o.customerPhone ? `• ${o.customerPhone}` : ""}</div>}
+                        {(o.deliveryDate || o.deliveryTime) && (
+                          <div className="text-xs text-muted-foreground">
+                            Delivery: {o.deliveryDate ? new Date(o.deliveryDate).toLocaleDateString() : ""}{o.deliveryTime ? ` at ${o.deliveryTime}` : ""}
+                          </div>
+                        )}
                         <div className="text-xs text-muted-foreground">{new Date(o.createdAt).toLocaleString()}</div>
                       </div>
                       <div className="flex items-center gap-2">
@@ -722,6 +733,14 @@ export default function PosAdvanceBooking() {
               <div className="space-y-1">
                 <Label className="text-xs">Remaining</Label>
                 <div className="h-9 flex items-center text-sm font-semibold">{formatIntMoney(advRemaining)}</div>
+              </div>
+            </div>
+
+            <div className="space-y-2 border-t pt-3">
+              <Label className="text-xs font-medium text-muted-foreground">Delivery Date / Time (optional)</Label>
+              <div className="grid grid-cols-2 gap-2">
+                <Input type="date" value={advDeliveryDate} onChange={(e) => setAdvDeliveryDate(e.target.value)} />
+                <Input type="time" value={advDeliveryTime} onChange={(e) => setAdvDeliveryTime(e.target.value)} />
               </div>
             </div>
 
