@@ -1,17 +1,21 @@
 import * as React from "react";
 import { db } from "@/db/appDb";
 import type { CreditCustomer, DeliveryPerson, Order, TableOrder, RestaurantTable, Waiter } from "@/db/schema";
+import type { AdvanceOrder, BookingOrder } from "@/db/booking-schema";
 import { ensureSeedData } from "@/db/seed";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import { ReceiptDialog } from "@/components/ReceiptDialog";
 import { formatIntMoney } from "@/features/pos/format";
 import { cancelOrder } from "@/features/pos/pos-db";
+import { printAdvanceReceipt, printBookingReceipt } from "@/features/pos/advance-receipt";
 import { useToast } from "@/hooks/use-toast";
 import { isSameLocalDay } from "@/features/pos/time";
+import { Printer } from "lucide-react";
 
 // Convert TableOrder to Order-like shape for ReceiptDialog
 function tableOrderToOrder(t: TableOrder, tablesById: Record<string, RestaurantTable>, waitersById: Record<string, Waiter>): Order {
@@ -52,10 +56,13 @@ type UnifiedOrder = {
   status: string;
   total: number;
   createdAt: number;
-  source: "regular" | "table";
-  order?: Order; // always set (converted for table orders too)
+  source: "regular" | "table" | "advance" | "booking";
+  order?: Order; // set for regular + table orders
+  advanceOrder?: AdvanceOrder;
+  bookingOrder?: BookingOrder;
   tableNumber?: string;
   waiterName?: string;
+  label?: string;
 };
 
 export default function PosOrders() {
@@ -66,20 +73,24 @@ export default function PosOrders() {
   const [tableOrders, setTableOrders] = React.useState<TableOrder[]>([]);
   const [tables, setTables] = React.useState<RestaurantTable[]>([]);
   const [waiters, setWaiters] = React.useState<Waiter[]>([]);
+  const [advanceOrders, setAdvanceOrders] = React.useState<AdvanceOrder[]>([]);
+  const [bookingOrders, setBookingOrders] = React.useState<BookingOrder[]>([]);
 
   const [cancelDialogOpen, setCancelDialogOpen] = React.useState(false);
-  const [cancelTarget, setCancelTarget] = React.useState<{ id: string; source: "regular" | "table" } | null>(null);
+  const [cancelTarget, setCancelTarget] = React.useState<{ id: string; source: "regular" | "table" | "advance" | "booking" } | null>(null);
   const [cancelReason, setCancelReason] = React.useState("");
 
   const refresh = React.useCallback(async () => {
     await ensureSeedData();
-    const [ords, custs, dps, tOrds, tbls, wtrs] = await Promise.all([
+    const [ords, custs, dps, tOrds, tbls, wtrs, advOrds, bkOrds] = await Promise.all([
       db.orders.orderBy("createdAt").reverse().limit(200).toArray(),
       db.customers.orderBy("createdAt").toArray(),
       db.deliveryPersons.orderBy("createdAt").toArray(),
       db.tableOrders.where("status").anyOf(["completed", "cancelled"]).reverse().limit(200).toArray(),
       db.restaurantTables.toArray(),
       db.waiters.toArray(),
+      db.advanceOrders.orderBy("createdAt").reverse().limit(100).toArray(),
+      db.bookingOrders.orderBy("createdAt").reverse().limit(100).toArray(),
     ]);
     setOrders(ords);
     setCustomers(custs);
@@ -87,6 +98,8 @@ export default function PosOrders() {
     setTableOrders(tOrds);
     setTables(tbls);
     setWaiters(wtrs);
+    setAdvanceOrders(advOrds);
+    setBookingOrders(bkOrds);
   }, []);
 
   React.useEffect(() => { void refresh(); }, [refresh]);
@@ -121,10 +134,32 @@ export default function PosOrders() {
         tableNumber: tablesById[t.tableId]?.tableNumber,
         waiterName: waitersById[t.waiterId]?.name,
       }));
-    return [...regular, ...table].sort((a, b) => b.createdAt - a.createdAt).slice(0, 200);
-  }, [orders, tableOrders, tablesById, waitersById]);
+    const advance: UnifiedOrder[] = advanceOrders.map((o) => ({
+      id: o.id,
+      receiptNo: o.receiptNo,
+      paymentMethod: "advance",
+      status: o.status,
+      total: o.total,
+      createdAt: o.createdAt,
+      source: "advance",
+      advanceOrder: o,
+      label: o.lines.map((l) => l.name).join(", ") || "Advance",
+    }));
+    const booking: UnifiedOrder[] = bookingOrders.map((o) => ({
+      id: o.id,
+      receiptNo: o.receiptNo,
+      paymentMethod: "booking",
+      status: o.status,
+      total: o.total,
+      createdAt: o.createdAt,
+      source: "booking",
+      bookingOrder: o,
+      label: o.bookableItemName,
+    }));
+    return [...regular, ...table, ...advance, ...booking].sort((a, b) => b.createdAt - a.createdAt).slice(0, 200);
+  }, [orders, tableOrders, advanceOrders, bookingOrders, tablesById, waitersById]);
 
-  const openCancelDialog = (id: string, source: "regular" | "table") => {
+  const openCancelDialog = (id: string, source: "regular" | "table" | "advance" | "booking") => {
     setCancelTarget({ id, source });
     setCancelReason("");
     setCancelDialogOpen(true);
@@ -138,8 +173,7 @@ export default function PosOrders() {
     try {
       if (cancelTarget.source === "regular") {
         await cancelOrder({ orderId: cancelTarget.id, reason: cancelReason });
-      } else {
-        // Cancel table order
+      } else if (cancelTarget.source === "table") {
         const tOrder = tableOrders.find((o) => o.id === cancelTarget.id);
         if (!tOrder) throw new Error("Table order not found");
         if (tOrder.status !== "completed") throw new Error("Only completed orders can be cancelled");
@@ -151,7 +185,6 @@ export default function PosOrders() {
           updatedAt: Date.now(),
         });
         
-        // Restock inventory for tracked items
         for (const l of tOrder.lines) {
           const item = await db.items.get(l.itemId);
           if (!item?.trackInventory) continue;
@@ -159,6 +192,25 @@ export default function PosOrders() {
           const current = row?.quantity ?? 0;
           await db.inventory.put({ itemId: l.itemId, quantity: current + l.qty, updatedAt: Date.now() });
         }
+      } else if (cancelTarget.source === "advance") {
+        const adv = advanceOrders.find((o) => o.id === cancelTarget.id);
+        if (!adv) throw new Error("Advance order not found");
+        if (adv.status === "cancelled") throw new Error("Already cancelled");
+        await db.advanceOrders.update(cancelTarget.id, {
+          status: "cancelled",
+          cancelledReason: cancelReason.trim(),
+          updatedAt: Date.now(),
+        });
+      } else if (cancelTarget.source === "booking") {
+        const bk = bookingOrders.find((o) => o.id === cancelTarget.id);
+        if (!bk) throw new Error("Booking not found");
+        if (bk.status === "cancelled") throw new Error("Already cancelled");
+        // Cancelling frees up the time slot
+        await db.bookingOrders.update(cancelTarget.id, {
+          status: "cancelled",
+          cancelledReason: cancelReason.trim(),
+          updatedAt: Date.now(),
+        });
       }
       toast({ title: "Order cancelled" });
       setCancelDialogOpen(false);
@@ -168,13 +220,33 @@ export default function PosOrders() {
     }
   };
 
+  const handleReprint = async (o: UnifiedOrder) => {
+    try {
+      if (o.source === "advance" && o.advanceOrder) {
+        await printAdvanceReceipt(o.advanceOrder);
+      } else if (o.source === "booking" && o.bookingOrder) {
+        await printBookingReceipt(o.bookingOrder);
+      }
+      toast({ title: "Reprinted" });
+    } catch (e: any) {
+      toast({ title: "Print failed", description: e?.message, variant: "destructive" });
+    }
+  };
+
   const now = Date.now();
+
+  const sourceLabel = (o: UnifiedOrder) => {
+    if (o.source === "table") return `Table${o.tableNumber ? ` ${o.tableNumber}` : ""}${o.waiterName ? ` • ${o.waiterName}` : ""}`;
+    if (o.source === "advance") return "Advance";
+    if (o.source === "booking") return "Booking";
+    return null;
+  };
 
   return (
     <div className="space-y-4">
       <header>
         <h1 className="text-2xl font-semibold">Orders</h1>
-        <p className="text-sm text-muted-foreground">View receipts and cancel same-day orders.</p>
+        <p className="text-sm text-muted-foreground">View receipts and cancel orders.</p>
       </header>
 
       <Card>
@@ -187,17 +259,25 @@ export default function PosOrders() {
           ) : (
             <div className="space-y-2">
               {unifiedOrders.map((o) => {
-                const canCancel = o.status === "completed" && isSameLocalDay(o.createdAt, now);
+                const canCancel =
+                  (o.source === "regular" && o.status === "completed" && isSameLocalDay(o.createdAt, now)) ||
+                  (o.source === "table" && o.status === "completed" && isSameLocalDay(o.createdAt, now)) ||
+                  ((o.source === "advance" || o.source === "booking") && o.status !== "cancelled");
+                const src = sourceLabel(o);
                 return (
                   <div key={o.id} className="flex items-center justify-between gap-3 rounded-md border p-2">
                     <div className="min-w-0">
                       <div className="truncate text-sm font-medium">
-                        Receipt {o.receiptNo}
-                        {o.source === "table" && (
+                        {o.source === "advance" || o.source === "booking"
+                          ? `${o.source === "advance" ? "Adv" : "Bkg"} #${o.receiptNo}`
+                          : `Receipt ${o.receiptNo}`
+                        }
+                        {src && (
                           <span className="ml-1.5 text-xs text-muted-foreground">
-                            (Table{o.tableNumber ? ` ${o.tableNumber}` : ""}{o.waiterName ? ` • ${o.waiterName}` : ""})
+                            ({src})
                           </span>
                         )}
+                        {o.label && <span className="ml-1 text-xs text-muted-foreground">— {o.label}</span>}
                       </div>
                       <div className="truncate text-xs text-muted-foreground">
                         {new Date(o.createdAt).toLocaleString()} • {o.paymentMethod} • {o.status}
@@ -212,6 +292,11 @@ export default function PosOrders() {
                           deliveryPersonsById={deliveryPersonsById}
                           triggerLabel="Open"
                         />
+                      )}
+                      {(o.source === "advance" || o.source === "booking") && (
+                        <Button variant="ghost" size="sm" onClick={() => void handleReprint(o)}>
+                          <Printer className="h-3.5 w-3.5" />
+                        </Button>
                       )}
                       {canCancel && (
                         <Button
@@ -239,7 +324,9 @@ export default function PosOrders() {
           </DialogHeader>
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground">
-              This will cancel the order and restock inventory. This action cannot be undone.
+              {cancelTarget?.source === "booking"
+                ? "This will cancel the booking and free up the time slot."
+                : "This will cancel the order. This action cannot be undone."}
             </p>
             <div className="space-y-2">
               <Label htmlFor="cancelReason">Reason for cancellation</Label>

@@ -19,7 +19,8 @@ import { useAuth } from "@/auth/AuthProvider";
 import { useToast } from "@/hooks/use-toast";
 import { formatIntMoney } from "@/features/pos/format";
 import { makeId } from "@/features/admin/id";
-import { Plus, Trash2, X, Check, Ban } from "lucide-react";
+import { printAdvanceReceipt, printAdvanceKot, printBookingReceipt } from "@/features/pos/advance-receipt";
+import { Plus, Trash2, X, Check, Ban, Printer, FileText } from "lucide-react";
 
 /* ─── helpers ─── */
 function calcEndTime(start: string, durationHours: number): string {
@@ -35,6 +36,15 @@ function calcEndTime(start: string, durationHours: number): string {
 function toDateInputValue(ts: number) {
   const d = new Date(ts);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+async function getNextCounter(id: "advanceOrder" | "bookingOrder"): Promise<number> {
+  return await db.transaction("rw", db.counters, async () => {
+    const row = await db.counters.get(id);
+    const next = row?.next ?? 1;
+    await db.counters.put({ id, next: next + 1 });
+    return next;
+  });
 }
 
 export default function PosAdvanceBooking() {
@@ -74,7 +84,7 @@ export default function PosAdvanceBooking() {
   const [advCustAddress, setAdvCustAddress] = React.useState("");
 
   const openAdvDlg = () => {
-    setAdvLines([{ key: "1", name: "", qty: 1, unitPrice: 0, subtotal: 0, unit: "pcs" }]);
+    setAdvLines([{ key: "1", name: "", qty: 0, unitPrice: 0, subtotal: 0, unit: "pcs" }]);
     setAdvManualTotal("");
     setAdvDiscount("");
     setAdvAdvance("");
@@ -89,26 +99,33 @@ export default function PosAdvanceBooking() {
       prev.map((l) => {
         if (l.key !== key) return l;
         const next = { ...l, ...patch };
-        next.subtotal = Math.round(next.unitPrice) * next.qty;
+        // Only compute subtotal if both qty and unitPrice are set
+        if (next.qty && next.unitPrice) {
+          next.subtotal = Math.round(next.unitPrice) * next.qty;
+        } else if (!next.qty && !next.unitPrice) {
+          next.subtotal = 0;
+        }
         return next;
       }),
     );
   };
 
   const advCalcTotal = advLines.reduce((s, l) => s + l.subtotal, 0);
-  const advDiscountAmt = Math.min(Math.max(0, Number(advDiscount) || 0), advCalcTotal);
   const advPreTotal = advManualTotal ? Number(advManualTotal) || 0 : advCalcTotal;
+  const advDiscountAmt = Math.min(Math.max(0, Number(advDiscount) || 0), advPreTotal);
   const advTotal = Math.max(0, advPreTotal - advDiscountAmt);
   const advRemaining = Math.max(0, advTotal - (Number(advAdvance) || 0));
 
-  const saveAdvance = async () => {
+  const buildAdvanceOrder = async (): Promise<AdvanceOrder | null> => {
     if (advLines.every((l) => !l.name.trim())) {
       toast({ title: "Add at least one item", variant: "destructive" });
-      return;
+      return null;
     }
     const lines = advLines.filter((l) => l.name.trim()).map(({ key, ...rest }) => rest);
+    const receiptNo = await getNextCounter("advanceOrder");
     const order: AdvanceOrder = {
       id: makeId("adv"),
+      receiptNo,
       status: "pending",
       lines,
       subtotal: advCalcTotal,
@@ -124,9 +141,41 @@ export default function PosAdvanceBooking() {
       updatedAt: Date.now(),
     };
     await db.advanceOrders.put(order);
-    toast({ title: "Advance order saved" });
+    return order;
+  };
+
+  const saveAdvance = async () => {
+    const order = await buildAdvanceOrder();
+    if (!order) return;
+    toast({ title: `Advance order #${order.receiptNo} saved` });
     setAdvDlg(false);
     void refresh();
+  };
+
+  const saveAndPrintAdvance = async () => {
+    const order = await buildAdvanceOrder();
+    if (!order) return;
+    setAdvDlg(false);
+    void refresh();
+    try {
+      await printAdvanceReceipt(order);
+      toast({ title: `Order #${order.receiptNo} saved & printed` });
+    } catch (e: any) {
+      toast({ title: "Saved but print failed", description: e?.message, variant: "destructive" });
+    }
+  };
+
+  const saveAndKotAdvance = async () => {
+    const order = await buildAdvanceOrder();
+    if (!order) return;
+    setAdvDlg(false);
+    void refresh();
+    try {
+      await printAdvanceKot(order);
+      toast({ title: `Order #${order.receiptNo} saved & KOT printed` });
+    } catch (e: any) {
+      toast({ title: "Saved but KOT failed", description: e?.message, variant: "destructive" });
+    }
   };
 
   /* ─── Time-Based Booking Dialog ─── */
@@ -161,7 +210,7 @@ export default function PosAdvanceBooking() {
     setBookDlg(true);
   };
 
-  // Check for overlapping bookings
+  // Check for overlapping bookings (cancelled ones are excluded automatically)
   const getOverlaps = () => {
     if (!bookItemId) return [];
     const dateTs = new Date(bookDate).setHours(0, 0, 0, 0);
@@ -180,16 +229,15 @@ export default function PosAdvanceBooking() {
     });
   };
 
-  const saveBooking = async () => {
+  const buildBookingOrder = async (): Promise<BookingOrder | null> => {
     if (!bookItemId || !selectedBookItem) {
       toast({ title: "Select a bookable item", variant: "destructive" });
-      return;
+      return null;
     }
-    const overlaps = getOverlaps();
-    // Warn handled in UI, user can still proceed
-
+    const receiptNo = await getNextCounter("bookingOrder");
     const order: BookingOrder = {
       id: makeId("bkng"),
+      receiptNo,
       bookableItemId: bookItemId,
       bookableItemName: selectedBookItem.name,
       status: "pending",
@@ -210,9 +258,28 @@ export default function PosAdvanceBooking() {
       updatedAt: Date.now(),
     };
     await db.bookingOrders.put(order);
-    toast({ title: "Booking saved" });
+    return order;
+  };
+
+  const saveBooking = async () => {
+    const order = await buildBookingOrder();
+    if (!order) return;
+    toast({ title: `Booking #${order.receiptNo} saved` });
     setBookDlg(false);
     void refresh();
+  };
+
+  const saveAndPrintBooking = async () => {
+    const order = await buildBookingOrder();
+    if (!order) return;
+    setBookDlg(false);
+    void refresh();
+    try {
+      await printBookingReceipt(order);
+      toast({ title: `Booking #${order.receiptNo} saved & printed` });
+    } catch (e: any) {
+      toast({ title: "Saved but print failed", description: e?.message, variant: "destructive" });
+    }
   };
 
   /* ─── Status changes ─── */
@@ -243,12 +310,32 @@ export default function PosAdvanceBooking() {
     if (cancelId.type === "advance") {
       await db.advanceOrders.update(cancelId.id, { status: "cancelled", cancelledReason: cancelReason.trim(), updatedAt: Date.now() });
     } else {
+      // Cancelling a booking frees up that time slot automatically
       await db.bookingOrders.update(cancelId.id, { status: "cancelled", cancelledReason: cancelReason.trim(), updatedAt: Date.now() });
     }
     toast({ title: "Cancelled" });
     setCancelId(null);
     setCancelReason("");
     void refresh();
+  };
+
+  /* ─── Reprint from history ─── */
+  const reprintAdvance = async (order: AdvanceOrder) => {
+    try {
+      await printAdvanceReceipt(order);
+      toast({ title: "Reprinted" });
+    } catch (e: any) {
+      toast({ title: "Print failed", description: e?.message, variant: "destructive" });
+    }
+  };
+
+  const reprintBooking = async (order: BookingOrder) => {
+    try {
+      await printBookingReceipt(order);
+      toast({ title: "Reprinted" });
+    } catch (e: any) {
+      toast({ title: "Print failed", description: e?.message, variant: "destructive" });
+    }
   };
 
   /* ─── Bookable Items Management (admin only) ─── */
@@ -310,7 +397,7 @@ export default function PosAdvanceBooking() {
                     <div className="flex items-start justify-between gap-2 flex-wrap">
                       <div>
                         <div className="text-sm font-medium">
-                          {o.lines.map((l) => l.name).join(", ") || "Advance Order"}
+                          Adv #{o.receiptNo} — {o.lines.map((l) => l.name).join(", ") || "Advance Order"}
                         </div>
                         {o.customerName && <div className="text-xs text-muted-foreground">{o.customerName} {o.customerPhone ? `• ${o.customerPhone}` : ""}</div>}
                         <div className="text-xs text-muted-foreground">{new Date(o.createdAt).toLocaleString()}</div>
@@ -326,12 +413,15 @@ export default function PosAdvanceBooking() {
                       <div><span className="text-muted-foreground">Remaining:</span> {formatIntMoney(o.remainingPayment)}</div>
                     </div>
                     {o.cancelledReason && <div className="text-xs text-destructive">Reason: {o.cancelledReason}</div>}
-                    {o.status === "pending" && (
-                      <div className="flex gap-2 pt-1">
-                        <Button size="sm" variant="outline" className="gap-1" onClick={() => completeAdvance(o.id)}><Check className="h-3 w-3" /> Complete</Button>
-                        <Button size="sm" variant="outline" className="gap-1 text-destructive" onClick={() => { setCancelId({ id: o.id, type: "advance" }); setCancelReason(""); }}><Ban className="h-3 w-3" /> Cancel</Button>
-                      </div>
-                    )}
+                    <div className="flex gap-2 pt-1 flex-wrap">
+                      {o.status === "pending" && (
+                        <>
+                          <Button size="sm" variant="outline" className="gap-1" onClick={() => completeAdvance(o.id)}><Check className="h-3 w-3" /> Complete</Button>
+                          <Button size="sm" variant="outline" className="gap-1 text-destructive" onClick={() => { setCancelId({ id: o.id, type: "advance" }); setCancelReason(""); }}><Ban className="h-3 w-3" /> Cancel</Button>
+                        </>
+                      )}
+                      <Button size="sm" variant="ghost" className="gap-1" onClick={() => void reprintAdvance(o)}><Printer className="h-3 w-3" /> Print</Button>
+                    </div>
                   </CardContent>
                 </Card>
               ))}
@@ -392,7 +482,7 @@ export default function PosAdvanceBooking() {
                   <CardContent className="pt-4 space-y-2">
                     <div className="flex items-start justify-between gap-2 flex-wrap">
                       <div>
-                        <div className="text-sm font-medium">{o.bookableItemName}</div>
+                        <div className="text-sm font-medium">Bkg #{o.receiptNo} — {o.bookableItemName}</div>
                         <div className="text-xs text-muted-foreground">
                           {new Date(o.date).toLocaleDateString()} • {o.startTime} → {o.endTime} ({o.durationHours}h)
                         </div>
@@ -408,12 +498,15 @@ export default function PosAdvanceBooking() {
                       <div><span className="text-muted-foreground">Remaining:</span> {formatIntMoney(o.remainingPayment)}</div>
                     </div>
                     {o.cancelledReason && <div className="text-xs text-destructive">Reason: {o.cancelledReason}</div>}
-                    {o.status === "pending" && (
-                      <div className="flex gap-2 pt-1">
-                        <Button size="sm" variant="outline" className="gap-1" onClick={() => completeBooking(o.id)}><Check className="h-3 w-3" /> Complete</Button>
-                        <Button size="sm" variant="outline" className="gap-1 text-destructive" onClick={() => { setCancelId({ id: o.id, type: "booking" }); setCancelReason(""); }}><Ban className="h-3 w-3" /> Cancel</Button>
-                      </div>
-                    )}
+                    <div className="flex gap-2 pt-1 flex-wrap">
+                      {o.status === "pending" && (
+                        <>
+                          <Button size="sm" variant="outline" className="gap-1" onClick={() => completeBooking(o.id)}><Check className="h-3 w-3" /> Complete</Button>
+                          <Button size="sm" variant="outline" className="gap-1 text-destructive" onClick={() => { setCancelId({ id: o.id, type: "booking" }); setCancelReason(""); }}><Ban className="h-3 w-3" /> Cancel</Button>
+                        </>
+                      )}
+                      <Button size="sm" variant="ghost" className="gap-1" onClick={() => void reprintBooking(o)}><Printer className="h-3 w-3" /> Print</Button>
+                    </div>
                   </CardContent>
                 </Card>
               ))}
@@ -449,20 +542,18 @@ export default function PosAdvanceBooking() {
                     {menuItems.map((m) => <option key={m.id} value={m.id}>{m.name} ({formatIntMoney(m.price)})</option>)}
                   </select>
                 </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="space-y-1">
-                    <Label className="text-xs">Item Name</Label>
-                    <Input value={it.name} onChange={(e) => updateAdvLine(it.key, { name: e.target.value })} placeholder="Item name" />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs">Unit Price</Label>
-                    <Input type="number" inputMode="numeric" value={it.unitPrice || ""} onChange={(e) => updateAdvLine(it.key, { unitPrice: Number(e.target.value) || 0 })} />
-                  </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Item Name</Label>
+                  <Input value={it.name} onChange={(e) => updateAdvLine(it.key, { name: e.target.value })} placeholder="Type item name manually" />
                 </div>
                 <div className="grid grid-cols-3 gap-2">
                   <div className="space-y-1">
-                    <Label className="text-xs">Qty</Label>
-                    <Input type="number" inputMode="numeric" value={it.qty} onChange={(e) => updateAdvLine(it.key, { qty: Math.max(1, Number(e.target.value) || 1) })} />
+                    <Label className="text-xs">Qty (optional)</Label>
+                    <Input type="number" inputMode="numeric" value={it.qty || ""} onChange={(e) => updateAdvLine(it.key, { qty: Number(e.target.value) || 0 })} placeholder="—" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Unit Price (optional)</Label>
+                    <Input type="number" inputMode="numeric" value={it.unitPrice || ""} onChange={(e) => updateAdvLine(it.key, { unitPrice: Number(e.target.value) || 0 })} placeholder="—" />
                   </div>
                   <div className="space-y-1">
                     <Label className="text-xs">Unit</Label>
@@ -474,14 +565,13 @@ export default function PosAdvanceBooking() {
                       <option value="m">Meters</option>
                     </select>
                   </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs">Subtotal</Label>
-                    <div className="h-9 flex items-center text-sm font-medium">{formatIntMoney(it.subtotal)}</div>
-                  </div>
                 </div>
+                {it.subtotal > 0 && (
+                  <div className="text-xs text-muted-foreground">Subtotal: {formatIntMoney(it.subtotal)}</div>
+                )}
               </div>
             ))}
-            <Button variant="outline" size="sm" className="gap-1" onClick={() => setAdvLines((p) => [...p, { key: String(Date.now()), name: "", qty: 1, unitPrice: 0, subtotal: 0, unit: "pcs" }])}>
+            <Button variant="outline" size="sm" className="gap-1" onClick={() => setAdvLines((p) => [...p, { key: String(Date.now()), name: "", qty: 0, unitPrice: 0, subtotal: 0, unit: "pcs" }])}>
               <Plus className="h-3 w-3" /> Add Item
             </Button>
 
@@ -520,9 +610,11 @@ export default function PosAdvanceBooking() {
               <Input value={advCustAddress} onChange={(e) => setAdvCustAddress(e.target.value)} placeholder="Address" />
             </div>
           </div>
-          <DialogFooter>
+          <DialogFooter className="flex flex-wrap gap-2">
             <Button variant="outline" onClick={() => setAdvDlg(false)}>Cancel</Button>
-            <Button onClick={() => void saveAdvance()}>Save Order</Button>
+            <Button variant="outline" className="gap-1" onClick={() => void saveAndKotAdvance()}><FileText className="h-4 w-4" /> KOT</Button>
+            <Button variant="outline" className="gap-1" onClick={() => void saveAndPrintAdvance()}><Printer className="h-4 w-4" /> Print</Button>
+            <Button onClick={() => void saveAdvance()}>Save</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -600,9 +692,10 @@ export default function PosAdvanceBooking() {
               <Input value={bookCustAddress} onChange={(e) => setBookCustAddress(e.target.value)} placeholder="Address" />
             </div>
           </div>
-          <DialogFooter>
+          <DialogFooter className="flex flex-wrap gap-2">
             <Button variant="outline" onClick={() => setBookDlg(false)}>Cancel</Button>
-            <Button onClick={() => void saveBooking()}>Save Booking</Button>
+            <Button variant="outline" className="gap-1" onClick={() => void saveAndPrintBooking()}><Printer className="h-4 w-4" /> Print</Button>
+            <Button onClick={() => void saveBooking()}>Save</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -612,7 +705,7 @@ export default function PosAdvanceBooking() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Cancel {cancelId?.type === "advance" ? "Order" : "Booking"}?</AlertDialogTitle>
-            <AlertDialogDescription>This action cannot be undone. Please provide a reason.</AlertDialogDescription>
+            <AlertDialogDescription>This action cannot be undone. Please provide a reason.{cancelId?.type === "booking" ? " The time slot will become available for new bookings." : ""}</AlertDialogDescription>
           </AlertDialogHeader>
           <Input value={cancelReason} onChange={(e) => setCancelReason(e.target.value)} placeholder="Reason for cancellation" />
           <AlertDialogFooter>

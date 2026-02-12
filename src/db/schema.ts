@@ -365,7 +365,7 @@ export type StaffAccount = {
   createdAt: number;
 };
 
-export type CounterId = "receipt" | "arrival" | "exportSale";
+export type CounterId = "receipt" | "arrival" | "exportSale" | "advanceOrder" | "bookingOrder";
 
 export type Counter = {
   id: CounterId;
