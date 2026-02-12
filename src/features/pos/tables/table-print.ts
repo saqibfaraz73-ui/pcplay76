@@ -74,7 +74,7 @@ export async function printTableKot(args: {
 }
 
 function buildKotHtml(tableNumber: string, waiterName: string, items: KotItem[]): string {
-  const now = new Date().toLocaleString();
+  const now = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: true });
   const itemsHtml = items
     .map((item) => `<div class="item"><span>${item.name}</span><span>x${item.qty}</span></div>`)
     .join("");
@@ -109,7 +109,7 @@ function buildKotEscPos(tableNumber: string, waiterName: string, items: KotItem[
   const width = 32; // 58mm thermal printer
   const hr = "-".repeat(width);
   const now = new Date();
-  const timeStr = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  const timeStr = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: true });
 
   const center = (s: string) => {
     const pad = Math.max(0, Math.floor((width - s.length) / 2));
