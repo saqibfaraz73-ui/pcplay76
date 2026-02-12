@@ -58,7 +58,7 @@ export async function printTableKot(args: {
     throw new Error("Printer not configured. Go to Admin > Printer and set Connection to Bluetooth or USB.");
   }
 
-  const escPos = buildKotEscPos(tableNumber, waiterName, items, settings);
+  const escPos = buildKotEscPos(tableNumber, waiterName, items);
 
   if (conn === "usb") {
     await usbSend(escPos);
@@ -74,7 +74,7 @@ export async function printTableKot(args: {
 }
 
 function buildKotHtml(tableNumber: string, waiterName: string, items: KotItem[]): string {
-  const now = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: true });
+  const now = new Date().toLocaleString();
   const itemsHtml = items
     .map((item) => `<div class="item"><span>${item.name}</span><span>x${item.qty}</span></div>`)
     .join("");
@@ -92,24 +92,11 @@ function buildKotHtml(tableNumber: string, waiterName: string, items: KotItem[])
   `;
 }
 
-function getFeedLinesForKot(settings: Settings | null, contentLines: number): number {
-  const lineHeightInch = 0.125;
-  const sizeMap: Record<string, number> = {
-    "1x1": 1, "2x1": 1, "3x1": 1,
-    "2x2": 2, "2x3": 3, "2x4": 4, "2x5": 5,
-  };
-  const targetHeight = sizeMap[settings?.receiptSize ?? "2x3"] ?? 3;
-  const contentHeight = contentLines * lineHeightInch;
-  const remainingInches = Math.max(0, targetHeight - contentHeight);
-  const feedLines = Math.floor(remainingInches / lineHeightInch);
-  return Math.max(3, feedLines);
-}
-
-function buildKotEscPos(tableNumber: string, waiterName: string, items: KotItem[], settings: Settings | null): string {
+function buildKotEscPos(tableNumber: string, waiterName: string, items: KotItem[]): string {
   const width = 32; // 58mm thermal printer
   const hr = "-".repeat(width);
   const now = new Date();
-  const timeStr = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: true });
+  const timeStr = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
   const center = (s: string) => {
     const pad = Math.max(0, Math.floor((width - s.length) / 2));
@@ -118,9 +105,11 @@ function buildKotEscPos(tableNumber: string, waiterName: string, items: KotItem[
 
   const out: string[] = [];
   
-  out.push("\x1b@");
-  out.push("\x1b3\x18");
+  // Initialize printer
+  out.push("\x1b@");         // init
+  out.push("\x1b3\x18");     // tight line spacing
   
+  // Header - centered
   out.push(center("KITCHEN ORDER"));
   out.push(hr);
   out.push(center(`Table: ${tableNumber}`));
@@ -128,15 +117,17 @@ function buildKotEscPos(tableNumber: string, waiterName: string, items: KotItem[
   out.push(center(timeStr));
   out.push(hr);
 
+  // Items - name and quantity only
   for (const item of items) {
-    const line = item.name.slice(0, 16).padEnd(width - 4) + `x${item.qty}`;
+    const line = `${item.name}`.padEnd(width - 4) + `x${item.qty}`;
     out.push(line.slice(0, width));
   }
 
   out.push(hr);
-
-  out.push("\n".repeat(3));
-  out.push("\x1dV\x41\x03");
+  out.push("");
+  out.push("");
+  out.push("");
+  out.push("\x1dV\x41\x03"); // partial cut
 
   return out.join("\n");
 }
