@@ -132,16 +132,11 @@ export function AdminCustomers() {
   };
 
   const remove = async (c: CreditCustomer) => {
-    const used = await db.orders.where("creditCustomerId").equals(c.id).count();
-    if (used > 0) {
-      toast({
-        title: "Cannot delete customer",
-        description: "This customer has credit orders. Keep the record for reports.",
-        variant: "destructive",
-      });
-      return;
-    }
-    await db.customers.delete(c.id);
+    if (!confirm(`Delete "${c.name}" and all their payment records? This cannot be undone.`)) return;
+    await db.transaction("rw", [db.customers, db.creditPayments], async () => {
+      await db.creditPayments.where("customerId").equals(c.id).delete();
+      await db.customers.delete(c.id);
+    });
     toast({ title: "Deleted" });
     await refresh();
   };
