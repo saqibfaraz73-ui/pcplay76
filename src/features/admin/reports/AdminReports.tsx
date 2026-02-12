@@ -159,16 +159,19 @@ function buildSalesPdf(args: {
   y += 24;
 
   // ===== SUMMARY BOXES =====
+  const deliveryEnabled = args.settings?.deliveryEnabled ?? true;
+  const tableEnabled = args.settings?.tableManagementEnabled ?? true;
+
   const boxData: { label: string; value: string; color?: [number, number, number] }[] = [
     { label: "Total Sales", value: formatIntMoney(overallSales) },
     { label: "Take Away Sales", value: formatIntMoney(takeawayTotal) },
-    { label: "Delivery Sales", value: formatIntMoney(deliveryTotal) },
-    { label: "Table Sales", value: formatIntMoney(tableSalesTotal) },
+    ...(deliveryEnabled ? [{ label: "Delivery Sales", value: formatIntMoney(deliveryTotal) }] : []),
+    ...(tableEnabled ? [{ label: "Table Sales", value: formatIntMoney(tableSalesTotal) }] : []),
     { label: "Credit Sales", value: formatIntMoney(totalCreditSales) },
-    { label: "Total Cancelled", value: formatIntMoney(totalCancelledAmount), color: [200, 0, 0] },
-    { label: "Total Discount", value: formatIntMoney(overallDiscount), color: [200, 0, 0] },
-    { label: "Total Expenses", value: formatIntMoney(totalExpenses), color: [200, 0, 0] },
-    { label: "Remaining Balance", value: formatIntMoney(remainingBalance), color: remainingBalance >= 0 ? [0, 120, 0] : [200, 0, 0] },
+    { label: "Total Cancelled", value: formatIntMoney(totalCancelledAmount), color: [200, 0, 0] as [number, number, number] },
+    { label: "Total Discount", value: formatIntMoney(overallDiscount), color: [200, 0, 0] as [number, number, number] },
+    { label: "Total Expenses", value: formatIntMoney(totalExpenses), color: [200, 0, 0] as [number, number, number] },
+    { label: "Remaining Balance", value: formatIntMoney(remainingBalance), color: remainingBalance >= 0 ? [0, 120, 0] as [number, number, number] : [200, 0, 0] as [number, number, number] },
   ];
 
   const cols = 4;
@@ -213,7 +216,7 @@ function buildSalesPdf(args: {
   }
 
   // ===== DELIVERY SALES =====
-  if (deliveryCompleted.length > 0 || deliveryCancelled.length > 0) {
+  if (deliveryEnabled && (deliveryCompleted.length > 0 || deliveryCancelled.length > 0)) {
     heading("Delivery Sales");
     row("Delivery Sales Total", formatIntMoney(deliveryTotal), true);
     row("Discounts", formatIntMoney(deliveryDiscount));
@@ -245,7 +248,7 @@ function buildSalesPdf(args: {
   }
 
   // ===== TABLE SALES =====
-  if (completedTableOrders.length > 0 || cancelledTableOrders.length > 0) {
+  if (tableEnabled && (completedTableOrders.length > 0 || cancelledTableOrders.length > 0)) {
     heading("Table Sales");
     row("Tables Total Sales", formatIntMoney(tableSalesTotal), true);
     row("Discounts", formatIntMoney(tableDiscount));
@@ -332,8 +335,8 @@ function buildSalesPdf(args: {
   heading("Overall Summary");
   separator();
   row("Takeaway Sales", formatIntMoney(takeawayTotal));
-  row("Delivery Sales", formatIntMoney(deliveryTotal));
-  row("Table Sales", formatIntMoney(tableSalesTotal));
+  if (deliveryEnabled) row("Delivery Sales", formatIntMoney(deliveryTotal));
+  if (tableEnabled) row("Table Sales", formatIntMoney(tableSalesTotal));
   row("Credit Sales", formatIntMoney(totalCreditSales));
   y += 4;
   row("Overall Sales", formatIntMoney(overallSales), true);
@@ -668,6 +671,7 @@ export function AdminReports() {
         tableOrders={salesPreview.tableOrders}
         tables={tables}
         waiters={waiters}
+        settings={settings}
       />
 
       <Card>
