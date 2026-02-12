@@ -6,6 +6,25 @@ import { usbSend } from "@/features/pos/usb-printer";
 import { db } from "@/db/appDb";
 import jsPDF from "jspdf";
 
+/* ─── Date/time formatting helpers ─── */
+function fmtDate(ts: number | string) {
+  const d = new Date(ts);
+  return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
+}
+function fmtDateTime(ts: number) {
+  const d = new Date(ts);
+  let h = d.getHours(); const m = d.getMinutes();
+  const ampm = h >= 12 ? "PM" : "AM";
+  h = h % 12 || 12;
+  return `${fmtDate(ts)} ${h}:${String(m).padStart(2, "0")} ${ampm}`;
+}
+function fmtTime12(t: string) {
+  const [h24, mi] = t.split(":").map(Number);
+  const ampm = h24 >= 12 ? "PM" : "AM";
+  const h = h24 % 12 || 12;
+  return `${h}:${String(mi).padStart(2, "0")} ${ampm}`;
+}
+
 /* ─── Receipt size feed (same logic as sales) ─── */
 
 function getFeedLinesForSize(settings: Settings, contentLines: number): number {
@@ -25,7 +44,7 @@ function buildAdvanceEscPos(order: AdvanceOrder, settings: Settings): string {
   const line = (s = "") => s.slice(0, width).padEnd(width, " ");
   const money = (n: number) => formatIntMoney(n);
   const title = settings.restaurantName || "SANGI POS";
-  const dateStr = new Date(order.createdAt).toLocaleString("en-PK", { hour12: true });
+  const dateStr = fmtDateTime(order.createdAt);
 
   const headerLines = [
     line(title),
@@ -39,7 +58,7 @@ function buildAdvanceEscPos(order: AdvanceOrder, settings: Settings): string {
     order.customerName ? line(`Customer: ${order.customerName}`) : null,
     order.customerPhone ? line(`Phone: ${order.customerPhone}`) : null,
     order.customerAddress ? line(`Address: ${order.customerAddress}`) : null,
-    order.deliveryDate ? line(`Delivery: ${new Date(order.deliveryDate).toLocaleDateString()}${order.deliveryTime ? " " + order.deliveryTime : ""}`) : null,
+    order.deliveryDate ? line(`Delivery: ${fmtDate(order.deliveryDate)}${order.deliveryTime ? " " + fmtTime12(order.deliveryTime) : ""}`) : null,
     hr,
   ].filter(Boolean) as string[];
 
@@ -82,7 +101,7 @@ function buildAdvanceKot(order: AdvanceOrder, settings: Settings): string {
   out.push(center(settings.restaurantName || "SANGI POS"));
   out.push(hr);
   out.push(center(`Adv #: ${order.receiptNo}`));
-  out.push(center(`Date: ${new Date(order.createdAt).toLocaleString("en-PK", { hour12: true })}`));
+  out.push(center(`Date: ${fmtDateTime(order.createdAt)}`));
   if (order.cashier) out.push(center(`By: ${order.cashier}`));
   if (order.customerName) out.push(center(`Customer: ${order.customerName}`));
   out.push(hr);
@@ -111,7 +130,7 @@ function buildBookingEscPos(order: BookingOrder, settings: Settings): string {
   const line = (s = "") => s.slice(0, width).padEnd(width, " ");
   const money = (n: number) => formatIntMoney(n);
   const title = settings.restaurantName || "SANGI POS";
-  const dateStr = new Date(order.date).toLocaleDateString();
+  const dateStr = fmtDate(order.date);
 
   const headerLines = [
     line(title),
@@ -219,11 +238,11 @@ export function buildAdvanceReceiptPdf(order: AdvanceOrder, settings: Settings |
   line(settings?.restaurantName || "SANGI POS", true, 9);
   line("ADVANCE ORDER", true, 8);
   line(`Receipt #${order.receiptNo}`, false, 7);
-  line(`Date: ${new Date(order.createdAt).toLocaleString()}`);
+  line(`Date: ${fmtDateTime(order.createdAt)}`);
   if (order.cashier) line(`Cashier: ${order.cashier}`);
   if (order.customerName) line(`Customer: ${order.customerName}`);
   if (order.customerPhone) line(`Phone: ${order.customerPhone}`);
-  if (order.deliveryDate) line(`Delivery: ${new Date(order.deliveryDate).toLocaleDateString()}${order.deliveryTime ? " " + order.deliveryTime : ""}`);
+  if (order.deliveryDate) line(`Delivery: ${fmtDate(order.deliveryDate)}${order.deliveryTime ? " " + fmtTime12(order.deliveryTime) : ""}`);
   y += 2; hr(); y += 2;
 
   for (const l of order.lines) {
@@ -272,7 +291,7 @@ export function buildBookingReceiptPdf(order: BookingOrder, settings: Settings |
   line("BOOKING", true, 8);
   line(`Receipt #${order.receiptNo}`, false, 7);
   line(`Item: ${order.bookableItemName}`);
-  line(`Date: ${new Date(order.date).toLocaleDateString()}`);
+  line(`Date: ${fmtDate(order.date)}`);
   line(`Time: ${order.startTime} → ${order.endTime} (${order.durationHours}h)`);
   if (order.cashier) line(`Cashier: ${order.cashier}`);
   if (order.customerName) line(`Customer: ${order.customerName}`);

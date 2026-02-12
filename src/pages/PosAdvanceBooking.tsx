@@ -26,6 +26,25 @@ import { Capacitor } from "@capacitor/core";
 import { Plus, Trash2, X, Check, Ban, Printer, FileText, Share2 } from "lucide-react";
 
 /* ─── helpers ─── */
+const fmtDate = (ts: number | string) => {
+  const d = new Date(ts);
+  return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
+};
+const fmtDateTime = (ts: number) => {
+  const d = new Date(ts);
+  const date = fmtDate(ts);
+  let h = d.getHours(); const m = d.getMinutes();
+  const ampm = h >= 12 ? "PM" : "AM";
+  h = h % 12 || 12;
+  return `${date} ${h}:${String(m).padStart(2, "0")} ${ampm}`;
+};
+const fmtTime12 = (t: string) => {
+  const [h24, m] = t.split(":").map(Number);
+  const ampm = h24 >= 12 ? "PM" : "AM";
+  const h = h24 % 12 || 12;
+  return `${h}:${String(m).padStart(2, "0")} ${ampm}`;
+};
+
 function calcEndTime(start: string, durationHours: number): string {
   const [h, m] = start.split(":").map(Number);
   const totalMin = h * 60 + m + Math.round(durationHours * 60);
@@ -571,10 +590,10 @@ export default function PosAdvanceBooking() {
                         {o.customerName && <div className="text-xs text-muted-foreground">{o.customerName} {o.customerPhone ? `• ${o.customerPhone}` : ""}</div>}
                         {(o.deliveryDate || o.deliveryTime) && (
                           <div className="text-xs text-muted-foreground">
-                            Delivery: {o.deliveryDate ? new Date(o.deliveryDate).toLocaleDateString() : ""}{o.deliveryTime ? ` at ${o.deliveryTime}` : ""}
+                            Delivery: {o.deliveryDate ? fmtDate(o.deliveryDate) : ""}{o.deliveryTime ? ` at ${fmtTime12(o.deliveryTime)}` : ""}
                           </div>
                         )}
-                        <div className="text-xs text-muted-foreground">{new Date(o.createdAt).toLocaleString()}</div>
+                        <div className="text-xs text-muted-foreground">{fmtDateTime(o.createdAt)}</div>
                       </div>
                       <div className="flex items-center gap-2">
                         <Badge variant={statusColor(o.status)}>{o.status}</Badge>
@@ -662,7 +681,7 @@ export default function PosAdvanceBooking() {
                       <div>
                         <div className="text-sm font-medium">Bkg #{o.receiptNo} — {o.bookableItemName}</div>
                         <div className="text-xs text-muted-foreground">
-                          {new Date(o.date).toLocaleDateString()} • {o.startTime} → {o.endTime} ({o.durationHours}h)
+                          {fmtDate(o.date)} • {o.startTime} → {o.endTime} ({o.durationHours}h)
                         </div>
                         {o.customerName && <div className="text-xs text-muted-foreground">{o.customerName} {o.customerPhone ? `• ${o.customerPhone}` : ""}</div>}
                       </div>
