@@ -161,7 +161,7 @@ export function buildBookingLodgePdf(args: {
       doc.setFont("helvetica", "normal");
       doc.setFontSize(8);
       doc.setTextColor(isCancelled ? 150 : 60);
-      doc.text(`Date: ${new Date(o.date).toLocaleDateString()}  |  Time: ${o.startTime} → ${o.endTime} (${o.durationHours}h)`, left + 8, y);
+      doc.text(`Date: ${new Date(o.date).toLocaleDateString("en-GB")}  |  Time: ${o.startTime} → ${o.endTime} (${o.durationHours}h)`, left + 8, y);
       y += 11;
       doc.text(`Price: ${formatIntMoney(o.price)}  |  Discount: ${formatIntMoney(o.discountAmount)}  |  Total: ${formatIntMoney(o.total)}`, left + 8, y);
       y += 11;
