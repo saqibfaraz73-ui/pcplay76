@@ -234,49 +234,96 @@ export function buildCreditPaymentsPdf(args: {
   const right = pageWidth - 40;
   const contentWidth = right - left;
   let y = 48;
-  const lineH = 14;
+  const lineH = 16;
   const pageHeight = 780;
   const checkPage = (needed = lineH * 2) => { if (y + needed > pageHeight) { doc.addPage(); y = 48; } };
 
   const completed = args.orders.filter((o) => o.status === "completed");
   const totalCredit = completed.reduce((s, o) => s + o.total, 0);
   const totalPaid = args.payments.reduce((s, p) => s + p.amount, 0);
-  const balance = totalCredit - totalPaid;
+  const currentBalance = totalCredit - totalPaid;
 
+  // Title
   doc.setFontSize(16); doc.setFont("helvetica", "bold");
   doc.text("Credit Payment History", left, y); y += 20;
-  doc.setFontSize(10); doc.setFont("helvetica", "normal");
-  doc.text(`${args.restaurantName} • ${args.customer.name}${args.customer.mobile ? ` (${args.customer.mobile})` : ""} • ${args.fromLabel} → ${args.toLabel}`, left, y); y += 20;
 
-  // Summary
-  doc.setFontSize(10); doc.setFont("helvetica", "bold"); doc.setTextColor(0);
-  doc.text(`Total Credit: ${formatIntMoney(totalCredit)}`, left, y);
-  doc.text(`Total Paid: ${formatIntMoney(totalPaid)}`, left + 180, y);
-  doc.setTextColor(balance > 0 ? 200 : 0, balance > 0 ? 50 : 150, balance > 0 ? 50 : 50);
-  doc.text(`Balance: ${formatIntMoney(balance)}`, left + 340, y);
-  doc.setTextColor(0); y += 20;
+  // Customer info
+  doc.setFontSize(10); doc.setFont("helvetica", "normal");
+  doc.text(`${args.restaurantName}`, left, y); y += 14;
+  doc.setFont("helvetica", "bold");
+  doc.text(`Customer: ${args.customer.name}${args.customer.mobile ? ` (${args.customer.mobile})` : ""}`, left, y); y += 14;
+  doc.setFont("helvetica", "normal");
+  doc.text(`Date Range: ${args.fromLabel} → ${args.toLabel}`, left, y); y += 16;
+
+  // Current balance box
+  checkPage(40);
+  doc.setDrawColor(150); doc.setLineWidth(0.5);
+  doc.roundedRect(left, y, contentWidth, 36, 3, 3);
+  doc.setFontSize(9); doc.setTextColor(80); doc.text("Current Balance", left + 8, y + 12);
+  doc.setFontSize(14); doc.setFont("helvetica", "bold");
+  doc.setTextColor(currentBalance > 0 ? 200 : 0, currentBalance > 0 ? 50 : 150, currentBalance > 0 ? 50 : 50);
+  doc.text(formatIntMoney(currentBalance), left + 8, y + 28);
+  doc.setTextColor(0);
+
+  // Summary in same box
+  doc.setFontSize(9); doc.setFont("helvetica", "normal"); doc.setTextColor(80);
+  doc.text(`Total Credit: ${formatIntMoney(totalCredit)}`, left + contentWidth * 0.4, y + 12);
+  doc.text(`Total Paid: ${formatIntMoney(totalPaid)}`, left + contentWidth * 0.4, y + 26);
+  doc.setTextColor(0);
+  y += 48;
 
   if (args.payments.length === 0) {
     doc.setFontSize(10); doc.text("No payments in this period.", left, y);
     return doc;
   }
 
+  // Combine payments and orders chronologically to show running balance
+  // Sort payments oldest first so running balance makes sense
+  const sorted = [...args.payments].sort((a, b) => a.createdAt - b.createdAt);
+
+  // Calculate balance before first payment in range using all orders/payments
+  // We compute running balance: start from 0, add credits, subtract payments in chronological order
+  const allEvents: { type: "credit" | "payment"; amount: number; createdAt: number }[] = [];
+  for (const o of completed) allEvents.push({ type: "credit", amount: o.total, createdAt: o.createdAt });
+  for (const p of args.payments) allEvents.push({ type: "payment", amount: p.amount, createdAt: p.createdAt });
+  allEvents.sort((a, b) => a.createdAt - b.createdAt);
+
   // Table header
   doc.setFontSize(8); doc.setFont("helvetica", "bold"); doc.setTextColor(80);
-  doc.text("#", left + 4, y); doc.text("Date", left + 20, y); doc.text("Amount", left + contentWidth * 0.5, y); doc.text("Note", left + contentWidth * 0.7, y); y += 10;
+  doc.text("#", left + 4, y);
+  doc.text("Date", left + 18, y);
+  doc.text("Amount", left + contentWidth * 0.38, y);
+  doc.text("Balance After", left + contentWidth * 0.58, y);
+  doc.text("Note", left + contentWidth * 0.78, y);
+  y += 10;
   doc.setDrawColor(200); doc.line(left, y - 4, right, y - 4);
   doc.setFont("helvetica", "normal"); doc.setTextColor(0);
 
-  const sorted = [...args.payments].sort((a, b) => b.createdAt - a.createdAt);
-  sorted.forEach((p, idx) => {
+  // Calculate running balance for each payment
+  let runningBal = 0;
+  const balanceMap = new Map<string, number>();
+  for (const ev of allEvents) {
+    if (ev.type === "credit") runningBal += ev.amount;
+    else runningBal -= ev.amount;
+    // For payments, store the balance after
+    const matchingPayment = sorted.find((p) => p.createdAt === ev.createdAt && ev.type === "payment" && !balanceMap.has(p.id));
+    if (matchingPayment && ev.type === "payment") balanceMap.set(matchingPayment.id, runningBal);
+  }
+
+  // Re-sort for display (newest first)
+  const displaySorted = [...sorted].reverse();
+  displaySorted.forEach((p, idx) => {
     checkPage();
-    doc.setFontSize(9);
+    const balAfter = balanceMap.get(p.id) ?? 0;
+    doc.setFontSize(8); doc.setTextColor(0);
     doc.text(String(idx + 1), left + 4, y);
-    doc.text(new Date(p.createdAt).toLocaleString(), left + 20, y);
+    doc.text(new Date(p.createdAt).toLocaleString(), left + 18, y);
     doc.setTextColor(0, 150, 50);
-    doc.text(`+${formatIntMoney(p.amount)}`, left + contentWidth * 0.5, y);
+    doc.text(`+${formatIntMoney(p.amount)}`, left + contentWidth * 0.38, y);
+    doc.setTextColor(balAfter > 0 ? 200 : 0, balAfter > 0 ? 50 : 150, balAfter > 0 ? 50 : 50);
+    doc.text(formatIntMoney(balAfter), left + contentWidth * 0.58, y);
     doc.setTextColor(0);
-    doc.text(p.note || "—", left + contentWidth * 0.7, y);
+    doc.text((p.note || "—").slice(0, 20), left + contentWidth * 0.78, y);
     y += lineH;
   });
 
@@ -289,7 +336,7 @@ export function buildCreditPaymentsPdf(args: {
   return doc;
 }
 
-/** Build PDF with items bought by a credit customer */
+/** Build PDF with items bought (purchases) by a credit customer with running balance */
 export function buildCreditItemsPdf(args: {
   restaurantName: string;
   fromLabel: string;
@@ -304,29 +351,102 @@ export function buildCreditItemsPdf(args: {
   const right = pageWidth - 40;
   const contentWidth = right - left;
   let y = 48;
-  const lineH = 14;
+  const lineH = 16;
   const pageHeight = 780;
   const checkPage = (needed = lineH * 2) => { if (y + needed > pageHeight) { doc.addPage(); y = 48; } };
 
   const completed = args.orders.filter((o) => o.status === "completed");
   const totalCredit = completed.reduce((s, o) => s + o.total, 0);
   const totalPaid = args.payments.reduce((s, p) => s + p.amount, 0);
-  const balance = totalCredit - totalPaid;
+  const currentBalance = totalCredit - totalPaid;
 
+  // Title
   doc.setFontSize(16); doc.setFont("helvetica", "bold");
-  doc.text("Credit Items Report", left, y); y += 20;
+  doc.text("Credit Purchases Report", left, y); y += 20;
+
+  // Customer info
   doc.setFontSize(10); doc.setFont("helvetica", "normal");
-  doc.text(`${args.restaurantName} • ${args.customer.name}${args.customer.mobile ? ` (${args.customer.mobile})` : ""} • ${args.fromLabel} → ${args.toLabel}`, left, y); y += 20;
+  doc.text(`${args.restaurantName}`, left, y); y += 14;
+  doc.setFont("helvetica", "bold");
+  doc.text(`Customer: ${args.customer.name}${args.customer.mobile ? ` (${args.customer.mobile})` : ""}`, left, y); y += 14;
+  doc.setFont("helvetica", "normal");
+  doc.text(`Date Range: ${args.fromLabel} → ${args.toLabel}`, left, y); y += 16;
 
-  // Summary
-  doc.setFontSize(10); doc.setFont("helvetica", "bold"); doc.setTextColor(0);
-  doc.text(`Total Credit: ${formatIntMoney(totalCredit)}`, left, y);
-  doc.text(`Paid: ${formatIntMoney(totalPaid)}`, left + 180, y);
-  doc.setTextColor(balance > 0 ? 200 : 0, balance > 0 ? 50 : 150, balance > 0 ? 50 : 50);
-  doc.text(`Balance: ${formatIntMoney(balance)}`, left + 310, y);
-  doc.setTextColor(0); y += 20;
+  // Current balance box
+  checkPage(40);
+  doc.setDrawColor(150); doc.setLineWidth(0.5);
+  doc.roundedRect(left, y, contentWidth, 36, 3, 3);
+  doc.setFontSize(9); doc.setTextColor(80); doc.text("Current Balance", left + 8, y + 12);
+  doc.setFontSize(14); doc.setFont("helvetica", "bold");
+  doc.setTextColor(currentBalance > 0 ? 200 : 0, currentBalance > 0 ? 50 : 150, currentBalance > 0 ? 50 : 50);
+  doc.text(formatIntMoney(currentBalance), left + 8, y + 28);
+  doc.setTextColor(0);
 
-  // Items summary
+  doc.setFontSize(9); doc.setFont("helvetica", "normal"); doc.setTextColor(80);
+  doc.text(`Total Credit: ${formatIntMoney(totalCredit)}`, left + contentWidth * 0.4, y + 12);
+  doc.text(`Total Paid: ${formatIntMoney(totalPaid)}`, left + contentWidth * 0.4, y + 26);
+  doc.setTextColor(0);
+  y += 48;
+
+  if (completed.length === 0) {
+    doc.setFontSize(10); doc.text("No purchases in this period.", left, y);
+    return doc;
+  }
+
+  // Build running balance for each order
+  const allEvents: { type: "credit" | "payment"; amount: number; createdAt: number; id: string }[] = [];
+  for (const o of completed) allEvents.push({ type: "credit", amount: o.total, createdAt: o.createdAt, id: o.id });
+  for (const p of args.payments) allEvents.push({ type: "payment", amount: p.amount, createdAt: p.createdAt, id: p.id });
+  allEvents.sort((a, b) => a.createdAt - b.createdAt);
+
+  let runningBal = 0;
+  const balanceMap = new Map<string, number>();
+  for (const ev of allEvents) {
+    if (ev.type === "credit") runningBal += ev.amount;
+    else runningBal -= ev.amount;
+    balanceMap.set(ev.id, runningBal);
+  }
+
+  // Purchase orders table (newest first)
+  doc.setFontSize(9); doc.setFont("helvetica", "bold"); doc.setTextColor(0);
+  doc.text("Purchase Orders", left, y); y += 14;
+
+  doc.setFontSize(7); doc.setFont("helvetica", "bold"); doc.setTextColor(80);
+  doc.text("#", left + 4, y);
+  doc.text("Order #", left + 16, y);
+  doc.text("Date", left + 56, y);
+  doc.text("Items", left + contentWidth * 0.38, y);
+  doc.text("Bill", left + contentWidth * 0.65, y);
+  doc.text("Balance After", left + contentWidth * 0.8, y);
+  y += 10;
+  doc.setDrawColor(200); doc.line(left, y - 4, right, y - 4);
+  doc.setFont("helvetica", "normal"); doc.setTextColor(0);
+
+  const sortedOrders = [...completed].sort((a, b) => b.createdAt - a.createdAt);
+  sortedOrders.forEach((o, idx) => {
+    checkPage(lineH + 10);
+    const balAfter = balanceMap.get(o.id) ?? 0;
+    const itemNames = o.lines.map((l) => `${l.name}×${l.qty}`).join(", ");
+
+    doc.setFontSize(7); doc.setTextColor(0);
+    doc.text(String(idx + 1), left + 4, y);
+    doc.text(`#${o.receiptNo}`, left + 16, y);
+    doc.text(new Date(o.createdAt).toLocaleDateString(), left + 56, y);
+    doc.text(itemNames.slice(0, 30), left + contentWidth * 0.38, y);
+    doc.setFont("helvetica", "bold");
+    doc.text(formatIntMoney(o.total), left + contentWidth * 0.65, y);
+    doc.setTextColor(balAfter > 0 ? 200 : 0, balAfter > 0 ? 50 : 150, balAfter > 0 ? 50 : 50);
+    doc.text(formatIntMoney(balAfter), left + contentWidth * 0.8, y);
+    doc.setFont("helvetica", "normal"); doc.setTextColor(0);
+    y += lineH;
+  });
+
+  // Items summary section
+  y += 10;
+  checkPage(40);
+  doc.setFontSize(9); doc.setFont("helvetica", "bold"); doc.setTextColor(0);
+  doc.text("Items Summary", left, y); y += 14;
+
   const byItem: Record<string, { name: string; qty: number; total: number }> = {};
   for (const o of completed) {
     for (const l of o.lines) {
@@ -336,23 +456,18 @@ export function buildCreditItemsPdf(args: {
   }
   const itemsSummary = Object.values(byItem).sort((a, b) => b.total - a.total);
 
-  if (itemsSummary.length === 0) {
-    doc.setFontSize(10); doc.text("No items in this period.", left, y);
-    return doc;
-  }
-
-  doc.setFontSize(8); doc.setFont("helvetica", "bold"); doc.setTextColor(80);
-  doc.text("#", left + 4, y); doc.text("Item", left + 20, y); doc.text("Qty", left + contentWidth * 0.55, y); doc.text("Unit Price", left + contentWidth * 0.68, y); doc.text("Total", left + contentWidth * 0.85, y); y += 10;
+  doc.setFontSize(7); doc.setFont("helvetica", "bold"); doc.setTextColor(80);
+  doc.text("#", left + 4, y); doc.text("Item", left + 20, y); doc.text("Qty", left + contentWidth * 0.5, y); doc.text("Avg Price", left + contentWidth * 0.65, y); doc.text("Total", left + contentWidth * 0.85, y); y += 10;
   doc.setDrawColor(200); doc.line(left, y - 4, right, y - 4);
   doc.setFont("helvetica", "normal"); doc.setTextColor(0);
 
   itemsSummary.forEach((r, idx) => {
     checkPage();
-    doc.setFontSize(9);
+    doc.setFontSize(8);
     doc.text(String(idx + 1), left + 4, y);
     doc.text(r.name, left + 20, y);
-    doc.text(String(r.qty), left + contentWidth * 0.55, y);
-    doc.text(r.qty > 0 ? formatIntMoney(Math.round(r.total / r.qty)) : "—", left + contentWidth * 0.68, y);
+    doc.text(String(r.qty), left + contentWidth * 0.5, y);
+    doc.text(r.qty > 0 ? formatIntMoney(Math.round(r.total / r.qty)) : "—", left + contentWidth * 0.65, y);
     doc.text(formatIntMoney(r.total), left + contentWidth * 0.85, y);
     y += lineH;
   });
