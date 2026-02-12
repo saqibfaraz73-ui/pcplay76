@@ -29,9 +29,6 @@ function escapeHtml(s: string) {
 function getFeedLinesForSize(settings: Settings, contentLines: number): number {
   const lineHeightInch = 0.125;
   const sizeMap: Record<string, number> = {
-    "1x1": 1,
-    "2x1": 1,
-    "3x1": 1,
     "2x2": 2,
     "2x3": 3,
     "2x4": 4,
@@ -53,21 +50,12 @@ async function buildEscPosReceipt(
     creditCustomerName?: string;
     deliveryPersonName?: string;
     deliveryCustomerName?: string;
-    centered?: boolean;
   }
 ): Promise<string> {
   const width = settings.paperSize === "80" ? 48 : 32;
   const hr = "-".repeat(width);
 
-  const centered = opts?.centered ?? false;
-  const line = (s = "") => {
-    const trimmed = s.slice(0, width);
-    if (centered) {
-      const pad = Math.max(0, Math.floor((width - trimmed.length) / 2));
-      return " ".repeat(pad) + trimmed;
-    }
-    return trimmed.padEnd(width, " ");
-  };
+  const line = (s = "") => s.slice(0, width).padEnd(width, " ");
   const money = (n: number) => formatIntMoney(n);
 
   const title = settings.restaurantName || "SANGI POS";
@@ -206,8 +194,7 @@ async function buildKotReceipt(order: Order, settings: Settings): Promise<string
   out.push(lr("Grand Total:", money(order.total)));
   out.push(hr);
   out.push(center("Thank you, come again!"));
-  out.push("\n\n\n");
-  out.push("\x1dV\x41\x03"); // partial cut
+  out.push("\n");
 
   return out.join("\n");
 }
@@ -248,10 +235,7 @@ export async function printReceiptFromOrder(
       throw new Error("Printer not configured. Go to Admin > Printer and set Connection to Bluetooth or USB.");
     }
 
-    const text = await buildEscPosReceipt(order, settings, {
-      ...opts,
-      centered: conn === "usb",
-    });
+    const text = await buildEscPosReceipt(order, settings, opts);
 
     if (conn === "usb") {
       try {
