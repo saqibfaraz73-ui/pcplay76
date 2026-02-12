@@ -25,7 +25,7 @@ import { makeId } from "@/features/admin/id";
 import { formatIntMoney, parseNonDecimalInt } from "@/features/pos/format";
 import { writePdfFile, shareFile } from "@/features/files/sangi-folders";
 import { Capacitor } from "@capacitor/core";
-import { Plus, Trash2, Share2, CreditCard, Banknote, PackagePlus, Upload, Download, Printer } from "lucide-react";
+import { Plus, Trash2, Share2, CreditCard, Banknote, PackagePlus, Upload, Download, Printer, XCircle } from "lucide-react";
 import { printEntryReceipt, shareEntryReceipt, getNextEntryNo, type EntryReceiptData } from "@/features/pos/entry-receipt";
 import { importArrivalsFromExcel, importArrivalsForSupplier, downloadImportTemplate, downloadPartyImportTemplate } from "@/features/party-import/party-import";
 import { canMakeSale, incrementSaleCount } from "@/features/licensing/licensing-db";
@@ -53,6 +53,10 @@ export default function PosPartyLodge() {
   const [payMode, setPayMode] = React.useState<PayMode>({ open: false });
   const [deleteTarget, setDeleteTarget] = React.useState<Supplier | null>(null);
   const [arrivalMode, setArrivalMode] = React.useState<ArrivalMode>({ open: false });
+
+  // Cancel entry state
+  const [cancelTarget, setCancelTarget] = React.useState<{ type: "arrival"; id: string; total: number; supplierId: string } | null>(null);
+  const [cancelReason, setCancelReason] = React.useState("");
 
   // Upgrade dialog
   const [upgradeOpen, setUpgradeOpen] = React.useState(false);
@@ -384,6 +388,34 @@ export default function PosPartyLodge() {
     note: a.note,
     date: new Date(a.createdAt),
   });
+
+  // ─── Cancel Arrival ─────────────────────────────────────
+  const confirmCancelArrival = async () => {
+    if (!cancelTarget) return;
+    try {
+      const reason = cancelReason.trim();
+      if (!reason) throw new Error("Please enter a reason for cancellation");
+      await db.transaction("rw", [db.supplierArrivals, db.suppliers], async () => {
+        await db.supplierArrivals.update(cancelTarget.id, {
+          cancelled: true,
+          cancelledReason: reason,
+        });
+        // Reverse the balance
+        const sup = await db.suppliers.get(cancelTarget.supplierId);
+        if (sup) {
+          await db.suppliers.update(cancelTarget.supplierId, {
+            totalBalance: sup.totalBalance - cancelTarget.total,
+          });
+        }
+      });
+      toast({ title: "Entry cancelled", description: `Balance reduced by ${formatIntMoney(cancelTarget.total)}` });
+      setCancelTarget(null);
+      setCancelReason("");
+      await refresh();
+    } catch (e: any) {
+      toast({ title: "Cancel failed", description: e?.message ?? String(e), variant: "destructive" });
+    }
+  };
 
   // ─── PDF ──────────────────────────────────────────────
 
@@ -1036,7 +1068,7 @@ export default function PosPartyLodge() {
                   {selectedArrivals.map((a, idx) => {
                     const rd = buildReceiptFromArrival(a, selectedSupplier.name);
                     return (
-                    <div key={a.id} className="rounded-md border p-2 text-sm">
+                    <div key={a.id} className={`rounded-md border p-2 text-sm ${a.cancelled ? "opacity-60 bg-destructive/5 border-destructive/30" : ""}`}>
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-2">
                           {a.receiptNo ? (
@@ -1045,13 +1077,15 @@ export default function PosPartyLodge() {
                             <span className="text-xs text-muted-foreground">{selectedArrivals.length - idx}</span>
                           )}
                           <span className="font-medium">{a.itemName}</span>
+                          {a.cancelled && <span className="text-xs font-semibold text-destructive">CANCELLED</span>}
                         </div>
-                        <span className="font-bold text-destructive">{formatIntMoney(a.total)}</span>
+                        <span className={`font-bold ${a.cancelled ? "line-through text-muted-foreground" : "text-destructive"}`}>{formatIntMoney(a.total)}</span>
                       </div>
                       <div className="text-xs text-muted-foreground mt-1">
                         {a.qty} {a.unit || "units"} × {formatIntMoney(a.unitPrice)}
                       </div>
                       {a.note && <div className="text-xs text-muted-foreground">{a.note}</div>}
+                      {a.cancelledReason && <div className="text-xs text-destructive">Reason: {a.cancelledReason}</div>}
                       <div className="text-xs text-muted-foreground">{new Date(a.createdAt).toLocaleDateString()} {new Date(a.createdAt).toLocaleTimeString()}</div>
                       <div className="flex gap-1 mt-1.5">
                         <Button variant="outline" size="sm" className="text-xs h-6 px-2" onClick={() => void printEntryReceipt(rd).catch((e: any) => toast({ title: "Print failed", description: e?.message, variant: "destructive" }))}>
@@ -1060,6 +1094,11 @@ export default function PosPartyLodge() {
                         <Button variant="outline" size="sm" className="text-xs h-6 px-2" onClick={() => void shareEntryReceipt(rd).catch((e: any) => toast({ title: "Share failed", description: e?.message, variant: "destructive" }))}>
                           <Share2 className="h-3 w-3 mr-1" /> Share
                         </Button>
+                        {!a.cancelled && (
+                          <Button variant="outline" size="sm" className="text-xs h-6 px-2 text-destructive hover:text-destructive" onClick={() => { setCancelReason(""); setCancelTarget({ type: "arrival", id: a.id, total: a.total, supplierId: a.supplierId }); }}>
+                            <XCircle className="h-3 w-3 mr-1" /> Cancel
+                          </Button>
+                        )}
                       </div>
                     </div>
                     );
@@ -1237,6 +1276,26 @@ export default function PosPartyLodge() {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={() => void confirmDelete()}>Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Cancel Entry Confirmation */}
+      <AlertDialog open={!!cancelTarget} onOpenChange={(v) => { if (!v) { setCancelTarget(null); setCancelReason(""); } }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cancel Entry?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will mark the entry as cancelled and reverse {cancelTarget ? formatIntMoney(cancelTarget.total) : ""} from the balance.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-2 py-2">
+            <Label htmlFor="cancelReason">Reason for cancellation *</Label>
+            <Input id="cancelReason" value={cancelReason} onChange={(e) => setCancelReason(e.target.value)} placeholder="e.g., Wrong entry, duplicate" />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Back</AlertDialogCancel>
+            <AlertDialogAction onClick={() => void confirmCancelArrival()} disabled={!cancelReason.trim()}>Cancel Entry</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
