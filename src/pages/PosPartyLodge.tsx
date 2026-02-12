@@ -52,14 +52,27 @@ export default function PosPartyLodge() {
   const [upgradeOpen, setUpgradeOpen] = React.useState(false);
   const [upgradeMsg, setUpgradeMsg] = React.useState("");
 
-  // Arrival form
-  const [arrivalQty, setArrivalQty] = React.useState(0);
+  // Arrival form - multi-item
+  type ArrivalItem = {
+    key: string;
+    itemName: string;
+    qty: number;
+    unitPrice: number;
+    unit: string;
+    manualTotal: number;
+    useManualTotal: boolean;
+  };
+  const makeEmptyItem = (): ArrivalItem => ({
+    key: makeId("ai"),
+    itemName: "",
+    qty: 0,
+    unitPrice: 0,
+    unit: "",
+    manualTotal: 0,
+    useManualTotal: false,
+  });
+  const [arrivalItems, setArrivalItems] = React.useState<ArrivalItem[]>([makeEmptyItem()]);
   const [arrivalNote, setArrivalNote] = React.useState("");
-  const [arrivalItemName, setArrivalItemName] = React.useState("");
-  const [arrivalUnitPrice, setArrivalUnitPrice] = React.useState(0);
-  const [arrivalUnit, setArrivalUnit] = React.useState("");
-  const [arrivalManualTotal, setArrivalManualTotal] = React.useState(0);
-  const [arrivalUseManualTotal, setArrivalUseManualTotal] = React.useState(false);
   // Supplier form
   const [sName, setSName] = React.useState("");
   const [sContact, setSContact] = React.useState("");
@@ -240,57 +253,71 @@ export default function PosPartyLodge() {
   // ─── Arrival ──────────────────────────────────────────
 
   const openArrivalDialog = (sup: Supplier) => {
-    setArrivalQty(0);
+    setArrivalItems([{
+      ...makeEmptyItem(),
+      itemName: sup.itemName ?? "",
+      unitPrice: sup.unitPrice ?? 0,
+      unit: sup.stockUnit ?? "",
+    }]);
     setArrivalNote("");
-    setArrivalItemName(sup.itemName ?? "");
-    setArrivalUnitPrice(sup.unitPrice ?? 0);
-    setArrivalUnit(sup.stockUnit ?? "");
-    setArrivalManualTotal(0);
-    setArrivalUseManualTotal(false);
     setArrivalMode({ open: true, supplier: sup });
   };
 
+  const updateArrivalItem = (key: string, patch: Partial<ArrivalItem>) => {
+    setArrivalItems((prev) => prev.map((it) => (it.key === key ? { ...it, ...patch } : it)));
+  };
+
+  const removeArrivalItem = (key: string) => {
+    setArrivalItems((prev) => prev.length > 1 ? prev.filter((it) => it.key !== key) : prev);
+  };
+
+  const addArrivalItem = () => {
+    setArrivalItems((prev) => [...prev, makeEmptyItem()]);
+  };
+
+  const getItemTotal = (it: ArrivalItem) => it.useManualTotal ? it.manualTotal : it.qty * it.unitPrice;
+
   const arrivalTotal = React.useMemo(() => {
     if (!arrivalMode.open) return 0;
-    if (arrivalUseManualTotal) return arrivalManualTotal;
-    return arrivalQty * arrivalUnitPrice;
-  }, [arrivalMode.open, arrivalQty, arrivalUnitPrice, arrivalUseManualTotal, arrivalManualTotal]);
+    return arrivalItems.reduce((sum, it) => sum + getItemTotal(it), 0);
+  }, [arrivalMode.open, arrivalItems]);
 
   const saveArrival = async () => {
     if (!arrivalMode.open) return;
     try {
-      if (arrivalUseManualTotal) {
-        if (arrivalManualTotal <= 0) throw new Error("Total must be greater than 0");
-      } else {
-        if (arrivalQty <= 0) throw new Error("Quantity must be greater than 0");
-        if (arrivalUnitPrice <= 0) throw new Error("Unit price must be greater than 0");
-      }
+      const validItems = arrivalItems.filter((it) => {
+        if (it.useManualTotal) return it.manualTotal > 0;
+        return it.qty > 0 && it.unitPrice > 0;
+      });
+      if (validItems.length === 0) throw new Error("Add at least one item with valid amounts");
       const sup = arrivalMode.supplier;
-      const total = arrivalUseManualTotal ? arrivalManualTotal : arrivalQty * arrivalUnitPrice;
-
-      // Save arrival record
-      const arrival: SupplierArrival = {
-        id: makeId("sarr"),
-        supplierId: sup.id,
-        itemName: arrivalItemName.trim() || sup.itemName || "—",
-        qty: arrivalQty,
-        unit: arrivalUnit || undefined,
-        unitPrice: arrivalUnitPrice,
-        total,
-        note: arrivalNote.trim() || undefined,
-        createdAt: Date.now(),
-      };
+      let totalAdded = 0;
 
       await db.transaction("rw", [db.suppliers, db.supplierArrivals], async () => {
-        await db.supplierArrivals.put(arrival);
+        for (const it of validItems) {
+          const total = getItemTotal(it);
+          totalAdded += total;
+          const arrival: SupplierArrival = {
+            id: makeId("sarr"),
+            supplierId: sup.id,
+            itemName: it.itemName.trim() || sup.itemName || "—",
+            qty: it.qty,
+            unit: it.unit || undefined,
+            unitPrice: it.unitPrice,
+            total,
+            note: arrivalNote.trim() || undefined,
+            createdAt: Date.now(),
+          };
+          await db.supplierArrivals.put(arrival);
+        }
         await db.suppliers.update(sup.id, {
-          totalBalance: sup.totalBalance + total,
+          totalBalance: sup.totalBalance + totalAdded,
         });
       });
 
       toast({
         title: "Supply arrival recorded",
-        description: `${arrivalQty} ${arrivalUnit || "units"} × ${formatIntMoney(arrivalUnitPrice)} = ${formatIntMoney(total)} added to balance`,
+        description: `${validItems.length} item(s) totalling ${formatIntMoney(totalAdded)} added to balance`,
       });
       setArrivalMode({ open: false });
       await refresh();
@@ -794,67 +821,74 @@ export default function PosPartyLodge() {
 
       {/* Arrival Dialog */}
       <Dialog open={arrivalMode.open} onOpenChange={(v) => !v && setArrivalMode({ open: false })}>
-        <DialogContent>
+        <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>Record Arrival: {arrivalMode.open ? arrivalMode.supplier.name : ""}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3 max-h-[60vh] overflow-y-auto">
             {arrivalMode.open && (
               <>
-                <div className="space-y-2">
-                  <Label htmlFor="arrItem">Item Name</Label>
-                  <Input id="arrItem" value={arrivalItemName} onChange={(e) => setArrivalItemName(e.target.value)} placeholder="e.g., Rice, Flour" />
-                </div>
-                <div className="flex items-center gap-2 mb-2">
-                  <input type="checkbox" id="manualTotal" checked={arrivalUseManualTotal} onChange={(e) => setArrivalUseManualTotal(e.target.checked)} className="rounded" />
-                  <Label htmlFor="manualTotal" className="text-sm font-normal">Enter total bill manually</Label>
-                </div>
-                {arrivalUseManualTotal ? (
-                  <div className="space-y-2">
-                    <Label htmlFor="arrManualTotal">Total Bill Amount</Label>
-                    <Input id="arrManualTotal" inputMode="numeric" value={arrivalManualTotal === 0 ? "" : String(arrivalManualTotal)} onChange={(e) => setArrivalManualTotal(parseNonDecimalInt(e.target.value))} placeholder="0" />
+                {arrivalItems.map((it, idx) => (
+                  <div key={it.key} className="rounded-md border p-3 space-y-2 relative">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-semibold text-muted-foreground">Item {idx + 1}</span>
+                      {arrivalItems.length > 1 && (
+                        <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => removeArrivalItem(it.key)}>
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      )}
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Item Name (optional)</Label>
+                      <Input value={it.itemName} onChange={(e) => updateArrivalItem(it.key, { itemName: e.target.value })} placeholder="e.g., Rice, Flour" className="h-8 text-sm" />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <input type="checkbox" id={`mt-${it.key}`} checked={it.useManualTotal} onChange={(e) => updateArrivalItem(it.key, { useManualTotal: e.target.checked })} className="rounded" />
+                      <Label htmlFor={`mt-${it.key}`} className="text-xs font-normal">Enter total manually</Label>
+                    </div>
+                    {it.useManualTotal ? (
+                      <div className="space-y-1">
+                        <Label className="text-xs">Total Bill</Label>
+                        <Input inputMode="numeric" value={it.manualTotal === 0 ? "" : String(it.manualTotal)} onChange={(e) => updateArrivalItem(it.key, { manualTotal: parseNonDecimalInt(e.target.value) })} placeholder="0" className="h-8 text-sm" />
+                      </div>
+                    ) : (
+                      <>
+                        <div className="grid grid-cols-3 gap-2">
+                          <div className="space-y-1">
+                            <Label className="text-xs">Unit</Label>
+                            <select value={it.unit} onChange={(e) => updateArrivalItem(it.key, { unit: e.target.value })} className="h-8 w-full rounded-md border bg-background px-2 text-xs">
+                              <option value="">None</option>
+                              {STOCK_UNITS.map((u) => (
+                                <option key={u.value} value={u.value}>{u.label}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs">Unit Price</Label>
+                            <Input inputMode="numeric" value={it.unitPrice === 0 ? "" : String(it.unitPrice)} onChange={(e) => updateArrivalItem(it.key, { unitPrice: parseNonDecimalInt(e.target.value) })} placeholder="0" className="h-8 text-sm" />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs">Qty ({it.unit || "units"})</Label>
+                            <Input inputMode="numeric" value={it.qty === 0 ? "" : String(it.qty)} onChange={(e) => updateArrivalItem(it.key, { qty: parseNonDecimalInt(e.target.value) })} placeholder="0" className="h-8 text-sm" />
+                          </div>
+                        </div>
+                      </>
+                    )}
+                    <div className="text-xs text-right font-semibold">
+                      Subtotal: {formatIntMoney(getItemTotal(it))}
+                    </div>
                   </div>
-                ) : (
-                  <>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div className="space-y-2">
-                        <Label htmlFor="arrUnit">Unit Type (optional)</Label>
-                        <select id="arrUnit" value={arrivalUnit} onChange={(e) => setArrivalUnit(e.target.value)} className="h-10 w-full rounded-md border bg-background px-3 text-sm">
-                          <option value="">None</option>
-                          {STOCK_UNITS.map((u) => (
-                            <option key={u.value} value={u.value}>{u.label}</option>
-                          ))}
-                        </select>
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="arrPrice">Unit Price</Label>
-                        <Input id="arrPrice" inputMode="numeric" value={arrivalUnitPrice === 0 ? "" : String(arrivalUnitPrice)} onChange={(e) => setArrivalUnitPrice(parseNonDecimalInt(e.target.value))} placeholder="0" />
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="arrQty">Quantity Arrived ({arrivalUnit || "units"})</Label>
-                      <Input
-                        id="arrQty"
-                        inputMode="numeric"
-                        value={arrivalQty === 0 ? "" : String(arrivalQty)}
-                        onChange={(e) => setArrivalQty(parseNonDecimalInt(e.target.value))}
-                        placeholder="0"
-                      />
-                    </div>
-                  </>
-                )}
+                ))}
+                <Button variant="outline" size="sm" onClick={addArrivalItem} className="w-full">
+                  <Plus className="h-3 w-3 mr-1" /> Add Another Item
+                </Button>
                 <div className="space-y-2">
                   <Label htmlFor="arrNote">Note (optional)</Label>
                   <Input id="arrNote" value={arrivalNote} onChange={(e) => setArrivalNote(e.target.value)} placeholder="e.g., Weekly supply" />
                 </div>
                 <div className="rounded-md border p-3 bg-muted/50">
-                  <div className="text-xs text-muted-foreground">Total Supply Bill</div>
+                  <div className="text-xs text-muted-foreground">Grand Total ({arrivalItems.length} item{arrivalItems.length > 1 ? "s" : ""})</div>
                   <div className="text-lg font-bold">{formatIntMoney(arrivalTotal)}</div>
-                  {!arrivalUseManualTotal && (
-                    <div className="text-xs text-muted-foreground">
-                      {arrivalQty} {arrivalUnit || "units"} × {formatIntMoney(arrivalUnitPrice)} = {formatIntMoney(arrivalTotal)}
-                    </div>
-                  )}
                 </div>
               </>
             )}
@@ -863,7 +897,7 @@ export default function PosPartyLodge() {
             <Button variant="outline" onClick={() => setArrivalMode({ open: false })}>Cancel</Button>
             <Button
               onClick={() => void saveArrival()}
-              disabled={arrivalUseManualTotal ? arrivalManualTotal <= 0 : (arrivalQty <= 0 || arrivalUnitPrice <= 0)}
+              disabled={arrivalTotal <= 0}
             >
               Add to Balance
             </Button>
