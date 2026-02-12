@@ -370,13 +370,13 @@ export function SalesReportPreview({
         {(settings?.showAdvanceBookingInReports ?? false) && (advanceOrders.length > 0 || bookingOrders.length > 0) && (() => {
           const advCompleted = advanceOrders.filter((o) => o.status !== "cancelled");
           const advCancelled = advanceOrders.filter((o) => o.status === "cancelled");
-          const advTotal = advCompleted.reduce((s, o) => s + o.total, 0);
-          const advAdvance = advCompleted.reduce((s, o) => s + o.advancePayment, 0);
+          const advTotal = advCompleted.reduce((s, o) => s + o.advancePayment, 0);
+          const advAdvance = advTotal;
           const advCancelledTotal = advCancelled.reduce((s, o) => s + o.total, 0);
           const bkCompleted = bookingOrders.filter((o) => o.status !== "cancelled");
           const bkCancelled = bookingOrders.filter((o) => o.status === "cancelled");
-          const bkTotal = bkCompleted.reduce((s, o) => s + o.price, 0);
-          const bkAdvance = bkCompleted.reduce((s, o) => s + o.advancePayment, 0);
+          const bkTotal = bkCompleted.reduce((s, o) => s + o.advancePayment, 0);
+          const bkAdvance = bkTotal;
           const bkCancelledTotal = bkCancelled.reduce((s, o) => s + o.price, 0);
           const bkTotalHours = bkCompleted.reduce((s, o) => s + o.durationHours, 0);
 

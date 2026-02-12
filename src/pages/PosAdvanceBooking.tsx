@@ -19,7 +19,7 @@ import { useAuth } from "@/auth/AuthProvider";
 import { useToast } from "@/hooks/use-toast";
 import { formatIntMoney, fmtDate, fmtDateTime, fmtTime12 } from "@/features/pos/format";
 import { makeId } from "@/features/admin/id";
-import { printAdvanceReceipt, printAdvanceKot, printBookingReceipt } from "@/features/pos/advance-receipt";
+import { printAdvanceReceipt, printAdvanceKot, printBookingReceipt, printBookingKot } from "@/features/pos/advance-receipt";
 import { buildBookingLodgePdf } from "@/features/admin/reports/booking-lodge-pdf";
 import { buildAdvanceLodgePdf } from "@/features/admin/reports/advance-lodge-pdf";
 import { writePdfFile, shareFile } from "@/features/files/sangi-folders";
@@ -102,16 +102,18 @@ function AdvanceLodgeSection({ advanceOrders, settings }: { advanceOrders: Advan
         <CardDescription>View all advance orders by date range and share as PDF.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
-        <div className="grid grid-cols-[1fr_1fr_auto] gap-2 items-end">
-          <div className="space-y-1">
-            <Label className="text-xs">From</Label>
-            <Input type="date" value={lodgeFrom} onChange={(e) => setLodgeFrom(e.target.value)} />
+        <div className="space-y-2">
+          <div className="grid grid-cols-2 gap-2">
+            <div className="space-y-1">
+              <Label className="text-xs">From</Label>
+              <Input type="date" value={lodgeFrom} onChange={(e) => setLodgeFrom(e.target.value)} />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">To</Label>
+              <Input type="date" value={lodgeTo} onChange={(e) => setLodgeTo(e.target.value)} />
+            </div>
           </div>
-          <div className="space-y-1">
-            <Label className="text-xs">To</Label>
-            <Input type="date" value={lodgeTo} onChange={(e) => setLodgeTo(e.target.value)} />
-          </div>
-          <Button size="sm" variant="outline" className="gap-1" onClick={() => void sharePdf()}>
+          <Button size="sm" variant="outline" className="gap-1 w-full sm:w-auto" onClick={() => void sharePdf()}>
             <Share2 className="h-3.5 w-3.5" /> Share PDF
           </Button>
         </div>
@@ -202,16 +204,18 @@ function BookingLodgeSection({ bookingOrders, settings }: { bookingOrders: Booki
         <CardDescription>View booking summary by date range and share as PDF.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
-        <div className="grid grid-cols-[1fr_1fr_auto] gap-2 items-end">
-          <div className="space-y-1">
-            <Label className="text-xs">From</Label>
-            <Input type="date" value={lodgeFrom} onChange={(e) => setLodgeFrom(e.target.value)} />
+        <div className="space-y-2">
+          <div className="grid grid-cols-2 gap-2">
+            <div className="space-y-1">
+              <Label className="text-xs">From</Label>
+              <Input type="date" value={lodgeFrom} onChange={(e) => setLodgeFrom(e.target.value)} />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">To</Label>
+              <Input type="date" value={lodgeTo} onChange={(e) => setLodgeTo(e.target.value)} />
+            </div>
           </div>
-          <div className="space-y-1">
-            <Label className="text-xs">To</Label>
-            <Input type="date" value={lodgeTo} onChange={(e) => setLodgeTo(e.target.value)} />
-          </div>
-          <Button size="sm" variant="outline" className="gap-1" onClick={() => void sharePdf()}>
+          <Button size="sm" variant="outline" className="gap-1 w-full sm:w-auto" onClick={() => void sharePdf()}>
             <Share2 className="h-3.5 w-3.5" /> Share PDF
           </Button>
         </div>
@@ -511,7 +515,8 @@ export default function PosAdvanceBooking() {
   const completeAdvance = async (id: string) => {
     const o = await db.advanceOrders.get(id);
     if (!o || o.status !== "pending") return;
-    await db.advanceOrders.update(id, { status: "completed", updatedAt: Date.now() });
+    const now = Date.now();
+    await db.advanceOrders.update(id, { status: "completed", updatedAt: now, createdAt: now });
     toast({ title: "Order completed" });
     void refresh();
   };
@@ -519,7 +524,25 @@ export default function PosAdvanceBooking() {
   const completeBooking = async (id: string) => {
     const o = await db.bookingOrders.get(id);
     if (!o || o.status !== "pending") return;
-    await db.bookingOrders.update(id, { status: "completed", updatedAt: Date.now() });
+    // Prevent completing before the booking end time
+    const [eh, em] = o.endTime.replace(/ (AM|PM)/, (_, p) => p === "PM" ? "+12" : "").split(":").map(Number);
+    // Parse end time properly
+    const endTimeParts = o.endTime.match(/(\d+):(\d+)\s*(AM|PM)/i);
+    if (endTimeParts) {
+      let endH = parseInt(endTimeParts[1]);
+      const endM = parseInt(endTimeParts[2]);
+      const period = endTimeParts[3].toUpperCase();
+      if (period === "PM" && endH !== 12) endH += 12;
+      if (period === "AM" && endH === 12) endH = 0;
+      const bookingDate = new Date(o.date);
+      const endDate = new Date(bookingDate.getFullYear(), bookingDate.getMonth(), bookingDate.getDate(), endH, endM);
+      if (Date.now() < endDate.getTime()) {
+        toast({ title: "Cannot complete yet", description: `Booking ends at ${o.endTime}. You can cancel it instead.`, variant: "destructive" });
+        return;
+      }
+    }
+    const now = Date.now();
+    await db.bookingOrders.update(id, { status: "completed", updatedAt: now, createdAt: now });
     toast({ title: "Booking completed" });
     void refresh();
   };
@@ -690,6 +713,7 @@ export default function PosAdvanceBooking() {
                         </>
                       )}
                       <Button size="sm" variant="ghost" className="gap-1" onClick={() => void reprintAdvance(o)}><Printer className="h-3 w-3" /> Print</Button>
+                      <Button size="sm" variant="ghost" className="gap-1" onClick={async () => { try { await printAdvanceKot(o); toast({ title: "KOT printed" }); } catch (e: any) { toast({ title: "KOT failed", description: e?.message, variant: "destructive" }); } }}><FileText className="h-3 w-3" /> KOT</Button>
                       <Button size="sm" variant="ghost" className="gap-1" onClick={() => void shareAdvancePdf(o)}><Share2 className="h-3 w-3" /> Share PDF</Button>
                     </div>
                   </CardContent>
@@ -779,6 +803,7 @@ export default function PosAdvanceBooking() {
                         </>
                       )}
                       <Button size="sm" variant="ghost" className="gap-1" onClick={() => void reprintBooking(o)}><Printer className="h-3 w-3" /> Print</Button>
+                      <Button size="sm" variant="ghost" className="gap-1" onClick={async () => { try { await printBookingKot(o); toast({ title: "KOT printed" }); } catch (e: any) { toast({ title: "KOT failed", description: e?.message, variant: "destructive" }); } }}><FileText className="h-3 w-3" /> KOT</Button>
                       <Button size="sm" variant="ghost" className="gap-1" onClick={() => void shareBookingPdf(o)}><Share2 className="h-3 w-3" /> Share PDF</Button>
                     </div>
                   </CardContent>
@@ -976,6 +1001,7 @@ export default function PosAdvanceBooking() {
           </div>
           <DialogFooter className="flex flex-wrap gap-2">
             <Button variant="outline" onClick={() => setBookDlg(false)}>Cancel</Button>
+            <Button variant="outline" className="gap-1" onClick={async () => { const order = await buildBookingOrder(); if (!order) return; setBookDlg(false); void refresh(); try { await printBookingKot(order); toast({ title: `Booking #${order.receiptNo} saved & KOT printed` }); } catch (e: any) { toast({ title: "Saved but KOT failed", description: e?.message, variant: "destructive" }); } }}><FileText className="h-4 w-4" /> KOT</Button>
             <Button variant="outline" className="gap-1" onClick={() => void saveAndPrintBooking()}><Printer className="h-4 w-4" /> Print</Button>
             <Button onClick={() => void saveBooking()}>Save</Button>
           </DialogFooter>
