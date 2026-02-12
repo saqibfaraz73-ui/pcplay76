@@ -308,7 +308,18 @@ export default function PosPartyLodge() {
     };
   };
 
-  const saveArrival = async (postAction?: "print" | "share") => {
+  const shareArrivalOnly = async () => {
+    try {
+      const receiptData = buildArrivalReceiptData();
+      if (!receiptData) throw new Error("Add at least one item with valid amounts");
+      await shareEntryReceipt(receiptData);
+      toast({ title: "Entry shared (not added to balance)" });
+    } catch (e: any) {
+      toast({ title: "Share failed", description: e?.message ?? String(e), variant: "destructive" });
+    }
+  };
+
+  const saveArrival = async (postAction?: "print") => {
     if (!arrivalMode.open) return;
     try {
       const validItems = arrivalItems.filter((it) => {
@@ -350,14 +361,9 @@ export default function PosPartyLodge() {
       setArrivalMode({ open: false });
       await refresh();
 
-      // Post-save action
       if (receiptData && postAction === "print") {
         try { await printEntryReceipt(receiptData); } catch (pe: any) {
           toast({ title: "Print failed", description: pe?.message ?? String(pe), variant: "destructive" });
-        }
-      } else if (receiptData && postAction === "share") {
-        try { await shareEntryReceipt(receiptData); } catch (se: any) {
-          toast({ title: "Share failed", description: se?.message ?? String(se), variant: "destructive" });
         }
       }
     } catch (e: any) {
@@ -1285,7 +1291,7 @@ export default function PosPartyLodge() {
             <Button variant="outline" onClick={() => void saveArrival("print")} disabled={arrivalTotal <= 0}>
               <Printer className="h-3.5 w-3.5 mr-1" /> Print
             </Button>
-            <Button variant="outline" onClick={() => void saveArrival("share")} disabled={arrivalTotal <= 0}>
+            <Button variant="outline" onClick={() => void shareArrivalOnly()} disabled={arrivalTotal <= 0}>
               <Share2 className="h-3.5 w-3.5 mr-1" /> Share
             </Button>
             <Button onClick={() => void saveArrival()} disabled={arrivalTotal <= 0}>
