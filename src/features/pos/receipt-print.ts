@@ -207,9 +207,7 @@ async function buildKotReceipt(order: Order, settings: Settings): Promise<string
   out.push(hr);
   out.push(center("Thank you, come again!"));
 
-  const contentLines = 8 + order.lines.length + 5; // header(8) + items + footer(5)
-  const feedCount = getFeedLinesForSize(settings, contentLines);
-  out.push("\n".repeat(feedCount));
+  out.push("\n".repeat(3));
   out.push("\x1dV\x41\x03"); // partial cut
 
   return out.join("\n");
