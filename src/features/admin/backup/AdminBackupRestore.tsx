@@ -36,6 +36,9 @@ type BackupPayloadV1 = {
     tableOrders?: any[];
     adminAccount?: any[];
     staffAccounts?: any[];
+    exportCustomers?: any[];
+    exportSales?: any[];
+    exportPayments?: any[];
   };
 };
 
@@ -73,6 +76,9 @@ export function AdminBackupRestore() {
           tableOrders: await db.tableOrders.toArray(),
           adminAccount: await db.adminAccount.toArray(),
           staffAccounts: await db.staffAccounts.toArray(),
+          exportCustomers: await db.exportCustomers.toArray(),
+          exportSales: await db.exportSales.toArray(),
+          exportPayments: await db.exportPayments.toArray(),
         },
       };
       const fileName = `backup_${payload.createdAt}.json`;
@@ -91,27 +97,13 @@ export function AdminBackupRestore() {
     await db.transaction(
       "rw",
       [
-        db.categories,
-        db.items,
-        db.inventory,
-        db.inventoryAdjustments,
-        db.customers,
-        db.creditPayments,
-        db.orders,
-        db.workPeriods,
-        db.expenses,
-        db.suppliers,
-        db.supplierPayments,
-        db.supplierArrivals,
-        db.deliveryPersons,
-        db.deliveryCustomers,
-        db.waiters,
-        db.restaurantTables,
-        db.tableOrders,
-        db.adminAccount,
-        db.staffAccounts,
-        db.settings,
-        db.counters,
+        db.categories, db.items, db.inventory, db.inventoryAdjustments,
+        db.customers, db.creditPayments, db.orders, db.workPeriods, db.expenses,
+        db.suppliers, db.supplierPayments, db.supplierArrivals,
+        db.exportCustomers, db.exportSales, db.exportPayments,
+        db.deliveryPersons, db.deliveryCustomers,
+        db.waiters, db.restaurantTables, db.tableOrders,
+        db.adminAccount, db.staffAccounts, db.settings, db.counters,
       ],
       async () => {
         await Promise.all([
@@ -127,6 +119,9 @@ export function AdminBackupRestore() {
           db.suppliers.clear(),
           db.supplierPayments.clear(),
           db.supplierArrivals.clear(),
+          db.exportCustomers.clear(),
+          db.exportSales.clear(),
+          db.exportPayments.clear(),
           db.deliveryPersons.clear(),
           db.deliveryCustomers.clear(),
           db.waiters.clear(),
@@ -156,6 +151,9 @@ export function AdminBackupRestore() {
         if (payload.data.tableOrders?.length) await db.tableOrders.bulkAdd(payload.data.tableOrders);
         if (payload.data.adminAccount?.length) await db.adminAccount.bulkAdd(payload.data.adminAccount);
         if (payload.data.staffAccounts?.length) await db.staffAccounts.bulkAdd(payload.data.staffAccounts);
+        if (payload.data.exportCustomers?.length) await db.exportCustomers.bulkAdd(payload.data.exportCustomers);
+        if (payload.data.exportSales?.length) await db.exportSales.bulkAdd(payload.data.exportSales);
+        if (payload.data.exportPayments?.length) await db.exportPayments.bulkAdd(payload.data.exportPayments);
         await db.settings.bulkAdd(payload.data.settings);
         await db.counters.bulkAdd(payload.data.counters);
       },

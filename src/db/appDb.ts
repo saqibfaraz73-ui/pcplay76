@@ -8,6 +8,9 @@ import type {
   DeliveryCustomer,
   DeliveryPerson,
   Expense,
+  ExportCustomer,
+  ExportPayment,
+  ExportSale,
   InventoryAdjustment,
   InventoryRow,
   MenuItem,
@@ -37,6 +40,9 @@ export class SangiPosDb extends Dexie {
   suppliers!: Table<Supplier, string>;
   supplierPayments!: Table<SupplierPayment, string>;
   supplierArrivals!: Table<SupplierArrival, string>;
+  exportCustomers!: Table<ExportCustomer, string>;
+  exportSales!: Table<ExportSale, string>;
+  exportPayments!: Table<ExportPayment, string>;
   deliveryPersons!: Table<DeliveryPerson, string>;
   deliveryCustomers!: Table<DeliveryCustomer, string>;
   waiters!: Table<Waiter, string>;
@@ -50,6 +56,7 @@ export class SangiPosDb extends Dexie {
 
   constructor() {
     super("sangi_pos_db_v1");
+    // ... keep existing code (versions 1-12)
     this.version(1).stores({
       categories: "id, name, createdAt",
       items: "id, categoryId, name, price, createdAt",
@@ -109,7 +116,6 @@ export class SangiPosDb extends Dexie {
       counters: "id",
     });
 
-    // v6: add suppliers and supplier payments
     this.version(6).stores({
       categories: "id, name, createdAt",
       items: "id, categoryId, name, price, createdAt",
@@ -126,7 +132,6 @@ export class SangiPosDb extends Dexie {
       counters: "id",
     });
 
-    // v7: add delivery persons
     this.version(7).stores({
       categories: "id, name, createdAt",
       items: "id, categoryId, name, price, createdAt",
@@ -144,7 +149,6 @@ export class SangiPosDb extends Dexie {
       counters: "id",
     });
 
-    // v8: add delivery customers
     this.version(8).stores({
       categories: "id, name, createdAt",
       items: "id, categoryId, name, price, createdAt",
@@ -163,7 +167,6 @@ export class SangiPosDb extends Dexie {
       counters: "id",
     });
 
-    // v9: add supplier arrivals
     this.version(9).stores({
       categories: "id, name, createdAt",
       items: "id, categoryId, name, price, createdAt",
@@ -183,7 +186,6 @@ export class SangiPosDb extends Dexie {
       counters: "id",
     });
 
-    // v10: add table management (waiters, tables, table orders)
     this.version(10).stores({
       categories: "id, name, createdAt",
       items: "id, categoryId, name, price, createdAt",
@@ -205,7 +207,7 @@ export class SangiPosDb extends Dexie {
       settings: "id",
       counters: "id",
     });
-    // v11: add admin account and staff accounts (registration-based auth)
+
     this.version(11).stores({
       categories: "id, name, createdAt",
       items: "id, categoryId, name, price, createdAt",
@@ -229,7 +231,7 @@ export class SangiPosDb extends Dexie {
       settings: "id",
       counters: "id",
     });
-    // v12: add license table for device ID & premium activation
+
     this.version(12).stores({
       categories: "id, name, createdAt",
       items: "id, categoryId, name, price, createdAt",
@@ -243,6 +245,35 @@ export class SangiPosDb extends Dexie {
       suppliers: "id, name, createdAt",
       supplierPayments: "id, supplierId, createdAt",
       supplierArrivals: "id, supplierId, createdAt",
+      deliveryPersons: "id, name, createdAt",
+      deliveryCustomers: "id, name, createdAt",
+      waiters: "id, name, createdAt",
+      restaurantTables: "id, tableNumber, createdAt",
+      tableOrders: "id, tableId, waiterId, status, createdAt, completedAt",
+      adminAccount: "id",
+      staffAccounts: "id, name, role, createdAt",
+      license: "id",
+      settings: "id",
+      counters: "id",
+    });
+
+    // v13: add export party (wholesale buyers)
+    this.version(13).stores({
+      categories: "id, name, createdAt",
+      items: "id, categoryId, name, price, createdAt",
+      inventory: "itemId, quantity, updatedAt",
+      inventoryAdjustments: "id, itemId, createdAt",
+      customers: "id, name, createdAt",
+      creditPayments: "id, customerId, createdAt",
+      orders: "id, receiptNo, status, paymentMethod, workPeriodId, deliveryPersonId, createdAt",
+      workPeriods: "id, cashier, startedAt, isClosed",
+      expenses: "id, name, createdAt, workPeriodId",
+      suppliers: "id, name, createdAt",
+      supplierPayments: "id, supplierId, createdAt",
+      supplierArrivals: "id, supplierId, createdAt",
+      exportCustomers: "id, name, createdAt",
+      exportSales: "id, customerId, createdAt",
+      exportPayments: "id, customerId, createdAt",
       deliveryPersons: "id, name, createdAt",
       deliveryCustomers: "id, name, createdAt",
       waiters: "id, name, createdAt",

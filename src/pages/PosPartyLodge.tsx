@@ -28,6 +28,7 @@ import { Capacitor } from "@capacitor/core";
 import { Plus, Trash2, Share2, CreditCard, Banknote, PackagePlus } from "lucide-react";
 import { canMakeSale, incrementSaleCount } from "@/features/licensing/licensing-db";
 import { UpgradeDialog } from "@/features/licensing/UpgradeDialog";
+import { ExportPartySection } from "@/features/export-party/ExportPartySection";
 
 type SupplierMode = { open: false } | { open: true; supplier?: Supplier };
 type PayMode = { open: false } | { open: true; supplier: Supplier };
@@ -1084,6 +1085,11 @@ export default function PosPartyLodge() {
         </DialogContent>
       </Dialog>
       <UpgradeDialog open={upgradeOpen} onOpenChange={setUpgradeOpen} message={upgradeMsg} />
+
+      {/* Export Party Section */}
+      <div className="border-t pt-6 mt-6">
+        <ExportPartySection />
+      </div>
     </div>
   );
 }
