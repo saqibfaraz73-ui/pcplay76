@@ -1283,10 +1283,13 @@ export default function PosPartyLodge() {
           <DialogFooter className="flex-col sm:flex-row gap-1.5">
             <Button variant="outline" onClick={() => setArrivalMode({ open: false })}>Cancel</Button>
             <Button variant="outline" onClick={() => void saveArrival("print")} disabled={arrivalTotal <= 0}>
-              <Printer className="h-3.5 w-3.5 mr-1" /> Save & Print
+              <Printer className="h-3.5 w-3.5 mr-1" /> Print
             </Button>
             <Button variant="outline" onClick={() => void saveArrival("share")} disabled={arrivalTotal <= 0}>
-              <Share2 className="h-3.5 w-3.5 mr-1" /> Save & Share
+              <Share2 className="h-3.5 w-3.5 mr-1" /> Share
+            </Button>
+            <Button onClick={() => void saveArrival()} disabled={arrivalTotal <= 0}>
+              Add to Balance
             </Button>
           </DialogFooter>
         </DialogContent>

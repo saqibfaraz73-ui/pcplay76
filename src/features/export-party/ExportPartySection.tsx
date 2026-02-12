@@ -1082,11 +1082,12 @@ export function ExportPartySection() {
           <DialogFooter className="flex-col sm:flex-row gap-1.5">
             <Button variant="outline" onClick={() => setSaleMode({ open: false })}>Cancel</Button>
             <Button variant="outline" onClick={() => void saveSale("print")} disabled={saleTotal <= 0}>
-              <Printer className="h-3.5 w-3.5 mr-1" /> Save & Print
+              <Printer className="h-3.5 w-3.5 mr-1" /> Print
             </Button>
             <Button variant="outline" onClick={() => void saveSale("share")} disabled={saleTotal <= 0}>
-              <Share2 className="h-3.5 w-3.5 mr-1" /> Save & Share
+              <Share2 className="h-3.5 w-3.5 mr-1" /> Share
             </Button>
+            <Button onClick={() => void saveSale()} disabled={saleTotal <= 0}>Add to Balance</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
