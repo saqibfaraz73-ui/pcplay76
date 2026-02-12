@@ -138,7 +138,7 @@ export type WorkPeriod = {
   isClosed: boolean;
 };
 
-export type ReceiptSize = "2x2" | "2x3" | "2x4" | "2x5";
+export type ReceiptSize = "1x1" | "2x1" | "3x1" | "2x2" | "2x3" | "2x4" | "2x5";
 
 export const EXPENSE_PRESETS = [
   "Stationery",
