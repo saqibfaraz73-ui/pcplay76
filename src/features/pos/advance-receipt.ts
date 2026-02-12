@@ -4,6 +4,7 @@ import { formatIntMoney } from "@/features/pos/format";
 import { btConnect, btSend, isNativeAndroid } from "@/features/pos/bluetooth-printer";
 import { usbSend } from "@/features/pos/usb-printer";
 import { db } from "@/db/appDb";
+import jsPDF from "jspdf";
 
 /* ─── Receipt size feed (same logic as sales) ─── */
 
@@ -188,4 +189,101 @@ export async function printBookingReceipt(order: BookingOrder) {
   if (!settings) throw new Error("Settings not loaded");
   const text = buildBookingEscPos(order, settings);
   await sendToPrinter(text);
+}
+
+/* ─── PDF Builders for Share ─── */
+
+export function buildAdvanceReceiptPdf(order: AdvanceOrder, settings: Settings | null): jsPDF {
+  const doc = new jsPDF({ unit: "pt", format: [144, 360] });
+  const left = 6;
+  const width = 132;
+  let y = 14;
+  const lineH = 10;
+  const money = (n: number) => formatIntMoney(n);
+
+  const line = (text: string, bold = false, size = 7) => {
+    doc.setFontSize(size);
+    doc.setFont("helvetica", bold ? "bold" : "normal");
+    doc.text(text.slice(0, 40), left, y);
+    y += lineH;
+  };
+  const rightLine = (l: string, r: string, bold = false) => {
+    doc.setFontSize(7);
+    doc.setFont("helvetica", bold ? "bold" : "normal");
+    doc.text(l, left, y);
+    doc.text(r, left + width, y, { align: "right" });
+    y += lineH;
+  };
+  const hr = () => { doc.setDrawColor(0); doc.setLineWidth(0.5); doc.line(left, y - 3, left + width, y - 3); };
+
+  line(settings?.restaurantName || "SANGI POS", true, 9);
+  line("ADVANCE ORDER", true, 8);
+  line(`Receipt #${order.receiptNo}`, false, 7);
+  line(`Date: ${new Date(order.createdAt).toLocaleString()}`);
+  if (order.cashier) line(`Cashier: ${order.cashier}`);
+  if (order.customerName) line(`Customer: ${order.customerName}`);
+  if (order.customerPhone) line(`Phone: ${order.customerPhone}`);
+  if (order.deliveryDate) line(`Delivery: ${new Date(order.deliveryDate).toLocaleDateString()}${order.deliveryTime ? " " + order.deliveryTime : ""}`);
+  y += 2; hr(); y += 2;
+
+  for (const l of order.lines) {
+    if (l.qty && l.unitPrice) {
+      line(l.name);
+      rightLine(`  ${l.qty} ${l.unit || "pcs"} x ${money(l.unitPrice)}`, money(l.subtotal));
+    } else {
+      rightLine(l.name, l.subtotal ? money(l.subtotal) : "");
+    }
+  }
+
+  y += 2; hr(); y += 2;
+  rightLine("Subtotal", money(order.subtotal));
+  if (order.discountAmount > 0) rightLine("Discount", money(order.discountAmount));
+  rightLine("Total", money(order.total), true);
+  rightLine("Advance", money(order.advancePayment));
+  rightLine("Remaining", money(order.remainingPayment), true);
+
+  return doc;
+}
+
+export function buildBookingReceiptPdf(order: BookingOrder, settings: Settings | null): jsPDF {
+  const doc = new jsPDF({ unit: "pt", format: [144, 288] });
+  const left = 6;
+  const width = 132;
+  let y = 14;
+  const lineH = 10;
+  const money = (n: number) => formatIntMoney(n);
+
+  const line = (text: string, bold = false, size = 7) => {
+    doc.setFontSize(size);
+    doc.setFont("helvetica", bold ? "bold" : "normal");
+    doc.text(text.slice(0, 40), left, y);
+    y += lineH;
+  };
+  const rightLine = (l: string, r: string, bold = false) => {
+    doc.setFontSize(7);
+    doc.setFont("helvetica", bold ? "bold" : "normal");
+    doc.text(l, left, y);
+    doc.text(r, left + width, y, { align: "right" });
+    y += lineH;
+  };
+  const hr = () => { doc.setDrawColor(0); doc.setLineWidth(0.5); doc.line(left, y - 3, left + width, y - 3); };
+
+  line(settings?.restaurantName || "SANGI POS", true, 9);
+  line("BOOKING", true, 8);
+  line(`Receipt #${order.receiptNo}`, false, 7);
+  line(`Item: ${order.bookableItemName}`);
+  line(`Date: ${new Date(order.date).toLocaleDateString()}`);
+  line(`Time: ${order.startTime} → ${order.endTime} (${order.durationHours}h)`);
+  if (order.cashier) line(`Cashier: ${order.cashier}`);
+  if (order.customerName) line(`Customer: ${order.customerName}`);
+  if (order.customerPhone) line(`Phone: ${order.customerPhone}`);
+  y += 2; hr(); y += 2;
+
+  rightLine("Price", money(order.price));
+  if (order.discountAmount > 0) rightLine("Discount", money(order.discountAmount));
+  rightLine("Total", money(order.total), true);
+  rightLine("Advance", money(order.advancePayment));
+  rightLine("Remaining", money(order.remainingPayment), true);
+
+  return doc;
 }

@@ -313,13 +313,15 @@ export default function PosAdvanceBooking() {
   const [bookDuration, setBookDuration] = React.useState("1");
   const [bookDiscount, setBookDiscount] = React.useState("");
   const [bookAdvance, setBookAdvance] = React.useState("");
+  const [bookManualPrice, setBookManualPrice] = React.useState("");
   const [bookCustName, setBookCustName] = React.useState("");
   const [bookCustPhone, setBookCustPhone] = React.useState("");
   const [bookCustAddress, setBookCustAddress] = React.useState("");
 
   const selectedBookItem = bookableItems.find((b) => b.id === bookItemId);
+  const bookItemPrice = selectedBookItem?.price ?? 0;
+  const bookPrice = bookManualPrice !== "" ? (Number(bookManualPrice) || 0) : bookItemPrice;
   const bookEndTime = calcEndTime(bookStart, Number(bookDuration) || 0);
-  const bookPrice = selectedBookItem?.price ?? 0;
   const bookDiscountAmt = Math.min(Math.max(0, Number(bookDiscount) || 0), bookPrice);
   const bookTotal = Math.max(0, bookPrice - bookDiscountAmt);
   const bookRemaining = Math.max(0, bookTotal - (Number(bookAdvance) || 0));
@@ -331,6 +333,7 @@ export default function PosAdvanceBooking() {
     setBookDuration("1");
     setBookDiscount("");
     setBookAdvance("");
+    setBookManualPrice("");
     setBookCustName("");
     setBookCustPhone("");
     setBookCustAddress("");
@@ -446,7 +449,7 @@ export default function PosAdvanceBooking() {
     void refresh();
   };
 
-  /* ─── Reprint from history ─── */
+  /* ─── Reprint / Share from history ─── */
   const reprintAdvance = async (order: AdvanceOrder) => {
     try {
       await printAdvanceReceipt(order);
@@ -456,12 +459,51 @@ export default function PosAdvanceBooking() {
     }
   };
 
+  const shareAdvancePdf = async (order: AdvanceOrder) => {
+    try {
+      const s = settings;
+      const restaurantName = s?.restaurantName || "SANGI POS";
+      const { buildAdvanceReceiptPdf } = await import("@/features/pos/advance-receipt");
+      const doc = buildAdvanceReceiptPdf(order, s);
+      const bytes = doc.output("arraybuffer");
+      const fileName = `advance_${order.receiptNo}_${Date.now()}.pdf`;
+      if (Capacitor.isNativePlatform()) {
+        const saved = await writePdfFile({ folder: "Sales Report", fileName, pdfBytes: new Uint8Array(bytes) });
+        await shareFile({ title: `Advance #${order.receiptNo}`, uri: saved.uri });
+      } else {
+        doc.save(fileName);
+        toast({ title: "PDF downloaded" });
+      }
+    } catch (e: any) {
+      toast({ title: "Share failed", description: e?.message, variant: "destructive" });
+    }
+  };
+
   const reprintBooking = async (order: BookingOrder) => {
     try {
       await printBookingReceipt(order);
       toast({ title: "Reprinted" });
     } catch (e: any) {
       toast({ title: "Print failed", description: e?.message, variant: "destructive" });
+    }
+  };
+
+  const shareBookingPdf = async (order: BookingOrder) => {
+    try {
+      const s = settings;
+      const { buildBookingReceiptPdf } = await import("@/features/pos/advance-receipt");
+      const doc = buildBookingReceiptPdf(order, s);
+      const bytes = doc.output("arraybuffer");
+      const fileName = `booking_${order.receiptNo}_${Date.now()}.pdf`;
+      if (Capacitor.isNativePlatform()) {
+        const saved = await writePdfFile({ folder: "Sales Report", fileName, pdfBytes: new Uint8Array(bytes) });
+        await shareFile({ title: `Booking #${order.receiptNo}`, uri: saved.uri });
+      } else {
+        doc.save(fileName);
+        toast({ title: "PDF downloaded" });
+      }
+    } catch (e: any) {
+      toast({ title: "Share failed", description: e?.message, variant: "destructive" });
     }
   };
 
@@ -553,6 +595,7 @@ export default function PosAdvanceBooking() {
                         </>
                       )}
                       <Button size="sm" variant="ghost" className="gap-1" onClick={() => void reprintAdvance(o)}><Printer className="h-3 w-3" /> Print</Button>
+                      <Button size="sm" variant="ghost" className="gap-1" onClick={() => void shareAdvancePdf(o)}><Share2 className="h-3 w-3" /> Share PDF</Button>
                     </div>
                   </CardContent>
                 </Card>
@@ -641,6 +684,7 @@ export default function PosAdvanceBooking() {
                         </>
                       )}
                       <Button size="sm" variant="ghost" className="gap-1" onClick={() => void reprintBooking(o)}><Printer className="h-3 w-3" /> Print</Button>
+                      <Button size="sm" variant="ghost" className="gap-1" onClick={() => void shareBookingPdf(o)}><Share2 className="h-3 w-3" /> Share PDF</Button>
                     </div>
                   </CardContent>
                 </Card>
@@ -803,8 +847,8 @@ export default function PosAdvanceBooking() {
 
             <div className="grid grid-cols-2 gap-3 border-t pt-3">
               <div className="space-y-1">
-                <Label className="text-xs">Price</Label>
-                <div className="h-9 flex items-center text-sm font-semibold">{formatIntMoney(bookPrice)}</div>
+                <Label className="text-xs">Price {bookItemPrice > 0 ? `(default: ${formatIntMoney(bookItemPrice)})` : ""}</Label>
+                <Input type="number" inputMode="numeric" value={bookManualPrice} onChange={(e) => setBookManualPrice(e.target.value)} placeholder={bookItemPrice > 0 ? String(bookItemPrice) : "Enter price"} />
               </div>
               <div className="space-y-1">
                 <Label className="text-xs">Discount</Label>
