@@ -194,7 +194,8 @@ async function buildKotReceipt(order: Order, settings: Settings): Promise<string
   out.push(lr("Grand Total:", money(order.total)));
   out.push(hr);
   out.push(center("Thank you, come again!"));
-  out.push("\n");
+  out.push("\n\n\n");
+  out.push("\x1dV\x41\x03"); // partial cut
 
   return out.join("\n");
 }
