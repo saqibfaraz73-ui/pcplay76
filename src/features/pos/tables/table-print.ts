@@ -135,9 +135,7 @@ function buildKotEscPos(tableNumber: string, waiterName: string, items: KotItem[
 
   out.push(hr);
 
-  const contentLines = 6 + items.length + 1;
-  const feedCount = getFeedLinesForKot(settings, contentLines);
-  out.push("\n".repeat(feedCount));
+  out.push("\n".repeat(3));
   out.push("\x1dV\x41\x03");
 
   return out.join("\n");
