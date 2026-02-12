@@ -263,7 +263,18 @@ export function ExportPartySection() {
     };
   };
 
-  const saveSale = async (postAction?: "print" | "share") => {
+  const shareSaleOnly = async () => {
+    try {
+      const receiptData = buildSaleReceiptData();
+      if (!receiptData) throw new Error("Add at least one item with valid amounts");
+      await shareEntryReceipt(receiptData);
+      toast({ title: "Entry shared (not added to balance)" });
+    } catch (e: any) {
+      toast({ title: "Share failed", description: e?.message ?? String(e), variant: "destructive" });
+    }
+  };
+
+  const saveSale = async (postAction?: "print") => {
     if (!saleMode.open) return;
     try {
       const validItems = saleItems.filter((it) => it.useManualTotal ? it.manualTotal > 0 : (it.qty > 0 && it.unitPrice > 0));
@@ -300,10 +311,6 @@ export function ExportPartySection() {
       if (receiptData && postAction === "print") {
         try { await printEntryReceipt(receiptData); } catch (pe: any) {
           toast({ title: "Print failed", description: pe?.message ?? String(pe), variant: "destructive" });
-        }
-      } else if (receiptData && postAction === "share") {
-        try { await shareEntryReceipt(receiptData); } catch (se: any) {
-          toast({ title: "Share failed", description: se?.message ?? String(se), variant: "destructive" });
         }
       }
     } catch (e: any) {
@@ -1084,7 +1091,7 @@ export function ExportPartySection() {
             <Button variant="outline" onClick={() => void saveSale("print")} disabled={saleTotal <= 0}>
               <Printer className="h-3.5 w-3.5 mr-1" /> Print
             </Button>
-            <Button variant="outline" onClick={() => void saveSale("share")} disabled={saleTotal <= 0}>
+            <Button variant="outline" onClick={() => void shareSaleOnly()} disabled={saleTotal <= 0}>
               <Share2 className="h-3.5 w-3.5 mr-1" /> Share
             </Button>
             <Button onClick={() => void saveSale()} disabled={saleTotal <= 0}>Add to Balance</Button>
