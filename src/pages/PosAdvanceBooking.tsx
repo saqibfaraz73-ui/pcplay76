@@ -21,6 +21,7 @@ import { formatIntMoney, fmtDate, fmtDateTime, fmtTime12 } from "@/features/pos/
 import { makeId } from "@/features/admin/id";
 import { printAdvanceReceipt, printAdvanceKot, printBookingReceipt } from "@/features/pos/advance-receipt";
 import { buildBookingLodgePdf } from "@/features/admin/reports/booking-lodge-pdf";
+import { buildAdvanceLodgePdf } from "@/features/admin/reports/advance-lodge-pdf";
 import { writePdfFile, shareFile } from "@/features/files/sangi-folders";
 import { Capacitor } from "@capacitor/core";
 import { Plus, Trash2, X, Check, Ban, Printer, FileText, Share2 } from "lucide-react";
@@ -49,6 +50,96 @@ async function getNextCounter(id: "advanceOrder" | "bookingOrder"): Promise<numb
     await db.counters.put({ id, next: next + 1 });
     return next;
   });
+}
+
+/* ─── Advance Lodge Sub-component ─── */
+function AdvanceLodgeSection({ advanceOrders, settings }: { advanceOrders: AdvanceOrder[]; settings: Settings | null }) {
+  const { toast } = useToast();
+  const now = Date.now();
+  const [lodgeFrom, setLodgeFrom] = React.useState(toDateInputValue(now));
+  const [lodgeTo, setLodgeTo] = React.useState(toDateInputValue(now));
+
+  const filteredOrders = React.useMemo(() => {
+    const fromTs = new Date(lodgeFrom).setHours(0, 0, 0, 0);
+    const toTs = new Date(lodgeTo).setHours(23, 59, 59, 999);
+    return advanceOrders.filter((o) => o.createdAt >= fromTs && o.createdAt <= toTs);
+  }, [advanceOrders, lodgeFrom, lodgeTo]);
+
+  const completed = filteredOrders.filter((o) => o.status !== "cancelled");
+  const pending = filteredOrders.filter((o) => o.status === "pending");
+  const totalRevenue = completed.reduce((s, o) => s + o.total, 0);
+  const totalAdvance = completed.reduce((s, o) => s + o.advancePayment, 0);
+  const totalRemaining = completed.reduce((s, o) => s + o.remainingPayment, 0);
+
+  const sharePdf = async () => {
+    try {
+      const restaurantName = settings?.restaurantName || "SANGI POS";
+      const doc = buildAdvanceLodgePdf({
+        restaurantName,
+        fromLabel: lodgeFrom,
+        toLabel: lodgeTo,
+        advanceOrders: filteredOrders,
+      });
+      const bytes = doc.output("arraybuffer");
+      const fileName = `advance_lodge_${lodgeFrom}_${lodgeTo}.pdf`;
+
+      if (Capacitor.isNativePlatform()) {
+        const saved = await writePdfFile({ folder: "Sales Report", fileName, pdfBytes: new Uint8Array(bytes) });
+        await shareFile({ title: "Advance Orders Lodge", uri: saved.uri });
+      } else {
+        doc.save(fileName);
+        toast({ title: "PDF downloaded" });
+      }
+    } catch (e: any) {
+      toast({ title: "PDF failed", description: e?.message, variant: "destructive" });
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base">Advance Orders Lodge</CardTitle>
+        <CardDescription>View all advance orders by date range and share as PDF.</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <div className="grid grid-cols-[1fr_1fr_auto] gap-2 items-end">
+          <div className="space-y-1">
+            <Label className="text-xs">From</Label>
+            <Input type="date" value={lodgeFrom} onChange={(e) => setLodgeFrom(e.target.value)} />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">To</Label>
+            <Input type="date" value={lodgeTo} onChange={(e) => setLodgeTo(e.target.value)} />
+          </div>
+          <Button size="sm" variant="outline" className="gap-1" onClick={() => void sharePdf()}>
+            <Share2 className="h-3.5 w-3.5" /> Share PDF
+          </Button>
+        </div>
+
+        {filteredOrders.length > 0 && (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-sm">
+            <div className="rounded-md border p-2">
+              <div className="text-xs text-muted-foreground">Orders</div>
+              <div className="font-semibold">{completed.length}</div>
+            </div>
+            <div className="rounded-md border p-2">
+              <div className="text-xs text-muted-foreground">Pending</div>
+              <div className="font-semibold">{pending.length}</div>
+            </div>
+            <div className="rounded-md border p-2">
+              <div className="text-xs text-muted-foreground">Revenue</div>
+              <div className="font-semibold">{formatIntMoney(totalRevenue)}</div>
+            </div>
+            <div className="rounded-md border p-2">
+              <div className="text-xs text-muted-foreground">Remaining</div>
+              <div className="font-semibold">{formatIntMoney(totalRemaining)}</div>
+            </div>
+          </div>
+        )}
+        {filteredOrders.length === 0 && <p className="text-xs text-muted-foreground">No advance orders in selected range.</p>}
+      </CardContent>
+    </Card>
+  );
 }
 
 /* ─── Booking Lodge Sub-component ─── */
@@ -556,6 +647,9 @@ export default function PosAdvanceBooking() {
         {/* ═══ ADVANCE ITEM SALES TAB ═══ */}
         <TabsContent value="advance" className="space-y-4">
           <Button onClick={openAdvDlg} className="gap-1"><Plus className="h-4 w-4" /> New Advance Order</Button>
+
+          {/* Advance Lodge - date range share PDF */}
+          <AdvanceLodgeSection advanceOrders={advanceOrders} settings={settings} />
 
           {advanceOrders.length === 0 ? (
             <p className="text-sm text-muted-foreground">No advance orders yet.</p>
