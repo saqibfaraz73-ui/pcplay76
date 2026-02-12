@@ -1,4 +1,4 @@
-package app.lovable.sangipos;
+package app.lovable.a89517294eb14219b1dd14af0464d470;
 
 import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
@@ -28,7 +28,7 @@ import java.util.HashMap;
 public class UsbPrinterPlugin extends Plugin {
 
     private static final String TAG = "UsbPrinterPlugin";
-    private static final String ACTION_USB_PERMISSION = "app.lovable.sangipos.USB_PERMISSION";
+    private static final String ACTION_USB_PERMISSION = "app.lovable.a89517294eb14219b1dd14af0464d470.USB_PERMISSION";
 
     private UsbManager usbManager;
     private UsbDevice connectedDevice;
