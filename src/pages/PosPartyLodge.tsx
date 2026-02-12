@@ -492,8 +492,8 @@ export default function PosPartyLodge() {
     if (sup.itemName) { doc.setFontSize(9); doc.text(`Item: ${sup.itemName}${sup.stockUnit ? ` (${sup.stockUnit})` : ""}${sup.unitPrice ? ` @ ${formatIntMoney(sup.unitPrice)}` : ""}`, left, y); y += 12; }
     doc.setFontSize(9); doc.setTextColor(0);
     doc.text(`Total Balance: ${formatIntMoney(sup.totalBalance)}`, left, y); y += 12;
-    doc.text(`Total Arrivals (in range): ${formatIntMoney(totalArrivalsInRange)}`, left, y); y += 12;
-    doc.text(`Total Paid (in range): ${formatIntMoney(totalPaidInRange)}`, left, y); y += 16;
+    doc.text(`Total Arrivals: ${formatIntMoney(totalArrivalsInRange)}`, left, y); y += 12;
+    doc.text(`Total Paid: ${formatIntMoney(totalPaidInRange)}`, left, y); y += 16;
 
     // Arrivals section
     doc.setFontSize(9); doc.setFont("helvetica", "bold"); doc.setTextColor(0);
@@ -776,7 +776,7 @@ export default function PosPartyLodge() {
     doc.setFontSize(11); doc.setFont("helvetica", "bold"); doc.setTextColor(0);
     doc.text(sup.name, left, y); doc.text(`Balance: ${formatIntMoney(balance)}`, right, y, { align: "right" }); y += 14;
     if (sup.contact) { doc.setFontSize(9); doc.setFont("helvetica", "normal"); doc.setTextColor(100); doc.text(`Contact: ${sup.contact}`, left, y); y += 12; }
-    doc.setFontSize(9); doc.setTextColor(0); doc.text(`Total Arrivals (in range): ${formatIntMoney(totalArrivalsInRange)}`, left, y); y += 16;
+    doc.setFontSize(9); doc.setTextColor(0); doc.text(`Total Arrivals: ${formatIntMoney(totalArrivalsInRange)}`, left, y); y += 16;
 
     if (supArrivals.length > 0) {
       doc.setFontSize(8); doc.setFont("helvetica", "bold"); doc.setTextColor(80);

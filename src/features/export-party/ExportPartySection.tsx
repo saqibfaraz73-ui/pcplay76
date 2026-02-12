@@ -533,8 +533,8 @@ export function ExportPartySection() {
     if (cust.itemName) { doc.setFontSize(9); doc.text(`Item: ${cust.itemName}${cust.stockUnit ? ` (${cust.stockUnit})` : ""}${cust.unitPrice ? ` @ ${formatIntMoney(cust.unitPrice)}` : ""}`, left, y); y += 12; }
     doc.setFontSize(9); doc.setTextColor(0);
     doc.text(`Total Balance: ${formatIntMoney(cust.totalBalance)}`, left, y); y += 12;
-    doc.text(`Total Sales (in range): ${formatIntMoney(totalSalesInRange)}`, left, y); y += 12;
-    doc.text(`Total Paid (in range): ${formatIntMoney(totalPaidInRange)}`, left, y); y += 16;
+    doc.text(`Total Sales: ${formatIntMoney(totalSalesInRange)}`, left, y); y += 12;
+    doc.text(`Total Paid: ${formatIntMoney(totalPaidInRange)}`, left, y); y += 16;
 
     // Sales section
     doc.setFontSize(9); doc.setFont("helvetica", "bold"); doc.setTextColor(0);
@@ -615,7 +615,7 @@ export function ExportPartySection() {
     doc.setFontSize(11); doc.setFont("helvetica", "bold"); doc.setTextColor(0);
     doc.text(cust.name, left, y); doc.text(`Balance: ${formatIntMoney(balance)}`, right, y, { align: "right" }); y += 14;
     if (cust.contact) { doc.setFontSize(9); doc.setFont("helvetica", "normal"); doc.setTextColor(100); doc.text(`Contact: ${cust.contact}`, left, y); y += 12; }
-    doc.setFontSize(9); doc.setTextColor(0); doc.text(`Total Sales (in range): ${formatIntMoney(totalSalesInRange)}`, left, y); y += 16;
+    doc.setFontSize(9); doc.setTextColor(0); doc.text(`Total Sales: ${formatIntMoney(totalSalesInRange)}`, left, y); y += 16;
 
     if (custSales.length > 0) {
       doc.setFontSize(8); doc.setFont("helvetica", "bold"); doc.setTextColor(80);
