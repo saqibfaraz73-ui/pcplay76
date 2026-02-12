@@ -155,19 +155,15 @@ async function buildEscPosReceipt(
 
 /* ---------- Centered KOT receipt (for KOT button) ---------- */
 
-async function buildKotReceipt(order: Order, settings: Settings, opts?: { centered?: boolean }): Promise<string> {
+async function buildKotReceipt(order: Order, settings: Settings): Promise<string> {
   const WIDTH = 32;
   const hr = "-".repeat(WIDTH);
   const money = (n: number) => formatIntMoney(n);
-  const centered = opts?.centered ?? false;
 
-  const align = (s = "") => {
+  const center = (s = "") => {
     const trimmed = s.slice(0, WIDTH);
-    if (centered) {
-      const pad = Math.floor((WIDTH - trimmed.length) / 2);
-      return " ".repeat(pad) + trimmed;
-    }
-    return trimmed;
+    const pad = Math.floor((WIDTH - trimmed.length) / 2);
+    return " ".repeat(pad) + trimmed;
   };
 
   const lr = (l = "", r = "") => {
@@ -181,13 +177,13 @@ async function buildKotReceipt(order: Order, settings: Settings, opts?: { center
   out.push("\x1b3\x18");   // tight line spacing
 
   // KOT never shows logo, address, or phone
-  out.push(align(settings.restaurantName || "SANGI POS"));
+  out.push(center(settings.restaurantName || "SANGI POS"));
 
   out.push(hr);
-  out.push(align(`Bill #: ${order.receiptNo}`));
-  out.push(align(`Date: ${format(new Date(order.createdAt), "dd/MM/yyyy h:mm a")}`));
-  out.push(align(`Prepared By: ${order.cashier}`));
-  out.push(align(`Payment: ${order.paymentMethod.toUpperCase()}`));
+  out.push(center(`Bill #: ${order.receiptNo}`));
+  out.push(center(`Date: ${format(new Date(order.createdAt), "dd/MM/yyyy h:mm a")}`));
+  out.push(center(`Prepared By: ${order.cashier}`));
+  out.push(center(`Payment: ${order.paymentMethod.toUpperCase()}`));
   out.push(hr);
 
   out.push(
@@ -209,9 +205,9 @@ async function buildKotReceipt(order: Order, settings: Settings, opts?: { center
   out.push(lr("Subtotal:", money(order.subtotal)));
   out.push(lr("Grand Total:", money(order.total)));
   out.push(hr);
-  out.push(align("Thank you, come again!"));
+  out.push(center("Thank you, come again!"));
 
-  const contentLines = 8 + order.lines.length + 5;
+  const contentLines = 8 + order.lines.length + 5; // header(8) + items + footer(5)
   const feedCount = getFeedLinesForSize(settings, contentLines);
   out.push("\n".repeat(feedCount));
   out.push("\x1dV\x41\x03"); // partial cut
@@ -348,7 +344,7 @@ export async function printKotFromOrder(order: Order) {
   if (!settings) throw new Error("Printer not configured");
   
   const conn = settings.printerConnection ?? "none";
-  const text = await buildKotReceipt(order, settings, { centered: true });
+  const text = await buildKotReceipt(order, settings);
 
   if (conn === "usb") {
     await usbSend(text);
