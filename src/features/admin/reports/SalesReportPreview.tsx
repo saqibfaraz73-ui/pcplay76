@@ -1,5 +1,5 @@
 import * as React from "react";
-import type { CreditCustomer, DeliveryPerson, Expense, MenuItem, Order, RestaurantTable, TableOrder, Waiter } from "@/db/schema";
+import type { CreditCustomer, DeliveryPerson, Expense, MenuItem, Order, RestaurantTable, Settings, TableOrder, Waiter } from "@/db/schema";
 import { formatIntMoney } from "@/features/pos/format";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ReportOrderList } from "@/features/admin/reports/ReportOrderList";
@@ -15,6 +15,7 @@ type Props = {
   expenses?: Expense[];
   tableOrders?: TableOrder[];
   tables?: RestaurantTable[];
+  settings?: Settings | null;
   waiters?: Waiter[];
 };
 
@@ -30,7 +31,11 @@ export function SalesReportPreview({
   tableOrders = [],
   tables = [],
   waiters = [],
+  settings,
 }: Props) {
+  const deliveryEnabled = settings?.deliveryEnabled ?? true;
+  const tableEnabled = settings?.tableManagementEnabled ?? true;
+
   const completed = React.useMemo(() => orders.filter((o) => o.status === "completed"), [orders]);
   const cancelled = React.useMemo(() => orders.filter((o) => o.status === "cancelled"), [orders]);
 
@@ -187,13 +192,13 @@ export function SalesReportPreview({
             <div className="text-xs text-muted-foreground">Cash sale</div>
             <div className="text-base font-semibold">{formatIntMoney(cashSale)}</div>
           </div>
-          {deliverySale > 0 && (
+          {deliveryEnabled && deliverySale > 0 && (
             <div className="rounded-md border p-3">
               <div className="text-xs text-muted-foreground">Delivery sale</div>
               <div className="text-base font-semibold">{formatIntMoney(deliverySale)}</div>
             </div>
           )}
-          {deliveryCancelled > 0 && (
+          {deliveryEnabled && deliveryCancelled > 0 && (
             <div className="rounded-md border p-3">
               <div className="text-xs text-muted-foreground">Delivery cancelled</div>
               <div className="text-base font-semibold text-destructive">{formatIntMoney(deliveryCancelled)}</div>
@@ -202,7 +207,7 @@ export function SalesReportPreview({
         </div>
 
         {/* Table Sales Section */}
-        {tableOrders.length > 0 && (
+        {tableEnabled && tableOrders.length > 0 && (
           <div className="space-y-2">
             <div className="text-sm font-semibold">Table Sales</div>
             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
@@ -271,7 +276,7 @@ export function SalesReportPreview({
         )}
 
         {/* Delivery sales by person */}
-        {deliveryByPerson.length > 0 && (
+        {deliveryEnabled && deliveryByPerson.length > 0 && (
           <div className="space-y-2">
             <div className="text-sm font-semibold">Delivery Sales by Person</div>
             <div className="overflow-auto rounded-md border">
