@@ -152,19 +152,19 @@ function buildSalesPdf(args: {
   const exportCancelledTotal = exportCancelled.reduce((s, e) => s + e.total, 0);
   const exportCustomersById = Object.fromEntries(exportCustomersData.map((c) => [c.id, c]));
 
-  // Advance/Booking
+  // Advance/Booking — sales = advance payments received only
   const showAdvBooking = args.settings?.showAdvanceBookingInReports ?? false;
   const advOrders = args.advanceOrders ?? [];
   const bkOrders = args.bookingOrders ?? [];
   const advCompleted = advOrders.filter((o) => o.status !== "cancelled");
   const advCancelled = advOrders.filter((o) => o.status === "cancelled");
-  const advTotal = advCompleted.reduce((s, o) => s + o.total, 0);
-  const advAdvanceTotal = advCompleted.reduce((s, o) => s + o.advancePayment, 0);
+  const advTotal = advCompleted.reduce((s, o) => s + o.advancePayment, 0);
+  const advAdvanceTotal = advTotal;
   const advCancelledTotal = advCancelled.reduce((s, o) => s + o.total, 0);
   const bkCompleted = bkOrders.filter((o) => o.status !== "cancelled");
   const bkCancelled = bkOrders.filter((o) => o.status === "cancelled");
-  const bkTotal = bkCompleted.reduce((s, o) => s + o.price, 0);
-  const bkAdvanceTotal = bkCompleted.reduce((s, o) => s + o.advancePayment, 0);
+  const bkTotal = bkCompleted.reduce((s, o) => s + o.advancePayment, 0);
+  const bkAdvanceTotal = bkTotal;
   const bkCancelledTotal = bkCancelled.reduce((s, o) => s + o.price, 0);
   const advBookingTotal = advTotal + bkTotal;
 

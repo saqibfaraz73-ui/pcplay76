@@ -39,6 +39,9 @@ type BackupPayloadV1 = {
     exportCustomers?: any[];
     exportSales?: any[];
     exportPayments?: any[];
+    advanceOrders?: any[];
+    bookableItems?: any[];
+    bookingOrders?: any[];
   };
 };
 
@@ -79,6 +82,9 @@ export function AdminBackupRestore() {
           exportCustomers: await db.exportCustomers.toArray(),
           exportSales: await db.exportSales.toArray(),
           exportPayments: await db.exportPayments.toArray(),
+          advanceOrders: await db.advanceOrders.toArray(),
+          bookableItems: await db.bookableItems.toArray(),
+          bookingOrders: await db.bookingOrders.toArray(),
         },
       };
       const fileName = `backup_${payload.createdAt}.json`;
@@ -104,6 +110,7 @@ export function AdminBackupRestore() {
         db.deliveryPersons, db.deliveryCustomers,
         db.waiters, db.restaurantTables, db.tableOrders,
         db.adminAccount, db.staffAccounts, db.settings, db.counters,
+        db.advanceOrders, db.bookableItems, db.bookingOrders,
       ],
       async () => {
         await Promise.all([
@@ -131,6 +138,9 @@ export function AdminBackupRestore() {
           db.staffAccounts.clear(),
           db.settings.clear(),
           db.counters.clear(),
+          db.advanceOrders.clear(),
+          db.bookableItems.clear(),
+          db.bookingOrders.clear(),
         ]);
         await db.categories.bulkAdd(payload.data.categories);
         await db.items.bulkAdd(payload.data.items);
@@ -154,6 +164,9 @@ export function AdminBackupRestore() {
         if (payload.data.exportCustomers?.length) await db.exportCustomers.bulkAdd(payload.data.exportCustomers);
         if (payload.data.exportSales?.length) await db.exportSales.bulkAdd(payload.data.exportSales);
         if (payload.data.exportPayments?.length) await db.exportPayments.bulkAdd(payload.data.exportPayments);
+        if (payload.data.advanceOrders?.length) await db.advanceOrders.bulkAdd(payload.data.advanceOrders);
+        if (payload.data.bookableItems?.length) await db.bookableItems.bulkAdd(payload.data.bookableItems);
+        if (payload.data.bookingOrders?.length) await db.bookingOrders.bulkAdd(payload.data.bookingOrders);
         await db.settings.bulkAdd(payload.data.settings);
         await db.counters.bulkAdd(payload.data.counters);
       },

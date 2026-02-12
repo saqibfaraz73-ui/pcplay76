@@ -191,6 +191,44 @@ export async function printBookingReceipt(order: BookingOrder) {
   await sendToPrinter(text);
 }
 
+/* ─── Booking KOT ─── */
+
+export function buildBookingKot(order: BookingOrder, settings: Settings): string {
+  const WIDTH = 32;
+  const hr = "-".repeat(WIDTH);
+  const money = (n: number) => formatIntMoney(n);
+  const center = (s = "") => { const pad = Math.max(0, Math.floor((WIDTH - s.length) / 2)); return " ".repeat(pad) + s; };
+  const lr = (l = "", r = "") => { const sp = WIDTH - l.length - r.length; return l + " ".repeat(Math.max(1, sp)) + r; };
+
+  const out: string[] = ["\x1b@", "\x1b3\x18"];
+  out.push(center(settings.restaurantName || "SANGI POS"));
+  out.push(hr);
+  out.push(center(`Bkg #: ${order.receiptNo}`));
+  out.push(center(`Date: ${fmtDate(order.date)}`));
+  out.push(center(`Time: ${order.startTime} → ${order.endTime}`));
+  out.push(center(`Duration: ${order.durationHours}h`));
+  if (order.cashier) out.push(center(`By: ${order.cashier}`));
+  if (order.customerName) out.push(center(`Customer: ${order.customerName}`));
+  out.push(hr);
+  out.push(lr("Item:", order.bookableItemName));
+  out.push(lr("Price:", money(order.price)));
+  if (order.discountAmount > 0) out.push(lr("Discount:", money(order.discountAmount)));
+  out.push(lr("Total:", money(order.total)));
+  out.push(lr("Advance:", money(order.advancePayment)));
+  out.push(lr("Remaining:", money(order.remainingPayment)));
+  out.push(hr);
+  out.push("\n\n\n");
+  out.push("\x1dV\x41\x03");
+  return out.join("\n");
+}
+
+export async function printBookingKot(order: BookingOrder) {
+  const settings = await db.settings.get("app");
+  if (!settings) throw new Error("Settings not loaded");
+  const text = buildBookingKot(order, settings);
+  await sendToPrinter(text);
+}
+
 /* ─── PDF Builders for Share ─── */
 
 export function buildAdvanceReceiptPdf(order: AdvanceOrder, settings: Settings | null): jsPDF {
