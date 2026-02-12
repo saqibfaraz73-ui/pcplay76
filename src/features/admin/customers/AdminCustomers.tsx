@@ -11,9 +11,9 @@ import { useToast } from "@/hooks/use-toast";
 import { makeId } from "@/features/admin/id";
 import { formatIntMoney, parseNonDecimalInt } from "@/features/pos/format";
 import { CreditLodgePreview } from "@/features/admin/reports/CreditLodgePreview";
-import { buildCreditLodgePdf } from "@/features/admin/reports/credit-lodge-pdf";
+import { buildCreditLodgePdf, buildCreditPaymentsPdf, buildCreditItemsPdf } from "@/features/admin/reports/credit-lodge-pdf";
 import { writePdfFile, shareFile } from "@/features/files/sangi-folders";
-import { Share2 } from "lucide-react";
+import { Share2, CreditCard, ShoppingBag } from "lucide-react";
 import { Capacitor } from "@capacitor/core";
 
 type Mode = { open: false } | { open: true; customer?: CreditCustomer };
@@ -364,33 +364,57 @@ export function AdminCustomers() {
                 <div className="flex flex-wrap gap-2">
                   <Button
                     variant="outline"
+                    size="sm"
                     onClick={async () => {
                       try {
-                        const doc = buildCreditLodgePdf({
-                          restaurantName: settings?.restaurantName ?? "SANGI POS",
-                          fromLabel: from,
-                          toLabel: to,
-                          customer: selectedCustomer,
-                          orders: lodgeOrders,
-                          payments: selectedPayments,
-                        });
+                        const doc = buildCreditLodgePdf({ restaurantName: settings?.restaurantName ?? "SANGI POS", fromLabel: from, toLabel: to, customer: selectedCustomer, orders: lodgeOrders, payments: selectedPayments });
                         const bytes = doc.output("arraybuffer");
                         const fileName = `credit_lodge_${selectedCustomer.name.replace(/\s+/g, "_")}_${Date.now()}.pdf`;
-
                         if (Capacitor.isNativePlatform()) {
                           const saved = await writePdfFile({ folder: "Credit", fileName, pdfBytes: new Uint8Array(bytes) });
                           await shareFile({ title: `Credit Lodge - ${selectedCustomer.name}`, uri: saved.uri });
-                        } else {
-                          doc.save(fileName);
-                          toast({ title: "Credit Lodge PDF downloaded" });
-                        }
-                      } catch (e: any) {
-                        toast({ title: "Could not export PDF", description: e?.message ?? String(e), variant: "destructive" });
-                      }
+                        } else { doc.save(fileName); toast({ title: "Credit Lodge PDF downloaded" }); }
+                      } catch (e: any) { toast({ title: "Could not export PDF", description: e?.message ?? String(e), variant: "destructive" }); }
                     }}
                   >
                     <Share2 className="h-4 w-4 mr-1" />
-                    Share PDF
+                    Full Lodge PDF
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={async () => {
+                      try {
+                        const doc = buildCreditPaymentsPdf({ restaurantName: settings?.restaurantName ?? "SANGI POS", fromLabel: from, toLabel: to, customer: selectedCustomer, orders: lodgeOrders, payments: selectedPayments });
+                        const bytes = doc.output("arraybuffer");
+                        const fileName = `credit_payments_${selectedCustomer.name.replace(/\s+/g, "_")}_${Date.now()}.pdf`;
+                        if (Capacitor.isNativePlatform()) {
+                          const saved = await writePdfFile({ folder: "Credit", fileName, pdfBytes: new Uint8Array(bytes) });
+                          await shareFile({ title: `Payments - ${selectedCustomer.name}`, uri: saved.uri });
+                        } else { doc.save(fileName); toast({ title: "Payments PDF downloaded" }); }
+                      } catch (e: any) { toast({ title: "Could not export PDF", description: e?.message ?? String(e), variant: "destructive" }); }
+                    }}
+                  >
+                    <CreditCard className="h-4 w-4 mr-1" />
+                    Payments PDF
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={async () => {
+                      try {
+                        const doc = buildCreditItemsPdf({ restaurantName: settings?.restaurantName ?? "SANGI POS", fromLabel: from, toLabel: to, customer: selectedCustomer, orders: lodgeOrders, payments: selectedPayments });
+                        const bytes = doc.output("arraybuffer");
+                        const fileName = `credit_items_${selectedCustomer.name.replace(/\s+/g, "_")}_${Date.now()}.pdf`;
+                        if (Capacitor.isNativePlatform()) {
+                          const saved = await writePdfFile({ folder: "Credit", fileName, pdfBytes: new Uint8Array(bytes) });
+                          await shareFile({ title: `Items - ${selectedCustomer.name}`, uri: saved.uri });
+                        } else { doc.save(fileName); toast({ title: "Items PDF downloaded" }); }
+                      } catch (e: any) { toast({ title: "Could not export PDF", description: e?.message ?? String(e), variant: "destructive" }); }
+                    }}
+                  >
+                    <ShoppingBag className="h-4 w-4 mr-1" />
+                    Items PDF
                   </Button>
                 </div>
                 <CreditLodgePreview
