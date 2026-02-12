@@ -17,7 +17,7 @@ import { makeId } from "@/features/admin/id";
 import { formatIntMoney, parseNonDecimalInt } from "@/features/pos/format";
 import { writePdfFile, shareFile } from "@/features/files/sangi-folders";
 import { Capacitor } from "@capacitor/core";
-import { Plus, Trash2, Share2, CreditCard, Banknote, PackagePlus, Upload, Download, Printer } from "lucide-react";
+import { Plus, Trash2, Share2, CreditCard, Banknote, PackagePlus, Upload, Download, Printer, XCircle } from "lucide-react";
 import { printEntryReceipt, shareEntryReceipt, getNextEntryNo, type EntryReceiptData } from "@/features/pos/entry-receipt";
 import { importExportSalesFromExcel, importSalesForCustomer, downloadImportTemplate, downloadPartyImportTemplate } from "@/features/party-import/party-import";
 import { canMakeSale, incrementSaleCount } from "@/features/licensing/licensing-db";
@@ -62,6 +62,10 @@ export function ExportPartySection() {
   const [payMode, setPayMode] = React.useState<PayMode>({ open: false });
   const [saleMode, setSaleMode] = React.useState<SaleMode>({ open: false });
   const [deleteTarget, setDeleteTarget] = React.useState<ExportCustomer | null>(null);
+
+  // Cancel entry state
+  const [cancelTarget, setCancelTarget] = React.useState<{ id: string; total: number; customerId: string } | null>(null);
+  const [cancelReason, setCancelReason] = React.useState("");
 
   const [upgradeOpen, setUpgradeOpen] = React.useState(false);
   const [upgradeMsg, setUpgradeMsg] = React.useState("");
@@ -331,6 +335,33 @@ export function ExportPartySection() {
     note: s.note,
     date: new Date(s.createdAt),
   });
+
+  // ─── Cancel Sale ───
+  const confirmCancelSale = async () => {
+    if (!cancelTarget) return;
+    try {
+      const reason = cancelReason.trim();
+      if (!reason) throw new Error("Please enter a reason for cancellation");
+      await db.transaction("rw", [db.exportSales, db.exportCustomers], async () => {
+        await db.exportSales.update(cancelTarget.id, {
+          cancelled: true,
+          cancelledReason: reason,
+        });
+        const cust = await db.exportCustomers.get(cancelTarget.customerId);
+        if (cust) {
+          await db.exportCustomers.update(cancelTarget.customerId, {
+            totalBalance: cust.totalBalance - cancelTarget.total,
+          });
+        }
+      });
+      toast({ title: "Sale cancelled", description: `Balance reduced by ${formatIntMoney(cancelTarget.total)}` });
+      setCancelTarget(null);
+      setCancelReason("");
+      await refresh();
+    } catch (e: any) {
+      toast({ title: "Cancel failed", description: e?.message ?? String(e), variant: "destructive" });
+    }
+  };
 
   // ─── PDF ───
   const buildExportPdf = () => {
@@ -878,7 +909,7 @@ export function ExportPartySection() {
                   {selectedSales.map((s, idx) => {
                     const rd = buildReceiptFromSale(s, selectedCustomer.name);
                     return (
-                    <div key={s.id} className="rounded-md border p-2 text-sm">
+                    <div key={s.id} className={`rounded-md border p-2 text-sm ${s.cancelled ? "opacity-60 bg-destructive/5 border-destructive/30" : ""}`}>
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-2">
                           {s.receiptNo ? (
@@ -887,11 +918,13 @@ export function ExportPartySection() {
                             <span className="text-xs text-muted-foreground">{selectedSales.length - idx}</span>
                           )}
                           <span className="font-medium">{s.itemName}</span>
+                          {s.cancelled && <span className="text-xs font-semibold text-destructive">CANCELLED</span>}
                         </div>
-                        <span className="font-bold text-green-600">{formatIntMoney(s.total)}</span>
+                        <span className={`font-bold ${s.cancelled ? "line-through text-muted-foreground" : "text-green-600"}`}>{formatIntMoney(s.total)}</span>
                       </div>
                       <div className="text-xs text-muted-foreground mt-1">{s.qty} {s.unit || "units"} × {formatIntMoney(s.unitPrice)}</div>
                       {s.note && <div className="text-xs text-muted-foreground">{s.note}</div>}
+                      {s.cancelledReason && <div className="text-xs text-destructive">Reason: {s.cancelledReason}</div>}
                       <div className="text-xs text-muted-foreground">{new Date(s.createdAt).toLocaleDateString()} {new Date(s.createdAt).toLocaleTimeString()}</div>
                       <div className="flex gap-1 mt-1.5">
                         <Button variant="outline" size="sm" className="text-xs h-6 px-2" onClick={() => void printEntryReceipt(rd).catch((e: any) => toast({ title: "Print failed", description: e?.message, variant: "destructive" }))}>
@@ -900,6 +933,11 @@ export function ExportPartySection() {
                         <Button variant="outline" size="sm" className="text-xs h-6 px-2" onClick={() => void shareEntryReceipt(rd).catch((e: any) => toast({ title: "Share failed", description: e?.message, variant: "destructive" }))}>
                           <Share2 className="h-3 w-3 mr-1" /> Share
                         </Button>
+                        {!s.cancelled && (
+                          <Button variant="outline" size="sm" className="text-xs h-6 px-2 text-destructive hover:text-destructive" onClick={() => { setCancelReason(""); setCancelTarget({ id: s.id, total: s.total, customerId: s.customerId }); }}>
+                            <XCircle className="h-3 w-3 mr-1" /> Cancel
+                          </Button>
+                        )}
                       </div>
                     </div>
                     );
@@ -1138,6 +1176,26 @@ export function ExportPartySection() {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={() => void confirmDelete()}>Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Cancel Sale Entry Confirmation */}
+      <AlertDialog open={!!cancelTarget} onOpenChange={(v) => { if (!v) { setCancelTarget(null); setCancelReason(""); } }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cancel Sale Entry?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will mark the entry as cancelled and reverse {cancelTarget ? formatIntMoney(cancelTarget.total) : ""} from the balance.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-2 py-2">
+            <Label>Reason for cancellation *</Label>
+            <Input value={cancelReason} onChange={(e) => setCancelReason(e.target.value)} placeholder="e.g., Wrong entry, duplicate" />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Back</AlertDialogCancel>
+            <AlertDialogAction onClick={() => void confirmCancelSale()} disabled={!cancelReason.trim()}>Cancel Entry</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

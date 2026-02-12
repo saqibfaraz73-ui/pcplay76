@@ -195,6 +195,8 @@ export type SupplierArrival = {
   unitPrice: number;
   total: number;
   note?: string;
+  cancelled?: boolean;
+  cancelledReason?: string;
   createdAt: number;
 };
 
@@ -221,6 +223,8 @@ export type ExportSale = {
   unitPrice: number;
   total: number;
   note?: string;
+  cancelled?: boolean;
+  cancelledReason?: string;
   createdAt: number;
 };
 
