@@ -502,6 +502,105 @@ export function ExportPartySection() {
     return doc;
   };
 
+  const buildSingleCustomerPdf = (cust: ExportCustomer) => {
+    const doc = new jsPDF({ unit: "pt", format: "a4" });
+    const pageW = doc.internal.pageSize.getWidth();
+    const left = 40; const right = pageW - 40;
+    let y = 48; const lineH = 14; const pageH = 780;
+    const checkPage = (needed = lineH * 2) => { if (y + needed > pageH) { doc.addPage(); y = 48; } };
+    const restaurantName = settings?.restaurantName ?? "SANGI POS";
+
+    doc.setFontSize(16); doc.setFont("helvetica", "bold"); doc.text(`Export Party: ${cust.name}`, left, y); y += 20;
+    doc.setFontSize(10); doc.setFont("helvetica", "normal");
+    doc.text(`${restaurantName} • ${filterFrom} → ${filterTo}`, left, y); y += 24;
+
+    const [fy, fm, fd] = filterFrom.split("-").map(Number);
+    const [ty, tm, td] = filterTo.split("-").map(Number);
+    const fromTs = new Date(fy, fm - 1, fd).getTime();
+    const toTs = new Date(ty, tm - 1, td, 23, 59, 59, 999).getTime();
+
+    const custSales = sales.filter((s) => s.customerId === cust.id && s.createdAt >= fromTs && s.createdAt <= toTs).sort((a, b) => a.createdAt - b.createdAt);
+    const custPayments = payments.filter((p) => p.customerId === cust.id && p.createdAt >= fromTs && p.createdAt <= toTs).sort((a, b) => a.createdAt - b.createdAt);
+    const balance = getBalance(cust);
+    const totalSalesInRange = custSales.reduce((s, a) => s + a.total, 0);
+    const totalPaidInRange = custPayments.reduce((s, p) => s + p.amount, 0);
+
+    // Header info
+    doc.setFontSize(11); doc.setFont("helvetica", "bold"); doc.setTextColor(0);
+    doc.text(cust.name, left, y);
+    doc.text(`Balance: ${formatIntMoney(balance)}`, right, y, { align: "right" }); y += 14;
+    if (cust.contact) { doc.setFontSize(9); doc.setFont("helvetica", "normal"); doc.setTextColor(100); doc.text(`Contact: ${cust.contact}`, left, y); y += 12; }
+    if (cust.itemName) { doc.setFontSize(9); doc.text(`Item: ${cust.itemName}${cust.stockUnit ? ` (${cust.stockUnit})` : ""}${cust.unitPrice ? ` @ ${formatIntMoney(cust.unitPrice)}` : ""}`, left, y); y += 12; }
+    doc.setFontSize(9); doc.setTextColor(0);
+    doc.text(`Total Balance: ${formatIntMoney(cust.totalBalance)}`, left, y); y += 12;
+    doc.text(`Total Sales (in range): ${formatIntMoney(totalSalesInRange)}`, left, y); y += 12;
+    doc.text(`Total Paid (in range): ${formatIntMoney(totalPaidInRange)}`, left, y); y += 16;
+
+    // Sales section
+    doc.setFontSize(9); doc.setFont("helvetica", "bold"); doc.setTextColor(0);
+    doc.text("Sales:", left + 4, y); y += 12;
+    if (custSales.length > 0) {
+      doc.setFontSize(8); doc.setFont("helvetica", "bold"); doc.setTextColor(80);
+      doc.text("#", left + 4, y); doc.text("Item", left + 20, y); doc.text("Qty", left + 130, y); doc.text("Price", left + 180, y); doc.text("Total", left + 240, y); doc.text("Note", left + 310, y); doc.text("Date", right - 10, y, { align: "right" }); y += 10;
+      doc.setDrawColor(200); doc.line(left, y - 4, right, y - 4);
+      doc.setFont("helvetica", "normal"); doc.setTextColor(0);
+      custSales.forEach((s, idx) => {
+        checkPage(); doc.setFontSize(8);
+        doc.text(String(idx + 1), left + 4, y);
+        doc.text((s.itemName ?? "").slice(0, 16), left + 20, y);
+        doc.text(`${s.qty} ${s.unit || ""}`, left + 130, y);
+        doc.text(formatIntMoney(s.unitPrice), left + 180, y);
+        doc.text(formatIntMoney(s.total), left + 240, y);
+        doc.text((s.note ?? "").slice(0, 15), left + 310, y);
+        doc.text(new Date(s.createdAt).toLocaleDateString(), right - 10, y, { align: "right" });
+        y += lineH;
+      });
+    } else {
+      doc.setFontSize(8); doc.setTextColor(120); doc.text("No sales in this period", left + 10, y); y += lineH;
+    }
+    y += 8;
+
+    // Payments section
+    doc.setFontSize(9); doc.setFont("helvetica", "bold"); doc.setTextColor(0);
+    doc.text("Payments Received:", left + 4, y); y += 12;
+    if (custPayments.length > 0) {
+      doc.setFontSize(8); doc.setFont("helvetica", "bold"); doc.setTextColor(80);
+      doc.text("#", left + 4, y); doc.text("Amount", left + 30, y); doc.text("Type", left + 140, y); doc.text("Note", left + 200, y); doc.text("Date", right - 10, y, { align: "right" }); y += 10;
+      doc.setDrawColor(200); doc.line(left, y - 4, right, y - 4);
+      doc.setFont("helvetica", "normal"); doc.setTextColor(0);
+      custPayments.forEach((p, idx) => {
+        checkPage(); doc.setFontSize(9);
+        doc.text(String(idx + 1), left + 4, y);
+        doc.text(formatIntMoney(p.amount), left + 30, y);
+        doc.text(p.paymentType ?? "—", left + 140, y);
+        doc.text((p.note ?? "").slice(0, 25), left + 200, y);
+        doc.text(new Date(p.createdAt).toLocaleDateString(), right - 10, y, { align: "right" });
+        y += lineH;
+      });
+    } else {
+      doc.setFontSize(9); doc.setTextColor(120); doc.text("No payments in this period", left + 4, y); y += lineH;
+    }
+    return doc;
+  };
+
+  const shareSingleCustomerPdf = async (cust: ExportCustomer) => {
+    try {
+      const doc = buildSingleCustomerPdf(cust);
+      const bytes = doc.output("arraybuffer");
+      const safeName = cust.name.replace(/[^a-zA-Z0-9]/g, "_").slice(0, 30);
+      const fileName = `export_${safeName}_${filterFrom}_${filterTo}.pdf`;
+      if (Capacitor.isNativePlatform()) {
+        const saved = await writePdfFile({ folder: "Sales Report", fileName, pdfBytes: new Uint8Array(bytes) });
+        await shareFile({ title: `Export Party: ${cust.name}`, uri: saved.uri });
+      } else {
+        doc.save(fileName);
+        toast({ title: `${cust.name} PDF downloaded` });
+      }
+    } catch (e: any) {
+      toast({ title: "PDF failed", description: e?.message ?? String(e), variant: "destructive" });
+    }
+  };
+
   const sharePdf = async (type: "full" | "sales" | "payments") => {
     try {
       const doc = type === "full" ? buildExportPdf() : type === "sales" ? buildSalesPdf() : buildPaymentsPdf();
@@ -586,6 +685,9 @@ export function ExportPartySection() {
                       History
                     </Button>
                     <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => openEdit(cust)}>Edit</Button>
+                    <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => void shareSingleCustomerPdf(cust)}>
+                      <Share2 className="h-3 w-3 mr-1" /> PDF
+                    </Button>
                     <Button variant="ghost" size="sm" className="text-xs h-7 text-destructive" onClick={() => setDeleteTarget(cust)}>
                       <Trash2 className="h-3 w-3" />
                     </Button>
