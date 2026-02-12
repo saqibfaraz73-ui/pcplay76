@@ -27,7 +27,9 @@ function calcEndTime(start: string, durationHours: number): string {
   const totalMin = h * 60 + m + Math.round(durationHours * 60);
   const eh = Math.floor(totalMin / 60) % 24;
   const em = totalMin % 60;
-  return `${String(eh).padStart(2, "0")}:${String(em).padStart(2, "0")}`;
+  const period = eh >= 12 ? "PM" : "AM";
+  const h12 = eh === 0 ? 12 : eh > 12 ? eh - 12 : eh;
+  return `${h12}:${String(em).padStart(2, "0")} ${period}`;
 }
 
 function toDateInputValue(ts: number) {
