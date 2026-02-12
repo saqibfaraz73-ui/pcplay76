@@ -1,4 +1,5 @@
 import React from "react";
+import { fmtDateTime } from "@/features/pos/format";
 import jsPDF from "jspdf";
 import { format } from "date-fns";
 import { CalendarIcon } from "lucide-react";
@@ -77,7 +78,7 @@ function buildPdf(args: {
   line(" ");
 
   for (const r of args.rows) {
-    const when = new Date(r.adj.createdAt).toLocaleString();
+    const when = fmtDateTime(r.adj.createdAt);
     const name = r.item?.name ?? r.adj.itemId;
     line(`${when}  ${name}`);
     line(`  ${r.adj.type.toUpperCase()}  delta ${r.adj.delta}  ${r.adj.before} → ${r.adj.after}`);
@@ -195,7 +196,7 @@ export function AdminInventoryAdjustments() {
                 <div key={r.adj.id} className="rounded-md border p-2">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="text-sm font-medium">{r.item?.name ?? r.adj.itemId}</div>
-                    <div className="text-xs text-muted-foreground">{new Date(r.adj.createdAt).toLocaleString()}</div>
+                    <div className="text-xs text-muted-foreground">{fmtDateTime(r.adj.createdAt)}</div>
                   </div>
                   <div className="text-xs text-muted-foreground">
                     {r.adj.type.toUpperCase()} • delta {r.adj.delta} • {r.adj.before} → {r.adj.after}

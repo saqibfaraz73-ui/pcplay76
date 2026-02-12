@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { ReceiptDialog } from "@/components/ReceiptDialog";
-import { formatIntMoney } from "@/features/pos/format";
+import { formatIntMoney, fmtDateTime } from "@/features/pos/format";
 import { cancelOrder } from "@/features/pos/pos-db";
 import { printAdvanceReceipt, printBookingReceipt } from "@/features/pos/advance-receipt";
 import { useToast } from "@/hooks/use-toast";
@@ -280,7 +280,7 @@ export default function PosOrders() {
                         {o.label && <span className="ml-1 text-xs text-muted-foreground">— {o.label}</span>}
                       </div>
                       <div className="truncate text-xs text-muted-foreground">
-                        {new Date(o.createdAt).toLocaleString()} • {o.paymentMethod} • {o.status}
+                        {fmtDateTime(o.createdAt)} • {o.paymentMethod} • {o.status}
                       </div>
                     </div>
                     <div className="flex items-center gap-2">

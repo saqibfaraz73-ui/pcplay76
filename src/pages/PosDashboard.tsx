@@ -12,7 +12,7 @@ import { ensureSeedData } from "@/db/seed";
 import { useAuth } from "@/auth/AuthProvider";
 import { cn } from "@/lib/utils";
 import { createOrder } from "@/features/pos/pos-db";
-import { formatIntMoney, parseNonDecimalInt } from "@/features/pos/format";
+import { formatIntMoney, parseNonDecimalInt, fmtTime12 } from "@/features/pos/format";
 import { useToast } from "@/hooks/use-toast";
 import { ItemImageThumb } from "@/features/pos/ItemImageThumb";
 import { ReceiptDialog } from "@/components/ReceiptDialog";
@@ -580,7 +580,7 @@ export default function PosDashboard() {
             <div className="flex items-center gap-2">
               <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
               <span className="text-sm font-medium text-green-700 dark:text-green-400">
-                Work Period Active • Started {new Date(currentWorkPeriod!.startedAt).toLocaleTimeString()}
+                Work Period Active • Started {fmtTime12(new Date(currentWorkPeriod!.startedAt).toTimeString().slice(0,5))}
               </span>
             </div>
             <Button variant="outline" size="sm" onClick={() => setEndWorkDialogOpen(true)}>

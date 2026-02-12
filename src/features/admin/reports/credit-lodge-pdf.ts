@@ -1,6 +1,6 @@
 import jsPDF from "jspdf";
 import type { CreditCustomer, CreditPayment, Order } from "@/db/schema";
-import { formatIntMoney } from "@/features/pos/format";
+import { formatIntMoney, fmtDateTime, fmtDate } from "@/features/pos/format";
 
 function toDateLabel(ts: number) {
   const d = new Date(ts);
@@ -126,7 +126,7 @@ export function buildCreditLodgePdf(args: {
     for (const p of sortedPayments) {
       checkPage();
       doc.setFontSize(9);
-      doc.text(new Date(p.createdAt).toLocaleString(), left + 4, y);
+      doc.text(fmtDateTime(p.createdAt), left + 4, y);
       doc.setTextColor(0, 150, 50);
       doc.text(`+${formatIntMoney(p.amount)}`, left + contentWidth * 0.5, y);
       doc.setTextColor(0);
@@ -209,7 +209,7 @@ export function buildCreditLodgePdf(args: {
       checkPage();
       doc.setFontSize(9);
       doc.text(String(o.receiptNo), left + 4, y);
-      doc.text(new Date(o.createdAt).toLocaleString(), left + contentWidth * 0.15, y);
+      doc.text(fmtDateTime(o.createdAt), left + contentWidth * 0.15, y);
       doc.text(o.status.toUpperCase(), left + contentWidth * 0.55, y);
       doc.text(formatIntMoney(o.total), left + contentWidth * 0.75, y);
       y += lineH;
@@ -317,7 +317,7 @@ export function buildCreditPaymentsPdf(args: {
     const balAfter = balanceMap.get(p.id) ?? 0;
     doc.setFontSize(8); doc.setTextColor(0);
     doc.text(String(idx + 1), left + 4, y);
-    doc.text(new Date(p.createdAt).toLocaleString(), left + 18, y);
+    doc.text(fmtDateTime(p.createdAt), left + 18, y);
     doc.setTextColor(0, 150, 50);
     doc.text(`+${formatIntMoney(p.amount)}`, left + contentWidth * 0.38, y);
     doc.setTextColor(balAfter > 0 ? 200 : 0, balAfter > 0 ? 50 : 150, balAfter > 0 ? 50 : 50);
@@ -418,7 +418,7 @@ export function buildCreditItemsPdf(args: {
     // Order header
     doc.setFontSize(9); doc.setFont("helvetica", "bold"); doc.setTextColor(0);
     doc.text(`${idx + 1}. Order #${o.receiptNo}`, left, y);
-    doc.text(new Date(o.createdAt).toLocaleDateString() + " " + new Date(o.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: true }), left + 120, y);
+    doc.text(fmtDateTime(o.createdAt), left + 120, y);
     doc.text(`Bill: ${formatIntMoney(o.total)}`, left + contentWidth * 0.6, y);
     doc.setTextColor(balAfter > 0 ? 200 : 0, balAfter > 0 ? 50 : 150, balAfter > 0 ? 50 : 50);
     doc.text(`Bal: ${formatIntMoney(balAfter)}`, left + contentWidth * 0.82, y);

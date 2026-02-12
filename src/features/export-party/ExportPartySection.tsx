@@ -14,7 +14,7 @@ import type { ExportCustomer, ExportSale, ExportPayment, Settings, MenuItem } fr
 import { STOCK_UNITS } from "@/db/schema";
 import { useToast } from "@/hooks/use-toast";
 import { makeId } from "@/features/admin/id";
-import { formatIntMoney, parseNonDecimalInt } from "@/features/pos/format";
+import { formatIntMoney, parseNonDecimalInt, fmtDate, fmtDateTime } from "@/features/pos/format";
 import { writePdfFile, shareFile } from "@/features/files/sangi-folders";
 import { Capacitor } from "@capacitor/core";
 import { Plus, Trash2, Share2, CreditCard, Banknote, PackagePlus, Upload, Download, Printer, XCircle } from "lucide-react";
@@ -432,7 +432,7 @@ export function ExportPartySection() {
           doc.text((s.itemName ?? "").slice(0, 16), left + 20, y);
           doc.text(`${s.qty} ${s.unit || ""}`, left + 120, y);
           doc.text(formatIntMoney(s.total), left + 170, y);
-          doc.text(new Date(s.createdAt).toLocaleDateString(), left + 240, y);
+          doc.text(fmtDate(s.createdAt), left + 240, y);
           doc.text(formatIntMoney(saleBalAfter[idx]), right - 10, y, { align: "right" });
           y += lineH;
         });
@@ -454,7 +454,7 @@ export function ExportPartySection() {
           doc.text(String(idx + 1), left + 4, y);
           doc.text(formatIntMoney(p.amount), left + 30, y);
           doc.text(p.paymentType ?? "—", left + 120, y);
-          doc.text(new Date(p.createdAt).toLocaleDateString(), left + 180, y);
+          doc.text(fmtDate(p.createdAt), left + 180, y);
           doc.text(formatIntMoney(payBalAfter[idx]), right - 10, y, { align: "right" });
           y += lineH;
         });
@@ -515,7 +515,7 @@ export function ExportPartySection() {
         doc.text((s.itemName ?? "").slice(0, 16), left + 20, y);
         doc.text(`${s.qty} ${s.unit || ""}`, left + 120, y);
         doc.text(formatIntMoney(s.total), left + 170, y);
-        doc.text(new Date(s.createdAt).toLocaleDateString(), left + 240, y);
+        doc.text(fmtDate(s.createdAt), left + 240, y);
         doc.text(formatIntMoney(balAfter[idx]), right - 10, y, { align: "right" });
         y += lineH;
       });
@@ -578,7 +578,7 @@ export function ExportPartySection() {
         doc.text(String(idx + 1), left + 4, y);
         doc.text(formatIntMoney(p.amount), left + 30, y);
         doc.text(p.paymentType ?? "cash", left + 120, y);
-        doc.text(new Date(p.createdAt).toLocaleDateString(), left + 180, y);
+        doc.text(fmtDate(p.createdAt), left + 180, y);
         doc.text(formatIntMoney(balAfter[idx]), right - 10, y, { align: "right" });
         y += lineH;
       });
@@ -644,7 +644,7 @@ export function ExportPartySection() {
         doc.text(formatIntMoney(s.unitPrice), left + 180, y);
         doc.text(formatIntMoney(s.total), left + 240, y);
         doc.text((s.note ?? "").slice(0, 15), left + 310, y);
-        doc.text(new Date(s.createdAt).toLocaleDateString(), right - 10, y, { align: "right" });
+        doc.text(fmtDate(s.createdAt), right - 10, y, { align: "right" });
         y += lineH;
       });
     } else {
@@ -666,7 +666,7 @@ export function ExportPartySection() {
         doc.text(formatIntMoney(p.amount), left + 30, y);
         doc.text(p.paymentType ?? "—", left + 140, y);
         doc.text((p.note ?? "").slice(0, 25), left + 200, y);
-        doc.text(new Date(p.createdAt).toLocaleDateString(), right - 10, y, { align: "right" });
+        doc.text(fmtDate(p.createdAt), right - 10, y, { align: "right" });
         y += lineH;
       });
     } else {
@@ -721,7 +721,7 @@ export function ExportPartySection() {
         doc.text(`${s.qty} ${s.unit || ""}`, left + 130, y);
         doc.text(formatIntMoney(s.unitPrice), left + 180, y);
         doc.text(formatIntMoney(s.total), left + 240, y);
-        doc.text(new Date(s.createdAt).toLocaleDateString(), left + 320, y);
+        doc.text(fmtDate(s.createdAt), left + 320, y);
         doc.text(formatIntMoney(balAfter[idx]), right - 10, y, { align: "right" });
         y += lineH;
       });
@@ -928,7 +928,7 @@ export function ExportPartySection() {
                       <div className="text-xs text-muted-foreground mt-1">{s.qty} {s.unit || "units"} × {formatIntMoney(s.unitPrice)}</div>
                       {s.note && <div className="text-xs text-muted-foreground">{s.note}</div>}
                       {s.cancelledReason && <div className="text-xs text-destructive">Reason: {s.cancelledReason}</div>}
-                      <div className="text-xs text-muted-foreground">{new Date(s.createdAt).toLocaleDateString()} {new Date(s.createdAt).toLocaleTimeString()}</div>
+                      <div className="text-xs text-muted-foreground">{fmtDateTime(s.createdAt)}</div>
                       <div className="flex gap-1 mt-1.5">
                         <Button variant="outline" size="sm" className="text-xs h-6 px-2" onClick={() => void printEntryReceipt(rd).catch((e: any) => toast({ title: "Print failed", description: e?.message, variant: "destructive" }))}>
                           <Printer className="h-3 w-3 mr-1" /> Print
@@ -963,7 +963,7 @@ export function ExportPartySection() {
                         <span className="text-xs text-muted-foreground">{p.paymentType ?? ""}</span>
                       </div>
                       {p.note && <div className="text-xs text-muted-foreground">{p.note}</div>}
-                      <div className="text-xs text-muted-foreground">{new Date(p.createdAt).toLocaleDateString()} {new Date(p.createdAt).toLocaleTimeString()}</div>
+                      <div className="text-xs text-muted-foreground">{fmtDateTime(p.createdAt)}</div>
                     </div>
                   </div>
                 ))

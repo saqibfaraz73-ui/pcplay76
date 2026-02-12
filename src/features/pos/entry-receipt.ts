@@ -1,4 +1,4 @@
-import { formatIntMoney } from "@/features/pos/format";
+import { formatIntMoney, fmtDateTime } from "@/features/pos/format";
 import { btConnect, btSend, isNativeAndroid } from "@/features/pos/bluetooth-printer";
 import { usbSend } from "@/features/pos/usb-printer";
 import { db } from "@/db/appDb";
@@ -61,7 +61,7 @@ function buildEscPos(data: EntryReceiptData, settings: Settings): string {
   const money = (n: number) => formatIntMoney(n);
   const title = settings.restaurantName || "SANGI POS";
   const label = data.type === "arrival" ? "SUPPLY ARRIVAL" : "EXPORT SALE";
-  const dateStr = data.date.toLocaleString("en-PK", { hour12: true });
+  const dateStr = fmtDateTime(data.date.getTime());
 
   const headerLines = [
     line(title),
@@ -146,7 +146,7 @@ export async function printEntryReceipt(data: EntryReceiptData) {
     <div style="font-weight:bold;margin-bottom:4px">${label}</div>
     ${data.receiptNo ? `<div style="margin-bottom:4px">Entry #: ${data.receiptNo}</div>` : ""}
     <div>Party: ${data.partyName}</div>
-    <div>Date: ${data.date.toLocaleString()}</div>
+    <div>Date: ${fmtDateTime(data.date.getTime())}</div>
     <hr/>
     <table style="width:100%;border-collapse:collapse;margin-top:8px">
       <thead><tr><th style="text-align:left">Item</th><th>Qty</th><th>Price</th><th>Total</th></tr></thead>
@@ -193,7 +193,7 @@ export async function shareEntryReceipt(data: EntryReceiptData) {
   doc.setFontSize(9);
   doc.text(`Party: ${data.partyName}`, left, y);
   y += 12;
-  doc.text(`Date: ${data.date.toLocaleString()}`, left, y);
+  doc.text(`Date: ${fmtDateTime(data.date.getTime())}`, left, y);
   y += 14;
 
   doc.setDrawColor(150);

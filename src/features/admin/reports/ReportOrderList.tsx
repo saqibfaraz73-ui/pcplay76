@@ -1,6 +1,6 @@
 import * as React from "react";
 import type { CreditCustomer, DeliveryPerson, Order, RestaurantTable, TableOrder, Waiter } from "@/db/schema";
-import { formatIntMoney } from "@/features/pos/format";
+import { formatIntMoney, fmtDateTime } from "@/features/pos/format";
 import { ReceiptDialog } from "@/components/ReceiptDialog";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
@@ -83,7 +83,7 @@ export function ReportOrderList({ orders, customersById, deliveryPersonsById, ta
       <Accordion type="single" collapsible className="w-full">
         {unified.map((entry) => {
           const o = entry.order;
-          const when = new Date(o.createdAt).toLocaleString();
+          const when = fmtDateTime(o.createdAt);
           return (
             <AccordionItem key={entry.id} value={entry.id}>
               <AccordionTrigger className="hover:no-underline">

@@ -1,29 +1,10 @@
 import type { Settings } from "@/db/schema";
 import type { AdvanceOrder, BookingOrder } from "@/db/booking-schema";
-import { formatIntMoney } from "@/features/pos/format";
+import { formatIntMoney, fmtDate, fmtDateTime, fmtTime12 } from "@/features/pos/format";
 import { btConnect, btSend, isNativeAndroid } from "@/features/pos/bluetooth-printer";
 import { usbSend } from "@/features/pos/usb-printer";
 import { db } from "@/db/appDb";
 import jsPDF from "jspdf";
-
-/* ─── Date/time formatting helpers ─── */
-function fmtDate(ts: number | string) {
-  const d = new Date(ts);
-  return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
-}
-function fmtDateTime(ts: number) {
-  const d = new Date(ts);
-  let h = d.getHours(); const m = d.getMinutes();
-  const ampm = h >= 12 ? "PM" : "AM";
-  h = h % 12 || 12;
-  return `${fmtDate(ts)} ${h}:${String(m).padStart(2, "0")} ${ampm}`;
-}
-function fmtTime12(t: string) {
-  const [h24, mi] = t.split(":").map(Number);
-  const ampm = h24 >= 12 ? "PM" : "AM";
-  const h = h24 % 12 || 12;
-  return `${h}:${String(mi).padStart(2, "0")} ${ampm}`;
-}
 
 /* ─── Receipt size feed (same logic as sales) ─── */
 
