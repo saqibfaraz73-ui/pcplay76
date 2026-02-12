@@ -297,10 +297,32 @@ export function ExportPartySection() {
       const custPayments = payments.filter((p) => p.customerId === cust.id && p.createdAt >= fromTs && p.createdAt <= toTs).sort((a, b) => a.createdAt - b.createdAt);
       const balance = getBalance(cust);
 
+      // Running balance calculations
+      const paymentsAfterRange = payments.filter((p) => p.customerId === cust.id && p.createdAt > toTs).reduce((s, p) => s + p.amount, 0);
+      const salesAfterRange = sales.filter((s) => s.customerId === cust.id && s.createdAt > toTs).reduce((s, a) => s + a.total, 0);
+      const balanceAtEndOfRange = balance + paymentsAfterRange - salesAfterRange;
+      const totalSalesInRange = custSales.reduce((s, a) => s + a.total, 0);
+      const totalPaymentsInRange = custPayments.reduce((s, p) => s + p.amount, 0);
+      const balanceBeforeRange = balanceAtEndOfRange - totalSalesInRange + totalPaymentsInRange;
+
+      let saleRunBal = balanceBeforeRange;
+      const saleBalAfter: number[] = [];
+      for (let i = 0; i < custSales.length; i++) {
+        saleRunBal += custSales[i].total;
+        saleBalAfter[i] = saleRunBal;
+      }
+
+      let payBal = balanceBeforeRange + totalSalesInRange;
+      const payBalAfter: number[] = [];
+      for (let i = 0; i < custPayments.length; i++) {
+        payBal -= custPayments[i].amount;
+        payBalAfter[i] = payBal;
+      }
+
       checkPage(60 + (custSales.length + custPayments.length) * lineH);
       doc.setFontSize(11); doc.setFont("helvetica", "bold"); doc.setTextColor(0);
       doc.text(cust.name, left, y);
-      doc.text(`Balance: ${formatIntMoney(balance)}`, right, y, { align: "right" }); y += 14;
+      doc.text(`Current Balance: ${formatIntMoney(balance)}`, right, y, { align: "right" }); y += 14;
 
       if (cust.contact) { doc.setFontSize(8); doc.setFont("helvetica", "normal"); doc.setTextColor(100); doc.text(`Contact: ${cust.contact}`, left, y); y += 10; }
 
@@ -309,17 +331,17 @@ export function ExportPartySection() {
       doc.text("Sales:", left + 4, y); y += 12;
       if (custSales.length > 0) {
         doc.setFontSize(8); doc.setFont("helvetica", "bold"); doc.setTextColor(80);
-        doc.text("#", left + 4, y); doc.text("Item", left + 20, y); doc.text("Qty", left + 140, y); doc.text("Price", left + 190, y); doc.text("Total", left + 260, y); doc.text("Date", right - 10, y, { align: "right" }); y += 10;
+        doc.text("#", left + 4, y); doc.text("Item", left + 20, y); doc.text("Qty", left + 120, y); doc.text("Total", left + 170, y); doc.text("Date", left + 240, y); doc.text("Bal After", right - 10, y, { align: "right" }); y += 10;
         doc.setDrawColor(200); doc.line(left, y - 4, right, y - 4);
         doc.setFont("helvetica", "normal"); doc.setTextColor(0);
         custSales.forEach((s, idx) => {
           checkPage(); doc.setFontSize(8);
           doc.text(String(idx + 1), left + 4, y);
-          doc.text((s.itemName ?? "").slice(0, 18), left + 20, y);
-          doc.text(`${s.qty} ${s.unit || ""}`, left + 140, y);
-          doc.text(formatIntMoney(s.unitPrice), left + 190, y);
-          doc.text(formatIntMoney(s.total), left + 260, y);
-          doc.text(new Date(s.createdAt).toLocaleDateString(), right - 10, y, { align: "right" });
+          doc.text((s.itemName ?? "").slice(0, 16), left + 20, y);
+          doc.text(`${s.qty} ${s.unit || ""}`, left + 120, y);
+          doc.text(formatIntMoney(s.total), left + 170, y);
+          doc.text(new Date(s.createdAt).toLocaleDateString(), left + 240, y);
+          doc.text(formatIntMoney(saleBalAfter[idx]), right - 10, y, { align: "right" });
           y += lineH;
         });
       } else {
@@ -332,15 +354,16 @@ export function ExportPartySection() {
       doc.text("Payments Received:", left + 4, y); y += 12;
       if (custPayments.length > 0) {
         doc.setFontSize(8); doc.setFont("helvetica", "bold"); doc.setTextColor(80);
-        doc.text("#", left + 4, y); doc.text("Amount", left + 30, y); doc.text("Type", left + 140, y); doc.text("Date", right - 10, y, { align: "right" }); y += 10;
+        doc.text("#", left + 4, y); doc.text("Amount", left + 30, y); doc.text("Type", left + 120, y); doc.text("Date", left + 180, y); doc.text("Bal After", right - 10, y, { align: "right" }); y += 10;
         doc.setDrawColor(200); doc.line(left, y - 4, right, y - 4);
         doc.setFont("helvetica", "normal"); doc.setTextColor(0);
         custPayments.forEach((p, idx) => {
           checkPage(); doc.setFontSize(9);
           doc.text(String(idx + 1), left + 4, y);
           doc.text(formatIntMoney(p.amount), left + 30, y);
-          doc.text(p.paymentType ?? "—", left + 140, y);
-          doc.text(new Date(p.createdAt).toLocaleDateString(), right - 10, y, { align: "right" });
+          doc.text(p.paymentType ?? "—", left + 120, y);
+          doc.text(new Date(p.createdAt).toLocaleDateString(), left + 180, y);
+          doc.text(formatIntMoney(payBalAfter[idx]), right - 10, y, { align: "right" });
           y += lineH;
         });
       } else {
@@ -375,22 +398,33 @@ export function ExportPartySection() {
       const supTotal = custSales.reduce((s, a) => s + a.total, 0);
       grandTotal += supTotal;
 
+      const currentBalance = getBalance(cust);
+      const paymentsAfterRange = payments.filter((p) => p.customerId === cust.id && p.createdAt > toTs).reduce((s, p) => s + p.amount, 0);
+      const salesAfterRange = sales.filter((s) => s.customerId === cust.id && s.createdAt > toTs).reduce((s, a) => s + a.total, 0);
+      const balanceAtEndOfRange = currentBalance + paymentsAfterRange - salesAfterRange;
+      let runningBal = balanceAtEndOfRange;
+      const balAfter: number[] = [];
+      for (let i = custSales.length - 1; i >= 0; i--) {
+        balAfter[i] = runningBal;
+        runningBal -= custSales[i].total;
+      }
+
       checkPage(40 + custSales.length * lineH);
       doc.setFontSize(11); doc.setFont("helvetica", "bold"); doc.setTextColor(0);
-      doc.text(cust.name, left, y); doc.text(`Total: ${formatIntMoney(supTotal)}`, right, y, { align: "right" }); y += 14;
+      doc.text(cust.name, left, y); doc.text(`Current Balance: ${formatIntMoney(currentBalance)}`, right, y, { align: "right" }); y += 14;
 
       doc.setFontSize(8); doc.setFont("helvetica", "bold"); doc.setTextColor(80);
-      doc.text("#", left + 4, y); doc.text("Item", left + 20, y); doc.text("Qty", left + 140, y); doc.text("Price", left + 190, y); doc.text("Total", left + 260, y); doc.text("Date", right - 10, y, { align: "right" }); y += 10;
+      doc.text("#", left + 4, y); doc.text("Item", left + 20, y); doc.text("Qty", left + 120, y); doc.text("Total", left + 170, y); doc.text("Date", left + 240, y); doc.text("Bal After", right - 10, y, { align: "right" }); y += 10;
       doc.setDrawColor(200); doc.line(left, y - 4, right, y - 4);
       doc.setFont("helvetica", "normal"); doc.setTextColor(0);
       custSales.forEach((s, idx) => {
         checkPage(); doc.setFontSize(8);
         doc.text(String(idx + 1), left + 4, y);
-        doc.text((s.itemName ?? "").slice(0, 18), left + 20, y);
-        doc.text(`${s.qty} ${s.unit || ""}`, left + 140, y);
-        doc.text(formatIntMoney(s.unitPrice), left + 190, y);
-        doc.text(formatIntMoney(s.total), left + 260, y);
-        doc.text(new Date(s.createdAt).toLocaleDateString(), right - 10, y, { align: "right" });
+        doc.text((s.itemName ?? "").slice(0, 16), left + 20, y);
+        doc.text(`${s.qty} ${s.unit || ""}`, left + 120, y);
+        doc.text(formatIntMoney(s.total), left + 170, y);
+        doc.text(new Date(s.createdAt).toLocaleDateString(), left + 240, y);
+        doc.text(formatIntMoney(balAfter[idx]), right - 10, y, { align: "right" });
         y += lineH;
       });
       y += 12;
@@ -428,21 +462,32 @@ export function ExportPartySection() {
       grandTotal += supTotal;
       cp.forEach((p) => { if (p.paymentType === "bank") totalBank += p.amount; else totalCash += p.amount; });
 
-      checkPage(40 + cp.length * lineH);
+      const currentBalance = getBalance(cust);
+      const paymentsAfterRange = payments.filter((p) => p.customerId === cust.id && p.createdAt > toTs).reduce((s, p) => s + p.amount, 0);
+      const salesAfterRange = sales.filter((s) => s.customerId === cust.id && s.createdAt > toTs).reduce((s, a) => s + a.total, 0);
+      const balanceAtEndOfRange = currentBalance + paymentsAfterRange - salesAfterRange;
+      let runningBal = balanceAtEndOfRange;
+      const balAfter: number[] = [];
+      for (let i = cp.length - 1; i >= 0; i--) {
+        balAfter[i] = runningBal;
+        runningBal += cp[i].amount; // before payment, balance was higher
+      }
+
+      checkPage(60 + cp.length * lineH);
       doc.setFontSize(11); doc.setFont("helvetica", "bold"); doc.setTextColor(0);
-      doc.text(cust.name, left, y); doc.text(`Total: ${formatIntMoney(supTotal)}`, right, y, { align: "right" }); y += 14;
+      doc.text(cust.name, left, y); doc.text(`Current Balance: ${formatIntMoney(currentBalance)}`, right, y, { align: "right" }); y += 14;
 
       doc.setFontSize(8); doc.setFont("helvetica", "bold"); doc.setTextColor(80);
-      doc.text("#", left + 4, y); doc.text("Amount", left + 30, y); doc.text("Type", left + 140, y); doc.text("Note", left + 200, y); doc.text("Date", right - 10, y, { align: "right" }); y += 10;
+      doc.text("#", left + 4, y); doc.text("Amount", left + 30, y); doc.text("Type", left + 120, y); doc.text("Date", left + 180, y); doc.text("Bal After", right - 10, y, { align: "right" }); y += 10;
       doc.setDrawColor(200); doc.line(left, y - 4, right, y - 4);
       doc.setFont("helvetica", "normal"); doc.setTextColor(0);
       cp.forEach((p, idx) => {
         checkPage(); doc.setFontSize(8);
         doc.text(String(idx + 1), left + 4, y);
         doc.text(formatIntMoney(p.amount), left + 30, y);
-        doc.text(p.paymentType ?? "cash", left + 140, y);
-        doc.text((p.note ?? "").slice(0, 25), left + 200, y);
-        doc.text(new Date(p.createdAt).toLocaleDateString(), right - 10, y, { align: "right" });
+        doc.text(p.paymentType ?? "cash", left + 120, y);
+        doc.text(new Date(p.createdAt).toLocaleDateString(), left + 180, y);
+        doc.text(formatIntMoney(balAfter[idx]), right - 10, y, { align: "right" });
         y += lineH;
       });
       y += 12;
