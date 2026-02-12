@@ -16,7 +16,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { db } from "@/db/appDb";
-import type { Supplier, SupplierPayment, SupplierArrival, Settings, Expense } from "@/db/schema";
+import type { Supplier, SupplierPayment, SupplierArrival, Settings, Expense, MenuItem } from "@/db/schema";
 import { STOCK_UNITS } from "@/db/schema";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/auth/AuthProvider";
@@ -110,17 +110,21 @@ export default function PosPartyLodge() {
   const [selectedId, setSelectedId] = React.useState<string | null>(null);
   const [query, setQuery] = React.useState("");
 
+  const [menuItems, setMenuItems] = React.useState<MenuItem[]>([]);
+
   const refresh = React.useCallback(async () => {
-    const [sups, pays, arrs, s] = await Promise.all([
+    const [sups, pays, arrs, s, items] = await Promise.all([
       db.suppliers.orderBy("createdAt").toArray(),
       db.supplierPayments.orderBy("createdAt").toArray(),
       db.supplierArrivals.orderBy("createdAt").toArray(),
       db.settings.get("app"),
+      db.items.orderBy("name").toArray(),
     ]);
     setSuppliers(sups);
     setPayments(pays);
     setArrivals(arrs);
     setSettings(s ?? null);
+    setMenuItems(items);
   }, []);
 
   React.useEffect(() => { void refresh(); }, [refresh]);
@@ -1321,6 +1325,26 @@ export default function PosPartyLodge() {
                     </div>
                     <div className="space-y-1">
                       <Label className="text-xs">Item Name (optional)</Label>
+                      {menuItems.length > 0 && (
+                        <select
+                          value=""
+                          onChange={(e) => {
+                            const selected = menuItems.find((m) => m.id === e.target.value);
+                            if (selected) {
+                              updateArrivalItem(it.key, {
+                                itemName: selected.name,
+                                unitPrice: selected.price,
+                              });
+                            }
+                          }}
+                          className="h-8 w-full rounded-md border bg-background px-2 text-xs mb-1"
+                        >
+                          <option value="">— Pick from menu —</option>
+                          {menuItems.map((m) => (
+                            <option key={m.id} value={m.id}>{m.name} ({formatIntMoney(m.price)})</option>
+                          ))}
+                        </select>
+                      )}
                       <Input value={it.itemName} onChange={(e) => updateArrivalItem(it.key, { itemName: e.target.value })} placeholder="e.g., Rice, Flour" className="h-8 text-sm" />
                     </div>
                     <div className="flex items-center gap-2">
