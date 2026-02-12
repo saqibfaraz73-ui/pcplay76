@@ -218,3 +218,150 @@ export function buildCreditLodgePdf(args: {
 
   return doc;
 }
+
+/** Build PDF with only payment history for a credit customer */
+export function buildCreditPaymentsPdf(args: {
+  restaurantName: string;
+  fromLabel: string;
+  toLabel: string;
+  customer: CreditCustomer;
+  orders: Order[];
+  payments: CreditPayment[];
+}) {
+  const doc = new jsPDF({ unit: "pt", format: "a4" });
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const left = 40;
+  const right = pageWidth - 40;
+  const contentWidth = right - left;
+  let y = 48;
+  const lineH = 14;
+  const pageHeight = 780;
+  const checkPage = (needed = lineH * 2) => { if (y + needed > pageHeight) { doc.addPage(); y = 48; } };
+
+  const completed = args.orders.filter((o) => o.status === "completed");
+  const totalCredit = completed.reduce((s, o) => s + o.total, 0);
+  const totalPaid = args.payments.reduce((s, p) => s + p.amount, 0);
+  const balance = totalCredit - totalPaid;
+
+  doc.setFontSize(16); doc.setFont("helvetica", "bold");
+  doc.text("Credit Payment History", left, y); y += 20;
+  doc.setFontSize(10); doc.setFont("helvetica", "normal");
+  doc.text(`${args.restaurantName} • ${args.customer.name}${args.customer.mobile ? ` (${args.customer.mobile})` : ""} • ${args.fromLabel} → ${args.toLabel}`, left, y); y += 20;
+
+  // Summary
+  doc.setFontSize(10); doc.setFont("helvetica", "bold"); doc.setTextColor(0);
+  doc.text(`Total Credit: ${formatIntMoney(totalCredit)}`, left, y);
+  doc.text(`Total Paid: ${formatIntMoney(totalPaid)}`, left + 180, y);
+  doc.setTextColor(balance > 0 ? 200 : 0, balance > 0 ? 50 : 150, balance > 0 ? 50 : 50);
+  doc.text(`Balance: ${formatIntMoney(balance)}`, left + 340, y);
+  doc.setTextColor(0); y += 20;
+
+  if (args.payments.length === 0) {
+    doc.setFontSize(10); doc.text("No payments in this period.", left, y);
+    return doc;
+  }
+
+  // Table header
+  doc.setFontSize(8); doc.setFont("helvetica", "bold"); doc.setTextColor(80);
+  doc.text("#", left + 4, y); doc.text("Date", left + 20, y); doc.text("Amount", left + contentWidth * 0.5, y); doc.text("Note", left + contentWidth * 0.7, y); y += 10;
+  doc.setDrawColor(200); doc.line(left, y - 4, right, y - 4);
+  doc.setFont("helvetica", "normal"); doc.setTextColor(0);
+
+  const sorted = [...args.payments].sort((a, b) => b.createdAt - a.createdAt);
+  sorted.forEach((p, idx) => {
+    checkPage();
+    doc.setFontSize(9);
+    doc.text(String(idx + 1), left + 4, y);
+    doc.text(new Date(p.createdAt).toLocaleString(), left + 20, y);
+    doc.setTextColor(0, 150, 50);
+    doc.text(`+${formatIntMoney(p.amount)}`, left + contentWidth * 0.5, y);
+    doc.setTextColor(0);
+    doc.text(p.note || "—", left + contentWidth * 0.7, y);
+    y += lineH;
+  });
+
+  // Grand total
+  y += 8;
+  doc.setDrawColor(0); doc.line(left, y, right, y); y += 14;
+  doc.setFontSize(11); doc.setFont("helvetica", "bold");
+  doc.text("Total Payments:", left, y); doc.text(formatIntMoney(totalPaid), right, y, { align: "right" });
+
+  return doc;
+}
+
+/** Build PDF with items bought by a credit customer */
+export function buildCreditItemsPdf(args: {
+  restaurantName: string;
+  fromLabel: string;
+  toLabel: string;
+  customer: CreditCustomer;
+  orders: Order[];
+  payments: CreditPayment[];
+}) {
+  const doc = new jsPDF({ unit: "pt", format: "a4" });
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const left = 40;
+  const right = pageWidth - 40;
+  const contentWidth = right - left;
+  let y = 48;
+  const lineH = 14;
+  const pageHeight = 780;
+  const checkPage = (needed = lineH * 2) => { if (y + needed > pageHeight) { doc.addPage(); y = 48; } };
+
+  const completed = args.orders.filter((o) => o.status === "completed");
+  const totalCredit = completed.reduce((s, o) => s + o.total, 0);
+  const totalPaid = args.payments.reduce((s, p) => s + p.amount, 0);
+  const balance = totalCredit - totalPaid;
+
+  doc.setFontSize(16); doc.setFont("helvetica", "bold");
+  doc.text("Credit Items Report", left, y); y += 20;
+  doc.setFontSize(10); doc.setFont("helvetica", "normal");
+  doc.text(`${args.restaurantName} • ${args.customer.name}${args.customer.mobile ? ` (${args.customer.mobile})` : ""} • ${args.fromLabel} → ${args.toLabel}`, left, y); y += 20;
+
+  // Summary
+  doc.setFontSize(10); doc.setFont("helvetica", "bold"); doc.setTextColor(0);
+  doc.text(`Total Credit: ${formatIntMoney(totalCredit)}`, left, y);
+  doc.text(`Paid: ${formatIntMoney(totalPaid)}`, left + 180, y);
+  doc.setTextColor(balance > 0 ? 200 : 0, balance > 0 ? 50 : 150, balance > 0 ? 50 : 50);
+  doc.text(`Balance: ${formatIntMoney(balance)}`, left + 310, y);
+  doc.setTextColor(0); y += 20;
+
+  // Items summary
+  const byItem: Record<string, { name: string; qty: number; total: number }> = {};
+  for (const o of completed) {
+    for (const l of o.lines) {
+      const existing = byItem[l.itemId];
+      byItem[l.itemId] = { name: l.name, qty: (existing?.qty ?? 0) + l.qty, total: (existing?.total ?? 0) + l.subtotal };
+    }
+  }
+  const itemsSummary = Object.values(byItem).sort((a, b) => b.total - a.total);
+
+  if (itemsSummary.length === 0) {
+    doc.setFontSize(10); doc.text("No items in this period.", left, y);
+    return doc;
+  }
+
+  doc.setFontSize(8); doc.setFont("helvetica", "bold"); doc.setTextColor(80);
+  doc.text("#", left + 4, y); doc.text("Item", left + 20, y); doc.text("Qty", left + contentWidth * 0.55, y); doc.text("Unit Price", left + contentWidth * 0.68, y); doc.text("Total", left + contentWidth * 0.85, y); y += 10;
+  doc.setDrawColor(200); doc.line(left, y - 4, right, y - 4);
+  doc.setFont("helvetica", "normal"); doc.setTextColor(0);
+
+  itemsSummary.forEach((r, idx) => {
+    checkPage();
+    doc.setFontSize(9);
+    doc.text(String(idx + 1), left + 4, y);
+    doc.text(r.name, left + 20, y);
+    doc.text(String(r.qty), left + contentWidth * 0.55, y);
+    doc.text(r.qty > 0 ? formatIntMoney(Math.round(r.total / r.qty)) : "—", left + contentWidth * 0.68, y);
+    doc.text(formatIntMoney(r.total), left + contentWidth * 0.85, y);
+    y += lineH;
+  });
+
+  // Grand total
+  y += 8;
+  doc.setDrawColor(0); doc.line(left, y, right, y); y += 14;
+  doc.setFontSize(11); doc.setFont("helvetica", "bold");
+  doc.text("Grand Total:", left, y); doc.text(formatIntMoney(totalCredit), right, y, { align: "right" });
+
+  return doc;
+}
