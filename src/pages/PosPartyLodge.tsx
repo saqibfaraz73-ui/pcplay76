@@ -359,10 +359,44 @@ export default function PosPartyLodge() {
 
       const balance = getSupplierBalance(sup);
 
+      // Running balance calculation
+      const paymentsAfterRange = payments.filter((p) => p.supplierId === sup.id && p.createdAt > toTs).reduce((s, p) => s + p.amount, 0);
+      const arrivalsAfterRange = arrivals.filter((a) => a.supplierId === sup.id && a.createdAt > toTs).reduce((s, a) => s + a.total, 0);
+      const balanceAtEndOfRange = balance + paymentsAfterRange - arrivalsAfterRange;
+
+      // Arrival running balances
+      let arrRunBal = balanceAtEndOfRange;
+      const arrBalAfter: number[] = [];
+      // We need to account for payments in range too. Let's merge events chronologically.
+      // Simpler: compute arrival balances independently
+      const totalPaymentsInRange = supPayments.reduce((s, p) => s + p.amount, 0);
+      let arrEndBal = balanceAtEndOfRange; // this includes effect of payments in range
+      // To get balance just from arrivals perspective, we separate
+      // Actually let's just compute from start: balance before range + arrivals - payments = balance at end
+      // balanceBeforeRange = balanceAtEndOfRange - totalArrivalsInRange + totalPaymentsInRange
+      const totalArrivalsInRange = supArrivals.reduce((s, a) => s + a.total, 0);
+      const balanceBeforeRange = balanceAtEndOfRange - totalArrivalsInRange + totalPaymentsInRange;
+      
+      let runBal = balanceBeforeRange;
+      for (let i = 0; i < supArrivals.length; i++) {
+        runBal += supArrivals[i].total;
+        arrBalAfter[i] = runBal;
+      }
+
+      // Payment running balances (from balance before range, considering arrivals happened)
+      let payRunBal = balanceBeforeRange + totalArrivalsInRange; // balance before any payments but after all arrivals
+      // Actually better: balance before range, then subtract payments
+      let payBal = balanceBeforeRange + totalArrivalsInRange;
+      const payBalAfter: number[] = [];
+      for (let i = 0; i < supPayments.length; i++) {
+        payBal -= supPayments[i].amount;
+        payBalAfter[i] = payBal;
+      }
+
       checkPage(60 + (supArrivals.length + supPayments.length) * lineH);
       doc.setFontSize(11); doc.setFont("helvetica", "bold"); doc.setTextColor(0);
       doc.text(sup.name, left, y);
-      doc.text(`Balance: ${formatIntMoney(balance)}`, right, y, { align: "right" }); y += 14;
+      doc.text(`Current Balance: ${formatIntMoney(balance)}`, right, y, { align: "right" }); y += 14;
 
       if (sup.contact) { doc.setFontSize(8); doc.setFont("helvetica", "normal"); doc.setTextColor(100); doc.text(`Contact: ${sup.contact}`, left, y); y += 10; }
       if (sup.itemName) { doc.setFontSize(8); doc.text(`Item: ${sup.itemName}`, left, y); y += 10; }
@@ -372,18 +406,18 @@ export default function PosPartyLodge() {
       doc.text("Arrivals:", left + 4, y); y += 12;
       if (supArrivals.length > 0) {
         doc.setFontSize(8); doc.setFont("helvetica", "bold"); doc.setTextColor(80);
-        doc.text("#", left + 4, y); doc.text("Item", left + 20, y); doc.text("Qty", left + 140, y); doc.text("Price", left + 190, y); doc.text("Total", left + 260, y); doc.text("Date", right - 30, y, { align: "right" }); y += 10;
+        doc.text("#", left + 4, y); doc.text("Item", left + 20, y); doc.text("Qty", left + 120, y); doc.text("Total", left + 170, y); doc.text("Date", left + 240, y); doc.text("Bal After", right - 10, y, { align: "right" }); y += 10;
         doc.setDrawColor(200); doc.line(left, y - 4, right, y - 4);
         doc.setFont("helvetica", "normal"); doc.setTextColor(0);
         supArrivals.forEach((a, idx) => {
           checkPage();
           doc.setFontSize(8);
           doc.text(String(idx + 1), left + 4, y);
-          doc.text((a.itemName ?? "").slice(0, 18), left + 20, y);
-          doc.text(`${a.qty} ${a.unit || ""}`, left + 140, y);
-          doc.text(formatIntMoney(a.unitPrice), left + 190, y);
-          doc.text(formatIntMoney(a.total), left + 260, y);
-          doc.text(new Date(a.createdAt).toLocaleDateString(), right - 30, y, { align: "right" });
+          doc.text((a.itemName ?? "").slice(0, 16), left + 20, y);
+          doc.text(`${a.qty} ${a.unit || ""}`, left + 120, y);
+          doc.text(formatIntMoney(a.total), left + 170, y);
+          doc.text(new Date(a.createdAt).toLocaleDateString(), left + 240, y);
+          doc.text(formatIntMoney(arrBalAfter[idx]), right - 10, y, { align: "right" });
           y += lineH;
         });
       } else {
@@ -396,7 +430,7 @@ export default function PosPartyLodge() {
       doc.text("Payments:", left + 4, y); y += 12;
       if (supPayments.length > 0) {
         doc.setFontSize(8); doc.setFont("helvetica", "bold"); doc.setTextColor(80);
-        doc.text("#", left + 4, y); doc.text("Amount", left + 30, y); doc.text("Type", left + 140, y); doc.text("Date", right - 30, y, { align: "right" }); y += 10;
+        doc.text("#", left + 4, y); doc.text("Amount", left + 30, y); doc.text("Type", left + 120, y); doc.text("Date", left + 180, y); doc.text("Bal After", right - 10, y, { align: "right" }); y += 10;
         doc.setDrawColor(200); doc.line(left, y - 4, right, y - 4);
 
         doc.setFont("helvetica", "normal"); doc.setTextColor(0);
@@ -405,8 +439,9 @@ export default function PosPartyLodge() {
           doc.setFontSize(9);
           doc.text(String(idx + 1), left + 4, y);
           doc.text(formatIntMoney(p.amount), left + 30, y);
-          doc.text(p.paymentType ?? "—", left + 140, y);
-          doc.text(new Date(p.createdAt).toLocaleDateString(), right - 30, y, { align: "right" });
+          doc.text(p.paymentType ?? "—", left + 120, y);
+          doc.text(new Date(p.createdAt).toLocaleDateString(), left + 180, y);
+          doc.text(formatIntMoney(payBalAfter[idx]), right - 10, y, { align: "right" });
           y += lineH;
         });
       } else {
@@ -542,13 +577,25 @@ export default function PosPartyLodge() {
       const supTotal = supArrivals.reduce((s, a) => s + a.total, 0);
       grandTotal += supTotal;
 
+      const currentBalance = getSupplierBalance(sup);
+      const paymentsAfterRange = payments.filter((p) => p.supplierId === sup.id && p.createdAt > toTs).reduce((s, p) => s + p.amount, 0);
+      const arrivalsAfterRange = arrivals.filter((a) => a.supplierId === sup.id && a.createdAt > toTs).reduce((s, a) => s + a.total, 0);
+      const balanceAtEndOfRange = currentBalance + paymentsAfterRange - arrivalsAfterRange;
+      // Work backwards for running balance after each arrival
+      let runningBal = balanceAtEndOfRange;
+      const balAfter: number[] = [];
+      for (let i = supArrivals.length - 1; i >= 0; i--) {
+        balAfter[i] = runningBal;
+        runningBal -= supArrivals[i].total; // before this arrival, balance was lower
+      }
+
       checkPage(40 + supArrivals.length * lineH);
       doc.setFontSize(11); doc.setFont("helvetica", "bold"); doc.setTextColor(0);
       doc.text(sup.name, left, y);
-      doc.text(`Total: ${formatIntMoney(supTotal)}`, right, y, { align: "right" }); y += 14;
+      doc.text(`Current Balance: ${formatIntMoney(currentBalance)}`, right, y, { align: "right" }); y += 14;
 
       doc.setFontSize(8); doc.setFont("helvetica", "bold"); doc.setTextColor(80);
-      doc.text("#", left + 4, y); doc.text("Item", left + 20, y); doc.text("Qty", left + 140, y); doc.text("Price", left + 190, y); doc.text("Total", left + 260, y); doc.text("Date", right - 10, y, { align: "right" }); y += 10;
+      doc.text("#", left + 4, y); doc.text("Item", left + 20, y); doc.text("Qty", left + 120, y); doc.text("Total", left + 170, y); doc.text("Date", left + 240, y); doc.text("Bal After", right - 10, y, { align: "right" }); y += 10;
       doc.setDrawColor(200); doc.line(left, y - 4, right, y - 4);
       doc.setFont("helvetica", "normal"); doc.setTextColor(0);
 
@@ -556,11 +603,11 @@ export default function PosPartyLodge() {
         checkPage();
         doc.setFontSize(8);
         doc.text(String(idx + 1), left + 4, y);
-        doc.text((a.itemName ?? "").slice(0, 18), left + 20, y);
-        doc.text(`${a.qty} ${a.unit || ""}`, left + 140, y);
-        doc.text(formatIntMoney(a.unitPrice), left + 190, y);
-        doc.text(formatIntMoney(a.total), left + 260, y);
-        doc.text(new Date(a.createdAt).toLocaleDateString(), right - 10, y, { align: "right" });
+        doc.text((a.itemName ?? "").slice(0, 16), left + 20, y);
+        doc.text(`${a.qty} ${a.unit || ""}`, left + 120, y);
+        doc.text(formatIntMoney(a.total), left + 170, y);
+        doc.text(new Date(a.createdAt).toLocaleDateString(), left + 240, y);
+        doc.text(formatIntMoney(balAfter[idx]), right - 10, y, { align: "right" });
         y += lineH;
       });
       y += 12;
@@ -628,13 +675,30 @@ export default function PosPartyLodge() {
       grandTotal += supTotal;
       supPayments.forEach((p) => { if (p.paymentType === "bank") totalBank += p.amount; else totalCash += p.amount; });
 
-      checkPage(40 + supPayments.length * lineH);
+      const currentBalance = getSupplierBalance(sup);
+
+      checkPage(60 + supPayments.length * lineH);
       doc.setFontSize(11); doc.setFont("helvetica", "bold"); doc.setTextColor(0);
       doc.text(sup.name, left, y);
-      doc.text(`Total: ${formatIntMoney(supTotal)}`, right, y, { align: "right" }); y += 14;
+      doc.text(`Current Balance: ${formatIntMoney(currentBalance)}`, right, y, { align: "right" }); y += 14;
+
+      // Calculate balance before range: current + payments in range (they reduced balance) - arrivals after range would be complex
+      // Simpler: work backwards from current balance
+      // balance after last payment in range = currentBalance + sum of payments AFTER range
+      const paymentsAfterRange = payments.filter((p) => p.supplierId === sup.id && p.createdAt > toTs).reduce((s, p) => s + p.amount, 0);
+      const arrivalsAfterRange = arrivals.filter((a) => a.supplierId === sup.id && a.createdAt > toTs).reduce((s, a) => s + a.total, 0);
+      // Balance at end of range = currentBalance + paymentsAfterRange - arrivalsAfterRange
+      const balanceAtEndOfRange = currentBalance + paymentsAfterRange - arrivalsAfterRange;
+      // Work backwards from end of range for running balance
+      let runningBal = balanceAtEndOfRange;
+      const balAfter: number[] = [];
+      for (let i = supPayments.length - 1; i >= 0; i--) {
+        balAfter[i] = runningBal;
+        runningBal += supPayments[i].amount; // before this payment, balance was higher
+      }
 
       doc.setFontSize(8); doc.setFont("helvetica", "bold"); doc.setTextColor(80);
-      doc.text("#", left + 4, y); doc.text("Amount", left + 30, y); doc.text("Type", left + 140, y); doc.text("Note", left + 200, y); doc.text("Date", right - 10, y, { align: "right" }); y += 10;
+      doc.text("#", left + 4, y); doc.text("Amount", left + 30, y); doc.text("Type", left + 120, y); doc.text("Date", left + 180, y); doc.text("Balance After", right - 10, y, { align: "right" }); y += 10;
       doc.setDrawColor(200); doc.line(left, y - 4, right, y - 4);
       doc.setFont("helvetica", "normal"); doc.setTextColor(0);
 
@@ -643,9 +707,9 @@ export default function PosPartyLodge() {
         doc.setFontSize(8);
         doc.text(String(idx + 1), left + 4, y);
         doc.text(formatIntMoney(p.amount), left + 30, y);
-        doc.text(p.paymentType ?? "cash", left + 140, y);
-        doc.text((p.note ?? "").slice(0, 25), left + 200, y);
-        doc.text(new Date(p.createdAt).toLocaleDateString(), right - 10, y, { align: "right" });
+        doc.text(p.paymentType ?? "cash", left + 120, y);
+        doc.text(new Date(p.createdAt).toLocaleDateString(), left + 180, y);
+        doc.text(formatIntMoney(balAfter[idx]), right - 10, y, { align: "right" });
         y += lineH;
       });
       y += 12;
