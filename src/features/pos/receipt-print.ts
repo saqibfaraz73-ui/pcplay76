@@ -348,7 +348,7 @@ export async function printKotFromOrder(order: Order) {
   if (!settings) throw new Error("Printer not configured");
   
   const conn = settings.printerConnection ?? "none";
-  const text = await buildKotReceipt(order, settings, { centered: conn === "usb" });
+  const text = await buildKotReceipt(order, settings, { centered: true });
 
   if (conn === "usb") {
     await usbSend(text);
