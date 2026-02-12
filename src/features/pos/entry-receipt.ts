@@ -24,6 +24,23 @@ export type EntryReceiptData = {
   date: Date;
 };
 
+/* ─── Receipt size (same logic as sales dashboard) ─── */
+
+function getFeedLinesForSize(settings: Settings, contentLines: number): number {
+  const lineHeightInch = 0.125;
+  const sizeMap: Record<string, number> = {
+    "2x2": 2,
+    "2x3": 3,
+    "2x4": 4,
+    "2x5": 5,
+  };
+  const targetHeight = sizeMap[settings.receiptSize ?? "2x3"] ?? 3;
+  const contentHeight = contentLines * lineHeightInch;
+  const remainingInches = Math.max(0, targetHeight - contentHeight);
+  const feedLines = Math.floor(remainingInches / lineHeightInch);
+  return Math.max(3, feedLines);
+}
+
 /* ─── ESC/POS thermal print ─── */
 
 function buildEscPos(data: EntryReceiptData, settings: Settings): string {
@@ -35,41 +52,52 @@ function buildEscPos(data: EntryReceiptData, settings: Settings): string {
   const label = data.type === "arrival" ? "SUPPLY ARRIVAL" : "EXPORT SALE";
   const dateStr = data.date.toLocaleString("en-PK", { hour12: true });
 
-  const out: string[] = [
-    "\x1b@", // init
+  const headerLines = [
     line(title),
+    settings.showAddress && settings.address ? line(settings.address) : null,
+    settings.showPhone && settings.phone ? line(settings.phone) : null,
     line(label),
     hr,
     line(`Party: ${data.partyName}`),
     line(`Date: ${dateStr}`),
     hr,
-  ];
+  ].filter(Boolean) as string[];
 
-  // Header
-  out.push(
+  const itemLines: string[] = [];
+  itemLines.push(
     "Item".padEnd(16) + "Qty".padStart(5) + "Total".padStart(width - 21)
   );
-  out.push(hr);
+  itemLines.push(hr);
 
   for (const l of data.lines) {
-    out.push(
+    itemLines.push(
       (l.itemName || "—").slice(0, 16).padEnd(16) +
         String(l.qty).padStart(5) +
         money(l.total).padStart(width - 21)
     );
     if (l.unitPrice > 0 && l.qty > 0) {
-      out.push(line(`  ${l.qty} ${l.unit || "units"} × ${money(l.unitPrice)}`));
+      itemLines.push(line(`  ${l.qty} ${l.unit || "units"} × ${money(l.unitPrice)}`));
     }
   }
 
-  out.push(hr);
-  out.push(line("Grand Total:".padEnd(width - money(data.grandTotal).length) + money(data.grandTotal)));
-  if (data.note) out.push(line(`Note: ${data.note}`));
-  out.push(hr);
-  out.push("\n\n\n");
-  out.push("\x1dV\x41\x03"); // cut
+  const footerLines = [
+    hr,
+    line("Grand Total:".padEnd(width - money(data.grandTotal).length) + money(data.grandTotal)),
+    ...(data.note ? [line(`Note: ${data.note}`)] : []),
+    hr,
+  ];
 
-  return out.join("\n");
+  const totalContentLines = headerLines.length + itemLines.length + footerLines.length;
+  const feedCount = getFeedLinesForSize(settings, totalContentLines);
+
+  return [
+    "\x1b@",
+    headerLines.join("\n"),
+    itemLines.join("\n"),
+    footerLines.join("\n"),
+    "\n".repeat(feedCount),
+    "\x1dV\x41\x03",
+  ].join("\n");
 }
 
 export async function printEntryReceipt(data: EntryReceiptData) {
