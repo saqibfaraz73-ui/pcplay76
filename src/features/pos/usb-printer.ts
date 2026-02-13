@@ -65,17 +65,24 @@ export async function usbConnect(deviceName: string): Promise<void> {
 
   // Request permission – the native side waits for the user to tap Allow/Deny
   const granted = await usbRequestPermission(deviceName);
-  if (!granted) throw new Error("USB permission denied. Please allow USB access and try again.");
-
-  // Permission granted, now connect
-  try {
-    await UsbPrinter.connect({ deviceName });
-  } catch (connectErr: any) {
-    // If connect fails right after permission grant, wait briefly and retry once
-    // (some devices need a moment after permission is granted)
-    await new Promise((r) => setTimeout(r, 500));
-    await UsbPrinter.connect({ deviceName });
+  if (!granted) {
+    // Some devices report false on first attempt; wait and retry once
+    await new Promise((r) => setTimeout(r, 800));
+    const retry = await usbRequestPermission(deviceName);
+    if (!retry) throw new Error("USB permission denied. Please allow USB access and try again.");
   }
+
+  // Permission granted, now connect with retry logic
+  const tryConnect = async () => {
+    try {
+      await UsbPrinter.connect({ deviceName });
+    } catch {
+      // Wait and retry once (some devices need a moment after permission grant)
+      await new Promise((r) => setTimeout(r, 600));
+      await UsbPrinter.connect({ deviceName });
+    }
+  };
+  await tryConnect();
 }
 
 export async function usbDisconnect(): Promise<void> {

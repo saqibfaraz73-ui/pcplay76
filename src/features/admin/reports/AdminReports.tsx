@@ -160,23 +160,27 @@ function buildSalesPdf(args: {
   const advCancelled = advOrders.filter((o) => o.status === "cancelled");
   const advTotal = advCompleted.reduce((s, o) => s + o.advancePayment, 0);
   const advAdvanceTotal = advTotal;
+  const advDiscount = advCompleted.reduce((s, o) => s + o.discountAmount, 0);
   const advCancelledTotal = advCancelled.reduce((s, o) => s + o.total, 0);
   const bkCompleted = bkOrders.filter((o) => o.status !== "cancelled");
   const bkCancelled = bkOrders.filter((o) => o.status === "cancelled");
   const bkTotal = bkCompleted.reduce((s, o) => s + o.advancePayment, 0);
   const bkAdvanceTotal = bkTotal;
+  const bkDiscount = bkCompleted.reduce((s, o) => s + o.discountAmount, 0);
   const bkCancelledTotal = bkCancelled.reduce((s, o) => s + o.price, 0);
   const advBookingTotal = advTotal + bkTotal;
 
+  // Total Sales already has discounts subtracted (net totals), so remaining balance only subtracts expenses
   const overallSales = takeawayTotal + deliveryTotal + tableSalesTotal + creditTotal + tableCreditTotal + (showExport ? exportTotal : 0) + (showAdvBooking ? advBookingTotal : 0);
-  const overallDiscount = takeawayDiscount + deliveryDiscount + tableDiscount + creditDiscount + tableCreditDiscount;
+  const overallDiscount = takeawayDiscount + deliveryDiscount + tableDiscount + creditDiscount + tableCreditDiscount + (showAdvBooking ? advDiscount + bkDiscount : 0);
   const totalExpenses = args.expenses.reduce((s, e) => s + e.amount, 0);
 
   const totalCreditSales = creditTotal + tableCreditTotal;
   const totalCreditDiscount = creditDiscount + tableCreditDiscount;
   const totalCreditCancelled = creditCancelledTotal + tableCreditCancelledTotal;
   const totalCancelledAmount = takeawayCancelledTotal + deliveryCancelledTotal + tableCancelledTotal + totalCreditCancelled + (showExport ? exportCancelledTotal : 0) + (showAdvBooking ? advCancelledTotal + bkCancelledTotal : 0);
-  const remainingBalance = overallSales - overallDiscount - totalExpenses;
+  // Remaining balance = Total Sales - Expenses only (discounts & cancelled already excluded from total sales)
+  const remainingBalance = overallSales - totalExpenses;
 
   // Title
   doc.setFontSize(16);
@@ -201,8 +205,8 @@ function buildSalesPdf(args: {
     { label: "Credit Sales", value: formatIntMoney(totalCreditSales) },
     ...(showExport ? [{ label: "Export Sales", value: formatIntMoney(exportTotal) }] : []),
     ...(showAdvBooking ? [{ label: "Advance/Booking", value: formatIntMoney(advBookingTotal) }] : []),
-    { label: "Total Cancelled", value: formatIntMoney(totalCancelledAmount), color: [200, 0, 0] as [number, number, number] },
-    { label: "Total Discount", value: formatIntMoney(overallDiscount), color: [200, 0, 0] as [number, number, number] },
+    { label: "Total Cancelled", value: formatIntMoney(totalCancelledAmount), color: [0, 0, 0] as [number, number, number] },
+    { label: "Total Discount", value: formatIntMoney(overallDiscount), color: [0, 0, 0] as [number, number, number] },
     { label: "Total Expenses", value: formatIntMoney(totalExpenses), color: [200, 0, 0] as [number, number, number] },
     { label: "Remaining Balance", value: formatIntMoney(remainingBalance), color: remainingBalance >= 0 ? [0, 120, 0] as [number, number, number] : [200, 0, 0] as [number, number, number] },
   ];
@@ -391,17 +395,19 @@ function buildSalesPdf(args: {
   // ===== ADVANCE/BOOKING =====
   if (showAdvBooking && (advCompleted.length > 0 || bkCompleted.length > 0)) {
     heading("Advance / Booking Orders");
-    if (advCompleted.length > 0) {
+    if (advCompleted.length > 0 || advCancelled.length > 0) {
       row("Advance Item Sales", formatIntMoney(advTotal), true);
       row("Advance Payments Received", formatIntMoney(advAdvanceTotal));
+      if (advDiscount > 0) row("Advance Discount", formatIntMoney(advDiscount));
       if (advCancelled.length > 0) row(`Cancelled (${advCancelled.length})`, formatIntMoney(advCancelledTotal), false, [200, 0, 0]);
     }
-    if (bkCompleted.length > 0) {
+    if (bkCompleted.length > 0 || bkCancelled.length > 0) {
       y += 4;
       row("Time-Based Bookings", formatIntMoney(bkTotal), true);
       const bkTotalHours = bkCompleted.reduce((s, o) => s + o.durationHours, 0);
       row("Total Hours Booked", `${bkTotalHours}h`);
       row("Booking Advance Received", formatIntMoney(bkAdvanceTotal));
+      if (bkDiscount > 0) row("Booking Discount", formatIntMoney(bkDiscount));
       if (bkCancelled.length > 0) row(`Cancelled (${bkCancelled.length})`, formatIntMoney(bkCancelledTotal), false, [200, 0, 0]);
 
       // Revenue by bookable item
@@ -410,7 +416,7 @@ function buildSalesPdf(args: {
         if (!byBookItem[o.bookableItemId]) byBookItem[o.bookableItemId] = { name: o.bookableItemName, count: 0, hours: 0, revenue: 0 };
         byBookItem[o.bookableItemId].count += 1;
         byBookItem[o.bookableItemId].hours += o.durationHours;
-        byBookItem[o.bookableItemId].revenue += o.total;
+        byBookItem[o.bookableItemId].revenue += o.advancePayment;
       }
       const bookItemBreakdown = Object.values(byBookItem).sort((a, b) => b.revenue - a.revenue);
       if (bookItemBreakdown.length > 0) {
@@ -451,11 +457,12 @@ function buildSalesPdf(args: {
   if (showAdvBooking) row("Advance/Booking", formatIntMoney(advBookingTotal));
   y += 4;
   row("Overall Sales", formatIntMoney(overallSales), true);
-  row("Minus Overall Discounts", `-${formatIntMoney(overallDiscount)}`, false, [200, 0, 0]);
+  row("Total Discount", formatIntMoney(overallDiscount));
+  row("Total Cancelled", formatIntMoney(totalCancelledAmount));
   row("Minus Expenses", `-${formatIntMoney(totalExpenses)}`, false, [200, 0, 0]);
   y += 4;
   separator();
-  row("= Remaining Balance", formatIntMoney(overallSales - overallDiscount - totalExpenses), true);
+  row("= Remaining Balance", formatIntMoney(overallSales - totalExpenses), true);
 
   // ===== EXPENSES DETAIL =====
   if (args.expenses.length > 0) {
@@ -753,7 +760,7 @@ export function AdminReports() {
       const fileName = `sales_${toDateInputValue(fromTs)}_${toDateInputValue(toTs)}.pdf`;
       const saved = await writePdfFile({ folder: "Sales Report", fileName, pdfBytes: new Uint8Array(bytes) });
       setLastExport({ title: "Sales Report", fileName, path: saved.path, uri: saved.uri });
-      toast({ title: "Sales report saved", description: fileName });
+      toast({ title: "Sales report saved", description: `${fileName}\nPath: ${saved.path}` });
     } catch (e: any) {
       toast({ title: "Export failed", description: e?.message ?? String(e), variant: "destructive" });
     }
