@@ -25,6 +25,7 @@ import { AuthProvider } from "@/auth/AuthProvider";
 import { ProtectedRoute } from "@/auth/ProtectedRoute";
 import { AppShell } from "@/layout/AppShell";
 import { WorkPeriodProvider } from "@/features/pos/WorkPeriodProvider";
+import { SyncProvider } from "@/features/sync/SyncProvider";
 
 const queryClient = new QueryClient();
 
@@ -35,6 +36,7 @@ const App = () => (
       <Sonner />
       <AuthProvider>
         <WorkPeriodProvider>
+          <SyncProvider>
           <BrowserRouter>
             <AppShell>
               <Routes>
@@ -153,6 +155,7 @@ const App = () => (
               </Routes>
             </AppShell>
           </BrowserRouter>
+          </SyncProvider>
         </WorkPeriodProvider>
       </AuthProvider>
     </TooltipProvider>
