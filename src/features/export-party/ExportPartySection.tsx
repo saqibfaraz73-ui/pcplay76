@@ -983,8 +983,8 @@ export function ExportPartySection() {
 
               // Calculate running balance (walk chronologically oldest→newest)
               const chronological = [...ledger].reverse();
-              // Balance now = totalBalance; walk backwards from newest to find starting balance
-              const currentBalance = selectedCustomer.totalBalance;
+              // Balance now = getBalance (totalBalance - all payments)
+              const currentBalance = getBalance(selectedCustomer);
               // Sum all changes in this list to find balance before first entry
               let balBefore = currentBalance;
               for (const entry of chronological) {
