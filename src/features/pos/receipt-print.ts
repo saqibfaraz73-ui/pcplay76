@@ -303,11 +303,42 @@ export async function printReceiptFromOrder(
 /* ---------- KOT (centered format) ---------- */
 
 export async function printKotFromOrder(order: Order) {
-  if (!isNativeAndroid()) return;
-
   const settings = await getSettingsSafe();
+
+  if (!isNativeAndroid()) {
+    // Browser fallback - simple print dialog
+    const now = new Date();
+    const timeStr = fmtTime12(now.toTimeString().slice(0, 5));
+    const itemsHtml = order.lines
+      .map((l) => `<div class="item"><span>${escapeHtml(l.name)}</span><span>x${l.qty}</span></div>`)
+      .join("");
+    const html = `
+      <h1>KITCHEN ORDER</h1>
+      <div class="info">
+        <div>Bill #: ${escapeHtml(String(order.receiptNo))}</div>
+        <div>Cashier: ${escapeHtml(order.cashier)}</div>
+        <div>${escapeHtml(timeStr)}</div>
+      </div>
+      <div class="items">${itemsHtml}</div>`;
+    const w = window.open("", "_blank", "noopener,noreferrer,width=400,height=600");
+    if (!w) return;
+    w.document.open();
+    w.document.write(`<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>KOT</title>
+<style>
+  body { font-family: monospace; font-size: 14px; padding: 20px; }
+  h1 { font-size: 18px; text-align: center; margin-bottom: 10px; }
+  .info { text-align: center; margin-bottom: 15px; }
+  .items { border-top: 1px dashed #000; border-bottom: 1px dashed #000; padding: 10px 0; }
+  .item { display: flex; justify-content: space-between; margin: 5px 0; }
+  @media print { body { margin: 0; padding: 10px; } }
+</style></head>
+<body>${html}<script>window.onload = () => { window.print(); };</script></body></html>`);
+    w.document.close();
+    return;
+  }
+
   if (!settings) throw new Error("Printer not configured");
-  
   const conn = settings.printerConnection ?? "none";
   const text = await buildKotReceipt(order, settings);
 
