@@ -744,8 +744,18 @@ export function ExportPartySection() {
       ...custPayments.map((p) => ({ type: "payment" as const, payment: p, date: p.createdAt })),
     ].sort((a, b) => a.date - b.date);
 
-    // Calculate running balance: start from balance at beginning of range
-    // No running balance – each entry shows its own bill/payment/balance
+    // Running balance
+    const paymentsAfterRange = payments.filter((p) => p.customerId === cust.id && p.createdAt > toTs).reduce((s, p) => s + p.amount, 0);
+    const salesAfterRange = sales.filter((s) => s.customerId === cust.id && s.createdAt > toTs).reduce((s, a) => s + a.total, 0);
+    const balanceAtEndOfRange = balance + paymentsAfterRange - salesAfterRange;
+    let balBeforeRange = balanceAtEndOfRange - totalSalesInRange + totalPaidInRange;
+    let runBal = balBeforeRange;
+    const balAfter: number[] = [];
+    for (let i = 0; i < ledger.length; i++) {
+      if (ledger[i].type === "sale") runBal += (ledger[i] as any).sale.total;
+      else runBal -= (ledger[i] as any).payment.amount;
+      balAfter[i] = runBal;
+    }
 
     doc.setFontSize(11); doc.setFont("helvetica", "bold"); doc.setTextColor(0);
     doc.text(cust.name, left, y); doc.text(`Balance: ${formatIntMoney(balance)}`, right, y, { align: "right" }); y += 14;
@@ -756,7 +766,7 @@ export function ExportPartySection() {
 
     if (ledger.length > 0) {
       doc.setFontSize(8); doc.setFont("helvetica", "bold"); doc.setTextColor(80);
-      doc.text("#", left + 4, y); doc.text("Type", left + 20, y); doc.text("Details", left + 70, y); doc.text("Bill", left + 260, y); doc.text("Payment", left + 310, y); doc.text("Date", left + 370, y); doc.text("Balance", right - 10, y, { align: "right" }); y += 10;
+      doc.text("#", left + 4, y); doc.text("Type", left + 20, y); doc.text("Details", left + 70, y); doc.text("Amount", left + 280, y); doc.text("Date", left + 350, y); doc.text("Balance", right - 10, y, { align: "right" }); y += 10;
       doc.setDrawColor(200); doc.line(left, y - 4, right, y - 4);
       doc.setFont("helvetica", "normal"); doc.setTextColor(0);
       ledger.forEach((entry, idx) => {
@@ -764,27 +774,20 @@ export function ExportPartySection() {
         doc.text(String(idx + 1), left + 4, y);
         if (entry.type === "sale") {
           const s = entry.sale;
-          const adv = s.advancePayment ?? 0;
-          const disc = s.discountAmount ?? 0;
-          const entryBal = s.total - disc - adv;
           doc.setTextColor(0);
           doc.text("Sale", left + 20, y);
           doc.text(`${(s.itemName ?? "").slice(0, 20)} ${s.qty}${s.unit ? " " + s.unit : ""} @ ${formatIntMoney(s.unitPrice)}`, left + 70, y);
-          doc.text(formatIntMoney(s.total), left + 260, y);
-          doc.text(adv > 0 ? formatIntMoney(adv) : "-", left + 310, y);
-          doc.text(fmtDate(entry.date), left + 370, y);
-          doc.text(formatIntMoney(entryBal), right - 10, y, { align: "right" });
+          doc.text(formatIntMoney(s.total), left + 280, y);
         } else {
           const p = entry.payment;
           doc.setTextColor(0, 128, 0);
           doc.text("Payment", left + 20, y);
           doc.text(`${p.paymentType ?? "cash"}${p.note ? " - " + p.note.slice(0, 20) : ""}`, left + 70, y);
-          doc.text("-", left + 260, y);
-          doc.text(formatIntMoney(p.amount), left + 310, y);
-          doc.text(fmtDate(entry.date), left + 370, y);
-          doc.setTextColor(0);
-          doc.text(`Paid`, right - 10, y, { align: "right" });
+          doc.text(`-${formatIntMoney(p.amount)}`, left + 280, y);
         }
+        doc.setTextColor(0);
+        doc.text(fmtDate(entry.date), left + 350, y);
+        doc.text(formatIntMoney(balAfter[idx]), right - 10, y, { align: "right" });
         y += lineH;
       });
     } else {
