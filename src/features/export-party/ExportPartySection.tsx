@@ -300,8 +300,8 @@ export function ExportPartySection() {
       const receiptData = buildSaleReceiptData();
       if (receiptData) receiptData.receiptNo = entryNo;
 
-      // Net amount to add to balance = total - discount - advance payment
-      const netTotal = saleAfterDiscount - saleAdvancePayment;
+      // Net amount to add to balance = total - discount (advance is handled via payment record)
+      const netTotal = saleAfterDiscount;
 
       await db.transaction("rw", [db.exportCustomers, db.exportSales, db.exportPayments], async () => {
         let isFirst = true;
@@ -378,8 +378,8 @@ export function ExportPartySection() {
     try {
       const reason = cancelReason.trim();
       if (!reason) throw new Error("Please enter a reason for cancellation");
-      // The balance added was total - discount - advance, so reverse that
-      const reverseAmount = cancelTarget.total - (cancelTarget.discount ?? 0) - (cancelTarget.advance ?? 0);
+      // The balance added was total - discount, so reverse that (advance payment record handles separately)
+      const reverseAmount = cancelTarget.total - (cancelTarget.discount ?? 0);
       await db.transaction("rw", [db.exportSales, db.exportCustomers], async () => {
         await db.exportSales.update(cancelTarget.id, {
           cancelled: true,
@@ -988,13 +988,13 @@ export function ExportPartySection() {
               // Sum all changes in this list to find balance before first entry
               let balBefore = currentBalance;
               for (const entry of chronological) {
-                if (entry.type === "sale") balBefore -= entry.sale.total - (entry.sale.discountAmount ?? 0) - (entry.sale.advancePayment ?? 0);
+                if (entry.type === "sale") balBefore -= entry.sale.total - (entry.sale.discountAmount ?? 0);
                 else balBefore += entry.payment.amount;
               }
               let runBal = balBefore;
               const balMap = new Map<number, number>();
               chronological.forEach((entry, i) => {
-                if (entry.type === "sale") runBal += entry.sale.total - (entry.sale.discountAmount ?? 0) - (entry.sale.advancePayment ?? 0);
+                if (entry.type === "sale") runBal += entry.sale.total - (entry.sale.discountAmount ?? 0);
                 else runBal -= entry.payment.amount;
                 balMap.set(i, runBal);
               });
