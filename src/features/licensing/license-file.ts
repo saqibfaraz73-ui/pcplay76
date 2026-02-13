@@ -22,6 +22,7 @@ interface LicenseFilePayload {
   magic: string;
   deviceId: string;
   activatedAt: string;
+  validUntil?: string; // ISO date string for expiry (optional)
   checksum: string;
 }
 
@@ -35,8 +36,8 @@ function xorCipher(text: string, key: string): string {
 }
 
 /** Generate a checksum for integrity verification */
-function generateChecksum(deviceId: string, activatedAt: string): string {
-  const input = `${FILE_MAGIC}:${deviceId}:${activatedAt}:${ENCRYPTION_KEY}`;
+function generateChecksum(deviceId: string, activatedAt: string, validUntil?: string): string {
+  const input = `${FILE_MAGIC}:${deviceId}:${activatedAt}:${validUntil ?? ""}:${ENCRYPTION_KEY}`;
   let hash = 0;
   for (let i = 0; i < input.length; i++) {
     const c = input.charCodeAt(i);
@@ -46,24 +47,25 @@ function generateChecksum(deviceId: string, activatedAt: string): string {
 }
 
 /** Generate the encrypted license payload as a base64 string (no filesystem needed) */
-export function generateLicenseBase64(deviceId: string): string {
+export function generateLicenseBase64(deviceId: string, validUntil?: string): string {
   const activatedAt = new Date().toISOString();
-  const checksum = generateChecksum(deviceId, activatedAt);
-  const payload: LicenseFilePayload = { magic: FILE_MAGIC, deviceId, activatedAt, checksum };
+  const checksum = generateChecksum(deviceId, activatedAt, validUntil);
+  const payload: LicenseFilePayload = { magic: FILE_MAGIC, deviceId, activatedAt, validUntil, checksum };
   const json = JSON.stringify(payload);
   const encrypted = xorCipher(json, ENCRYPTION_KEY);
   return btoa(encrypted);
 }
 
 /** Create an encrypted license file and return its URI for sharing */
-export async function generateLicenseFile(deviceId: string): Promise<{ path: string; uri: string }> {
+export async function generateLicenseFile(deviceId: string, validUntil?: string): Promise<{ path: string; uri: string }> {
   const activatedAt = new Date().toISOString();
-  const checksum = generateChecksum(deviceId, activatedAt);
+  const checksum = generateChecksum(deviceId, activatedAt, validUntil);
 
   const payload: LicenseFilePayload = {
     magic: FILE_MAGIC,
     deviceId,
     activatedAt,
+    validUntil,
     checksum,
   };
 
@@ -109,15 +111,15 @@ export async function shareLicenseFile(uri: string) {
 }
 
 /** Decrypt a base64 license string and return payload if valid */
-export function decodeLicenseBase64(base64: string): { deviceId: string; activatedAt: string } | null {
+export function decodeLicenseBase64(base64: string): { deviceId: string; activatedAt: string; validUntil?: string } | null {
   try {
     const encrypted = atob(base64.trim());
     const json = xorCipher(encrypted, ENCRYPTION_KEY);
     const payload: LicenseFilePayload = JSON.parse(json);
     if (payload.magic !== FILE_MAGIC) return null;
-    const expectedChecksum = generateChecksum(payload.deviceId, payload.activatedAt);
+    const expectedChecksum = generateChecksum(payload.deviceId, payload.activatedAt, payload.validUntil);
     if (payload.checksum !== expectedChecksum) return null;
-    return { deviceId: payload.deviceId, activatedAt: payload.activatedAt };
+    return { deviceId: payload.deviceId, activatedAt: payload.activatedAt, validUntil: payload.validUntil };
   } catch {
     return null;
   }
@@ -125,7 +127,7 @@ export function decodeLicenseBase64(base64: string): { deviceId: string; activat
 
 /** Try to read and decrypt a license file from the Sangi Pos folder.
  *  Returns the device ID if valid, null otherwise. */
-export async function readLicenseFile(): Promise<{ deviceId: string; activatedAt: string } | null> {
+export async function readLicenseFile(): Promise<{ deviceId: string; activatedAt: string; validUntil?: string } | null> {
   // Check multiple possible locations and directories
   const possiblePaths = [
     `${folderPath("Backup")}/${LICENSE_FILE_NAME}`,

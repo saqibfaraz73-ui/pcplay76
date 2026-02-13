@@ -12,6 +12,7 @@ export type LicenseRecord = {
   licensedDeviceId?: string; // The device ID this license is activated for
   activationKey?: string;
   isPremium: boolean;
+  validUntil?: number; // timestamp – license expires after this date (0 or undefined = no expiry)
   upgradeMessage?: string;
   cashSalesCount: number;
   creditSalesCount: number;
@@ -97,7 +98,8 @@ export async function getLicense(): Promise<LicenseRecord> {
     try {
       const licFile = await readLicenseFile();
       if (licFile && licFile.deviceId === rec.deviceId) {
-        rec = { ...rec, isPremium: true, licensedDeviceId: licFile.deviceId };
+        const validUntilTs = licFile.validUntil ? new Date(licFile.validUntil).getTime() : undefined;
+        rec = { ...rec, isPremium: true, licensedDeviceId: licFile.deviceId, validUntil: validUntilTs };
         await (db as any).license.put(rec);
       }
     } catch {
@@ -109,6 +111,13 @@ export async function getLicense(): Promise<LicenseRecord> {
   if (rec.isPremium && rec.licensedDeviceId) {
     if (rec.deviceId !== rec.licensedDeviceId) {
       return { ...rec, isPremium: false };
+    }
+  }
+
+  // Check license expiry
+  if (rec.isPremium && rec.validUntil && rec.validUntil > 0) {
+    if (Date.now() > rec.validUntil) {
+      return { ...rec, isPremium: false, upgradeMessage: "Your premium license has expired. Please contact support to renew or upgrade your license." };
     }
   }
 
