@@ -65,7 +65,7 @@ export function ExportPartySection() {
   const [deleteTarget, setDeleteTarget] = React.useState<ExportCustomer | null>(null);
 
   // Cancel entry state
-  const [cancelTarget, setCancelTarget] = React.useState<{ id: string; total: number; customerId: string; discount?: number } | null>(null);
+  const [cancelTarget, setCancelTarget] = React.useState<{ id: string; total: number; customerId: string; discount?: number; advance?: number } | null>(null);
   const [cancelReason, setCancelReason] = React.useState("");
 
   const [upgradeOpen, setUpgradeOpen] = React.useState(false);
@@ -300,8 +300,8 @@ export function ExportPartySection() {
       const receiptData = buildSaleReceiptData();
       if (receiptData) receiptData.receiptNo = entryNo;
 
-      // Net amount to add to balance = total - discount
-      const netTotal = saleAfterDiscount;
+      // Net amount to add to balance = total - discount - advance payment
+      const netTotal = saleAfterDiscount - saleAdvancePayment;
 
       await db.transaction("rw", [db.exportCustomers, db.exportSales, db.exportPayments], async () => {
         let isFirst = true;
@@ -378,8 +378,8 @@ export function ExportPartySection() {
     try {
       const reason = cancelReason.trim();
       if (!reason) throw new Error("Please enter a reason for cancellation");
-      // The balance added was total - discount, so reverse that
-      const reverseAmount = cancelTarget.total - (cancelTarget.discount ?? 0);
+      // The balance added was total - discount - advance, so reverse that
+      const reverseAmount = cancelTarget.total - (cancelTarget.discount ?? 0) - (cancelTarget.advance ?? 0);
       await db.transaction("rw", [db.exportSales, db.exportCustomers], async () => {
         await db.exportSales.update(cancelTarget.id, {
           cancelled: true,
@@ -988,13 +988,13 @@ export function ExportPartySection() {
               // Sum all changes in this list to find balance before first entry
               let balBefore = currentBalance;
               for (const entry of chronological) {
-                if (entry.type === "sale") balBefore -= entry.sale.total - (entry.sale.discountAmount ?? 0);
+                if (entry.type === "sale") balBefore -= entry.sale.total - (entry.sale.discountAmount ?? 0) - (entry.sale.advancePayment ?? 0);
                 else balBefore += entry.payment.amount;
               }
               let runBal = balBefore;
               const balMap = new Map<number, number>();
               chronological.forEach((entry, i) => {
-                if (entry.type === "sale") runBal += entry.sale.total - (entry.sale.discountAmount ?? 0);
+                if (entry.type === "sale") runBal += entry.sale.total - (entry.sale.discountAmount ?? 0) - (entry.sale.advancePayment ?? 0);
                 else runBal -= entry.payment.amount;
                 balMap.set(i, runBal);
               });
@@ -1047,7 +1047,7 @@ export function ExportPartySection() {
                               <Share2 className="h-3 w-3 mr-1" /> Share
                             </Button>
                             {!s.cancelled && (
-                              <Button variant="outline" size="sm" className="text-xs h-6 px-2 text-destructive hover:text-destructive" onClick={() => { setCancelReason(""); setCancelTarget({ id: s.id, total: s.total, customerId: s.customerId, discount: s.discountAmount }); }}>
+                              <Button variant="outline" size="sm" className="text-xs h-6 px-2 text-destructive hover:text-destructive" onClick={() => { setCancelReason(""); setCancelTarget({ id: s.id, total: s.total, customerId: s.customerId, discount: s.discountAmount, advance: s.advancePayment }); }}>
                                 <XCircle className="h-3 w-3 mr-1" /> Cancel
                               </Button>
                             )}
