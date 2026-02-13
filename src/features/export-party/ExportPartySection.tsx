@@ -423,78 +423,63 @@ export function ExportPartySection() {
       const custSales = sales.filter((s) => s.customerId === cust.id && s.createdAt >= fromTs && s.createdAt <= toTs).sort((a, b) => a.createdAt - b.createdAt);
       const custPayments = payments.filter((p) => p.customerId === cust.id && p.createdAt >= fromTs && p.createdAt <= toTs).sort((a, b) => a.createdAt - b.createdAt);
       const balance = getBalance(cust);
-
-      // Running balance calculations
-      const paymentsAfterRange = payments.filter((p) => p.customerId === cust.id && p.createdAt > toTs).reduce((s, p) => s + p.amount, 0);
-      const salesAfterRange = sales.filter((s) => s.customerId === cust.id && s.createdAt > toTs).reduce((s, a) => s + a.total, 0);
-      const balanceAtEndOfRange = balance + paymentsAfterRange - salesAfterRange;
       const totalSalesInRange = custSales.reduce((s, a) => s + a.total, 0);
       const totalPaymentsInRange = custPayments.reduce((s, p) => s + p.amount, 0);
-      const balanceBeforeRange = balanceAtEndOfRange - totalSalesInRange + totalPaymentsInRange;
 
-      let saleRunBal = balanceBeforeRange;
-      const saleBalAfter: number[] = [];
-      for (let i = 0; i < custSales.length; i++) {
-        saleRunBal += custSales[i].total;
-        saleBalAfter[i] = saleRunBal;
-      }
+      // Combined ledger (chronological)
+      type LEntry = { type: "sale"; sale: typeof custSales[0]; date: number } | { type: "payment"; payment: typeof custPayments[0]; date: number };
+      const ledger: LEntry[] = [
+        ...custSales.map((s) => ({ type: "sale" as const, sale: s, date: s.createdAt })),
+        ...custPayments.map((p) => ({ type: "payment" as const, payment: p, date: p.createdAt })),
+      ].sort((a, b) => a.date - b.date);
 
-      let payBal = balanceBeforeRange + totalSalesInRange;
-      const payBalAfter: number[] = [];
-      for (let i = 0; i < custPayments.length; i++) {
-        payBal -= custPayments[i].amount;
-        payBalAfter[i] = payBal;
-      }
-
-      checkPage(60 + (custSales.length + custPayments.length) * lineH);
+      checkPage(60 + ledger.length * lineH);
       doc.setFontSize(11); doc.setFont("helvetica", "bold"); doc.setTextColor(0);
       doc.text(cust.name, left, y);
       doc.text(`Current Balance: ${formatIntMoney(balance)}`, right, y, { align: "right" }); y += 14;
 
       if (cust.contact) { doc.setFontSize(8); doc.setFont("helvetica", "normal"); doc.setTextColor(100); doc.text(`Contact: ${cust.contact}`, left, y); y += 10; }
+      if (cust.itemName) { doc.setFontSize(8); doc.text(`Item: ${cust.itemName}`, left, y); y += 10; }
+      doc.setFontSize(9); doc.setTextColor(0);
+      doc.text(`Total Sales: ${formatIntMoney(totalSalesInRange)}`, left, y);
+      doc.text(`Total Paid: ${formatIntMoney(totalPaymentsInRange)}`, left + 150, y); y += 16;
 
-      // Sales
+      // Ledger header
       doc.setFontSize(9); doc.setFont("helvetica", "bold"); doc.setTextColor(0);
-      doc.text("Sales:", left + 4, y); y += 12;
-      if (custSales.length > 0) {
+      doc.text("Ledger:", left + 4, y); y += 12;
+
+      if (ledger.length > 0) {
         doc.setFontSize(8); doc.setFont("helvetica", "bold"); doc.setTextColor(80);
-        doc.text("#", left + 4, y); doc.text("Item", left + 20, y); doc.text("Qty", left + 120, y); doc.text("Total", left + 170, y); doc.text("Date", left + 240, y); doc.text("Bal After", right - 10, y, { align: "right" }); y += 10;
+        doc.text("#", left + 4, y); doc.text("Type", left + 20, y); doc.text("Details", left + 70, y); doc.text("Bill", left + 260, y); doc.text("Payment", left + 310, y); doc.text("Date", left + 370, y); doc.text("Balance", right - 10, y, { align: "right" }); y += 10;
         doc.setDrawColor(200); doc.line(left, y - 4, right, y - 4);
         doc.setFont("helvetica", "normal"); doc.setTextColor(0);
-        custSales.forEach((s, idx) => {
+        ledger.forEach((entry, idx) => {
           checkPage(); doc.setFontSize(8);
           doc.text(String(idx + 1), left + 4, y);
-          doc.text((s.itemName ?? "").slice(0, 16), left + 20, y);
-          doc.text(`${s.qty} ${s.unit || ""}`, left + 120, y);
-          doc.text(formatIntMoney(s.total), left + 170, y);
-          doc.text(fmtDate(s.createdAt), left + 240, y);
-          doc.text(formatIntMoney(saleBalAfter[idx]), right - 10, y, { align: "right" });
+          if (entry.type === "sale") {
+            const s = entry.sale;
+            doc.setTextColor(0);
+            doc.text("Sale", left + 20, y);
+            doc.text(`${(s.itemName ?? "").slice(0, 20)} ${s.qty}${s.unit ? " " + s.unit : ""} @ ${formatIntMoney(s.unitPrice)}`, left + 70, y);
+            doc.text(formatIntMoney(s.total), left + 260, y);
+            doc.text("-", left + 310, y);
+            doc.text(fmtDate(entry.date), left + 370, y);
+            doc.text(formatIntMoney(s.total), right - 10, y, { align: "right" });
+          } else {
+            const p = entry.payment;
+            doc.setTextColor(0, 128, 0);
+            doc.text("Payment", left + 20, y);
+            doc.text(`${p.paymentType ?? "cash"}${p.note ? " - " + p.note.slice(0, 20) : ""}`, left + 70, y);
+            doc.text("-", left + 260, y);
+            doc.text(formatIntMoney(p.amount), left + 310, y);
+            doc.text(fmtDate(entry.date), left + 370, y);
+            doc.setTextColor(0);
+            doc.text("Paid", right - 10, y, { align: "right" });
+          }
           y += lineH;
         });
       } else {
-        doc.setFontSize(8); doc.setTextColor(120); doc.text("No sales in this period", left + 10, y); y += lineH;
-      }
-      y += 6;
-
-      // Payments
-      doc.setFontSize(9); doc.setFont("helvetica", "bold"); doc.setTextColor(0);
-      doc.text("Payments Received:", left + 4, y); y += 12;
-      if (custPayments.length > 0) {
-        doc.setFontSize(8); doc.setFont("helvetica", "bold"); doc.setTextColor(80);
-        doc.text("#", left + 4, y); doc.text("Amount", left + 30, y); doc.text("Type", left + 120, y); doc.text("Date", left + 180, y); doc.text("Bal After", right - 10, y, { align: "right" }); y += 10;
-        doc.setDrawColor(200); doc.line(left, y - 4, right, y - 4);
-        doc.setFont("helvetica", "normal"); doc.setTextColor(0);
-        custPayments.forEach((p, idx) => {
-          checkPage(); doc.setFontSize(9);
-          doc.text(String(idx + 1), left + 4, y);
-          doc.text(formatIntMoney(p.amount), left + 30, y);
-          doc.text(p.paymentType ?? "—", left + 120, y);
-          doc.text(fmtDate(p.createdAt), left + 180, y);
-          doc.text(formatIntMoney(payBalAfter[idx]), right - 10, y, { align: "right" });
-          y += lineH;
-        });
-      } else {
-        doc.setFontSize(8); doc.setTextColor(120); doc.text("No payments in this period", left + 10, y); y += lineH;
+        doc.setFontSize(8); doc.setTextColor(120); doc.text("No records in this period", left + 10, y); y += lineH;
       }
       y += 16;
     }
