@@ -65,7 +65,7 @@ export function ExportPartySection() {
   const [deleteTarget, setDeleteTarget] = React.useState<ExportCustomer | null>(null);
 
   // Cancel entry state
-  const [cancelTarget, setCancelTarget] = React.useState<{ id: string; total: number; customerId: string } | null>(null);
+  const [cancelTarget, setCancelTarget] = React.useState<{ id: string; total: number; customerId: string; discount?: number } | null>(null);
   const [cancelReason, setCancelReason] = React.useState("");
 
   const [upgradeOpen, setUpgradeOpen] = React.useState(false);
@@ -88,6 +88,8 @@ export function ExportPartySection() {
   // Sale form (multi-item)
   const [saleItems, setSaleItems] = React.useState<SaleItem[]>([makeEmptySaleItem()]);
   const [saleNote, setSaleNote] = React.useState("");
+  const [saleAdvancePayment, setSaleAdvancePayment] = React.useState(0);
+  const [saleDiscount, setSaleDiscount] = React.useState(0);
 
   // PDF filter
   const toDateVal = (ts: number) => {
@@ -233,6 +235,8 @@ export function ExportPartySection() {
       unit: cust.stockUnit ?? "",
     }]);
     setSaleNote("");
+    setSaleAdvancePayment(0);
+    setSaleDiscount(0);
     setSaleMode({ open: true, customer: cust });
   };
 
@@ -249,6 +253,9 @@ export function ExportPartySection() {
     if (!saleMode.open) return 0;
     return saleItems.reduce((sum, it) => sum + getItemTotal(it), 0);
   }, [saleMode.open, saleItems]);
+
+  const saleAfterDiscount = React.useMemo(() => Math.max(0, saleTotal - saleDiscount), [saleTotal, saleDiscount]);
+  const saleRemainingBalance = React.useMemo(() => Math.max(0, saleAfterDiscount - saleAdvancePayment), [saleAfterDiscount, saleAdvancePayment]);
 
   const buildSaleReceiptData = (): EntryReceiptData | null => {
     if (!saleMode.open) return null;
@@ -293,7 +300,11 @@ export function ExportPartySection() {
       const receiptData = buildSaleReceiptData();
       if (receiptData) receiptData.receiptNo = entryNo;
 
+      // Net amount to add to balance = total - discount
+      const netTotal = saleAfterDiscount;
+
       await db.transaction("rw", [db.exportCustomers, db.exportSales], async () => {
+        let isFirst = true;
         for (const it of validItems) {
           const total = getItemTotal(it);
           totalAdded += total;
@@ -306,15 +317,19 @@ export function ExportPartySection() {
             unit: it.unit || undefined,
             unitPrice: it.unitPrice,
             total,
+            // Store advance/discount on first item only to avoid double-counting
+            advancePayment: isFirst ? (saleAdvancePayment || undefined) : undefined,
+            discountAmount: isFirst ? (saleDiscount || undefined) : undefined,
             note: saleNote.trim() || undefined,
             createdAt: Date.now(),
           };
           await db.exportSales.put(sale);
+          isFirst = false;
         }
-        await db.exportCustomers.update(cust.id, { totalBalance: cust.totalBalance + totalAdded });
+        await db.exportCustomers.update(cust.id, { totalBalance: cust.totalBalance + netTotal });
       });
 
-      toast({ title: `Sale #${entryNo} recorded`, description: `${validItems.length} item(s) totalling ${formatIntMoney(totalAdded)}` });
+      toast({ title: `Sale #${entryNo} recorded`, description: `${validItems.length} item(s) totalling ${formatIntMoney(totalAdded)}${saleDiscount ? `, Discount: ${formatIntMoney(saleDiscount)}` : ""}${saleAdvancePayment ? `, Advance: ${formatIntMoney(saleAdvancePayment)}` : ""}` });
       setSaleMode({ open: false });
       await refresh();
 
@@ -345,6 +360,8 @@ export function ExportPartySection() {
     try {
       const reason = cancelReason.trim();
       if (!reason) throw new Error("Please enter a reason for cancellation");
+      // The balance added was total - discount, so reverse that
+      const reverseAmount = cancelTarget.total - (cancelTarget.discount ?? 0);
       await db.transaction("rw", [db.exportSales, db.exportCustomers], async () => {
         await db.exportSales.update(cancelTarget.id, {
           cancelled: true,
@@ -353,11 +370,11 @@ export function ExportPartySection() {
         const cust = await db.exportCustomers.get(cancelTarget.customerId);
         if (cust) {
           await db.exportCustomers.update(cancelTarget.customerId, {
-            totalBalance: cust.totalBalance - cancelTarget.total,
+            totalBalance: cust.totalBalance - reverseAmount,
           });
         }
       });
-      toast({ title: "Sale cancelled", description: `Balance reduced by ${formatIntMoney(cancelTarget.total)}` });
+      toast({ title: "Sale cancelled", description: `Balance reduced by ${formatIntMoney(reverseAmount)}` });
       setCancelTarget(null);
       setCancelReason("");
       await refresh();
@@ -926,6 +943,9 @@ export function ExportPartySection() {
                         <span className={`font-bold ${s.cancelled ? "line-through text-muted-foreground" : "text-green-600"}`}>{formatIntMoney(s.total)}</span>
                       </div>
                       <div className="text-xs text-muted-foreground mt-1">{s.qty} {s.unit || "units"} × {formatIntMoney(s.unitPrice)}</div>
+                      {(s.discountAmount ?? 0) > 0 && <div className="text-xs text-muted-foreground">Discount: {formatIntMoney(s.discountAmount!)}</div>}
+                      {(s.advancePayment ?? 0) > 0 && <div className="text-xs font-medium text-primary">Advance: {formatIntMoney(s.advancePayment!)}</div>}
+                      {(s.advancePayment ?? 0) > 0 && <div className="text-xs text-muted-foreground">Remaining: {formatIntMoney(s.total - (s.discountAmount ?? 0) - (s.advancePayment ?? 0))}</div>}
                       {s.note && <div className="text-xs text-muted-foreground">{s.note}</div>}
                       {s.cancelledReason && <div className="text-xs text-destructive">Reason: {s.cancelledReason}</div>}
                       <div className="text-xs text-muted-foreground">{fmtDateTime(s.createdAt)}</div>
@@ -937,7 +957,7 @@ export function ExportPartySection() {
                           <Share2 className="h-3 w-3 mr-1" /> Share
                         </Button>
                         {!s.cancelled && (
-                          <Button variant="outline" size="sm" className="text-xs h-6 px-2 text-destructive hover:text-destructive" onClick={() => { setCancelReason(""); setCancelTarget({ id: s.id, total: s.total, customerId: s.customerId }); }}>
+                          <Button variant="outline" size="sm" className="text-xs h-6 px-2 text-destructive hover:text-destructive" onClick={() => { setCancelReason(""); setCancelTarget({ id: s.id, total: s.total, customerId: s.customerId, discount: s.discountAmount }); }}>
                             <XCircle className="h-3 w-3 mr-1" /> Cancel
                           </Button>
                         )}
@@ -1169,9 +1189,43 @@ export function ExportPartySection() {
                   <Label>Note (optional)</Label>
                   <Input value={saleNote} onChange={(e) => setSaleNote(e.target.value)} placeholder="e.g., Weekly order" />
                 </div>
-                <div className="rounded-md border p-3 bg-muted/50">
-                  <div className="text-xs text-muted-foreground">Grand Total ({saleItems.length} item{saleItems.length > 1 ? "s" : ""})</div>
-                  <div className="text-lg font-bold">{formatIntMoney(saleTotal)}</div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <Label className="text-xs">Discount (optional)</Label>
+                    <Input inputMode="numeric" value={saleDiscount === 0 ? "" : String(saleDiscount)} onChange={(e) => setSaleDiscount(parseNonDecimalInt(e.target.value))} placeholder="0" className="h-8 text-sm" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Advance Payment (optional)</Label>
+                    <Input inputMode="numeric" value={saleAdvancePayment === 0 ? "" : String(saleAdvancePayment)} onChange={(e) => setSaleAdvancePayment(parseNonDecimalInt(e.target.value))} placeholder="0" className="h-8 text-sm" />
+                  </div>
+                </div>
+                <div className="rounded-md border p-3 bg-muted/50 space-y-1">
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <span>Grand Total ({saleItems.length} item{saleItems.length > 1 ? "s" : ""})</span>
+                    <span className="font-semibold text-foreground">{formatIntMoney(saleTotal)}</span>
+                  </div>
+                  {saleDiscount > 0 && (
+                    <div className="flex justify-between text-xs text-muted-foreground">
+                      <span>Discount</span>
+                      <span>-{formatIntMoney(saleDiscount)}</span>
+                    </div>
+                  )}
+                  {saleDiscount > 0 && (
+                    <div className="flex justify-between text-xs font-medium">
+                      <span>After Discount</span>
+                      <span>{formatIntMoney(saleAfterDiscount)}</span>
+                    </div>
+                  )}
+                  {saleAdvancePayment > 0 && (
+                    <div className="flex justify-between text-xs text-primary font-medium">
+                      <span>Advance Payment</span>
+                      <span>-{formatIntMoney(saleAdvancePayment)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between text-sm font-bold pt-1 border-t">
+                    <span>Remaining Balance</span>
+                    <span>{formatIntMoney(saleRemainingBalance)}</span>
+                  </div>
                 </div>
               </>
             )}

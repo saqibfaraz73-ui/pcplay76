@@ -222,6 +222,8 @@ export type ExportSale = {
   unit?: string;
   unitPrice: number;
   total: number;
+  advancePayment?: number; // optional advance payment received
+  discountAmount?: number; // optional discount on the sale
   note?: string;
   cancelled?: boolean;
   cancelledReason?: string;

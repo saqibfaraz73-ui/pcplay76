@@ -142,13 +142,16 @@ function buildSalesPdf(args: {
   const tableCreditDiscount = tableCreditCompleted.reduce((s, o) => s + o.discountTotal, 0);
   const tableCreditCancelledTotal = tableCreditCancelled.reduce((s, o) => s + o.total, 0);
 
-  // Export sales
+  // Export sales — only count advance payments as revenue
   const showExport = args.settings?.showExportInReports ?? false;
   const exportSalesData = args.exportSales ?? [];
   const exportCustomersData = args.exportCustomers ?? [];
   const exportCompleted = exportSalesData.filter((s) => !s.cancelled);
   const exportCancelled = exportSalesData.filter((s) => s.cancelled);
-  const exportTotal = exportCompleted.reduce((s, e) => s + e.total, 0);
+  const exportAdvanceTotal = exportCompleted.reduce((s, e) => s + (e.advancePayment ?? 0), 0);
+  const exportDiscount = exportCompleted.reduce((s, e) => s + (e.discountAmount ?? 0), 0);
+  const exportGrossTotal = exportCompleted.reduce((s, e) => s + e.total, 0);
+  const exportRemainingTotal = exportGrossTotal - exportDiscount - exportAdvanceTotal;
   const exportCancelledTotal = exportCancelled.reduce((s, e) => s + e.total, 0);
   const exportCustomersById = Object.fromEntries(exportCustomersData.map((c) => [c.id, c]));
 
@@ -171,8 +174,8 @@ function buildSalesPdf(args: {
   const advBookingTotal = advTotal + bkTotal;
 
   // Total Sales already has discounts subtracted (net totals), so remaining balance only subtracts expenses
-  const overallSales = takeawayTotal + deliveryTotal + tableSalesTotal + creditTotal + tableCreditTotal + (showExport ? exportTotal : 0) + (showAdvBooking ? advBookingTotal : 0);
-  const overallDiscount = takeawayDiscount + deliveryDiscount + tableDiscount + creditDiscount + tableCreditDiscount + (showAdvBooking ? advDiscount + bkDiscount : 0);
+  const overallSales = takeawayTotal + deliveryTotal + tableSalesTotal + creditTotal + tableCreditTotal + (showExport ? exportAdvanceTotal : 0) + (showAdvBooking ? advBookingTotal : 0);
+  const overallDiscount = takeawayDiscount + deliveryDiscount + tableDiscount + creditDiscount + tableCreditDiscount + (showExport ? exportDiscount : 0) + (showAdvBooking ? advDiscount + bkDiscount : 0);
   const totalExpenses = args.expenses.reduce((s, e) => s + e.amount, 0);
 
   const totalCreditSales = creditTotal + tableCreditTotal;
@@ -203,7 +206,7 @@ function buildSalesPdf(args: {
     ...(deliveryEnabled ? [{ label: "Delivery Sales", value: formatIntMoney(deliveryTotal) }] : []),
     ...(tableEnabled ? [{ label: "Table Sales", value: formatIntMoney(tableSalesTotal) }] : []),
     { label: "Credit Sales", value: formatIntMoney(totalCreditSales) },
-    ...(showExport ? [{ label: "Export Sales", value: formatIntMoney(exportTotal) }] : []),
+    ...(showExport ? [{ label: "Export Advance", value: formatIntMoney(exportAdvanceTotal) }] : []),
     ...(showAdvBooking ? [{ label: "Advance/Booking", value: formatIntMoney(advBookingTotal) }] : []),
     { label: "Total Cancelled", value: formatIntMoney(totalCancelledAmount), color: [0, 0, 0] as [number, number, number] },
     { label: "Total Discount", value: formatIntMoney(overallDiscount), color: [0, 0, 0] as [number, number, number] },
@@ -371,16 +374,21 @@ function buildSalesPdf(args: {
   // ===== EXPORT SALES =====
   if (showExport && exportCompleted.length > 0) {
     heading("Export Sales");
-    row("Export Sales Total", formatIntMoney(exportTotal), true);
+    row("Export Gross Total", formatIntMoney(exportGrossTotal));
+    if (exportDiscount > 0) row("Export Discount", formatIntMoney(exportDiscount));
+    row("Advance Payments Received", formatIntMoney(exportAdvanceTotal), true);
+    row("Remaining Balance", formatIntMoney(exportRemainingTotal));
     if (exportCancelled.length > 0) {
       row(`Cancelled (${exportCancelled.length})`, formatIntMoney(exportCancelledTotal), false, [200, 0, 0]);
     }
 
-    // By customer
-    const byExpCust: Record<string, { total: number; count: number }> = {};
+    // By customer — show advance and remaining
+    const byExpCust: Record<string, { advance: number; remaining: number; discount: number; grossTotal: number; count: number }> = {};
     for (const s of exportCompleted) {
-      if (!byExpCust[s.customerId]) byExpCust[s.customerId] = { total: 0, count: 0 };
-      byExpCust[s.customerId].total += s.total;
+      if (!byExpCust[s.customerId]) byExpCust[s.customerId] = { advance: 0, remaining: 0, discount: 0, grossTotal: 0, count: 0 };
+      byExpCust[s.customerId].advance += (s.advancePayment ?? 0);
+      byExpCust[s.customerId].discount += (s.discountAmount ?? 0);
+      byExpCust[s.customerId].grossTotal += s.total;
       byExpCust[s.customerId].count += 1;
     }
     y += 4;
@@ -388,7 +396,9 @@ function buildSalesPdf(args: {
       (exportCustomersById[a[0]]?.name ?? "").localeCompare(exportCustomersById[b[0]]?.name ?? "")
     )) {
       const name = exportCustomersById[cid]?.name ?? cid;
-      row(`${name} (${data.count})`, formatIntMoney(data.total));
+      const rem = data.grossTotal - data.discount - data.advance;
+      row(`${name} — Advance`, formatIntMoney(data.advance), true);
+      row(`${name} — Remaining`, formatIntMoney(rem));
     }
   }
 
@@ -453,7 +463,7 @@ function buildSalesPdf(args: {
   if (deliveryEnabled) row("Delivery Sales", formatIntMoney(deliveryTotal));
   if (tableEnabled) row("Table Sales", formatIntMoney(tableSalesTotal));
   row("Credit Sales", formatIntMoney(totalCreditSales));
-  if (showExport) row("Export Sales", formatIntMoney(exportTotal));
+  if (showExport) row("Export Advance", formatIntMoney(exportAdvanceTotal));
   if (showAdvBooking) row("Advance/Booking", formatIntMoney(advBookingTotal));
   y += 4;
   row("Overall Sales", formatIntMoney(overallSales), true);

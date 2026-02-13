@@ -76,12 +76,17 @@ export function SalesReportPreview({
   const advCancelledTotal = React.useMemo(() => advCancelledOrders.reduce((s, o) => s + o.total, 0), [advCancelledOrders]);
   const bkCancelledTotal = React.useMemo(() => bkCancelledOrders.reduce((s, o) => s + o.price, 0), [bkCancelledOrders]);
 
+  // Export advance/discount for combined totals
+  const exportCompletedSales = React.useMemo(() => exportSales.filter((s) => !s.cancelled), [exportSales]);
+  const exportDiscountTotal = React.useMemo(() => exportCompletedSales.reduce((s, e) => s + (e.discountAmount ?? 0), 0), [exportCompletedSales]);
+  const exportCancelledSalesTotal = React.useMemo(() => exportSales.filter((s) => s.cancelled).reduce((s, e) => s + e.total, 0), [exportSales]);
+
   // Combined totals (regular orders + table orders)
   const gross = React.useMemo(() => completed.reduce((s, o) => s + o.subtotal, 0) + tableSalesGross, [completed, tableSalesGross]);
-  const discount = React.useMemo(() => completed.reduce((s, o) => s + o.discountTotal, 0) + tableDiscountTotal + (showAdvBooking ? advDiscount + bkDiscount : 0), [completed, tableDiscountTotal, showAdvBooking, advDiscount, bkDiscount]);
+  const discount = React.useMemo(() => completed.reduce((s, o) => s + o.discountTotal, 0) + tableDiscountTotal + (showAdvBooking ? advDiscount + bkDiscount : 0) + (showExport ? exportDiscountTotal : 0), [completed, tableDiscountTotal, showAdvBooking, advDiscount, bkDiscount, showExport, exportDiscountTotal]);
   const net = React.useMemo(() => completed.reduce((s, o) => s + o.total, 0) + tableSalesTotal, [completed, tableSalesTotal]);
 
-  const cancelledTotal = React.useMemo(() => cancelled.reduce((s, o) => s + o.total, 0) + tableCancelledTotal + (showAdvBooking ? advCancelledTotal + bkCancelledTotal : 0), [cancelled, tableCancelledTotal, showAdvBooking, advCancelledTotal, bkCancelledTotal]);
+  const cancelledTotal = React.useMemo(() => cancelled.reduce((s, o) => s + o.total, 0) + tableCancelledTotal + (showAdvBooking ? advCancelledTotal + bkCancelledTotal : 0) + (showExport ? exportCancelledSalesTotal : 0), [cancelled, tableCancelledTotal, showAdvBooking, advCancelledTotal, bkCancelledTotal, showExport, exportCancelledSalesTotal]);
 
   const totalExpenses = React.useMemo(() => expenses.reduce((s, e) => s + e.amount, 0), [expenses]);
   const netAfterExpenses = net - totalExpenses;
@@ -327,22 +332,45 @@ export function SalesReportPreview({
         {showExport && exportSales.length > 0 && (() => {
           const exportCompleted = exportSales.filter((s) => !s.cancelled);
           const exportCancelledList = exportSales.filter((s) => s.cancelled);
-          const exportTotal = exportCompleted.reduce((s, e) => s + e.total, 0);
+          const exportAdvanceTotal = exportCompleted.reduce((s, e) => s + (e.advancePayment ?? 0), 0);
+          const exportDiscount = exportCompleted.reduce((s, e) => s + (e.discountAmount ?? 0), 0);
+          const exportGrossTotal = exportCompleted.reduce((s, e) => s + e.total, 0);
+          const exportRemainingTotal = exportGrossTotal - exportDiscount - exportAdvanceTotal;
           const exportCancelledTotal = exportCancelledList.reduce((s, e) => s + e.total, 0);
           const exportCustsById = Object.fromEntries(exportCustomers.map((c) => [c.id, c]));
-          const byExpCust: Record<string, { name: string; total: number; count: number }> = {};
+          const byExpCust: Record<string, { name: string; advance: number; remaining: number; discount: number; grossTotal: number; count: number }> = {};
           for (const s of exportCompleted) {
-            if (!byExpCust[s.customerId]) byExpCust[s.customerId] = { name: exportCustsById[s.customerId]?.name ?? s.customerId, total: 0, count: 0 };
-            byExpCust[s.customerId].total += s.total;
+            if (!byExpCust[s.customerId]) byExpCust[s.customerId] = { name: exportCustsById[s.customerId]?.name ?? s.customerId, advance: 0, remaining: 0, discount: 0, grossTotal: 0, count: 0 };
+            byExpCust[s.customerId].advance += (s.advancePayment ?? 0);
+            byExpCust[s.customerId].discount += (s.discountAmount ?? 0);
+            byExpCust[s.customerId].grossTotal += s.total;
             byExpCust[s.customerId].count += 1;
+          }
+          // Calculate remaining for each
+          for (const data of Object.values(byExpCust)) {
+            data.remaining = data.grossTotal - data.discount - data.advance;
           }
           return (
             <div className="space-y-2">
               <div className="text-sm font-semibold">Export Sales</div>
               <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
                 <div className="rounded-md border p-3">
-                  <div className="text-xs text-muted-foreground">Export Sales Total</div>
-                  <div className="text-base font-semibold">{formatIntMoney(exportTotal)}</div>
+                  <div className="text-xs text-muted-foreground">Export Gross Total</div>
+                  <div className="text-base font-semibold">{formatIntMoney(exportGrossTotal)}</div>
+                </div>
+                {exportDiscount > 0 && (
+                  <div className="rounded-md border p-3">
+                    <div className="text-xs text-muted-foreground">Export Discount</div>
+                    <div className="text-base font-semibold">{formatIntMoney(exportDiscount)}</div>
+                  </div>
+                )}
+                <div className="rounded-md border p-3">
+                  <div className="text-xs text-muted-foreground">Advance Received</div>
+                  <div className="text-base font-semibold">{formatIntMoney(exportAdvanceTotal)}</div>
+                </div>
+                <div className="rounded-md border p-3">
+                  <div className="text-xs text-muted-foreground">Remaining Balance</div>
+                  <div className="text-base font-semibold">{formatIntMoney(exportRemainingTotal)}</div>
                 </div>
                 {exportCancelledList.length > 0 && (
                   <div className="rounded-md border p-3">
@@ -358,7 +386,8 @@ export function SalesReportPreview({
                       <tr className="text-left">
                         <th className="px-3 py-2 font-medium">Buyer</th>
                         <th className="whitespace-nowrap px-3 py-2 font-medium">Sales</th>
-                        <th className="whitespace-nowrap px-3 py-2 font-medium">Total</th>
+                        <th className="whitespace-nowrap px-3 py-2 font-medium">Advance</th>
+                        <th className="whitespace-nowrap px-3 py-2 font-medium">Remaining</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -366,7 +395,8 @@ export function SalesReportPreview({
                         <tr key={c.name} className="border-t">
                           <td className="px-3 py-2">{c.name}</td>
                           <td className="whitespace-nowrap px-3 py-2">{c.count}</td>
-                          <td className="whitespace-nowrap px-3 py-2 font-medium">{formatIntMoney(c.total)}</td>
+                          <td className="whitespace-nowrap px-3 py-2 font-medium">{formatIntMoney(c.advance)}</td>
+                          <td className="whitespace-nowrap px-3 py-2">{formatIntMoney(c.remaining)}</td>
                         </tr>
                       ))}
                     </tbody>
