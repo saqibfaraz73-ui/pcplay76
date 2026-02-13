@@ -1,5 +1,5 @@
 import type { Order, Settings } from "@/db/schema";
-import { formatIntMoney, fmtDateTime } from "@/features/pos/format";
+import { formatIntMoney, fmtDateTime, fmtTime12 } from "@/features/pos/format";
 import { btConnect, btSend, isNativeAndroid } from "@/features/pos/bluetooth-printer";
 import { usbSend } from "@/features/pos/usb-printer";
 import { generateLogoEscPos } from "@/features/pos/escpos-image";
@@ -146,55 +146,38 @@ async function buildEscPosReceipt(
 async function buildKotReceipt(order: Order, settings: Settings): Promise<string> {
   const WIDTH = 32;
   const hr = "-".repeat(WIDTH);
-  const money = (n: number) => formatIntMoney(n);
 
   const center = (s = "") => {
     const trimmed = s.slice(0, WIDTH);
-    const pad = Math.floor((WIDTH - trimmed.length) / 2);
+    const pad = Math.max(0, Math.floor((WIDTH - trimmed.length) / 2));
     return " ".repeat(pad) + trimmed;
   };
 
-  const lr = (l = "", r = "") => {
-    const sp = WIDTH - l.length - r.length;
-    return l + " ".repeat(Math.max(1, sp)) + r;
-  };
+  const now = new Date();
+  const timeStr = fmtTime12(now.toTimeString().slice(0, 5));
 
   const out: string[] = [];
 
   out.push("\x1b@");       // init
   out.push("\x1b3\x18");   // tight line spacing
 
-  // KOT never shows logo, address, or phone
-  out.push(center(settings.restaurantName || "SANGI POS"));
-
+  out.push(center("KITCHEN ORDER"));
   out.push(hr);
   out.push(center(`Bill #: ${order.receiptNo}`));
-  out.push(center(`Date: ${format(new Date(order.createdAt), "dd/MM/yyyy h:mm a")}`));
-  out.push(center(`Prepared By: ${order.cashier}`));
-  out.push(center(`Payment: ${order.paymentMethod.toUpperCase()}`));
+  out.push(center(`Cashier: ${order.cashier}`));
+  out.push(center(timeStr));
   out.push(hr);
 
-  out.push(
-    "Item".padEnd(16) +
-    "Qty".padStart(5) +
-    "Total".padStart(11)
-  );
-  out.push(hr);
-
-  order.lines.forEach((i) => {
-    out.push(
-      i.name.slice(0, 16).padEnd(16) +
-      String(i.qty).padStart(5) +
-      money(i.subtotal).padStart(11)
-    );
-  });
+  // Items - name and quantity only (same as table KOT)
+  for (const item of order.lines) {
+    const line = `${item.name}`.padEnd(WIDTH - 4) + `x${item.qty}`;
+    out.push(line.slice(0, WIDTH));
+  }
 
   out.push(hr);
-  out.push(lr("Subtotal:", money(order.subtotal)));
-  out.push(lr("Grand Total:", money(order.total)));
-  out.push(hr);
-  out.push(center("Thank you, come again!"));
-  out.push("\n\n\n");
+  out.push("");
+  out.push("");
+  out.push("");
   out.push("\x1dV\x41\x03"); // partial cut
 
   return out.join("\n");
