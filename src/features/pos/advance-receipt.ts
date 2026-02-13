@@ -74,7 +74,9 @@ function buildAdvanceEscPos(order: AdvanceOrder, settings: Settings): string {
 function buildAdvanceKot(order: AdvanceOrder, settings: Settings): string {
   const WIDTH = 32;
   const hr = "-".repeat(WIDTH);
+  const money = (n: number) => formatIntMoney(n);
   const center = (s = "") => { const pad = Math.max(0, Math.floor((WIDTH - s.length) / 2)); return " ".repeat(pad) + s; };
+  const lr = (l = "", r = "") => { const sp = WIDTH - l.length - r.length; return l + " ".repeat(Math.max(1, sp)) + r; };
 
   const now = new Date();
   const timeStr = fmtTime12(now.toTimeString().slice(0, 5));
@@ -88,12 +90,17 @@ function buildAdvanceKot(order: AdvanceOrder, settings: Settings): string {
   out.push(center(timeStr));
   out.push(hr);
 
-  // Items - name and quantity only (same as table KOT)
+  // Items with qty and price
+  out.push("Item".padEnd(16) + "Qty".padStart(5) + "Total".padStart(11));
+  out.push(hr);
   for (const l of order.lines) {
-    const line = `${l.name}`.padEnd(WIDTH - 4) + `x${l.qty || ""}`;
-    out.push(line.slice(0, WIDTH));
+    out.push(l.name.slice(0, 16).padEnd(16) + String(l.qty || "").padStart(5) + money(l.subtotal).padStart(11));
   }
 
+  out.push(hr);
+  out.push(lr("Total:", money(order.total)));
+  out.push(lr("Advance:", money(order.advancePayment)));
+  out.push(lr("Remaining:", money(order.remainingPayment)));
   out.push(hr);
   out.push("");
   out.push("");
@@ -195,7 +202,9 @@ export async function printBookingReceipt(order: BookingOrder) {
 export function buildBookingKot(order: BookingOrder, settings: Settings): string {
   const WIDTH = 32;
   const hr = "-".repeat(WIDTH);
+  const money = (n: number) => formatIntMoney(n);
   const center = (s = "") => { const pad = Math.max(0, Math.floor((WIDTH - s.length) / 2)); return " ".repeat(pad) + s; };
+  const lr = (l = "", r = "") => { const sp = WIDTH - l.length - r.length; return l + " ".repeat(Math.max(1, sp)) + r; };
 
   const now = new Date();
   const timeStr = fmtTime12(now.toTimeString().slice(0, 5));
@@ -204,10 +213,16 @@ export function buildBookingKot(order: BookingOrder, settings: Settings): string
   out.push(center("KITCHEN ORDER"));
   out.push(hr);
   out.push(center(`Bkg #: ${order.receiptNo}`));
-  out.push(center(`${order.bookableItemName}`));
   if (order.cashier) out.push(center(`By: ${order.cashier}`));
   if (order.customerName) out.push(center(`Customer: ${order.customerName}`));
   out.push(center(timeStr));
+  out.push(hr);
+  out.push(lr("Item:", order.bookableItemName));
+  out.push(lr("Price:", money(order.price)));
+  if (order.discountAmount > 0) out.push(lr("Discount:", money(order.discountAmount)));
+  out.push(lr("Total:", money(order.total)));
+  out.push(lr("Advance:", money(order.advancePayment)));
+  out.push(lr("Remaining:", money(order.remainingPayment)));
   out.push(hr);
   out.push("");
   out.push("");
