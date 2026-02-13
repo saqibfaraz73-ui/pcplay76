@@ -452,94 +452,63 @@ export default function PosPartyLodge() {
         .sort((a, b) => a.createdAt - b.createdAt);
 
       const balance = getSupplierBalance(sup);
-
-      // Running balance calculation
-      const paymentsAfterRange = payments.filter((p) => p.supplierId === sup.id && p.createdAt > toTs).reduce((s, p) => s + p.amount, 0);
-      const arrivalsAfterRange = arrivals.filter((a) => a.supplierId === sup.id && a.createdAt > toTs).reduce((s, a) => s + a.total, 0);
-      const balanceAtEndOfRange = balance + paymentsAfterRange - arrivalsAfterRange;
-
-      // Arrival running balances
-      let arrRunBal = balanceAtEndOfRange;
-      const arrBalAfter: number[] = [];
-      // We need to account for payments in range too. Let's merge events chronologically.
-      // Simpler: compute arrival balances independently
-      const totalPaymentsInRange = supPayments.reduce((s, p) => s + p.amount, 0);
-      let arrEndBal = balanceAtEndOfRange; // this includes effect of payments in range
-      // To get balance just from arrivals perspective, we separate
-      // Actually let's just compute from start: balance before range + arrivals - payments = balance at end
-      // balanceBeforeRange = balanceAtEndOfRange - totalArrivalsInRange + totalPaymentsInRange
       const totalArrivalsInRange = supArrivals.reduce((s, a) => s + a.total, 0);
-      const balanceBeforeRange = balanceAtEndOfRange - totalArrivalsInRange + totalPaymentsInRange;
-      
-      let runBal = balanceBeforeRange;
-      for (let i = 0; i < supArrivals.length; i++) {
-        runBal += supArrivals[i].total;
-        arrBalAfter[i] = runBal;
-      }
+      const totalPaidInRange = supPayments.reduce((s, p) => s + p.amount, 0);
 
-      // Payment running balances (from balance before range, considering arrivals happened)
-      let payRunBal = balanceBeforeRange + totalArrivalsInRange; // balance before any payments but after all arrivals
-      // Actually better: balance before range, then subtract payments
-      let payBal = balanceBeforeRange + totalArrivalsInRange;
-      const payBalAfter: number[] = [];
-      for (let i = 0; i < supPayments.length; i++) {
-        payBal -= supPayments[i].amount;
-        payBalAfter[i] = payBal;
-      }
+      // Combined ledger (chronological)
+      type LEntry = { type: "arrival"; arrival: typeof supArrivals[0]; date: number } | { type: "payment"; payment: typeof supPayments[0]; date: number };
+      const ledger: LEntry[] = [
+        ...supArrivals.map((a) => ({ type: "arrival" as const, arrival: a, date: a.createdAt })),
+        ...supPayments.map((p) => ({ type: "payment" as const, payment: p, date: p.createdAt })),
+      ].sort((a, b) => a.date - b.date);
 
-      checkPage(60 + (supArrivals.length + supPayments.length) * lineH);
+      checkPage(60 + ledger.length * lineH);
       doc.setFontSize(11); doc.setFont("helvetica", "bold"); doc.setTextColor(0);
       doc.text(sup.name, left, y);
       doc.text(`Current Balance: ${formatIntMoney(balance)}`, right, y, { align: "right" }); y += 14;
 
       if (sup.contact) { doc.setFontSize(8); doc.setFont("helvetica", "normal"); doc.setTextColor(100); doc.text(`Contact: ${sup.contact}`, left, y); y += 10; }
       if (sup.itemName) { doc.setFontSize(8); doc.text(`Item: ${sup.itemName}`, left, y); y += 10; }
+      doc.setFontSize(9); doc.setTextColor(0);
+      doc.text(`Total Arrivals: ${formatIntMoney(totalArrivalsInRange)}`, left, y);
+      doc.text(`Total Paid: ${formatIntMoney(totalPaidInRange)}`, left + 150, y); y += 16;
 
-      // Arrivals section
+      // Ledger header
       doc.setFontSize(9); doc.setFont("helvetica", "bold"); doc.setTextColor(0);
-      doc.text("Arrivals:", left + 4, y); y += 12;
-      if (supArrivals.length > 0) {
+      doc.text("Ledger:", left + 4, y); y += 12;
+
+      if (ledger.length > 0) {
         doc.setFontSize(8); doc.setFont("helvetica", "bold"); doc.setTextColor(80);
-        doc.text("#", left + 4, y); doc.text("Item", left + 20, y); doc.text("Qty", left + 120, y); doc.text("Total", left + 170, y); doc.text("Date", left + 240, y); doc.text("Bal After", right - 10, y, { align: "right" }); y += 10;
+        doc.text("#", left + 4, y); doc.text("Type", left + 20, y); doc.text("Details", left + 70, y); doc.text("Bill", left + 260, y); doc.text("Payment", left + 310, y); doc.text("Date", left + 370, y); doc.text("Balance", right - 10, y, { align: "right" }); y += 10;
         doc.setDrawColor(200); doc.line(left, y - 4, right, y - 4);
         doc.setFont("helvetica", "normal"); doc.setTextColor(0);
-        supArrivals.forEach((a, idx) => {
-          checkPage();
-          doc.setFontSize(8);
+        ledger.forEach((entry, idx) => {
+          checkPage(); doc.setFontSize(8);
           doc.text(String(idx + 1), left + 4, y);
-          doc.text((a.itemName ?? "").slice(0, 16), left + 20, y);
-          doc.text(`${a.qty} ${a.unit || ""}`, left + 120, y);
-          doc.text(formatIntMoney(a.total), left + 170, y);
-          doc.text(fmtDate(a.createdAt), left + 240, y);
-          doc.text(formatIntMoney(arrBalAfter[idx]), right - 10, y, { align: "right" });
+          if (entry.type === "arrival") {
+            const a = entry.arrival;
+            doc.setTextColor(0);
+            doc.text("Arrival", left + 20, y);
+            doc.text(`${(a.itemName ?? "").slice(0, 20)} ${a.qty}${a.unit ? " " + a.unit : ""} @ ${formatIntMoney(a.unitPrice)}`, left + 70, y);
+            doc.text(formatIntMoney(a.total), left + 260, y);
+            doc.text("-", left + 310, y);
+            doc.text(fmtDate(entry.date), left + 370, y);
+            doc.text(formatIntMoney(a.total), right - 10, y, { align: "right" });
+          } else {
+            const p = entry.payment;
+            doc.setTextColor(0, 128, 0);
+            doc.text("Payment", left + 20, y);
+            doc.text(`${p.paymentType ?? "cash"}${p.note ? " - " + p.note.slice(0, 20) : ""}`, left + 70, y);
+            doc.text("-", left + 260, y);
+            doc.text(formatIntMoney(p.amount), left + 310, y);
+            doc.text(fmtDate(entry.date), left + 370, y);
+            doc.setTextColor(0);
+            doc.text("Paid", right - 10, y, { align: "right" });
+          }
           y += lineH;
         });
       } else {
-        doc.setFontSize(8); doc.setTextColor(120); doc.text("No arrivals in this period", left + 10, y); y += lineH;
-      }
-      y += 6;
-
-      // Payments section
-      doc.setFontSize(9); doc.setFont("helvetica", "bold"); doc.setTextColor(0);
-      doc.text("Payments:", left + 4, y); y += 12;
-      if (supPayments.length > 0) {
-        doc.setFontSize(8); doc.setFont("helvetica", "bold"); doc.setTextColor(80);
-        doc.text("#", left + 4, y); doc.text("Amount", left + 30, y); doc.text("Type", left + 120, y); doc.text("Date", left + 180, y); doc.text("Bal After", right - 10, y, { align: "right" }); y += 10;
-        doc.setDrawColor(200); doc.line(left, y - 4, right, y - 4);
-
-        doc.setFont("helvetica", "normal"); doc.setTextColor(0);
-        supPayments.forEach((p, idx) => {
-          checkPage();
-          doc.setFontSize(9);
-          doc.text(String(idx + 1), left + 4, y);
-          doc.text(formatIntMoney(p.amount), left + 30, y);
-          doc.text(p.paymentType ?? "—", left + 120, y);
-          doc.text(fmtDate(p.createdAt), left + 180, y);
-          doc.text(formatIntMoney(payBalAfter[idx]), right - 10, y, { align: "right" });
-          y += lineH;
-        });
-      } else {
-        doc.setFontSize(8); doc.setTextColor(120); doc.text("No payments in this period", left + 10, y); y += lineH;
+        doc.setFontSize(8); doc.setTextColor(120); doc.text("No records in this period", left + 10, y); y += lineH;
       }
       y += 16;
     }
