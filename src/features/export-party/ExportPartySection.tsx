@@ -655,52 +655,60 @@ export function ExportPartySection() {
     if (cust.itemName) { doc.setFontSize(9); doc.text(`Item: ${cust.itemName}${cust.stockUnit ? ` (${cust.stockUnit})` : ""}${cust.unitPrice ? ` @ ${formatIntMoney(cust.unitPrice)}` : ""}`, left, y); y += 12; }
     doc.setFontSize(9); doc.setTextColor(0);
     doc.text(`Total Balance: ${formatIntMoney(cust.totalBalance)}`, left, y); y += 12;
-    doc.text(`Total Sales: ${formatIntMoney(totalSalesInRange)}`, left, y); y += 12;
-    doc.text(`Total Paid: ${formatIntMoney(totalPaidInRange)}`, left, y); y += 16;
+    doc.text(`Total Sales: ${formatIntMoney(totalSalesInRange)}`, left, y);
+    doc.text(`Total Paid: ${formatIntMoney(totalPaidInRange)}`, left + 150, y); y += 16;
 
-    // Sales section
+    // Combined ledger (chronological)
+    type LEntry = { type: "sale"; sale: ExportSale; date: number } | { type: "payment"; payment: ExportPayment; date: number };
+    const ledger: LEntry[] = [
+      ...custSales.map((s) => ({ type: "sale" as const, sale: s, date: s.createdAt })),
+      ...custPayments.map((p) => ({ type: "payment" as const, payment: p, date: p.createdAt })),
+    ].sort((a, b) => a.date - b.date);
+
+    // Running balance
+    const paymentsAfterRange = payments.filter((p) => p.customerId === cust.id && p.createdAt > toTs).reduce((s, p) => s + p.amount, 0);
+    const salesAfterRange = sales.filter((s) => s.customerId === cust.id && s.createdAt > toTs).reduce((s, a) => s + a.total, 0);
+    const balanceAtEndOfRange = balance + paymentsAfterRange - salesAfterRange;
+    let balBefore = balanceAtEndOfRange - totalSalesInRange + totalPaidInRange;
+    let runBal = balBefore;
+    const balAfter: number[] = [];
+    for (let i = 0; i < ledger.length; i++) {
+      if (ledger[i].type === "sale") runBal += (ledger[i] as any).sale.total;
+      else runBal -= (ledger[i] as any).payment.amount;
+      balAfter[i] = runBal;
+    }
+
     doc.setFontSize(9); doc.setFont("helvetica", "bold"); doc.setTextColor(0);
-    doc.text("Sales:", left + 4, y); y += 12;
-    if (custSales.length > 0) {
+    doc.text("Ledger:", left + 4, y); y += 12;
+
+    if (ledger.length > 0) {
       doc.setFontSize(8); doc.setFont("helvetica", "bold"); doc.setTextColor(80);
-      doc.text("#", left + 4, y); doc.text("Item", left + 20, y); doc.text("Qty", left + 130, y); doc.text("Price", left + 180, y); doc.text("Total", left + 240, y); doc.text("Note", left + 310, y); doc.text("Date", right - 10, y, { align: "right" }); y += 10;
+      doc.text("#", left + 4, y); doc.text("Type", left + 20, y); doc.text("Details", left + 70, y); doc.text("Amount", left + 280, y); doc.text("Date", left + 350, y); doc.text("Balance", right - 10, y, { align: "right" }); y += 10;
       doc.setDrawColor(200); doc.line(left, y - 4, right, y - 4);
       doc.setFont("helvetica", "normal"); doc.setTextColor(0);
-      custSales.forEach((s, idx) => {
+      ledger.forEach((entry, idx) => {
         checkPage(); doc.setFontSize(8);
         doc.text(String(idx + 1), left + 4, y);
-        doc.text((s.itemName ?? "").slice(0, 16), left + 20, y);
-        doc.text(`${s.qty} ${s.unit || ""}`, left + 130, y);
-        doc.text(formatIntMoney(s.unitPrice), left + 180, y);
-        doc.text(formatIntMoney(s.total), left + 240, y);
-        doc.text((s.note ?? "").slice(0, 15), left + 310, y);
-        doc.text(fmtDate(s.createdAt), right - 10, y, { align: "right" });
+        if (entry.type === "sale") {
+          const s = entry.sale;
+          doc.setTextColor(0);
+          doc.text("Sale", left + 20, y);
+          doc.text(`${(s.itemName ?? "").slice(0, 20)} ${s.qty}${s.unit ? " " + s.unit : ""} @ ${formatIntMoney(s.unitPrice)}`, left + 70, y);
+          doc.text(formatIntMoney(s.total), left + 280, y);
+        } else {
+          const p = entry.payment;
+          doc.setTextColor(0, 128, 0);
+          doc.text("Payment", left + 20, y);
+          doc.text(`${p.paymentType ?? "cash"}${p.note ? " - " + p.note.slice(0, 20) : ""}`, left + 70, y);
+          doc.text(`-${formatIntMoney(p.amount)}`, left + 280, y);
+        }
+        doc.setTextColor(0);
+        doc.text(fmtDate(entry.date), left + 350, y);
+        doc.text(formatIntMoney(balAfter[idx]), right - 10, y, { align: "right" });
         y += lineH;
       });
     } else {
-      doc.setFontSize(8); doc.setTextColor(120); doc.text("No sales in this period", left + 10, y); y += lineH;
-    }
-    y += 8;
-
-    // Payments section
-    doc.setFontSize(9); doc.setFont("helvetica", "bold"); doc.setTextColor(0);
-    doc.text("Payments Received:", left + 4, y); y += 12;
-    if (custPayments.length > 0) {
-      doc.setFontSize(8); doc.setFont("helvetica", "bold"); doc.setTextColor(80);
-      doc.text("#", left + 4, y); doc.text("Amount", left + 30, y); doc.text("Type", left + 140, y); doc.text("Note", left + 200, y); doc.text("Date", right - 10, y, { align: "right" }); y += 10;
-      doc.setDrawColor(200); doc.line(left, y - 4, right, y - 4);
-      doc.setFont("helvetica", "normal"); doc.setTextColor(0);
-      custPayments.forEach((p, idx) => {
-        checkPage(); doc.setFontSize(9);
-        doc.text(String(idx + 1), left + 4, y);
-        doc.text(formatIntMoney(p.amount), left + 30, y);
-        doc.text(p.paymentType ?? "—", left + 140, y);
-        doc.text((p.note ?? "").slice(0, 25), left + 200, y);
-        doc.text(fmtDate(p.createdAt), right - 10, y, { align: "right" });
-        y += lineH;
-      });
-    } else {
-      doc.setFontSize(9); doc.setTextColor(120); doc.text("No payments in this period", left + 4, y); y += lineH;
+      doc.setFontSize(8); doc.setTextColor(120); doc.text("No records in this period", left + 10, y); y += lineH;
     }
     return doc;
   };
