@@ -65,12 +65,23 @@ export function SalesReportPreview({
     [completedTableOrders],
   );
 
+  // Advance/Booking discount+cancelled for combined totals
+  const showAdvBooking = settings?.showAdvanceBookingInReports ?? false;
+  const advCompletedOrders = React.useMemo(() => advanceOrders.filter((o) => o.status !== "cancelled"), [advanceOrders]);
+  const advCancelledOrders = React.useMemo(() => advanceOrders.filter((o) => o.status === "cancelled"), [advanceOrders]);
+  const bkCompletedOrders = React.useMemo(() => bookingOrders.filter((o) => o.status !== "cancelled"), [bookingOrders]);
+  const bkCancelledOrders = React.useMemo(() => bookingOrders.filter((o) => o.status === "cancelled"), [bookingOrders]);
+  const advDiscount = React.useMemo(() => advCompletedOrders.reduce((s, o) => s + o.discountAmount, 0), [advCompletedOrders]);
+  const bkDiscount = React.useMemo(() => bkCompletedOrders.reduce((s, o) => s + o.discountAmount, 0), [bkCompletedOrders]);
+  const advCancelledTotal = React.useMemo(() => advCancelledOrders.reduce((s, o) => s + o.total, 0), [advCancelledOrders]);
+  const bkCancelledTotal = React.useMemo(() => bkCancelledOrders.reduce((s, o) => s + o.price, 0), [bkCancelledOrders]);
+
   // Combined totals (regular orders + table orders)
   const gross = React.useMemo(() => completed.reduce((s, o) => s + o.subtotal, 0) + tableSalesGross, [completed, tableSalesGross]);
-  const discount = React.useMemo(() => completed.reduce((s, o) => s + o.discountTotal, 0) + tableDiscountTotal, [completed, tableDiscountTotal]);
+  const discount = React.useMemo(() => completed.reduce((s, o) => s + o.discountTotal, 0) + tableDiscountTotal + (showAdvBooking ? advDiscount + bkDiscount : 0), [completed, tableDiscountTotal, showAdvBooking, advDiscount, bkDiscount]);
   const net = React.useMemo(() => completed.reduce((s, o) => s + o.total, 0) + tableSalesTotal, [completed, tableSalesTotal]);
 
-  const cancelledTotal = React.useMemo(() => cancelled.reduce((s, o) => s + o.total, 0) + tableCancelledTotal, [cancelled, tableCancelledTotal]);
+  const cancelledTotal = React.useMemo(() => cancelled.reduce((s, o) => s + o.total, 0) + tableCancelledTotal + (showAdvBooking ? advCancelledTotal + bkCancelledTotal : 0), [cancelled, tableCancelledTotal, showAdvBooking, advCancelledTotal, bkCancelledTotal]);
 
   const totalExpenses = React.useMemo(() => expenses.reduce((s, e) => s + e.amount, 0), [expenses]);
   const netAfterExpenses = net - totalExpenses;
@@ -386,7 +397,7 @@ export function SalesReportPreview({
             if (!byItem[o.bookableItemId]) byItem[o.bookableItemId] = { name: o.bookableItemName, count: 0, hours: 0, revenue: 0 };
             byItem[o.bookableItemId].count += 1;
             byItem[o.bookableItemId].hours += o.durationHours;
-            byItem[o.bookableItemId].revenue += o.total;
+            byItem[o.bookableItemId].revenue += o.advancePayment;
           }
           const itemBreakdown = Object.values(byItem).sort((a, b) => b.revenue - a.revenue);
 

@@ -92,7 +92,7 @@ export function AdminBackupRestore() {
       setLastBackupUri(uri);
       setLastBackupTitle(fileName);
       markBackupDone();
-      toast({ title: "Backup created", description: fileName });
+      toast({ title: "Backup created", description: `${fileName}\nPath: Sangi Pos/Backup/${fileName}` });
     } catch (e: any) {
       toast({ title: "Backup failed", description: e?.message ?? String(e), variant: "destructive" });
     }
