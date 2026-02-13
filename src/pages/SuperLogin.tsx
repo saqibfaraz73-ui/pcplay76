@@ -1,9 +1,14 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
+import { format } from "date-fns";
+import { CalendarIcon } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useToast } from "@/hooks/use-toast";
 import { getLicense, updateLicense } from "@/features/licensing/licensing-db";
 import { generateLicenseFile, shareLicenseFile, generateLicenseBase64 } from "@/features/licensing/license-file";
@@ -20,6 +25,7 @@ export default function SuperLogin() {
   const [customerDeviceId, setCustomerDeviceId] = React.useState("");
   const [isPremium, setIsPremium] = React.useState(false);
   const [licensedDeviceId, setLicensedDeviceId] = React.useState("");
+  const [validUntilDate, setValidUntilDate] = React.useState<Date | undefined>(undefined);
   const [loading, setLoading] = React.useState(false);
 
   // Load current license state after auth
@@ -42,6 +48,14 @@ export default function SuperLogin() {
     }
   };
 
+  const getValidUntilISO = (): string | undefined => {
+    if (!validUntilDate) return undefined;
+    // Set to end of day
+    const d = new Date(validUntilDate);
+    d.setHours(23, 59, 59, 999);
+    return d.toISOString();
+  };
+
   const handleActivate = async () => {
     if (!customerDeviceId.trim()) {
       toast({ title: "Enter a Device ID first", variant: "destructive" });
@@ -49,10 +63,12 @@ export default function SuperLogin() {
     }
     setLoading(true);
     try {
-      await updateLicense({ isPremium: true, licensedDeviceId: customerDeviceId.trim() });
+      const validUntilTs = validUntilDate ? new Date(validUntilDate).setHours(23, 59, 59, 999) : undefined;
+      await updateLicense({ isPremium: true, licensedDeviceId: customerDeviceId.trim(), validUntil: validUntilTs });
       setIsPremium(true);
       setLicensedDeviceId(customerDeviceId.trim());
-      toast({ title: `Premium activated for ${customerDeviceId.trim()}` });
+      const expiryMsg = validUntilDate ? ` (valid until ${format(validUntilDate, "PPP")})` : "";
+      toast({ title: `Premium activated for ${customerDeviceId.trim()}${expiryMsg}` });
     } finally {
       setLoading(false);
     }
@@ -61,10 +77,11 @@ export default function SuperLogin() {
   const handleDeactivate = async () => {
     setLoading(true);
     try {
-      await updateLicense({ isPremium: false, licensedDeviceId: "" });
+      await updateLicense({ isPremium: false, licensedDeviceId: "", validUntil: undefined });
       setIsPremium(false);
       setLicensedDeviceId("");
       setCustomerDeviceId("");
+      setValidUntilDate(undefined);
       toast({ title: "Premium deactivated" });
     } finally {
       setLoading(false);
@@ -76,10 +93,11 @@ export default function SuperLogin() {
       toast({ title: "Enter a Device ID first", variant: "destructive" });
       return;
     }
+    const validUntilISO = getValidUntilISO();
     setLoading(true);
     try {
       // Try native file generation + share first
-      const { uri } = await generateLicenseFile(customerDeviceId.trim());
+      const { uri } = await generateLicenseFile(customerDeviceId.trim(), validUntilISO);
       toast({ title: "License file created!" });
       try {
         await shareLicenseFile(uri);
@@ -89,7 +107,7 @@ export default function SuperLogin() {
     } catch {
       // Fallback: copy encrypted data to clipboard so user can share via messaging
       try {
-        const base64 = generateLicenseBase64(customerDeviceId.trim());
+        const base64 = generateLicenseBase64(customerDeviceId.trim(), validUntilISO);
         await navigator.clipboard.writeText(base64);
         toast({ title: "License data copied to clipboard!", description: "Send this text to the customer. They save it as 'license.sangi' in Sangi Pos/Backup folder." });
       } catch (err2: any) {
@@ -146,6 +164,39 @@ export default function SuperLogin() {
               placeholder="e.g. SNG-XXXXXXXX-XXXX"
               className="font-mono text-xs"
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Valid Until (optional)</Label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={cn(
+                    "w-full justify-start text-left font-normal",
+                    !validUntilDate && "text-muted-foreground"
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {validUntilDate ? format(validUntilDate, "PPP") : "No expiry (lifetime)"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={validUntilDate}
+                  onSelect={setValidUntilDate}
+                  disabled={(date) => date < new Date()}
+                  initialFocus
+                  className={cn("p-3 pointer-events-auto")}
+                />
+              </PopoverContent>
+            </Popover>
+            {validUntilDate && (
+              <Button variant="ghost" size="sm" className="text-xs" onClick={() => setValidUntilDate(undefined)}>
+                Clear expiry (make lifetime)
+              </Button>
+            )}
           </div>
 
           {licensedDeviceId && (
