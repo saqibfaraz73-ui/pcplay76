@@ -940,9 +940,6 @@ export function ExportPartySection() {
                       History
                     </Button>
                     <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => openEdit(cust)}>Edit</Button>
-                    <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => void shareSingleCustomerPdf(cust)}>
-                      <Share2 className="h-3 w-3 mr-1" /> PDF
-                    </Button>
                     <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => void shareSingleSalesPdf(cust)}>
                       <PackagePlus className="h-3 w-3 mr-1" /> Sales PDF
                     </Button>
