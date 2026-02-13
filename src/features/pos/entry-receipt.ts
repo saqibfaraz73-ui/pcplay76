@@ -31,6 +31,9 @@ export type EntryReceiptData = {
   partyName: string;
   lines: EntryLine[];
   grandTotal: number;
+  discountAmount?: number;
+  advancePayment?: number;
+  remainingBalance?: number;
   note?: string;
   date: Date;
 };
@@ -225,6 +228,26 @@ export async function shareEntryReceipt(data: EntryReceiptData) {
   doc.setFontSize(10);
   doc.text(`Grand Total: ${money(data.grandTotal)}`, left, y);
   y += 14;
+
+  if ((data.discountAmount ?? 0) > 0) {
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    doc.text(`Discount: ${money(data.discountAmount!)}`, left, y);
+    y += 12;
+  }
+  if ((data.advancePayment ?? 0) > 0) {
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    doc.text(`Advance Payment: ${money(data.advancePayment!)}`, left, y);
+    y += 12;
+  }
+  if (data.remainingBalance != null) {
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9);
+    doc.text(`Remaining Balance: ${money(data.remainingBalance)}`, left, y);
+    y += 12;
+  }
+
   if (data.note) {
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8);
