@@ -978,28 +978,7 @@ export function ExportPartySection() {
                 ...selectedPayments.map((p) => ({ type: "payment" as const, payment: p, date: p.createdAt })),
               ].sort((a, b) => b.date - a.date); // newest first
 
-              // Calculate running balance (walk chronologically oldest→newest)
-              const chronological = [...ledger].reverse();
-              // Balance now = getBalance (totalBalance - all payments)
-              const currentBalance = getBalance(selectedCustomer);
-              // Sum all changes in this list to find balance before first entry
-              let balBefore = currentBalance;
-              for (const entry of chronological) {
-                if (entry.type === "sale") balBefore -= entry.sale.total - (entry.sale.discountAmount ?? 0);
-                else balBefore += entry.payment.amount;
-              }
-              let runBal = balBefore;
-              const balMap = new Map<number, number>();
-              chronological.forEach((entry, i) => {
-                if (entry.type === "sale") runBal += entry.sale.total - (entry.sale.discountAmount ?? 0);
-                else runBal -= entry.payment.amount;
-                balMap.set(i, runBal);
-              });
-              // Map back to display order (newest first)
-              const balAfter: number[] = ledger.map((_, dispIdx) => {
-                const chronIdx = chronological.length - 1 - dispIdx;
-                return balMap.get(chronIdx) ?? 0;
-              });
+              // No running balance needed – each entry shows its own bill/payment/balance only
 
               if (ledger.length === 0) {
                 return <div className="text-sm text-muted-foreground">No sales or payments recorded yet.</div>;
@@ -1034,7 +1013,7 @@ export function ExportPartySection() {
                           {s.cancelledReason && <div className="text-xs text-destructive">Reason: {s.cancelledReason}</div>}
                           <div className="flex items-center justify-between mt-1">
                             <div className="text-xs text-muted-foreground">{fmtDateTime(s.createdAt)}</div>
-                            <div className="text-xs font-medium">Bal: {formatIntMoney(balAfter[idx])}</div>
+                            <div className="text-xs font-medium">Bal: {formatIntMoney(s.total - (s.discountAmount ?? 0) - (s.advancePayment ?? 0))}</div>
                           </div>
                           <div className="flex gap-1 mt-1.5">
                             <Button variant="outline" size="sm" className="text-xs h-6 px-2" onClick={() => void printEntryReceipt(rd).catch((e: any) => toast({ title: "Print failed", description: e?.message, variant: "destructive" }))}>
@@ -1067,7 +1046,7 @@ export function ExportPartySection() {
                           {p.note && <div className="text-xs text-muted-foreground mt-1">{p.note}</div>}
                           <div className="flex items-center justify-between mt-1">
                             <div className="text-xs text-muted-foreground">{fmtDateTime(p.createdAt)}</div>
-                            <div className="text-xs font-medium">Bal: {formatIntMoney(balAfter[idx])}</div>
+                            <div className="text-xs font-medium">Paid: {formatIntMoney(p.amount)}</div>
                           </div>
                         </div>
                       );
