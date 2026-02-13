@@ -433,6 +433,19 @@ export function ExportPartySection() {
         ...custPayments.map((p) => ({ type: "payment" as const, payment: p, date: p.createdAt })),
       ].sort((a, b) => a.date - b.date);
 
+      // Running balance
+      const paymentsAfterRange = payments.filter((p) => p.customerId === cust.id && p.createdAt > toTs).reduce((s, p) => s + p.amount, 0);
+      const salesAfterRange = sales.filter((s) => s.customerId === cust.id && s.createdAt > toTs).reduce((s, a) => s + a.total, 0);
+      const balanceAtEndOfRange = balance + paymentsAfterRange - salesAfterRange;
+      const balanceBeforeRange = balanceAtEndOfRange - totalSalesInRange + totalPaymentsInRange;
+      let runBal = balanceBeforeRange;
+      const balAfter: number[] = [];
+      for (let i = 0; i < ledger.length; i++) {
+        if (ledger[i].type === "sale") runBal += (ledger[i] as any).sale.total;
+        else runBal -= (ledger[i] as any).payment.amount;
+        balAfter[i] = runBal;
+      }
+
       checkPage(60 + ledger.length * lineH);
       doc.setFontSize(11); doc.setFont("helvetica", "bold"); doc.setTextColor(0);
       doc.text(cust.name, left, y);
@@ -464,7 +477,6 @@ export function ExportPartySection() {
             doc.text(formatIntMoney(s.total), left + 260, y);
             doc.text("-", left + 310, y);
             doc.text(fmtDate(entry.date), left + 370, y);
-            doc.text(formatIntMoney(s.total), right - 10, y, { align: "right" });
           } else {
             const p = entry.payment;
             doc.setTextColor(0, 128, 0);
@@ -473,9 +485,9 @@ export function ExportPartySection() {
             doc.text("-", left + 260, y);
             doc.text(formatIntMoney(p.amount), left + 310, y);
             doc.text(fmtDate(entry.date), left + 370, y);
-            doc.setTextColor(0);
-            doc.text("Paid", right - 10, y, { align: "right" });
           }
+          doc.setTextColor(0);
+          doc.text(formatIntMoney(balAfter[idx]), right - 10, y, { align: "right" });
           y += lineH;
         });
       } else {
