@@ -303,7 +303,7 @@ export function ExportPartySection() {
       // Net amount to add to balance = total - discount
       const netTotal = saleAfterDiscount;
 
-      await db.transaction("rw", [db.exportCustomers, db.exportSales], async () => {
+      await db.transaction("rw", [db.exportCustomers, db.exportSales, db.exportPayments], async () => {
         let isFirst = true;
         for (const it of validItems) {
           const total = getItemTotal(it);
@@ -327,6 +327,19 @@ export function ExportPartySection() {
           isFirst = false;
         }
         await db.exportCustomers.update(cust.id, { totalBalance: cust.totalBalance + netTotal });
+
+        // Record advance payment in payment history so it shows up
+        if (saleAdvancePayment > 0) {
+          const advPay: ExportPayment = {
+            id: makeId("epay"),
+            customerId: cust.id,
+            amount: saleAdvancePayment,
+            paymentType: "cash",
+            note: `Advance on Sale #${entryNo}`,
+            createdAt: Date.now(),
+          };
+          await db.exportPayments.put(advPay);
+        }
       });
 
       toast({ title: `Sale #${entryNo} recorded`, description: `${validItems.length} item(s) totalling ${formatIntMoney(totalAdded)}${saleDiscount ? `, Discount: ${formatIntMoney(saleDiscount)}` : ""}${saleAdvancePayment ? `, Advance: ${formatIntMoney(saleAdvancePayment)}` : ""}` });
