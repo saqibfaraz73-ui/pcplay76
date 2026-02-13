@@ -14,11 +14,12 @@ import {
 } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/auth/AuthProvider";
-import { Menu, Printer, BarChart3, Settings, ShoppingCart, ClipboardList, Users, DollarSign, Truck, UtensilsCrossed, CalendarCheck } from "lucide-react";
+import { Menu, Printer, BarChart3, Settings, ShoppingCart, ClipboardList, Users, DollarSign, Truck, UtensilsCrossed, CalendarCheck, Wifi } from "lucide-react";
 import { useAndroidBackExitConfirm } from "@/hooks/useAndroidBackExitConfirm";
 import appLogo from "@/assets/app-logo.jpg";
 import { db } from "@/db/appDb";
 import { BackupReminder } from "@/features/admin/backup/BackupReminder";
+import { SyncStatusIndicator } from "@/features/sync/SyncStatusIndicator";
 
 const navItems = [
   { to: "/pos", label: "Sales", icon: ShoppingCart },
@@ -28,6 +29,7 @@ const navItems = [
 const adminSubNav = [
   { to: "/admin/reports", label: "Reports", icon: BarChart3 },
   { to: "/admin/delivery", label: "Delivery", icon: Truck },
+  { to: "/admin/sync", label: "Sync", icon: Wifi },
   { to: "/admin/printer", label: "Printer", icon: Printer },
   { to: "/admin/settings", label: "Settings", icon: Settings },
 ];
@@ -253,8 +255,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 </div>
               </div>
 
-              {/* Right: branding */}
+              {/* Right: branding + sync indicator */}
               <div className="flex items-center gap-3">
+                <SyncStatusIndicator />
                 <div className="text-right">
                   <div className="text-sm font-semibold leading-tight">SANGI POS</div>
                   <div className="text-xs text-muted-foreground leading-tight">Offline POS</div>

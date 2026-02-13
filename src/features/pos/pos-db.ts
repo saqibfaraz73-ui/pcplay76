@@ -68,7 +68,7 @@ export async function createOrder(args: {
   const serviceChargeAmount = args.serviceChargeAmount ?? 0;
   const total = subtotal - discountTotal + taxAmount + serviceChargeAmount;
 
-  return await db.transaction("rw", db.orders, db.inventory, db.counters, db.license, async () => {
+  const createdOrder = await db.transaction("rw", db.orders, db.inventory, db.counters, db.license, async () => {
     // Receipt counter
     const counter = (await db.counters.get("receipt")) ?? { id: "receipt" as const, next: 1 };
     const receiptNo = counter.next;
@@ -124,6 +124,24 @@ export async function createOrder(args: {
 
     return order;
   });
+
+  // Sync to Main device if in Sub mode (fire-and-forget, outside transaction)
+  try {
+    const { getSyncConfig } = await import("@/features/sync/sync-utils");
+    const config = getSyncConfig();
+    if (config.role === "sub") {
+      const { sendToMainApp } = await import("@/features/sync/sync-client");
+      const { getLicense } = await import("@/features/licensing/licensing-db");
+      const lic = await getLicense();
+      sendToMainApp("order", createdOrder, lic.deviceId).catch((e) =>
+        console.warn("[Sync] Failed to sync order:", e)
+      );
+    }
+  } catch {
+    // Sync module not available — ignore
+  }
+
+  return createdOrder;
 }
 
 export async function cancelOrder(args: { orderId: string; reason: string }): Promise<Order> {
