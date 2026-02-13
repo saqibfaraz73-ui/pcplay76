@@ -363,6 +363,11 @@ export function ExportPartySection() {
     partyName: customerName,
     lines: [{ itemName: s.itemName, qty: s.qty, unit: s.unit, unitPrice: s.unitPrice, total: s.total }],
     grandTotal: s.total,
+    discountAmount: s.discountAmount,
+    advancePayment: s.advancePayment,
+    remainingBalance: (s.advancePayment ?? 0) > 0 || (s.discountAmount ?? 0) > 0
+      ? s.total - (s.discountAmount ?? 0) - (s.advancePayment ?? 0)
+      : undefined,
     note: s.note,
     date: new Date(s.createdAt),
   });
