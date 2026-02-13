@@ -18,6 +18,7 @@ import AdminPrinterPage from "./pages/AdminPrinterPage";
 import AdminReportsPage from "./pages/AdminReportsPage";
 import AdminSettingsPage from "./pages/AdminSettingsPage";
 import AdminDeliveryPage from "./pages/AdminDeliveryPage";
+import AdminSyncPage from "./pages/AdminSyncPage";
 import PosTablesPage from "./pages/PosTablesPage";
 import PosAdvanceBooking from "./pages/PosAdvanceBooking";
 import { AuthProvider } from "@/auth/AuthProvider";
@@ -119,6 +120,14 @@ const App = () => (
                   element={
                     <ProtectedRoute allow={["admin"]}>
                       <AdminDeliveryPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/admin/sync"
+                  element={
+                    <ProtectedRoute allow={["admin"]}>
+                      <AdminSyncPage />
                     </ProtectedRoute>
                   }
                 />
