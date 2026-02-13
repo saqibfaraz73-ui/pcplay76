@@ -146,11 +146,16 @@ async function buildEscPosReceipt(
 async function buildKotReceipt(order: Order, settings: Settings): Promise<string> {
   const WIDTH = 32;
   const hr = "-".repeat(WIDTH);
+  const money = (n: number) => formatIntMoney(n);
 
   const center = (s = "") => {
     const trimmed = s.slice(0, WIDTH);
     const pad = Math.max(0, Math.floor((WIDTH - trimmed.length) / 2));
     return " ".repeat(pad) + trimmed;
+  };
+  const lr = (l = "", r = "") => {
+    const sp = WIDTH - l.length - r.length;
+    return l + " ".repeat(Math.max(1, sp)) + r;
   };
 
   const now = new Date();
@@ -165,15 +170,25 @@ async function buildKotReceipt(order: Order, settings: Settings): Promise<string
   out.push(hr);
   out.push(center(`Bill #: ${order.receiptNo}`));
   out.push(center(`Cashier: ${order.cashier}`));
+  out.push(center(`Payment: ${order.paymentMethod.toUpperCase()}`));
   out.push(center(timeStr));
   out.push(hr);
 
-  // Items - name and quantity only (same as table KOT)
+  // Items with qty and price
+  out.push("Item".padEnd(16) + "Qty".padStart(5) + "Total".padStart(11));
+  out.push(hr);
   for (const item of order.lines) {
-    const line = `${item.name}`.padEnd(WIDTH - 4) + `x${item.qty}`;
-    out.push(line.slice(0, WIDTH));
+    out.push(
+      item.name.slice(0, 16).padEnd(16) +
+      String(item.qty).padStart(5) +
+      money(item.subtotal).padStart(11)
+    );
   }
 
+  out.push(hr);
+  out.push(lr("Subtotal:", money(order.subtotal)));
+  if (order.discountTotal > 0) out.push(lr("Discount:", money(order.discountTotal)));
+  out.push(lr("Grand Total:", money(order.total)));
   out.push(hr);
   out.push("");
   out.push("");
@@ -310,16 +325,22 @@ export async function printKotFromOrder(order: Order) {
     const now = new Date();
     const timeStr = fmtTime12(now.toTimeString().slice(0, 5));
     const itemsHtml = order.lines
-      .map((l) => `<div class="item"><span>${escapeHtml(l.name)}</span><span>x${l.qty}</span></div>`)
+      .map((l) => `<div class="item"><span>${escapeHtml(l.name)}</span><span>x${l.qty}</span><span>${escapeHtml(formatIntMoney(l.subtotal))}</span></div>`)
       .join("");
     const html = `
       <h1>KITCHEN ORDER</h1>
       <div class="info">
         <div>Bill #: ${escapeHtml(String(order.receiptNo))}</div>
         <div>Cashier: ${escapeHtml(order.cashier)}</div>
+        <div>Payment: ${escapeHtml(order.paymentMethod.toUpperCase())}</div>
         <div>${escapeHtml(timeStr)}</div>
       </div>
-      <div class="items">${itemsHtml}</div>`;
+      <div class="items">${itemsHtml}</div>
+      <div class="totals">
+        <div class="item"><span>Subtotal</span><span></span><span>${escapeHtml(formatIntMoney(order.subtotal))}</span></div>
+        ${order.discountTotal > 0 ? `<div class="item"><span>Discount</span><span></span><span>${escapeHtml(formatIntMoney(order.discountTotal))}</span></div>` : ""}
+        <div class="item" style="font-weight:bold"><span>Grand Total</span><span></span><span>${escapeHtml(formatIntMoney(order.total))}</span></div>
+      </div>`;
     const w = window.open("", "_blank", "noopener,noreferrer,width=400,height=600");
     if (!w) return;
     w.document.open();
