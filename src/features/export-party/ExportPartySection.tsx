@@ -960,75 +960,112 @@ export function ExportPartySection() {
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div>
-              <div className="text-sm font-semibold mb-2 flex items-center gap-1"><PackagePlus className="h-3.5 w-3.5" /> Sales</div>
-              {selectedSales.length === 0 ? (
-                <div className="text-sm text-muted-foreground">No sales recorded yet.</div>
-              ) : (
+            {(() => {
+              // Build combined ledger sorted chronologically (newest first for display)
+              type LedgerItem = { type: "sale"; sale: typeof selectedSales[0]; date: number } | { type: "payment"; payment: typeof selectedPayments[0]; date: number };
+              const ledger: LedgerItem[] = [
+                ...selectedSales.map((s) => ({ type: "sale" as const, sale: s, date: s.createdAt })),
+                ...selectedPayments.map((p) => ({ type: "payment" as const, payment: p, date: p.createdAt })),
+              ].sort((a, b) => b.date - a.date); // newest first
+
+              // Calculate running balance (walk chronologically oldest→newest)
+              const chronological = [...ledger].reverse();
+              // Balance now = totalBalance; walk backwards from newest to find starting balance
+              const currentBalance = selectedCustomer.totalBalance;
+              // Sum all changes in this list to find balance before first entry
+              let balBefore = currentBalance;
+              for (const entry of chronological) {
+                if (entry.type === "sale") balBefore -= entry.sale.total - (entry.sale.discountAmount ?? 0);
+                else balBefore += entry.payment.amount;
+              }
+              let runBal = balBefore;
+              const balMap = new Map<number, number>();
+              chronological.forEach((entry, i) => {
+                if (entry.type === "sale") runBal += entry.sale.total - (entry.sale.discountAmount ?? 0);
+                else runBal -= entry.payment.amount;
+                balMap.set(i, runBal);
+              });
+              // Map back to display order (newest first)
+              const balAfter: number[] = ledger.map((_, dispIdx) => {
+                const chronIdx = chronological.length - 1 - dispIdx;
+                return balMap.get(chronIdx) ?? 0;
+              });
+
+              if (ledger.length === 0) {
+                return <div className="text-sm text-muted-foreground">No sales or payments recorded yet.</div>;
+              }
+
+              return (
                 <div className="space-y-2">
-                  {selectedSales.map((s, idx) => {
-                    const rd = buildReceiptFromSale(s, selectedCustomer.name);
-                    return (
-                    <div key={s.id} className={`rounded-md border p-2 text-sm ${s.cancelled ? "opacity-60 bg-destructive/5 border-destructive/30" : ""}`}>
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-2">
-                          {s.receiptNo ? (
-                            <span className="text-xs font-bold text-primary">#{s.receiptNo}</span>
-                          ) : (
-                            <span className="text-xs text-muted-foreground">{selectedSales.length - idx}</span>
-                          )}
-                          <span className="font-medium">{s.itemName}</span>
-                          {s.cancelled && <span className="text-xs font-semibold text-destructive">CANCELLED</span>}
+                  {ledger.map((entry, idx) => {
+                    if (entry.type === "sale") {
+                      const s = entry.sale;
+                      const rd = buildReceiptFromSale(s, selectedCustomer.name);
+                      return (
+                        <div key={s.id} className={`rounded-md border p-2 text-sm ${s.cancelled ? "opacity-60 bg-destructive/5 border-destructive/30" : ""}`}>
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2">
+                              <PackagePlus className="h-3 w-3 text-muted-foreground" />
+                              {s.receiptNo ? (
+                                <span className="text-xs font-bold text-primary">#{s.receiptNo}</span>
+                              ) : (
+                                <span className="text-xs text-muted-foreground">Sale</span>
+                              )}
+                              <span className="font-medium">{s.itemName}</span>
+                              {s.cancelled && <span className="text-xs font-semibold text-destructive">CANCELLED</span>}
+                            </div>
+                            <span className={`font-bold ${s.cancelled ? "line-through text-muted-foreground" : "text-red-600"}`}>+{formatIntMoney(s.total)}</span>
+                          </div>
+                          <div className="text-xs text-muted-foreground mt-1">{s.qty} {s.unit || "units"} × {formatIntMoney(s.unitPrice)}</div>
+                          {(s.discountAmount ?? 0) > 0 && <div className="text-xs text-muted-foreground">Discount: {formatIntMoney(s.discountAmount!)}</div>}
+                          {(s.advancePayment ?? 0) > 0 && <div className="text-xs font-medium text-primary">Advance: {formatIntMoney(s.advancePayment!)}</div>}
+                          {(s.advancePayment ?? 0) > 0 && <div className="text-xs text-muted-foreground">Remaining: {formatIntMoney(s.total - (s.discountAmount ?? 0) - (s.advancePayment ?? 0))}</div>}
+                          {s.note && <div className="text-xs text-muted-foreground">{s.note}</div>}
+                          {s.cancelledReason && <div className="text-xs text-destructive">Reason: {s.cancelledReason}</div>}
+                          <div className="flex items-center justify-between mt-1">
+                            <div className="text-xs text-muted-foreground">{fmtDateTime(s.createdAt)}</div>
+                            <div className="text-xs font-medium">Bal: {formatIntMoney(balAfter[idx])}</div>
+                          </div>
+                          <div className="flex gap-1 mt-1.5">
+                            <Button variant="outline" size="sm" className="text-xs h-6 px-2" onClick={() => void printEntryReceipt(rd).catch((e: any) => toast({ title: "Print failed", description: e?.message, variant: "destructive" }))}>
+                              <Printer className="h-3 w-3 mr-1" /> Print
+                            </Button>
+                            <Button variant="outline" size="sm" className="text-xs h-6 px-2" onClick={() => void shareEntryReceipt(rd).catch((e: any) => toast({ title: "Share failed", description: e?.message, variant: "destructive" }))}>
+                              <Share2 className="h-3 w-3 mr-1" /> Share
+                            </Button>
+                            {!s.cancelled && (
+                              <Button variant="outline" size="sm" className="text-xs h-6 px-2 text-destructive hover:text-destructive" onClick={() => { setCancelReason(""); setCancelTarget({ id: s.id, total: s.total, customerId: s.customerId, discount: s.discountAmount }); }}>
+                                <XCircle className="h-3 w-3 mr-1" /> Cancel
+                              </Button>
+                            )}
+                          </div>
                         </div>
-                        <span className={`font-bold ${s.cancelled ? "line-through text-muted-foreground" : "text-green-600"}`}>{formatIntMoney(s.total)}</span>
-                      </div>
-                      <div className="text-xs text-muted-foreground mt-1">{s.qty} {s.unit || "units"} × {formatIntMoney(s.unitPrice)}</div>
-                      {(s.discountAmount ?? 0) > 0 && <div className="text-xs text-muted-foreground">Discount: {formatIntMoney(s.discountAmount!)}</div>}
-                      {(s.advancePayment ?? 0) > 0 && <div className="text-xs font-medium text-primary">Advance: {formatIntMoney(s.advancePayment!)}</div>}
-                      {(s.advancePayment ?? 0) > 0 && <div className="text-xs text-muted-foreground">Remaining: {formatIntMoney(s.total - (s.discountAmount ?? 0) - (s.advancePayment ?? 0))}</div>}
-                      {s.note && <div className="text-xs text-muted-foreground">{s.note}</div>}
-                      {s.cancelledReason && <div className="text-xs text-destructive">Reason: {s.cancelledReason}</div>}
-                      <div className="text-xs text-muted-foreground">{fmtDateTime(s.createdAt)}</div>
-                      <div className="flex gap-1 mt-1.5">
-                        <Button variant="outline" size="sm" className="text-xs h-6 px-2" onClick={() => void printEntryReceipt(rd).catch((e: any) => toast({ title: "Print failed", description: e?.message, variant: "destructive" }))}>
-                          <Printer className="h-3 w-3 mr-1" /> Print
-                        </Button>
-                        <Button variant="outline" size="sm" className="text-xs h-6 px-2" onClick={() => void shareEntryReceipt(rd).catch((e: any) => toast({ title: "Share failed", description: e?.message, variant: "destructive" }))}>
-                          <Share2 className="h-3 w-3 mr-1" /> Share
-                        </Button>
-                        {!s.cancelled && (
-                          <Button variant="outline" size="sm" className="text-xs h-6 px-2 text-destructive hover:text-destructive" onClick={() => { setCancelReason(""); setCancelTarget({ id: s.id, total: s.total, customerId: s.customerId, discount: s.discountAmount }); }}>
-                            <XCircle className="h-3 w-3 mr-1" /> Cancel
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                    );
+                      );
+                    } else {
+                      const p = entry.payment;
+                      return (
+                        <div key={p.id} className="rounded-md border border-green-200 bg-green-50/50 dark:border-green-900 dark:bg-green-950/30 p-2 text-sm">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2">
+                              <CreditCard className="h-3 w-3 text-green-600" />
+                              <span className="text-xs font-semibold text-green-700 dark:text-green-400">PAYMENT</span>
+                              {p.paymentType === "bank" ? <Banknote className="h-3 w-3 text-muted-foreground" /> : null}
+                              <span className="text-xs text-muted-foreground">{p.paymentType ?? "cash"}</span>
+                            </div>
+                            <span className="font-bold text-green-600">-{formatIntMoney(p.amount)}</span>
+                          </div>
+                          {p.note && <div className="text-xs text-muted-foreground mt-1">{p.note}</div>}
+                          <div className="flex items-center justify-between mt-1">
+                            <div className="text-xs text-muted-foreground">{fmtDateTime(p.createdAt)}</div>
+                            <div className="text-xs font-medium">Bal: {formatIntMoney(balAfter[idx])}</div>
+                          </div>
+                        </div>
+                      );
+                    }
                   })}
                 </div>
-              )}
-            </div>
-            <div>
-              <div className="text-sm font-semibold mb-2 flex items-center gap-1"><CreditCard className="h-3.5 w-3.5" /> Payments Received</div>
-              {selectedPayments.length === 0 ? (
-                <div className="text-sm text-muted-foreground">No payments received yet.</div>
-              ) : (
-                selectedPayments.map((p, idx) => (
-                  <div key={p.id} className="flex items-center justify-between gap-2 rounded-md border p-2 text-sm">
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-muted-foreground">{selectedPayments.length - idx}</span>
-                        <span className="font-medium">{formatIntMoney(p.amount)}</span>
-                        {p.paymentType === "bank" ? <Banknote className="h-3 w-3 text-muted-foreground" /> : <CreditCard className="h-3 w-3 text-muted-foreground" />}
-                        <span className="text-xs text-muted-foreground">{p.paymentType ?? ""}</span>
-                      </div>
-                      {p.note && <div className="text-xs text-muted-foreground">{p.note}</div>}
-                      <div className="text-xs text-muted-foreground">{fmtDateTime(p.createdAt)}</div>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
+              );
+            })()}
           </CardContent>
         </Card>
       )}
