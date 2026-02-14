@@ -77,18 +77,29 @@ const COMMON_IPS = [
   "192.168.2.1",    // Some routers
   "10.0.0.138",     // Some configurations
   "192.168.8.1",    // Huawei hotspot
+  "192.168.4.1",    // Some routers
+  "192.168.100.1",  // Some ISP routers
+  "192.168.10.1",   // Some routers
+  "192.168.31.1",   // Xiaomi routers
 ];
 
-/** Scan common IPs + a subnet range to find the Main device */
+/** Scan common IPs + broader subnet ranges to find the Main device */
 export async function scanForMainDevice(
   port = DEFAULT_SYNC_PORT,
   onProgress?: (checked: number, total: number) => void
 ): Promise<string | null> {
-  // Build list: common IPs + 192.168.43.x range (1-20)
   const ipsToScan = new Set(COMMON_IPS);
-  for (let i = 1; i <= 20; i++) ipsToScan.add(`192.168.43.${i}`);
-  for (let i = 1; i <= 20; i++) ipsToScan.add(`192.168.1.${i}`);
-  for (let i = 1; i <= 10; i++) ipsToScan.add(`192.168.0.${i}`);
+  // Android hotspot range
+  for (let i = 1; i <= 50; i++) ipsToScan.add(`192.168.43.${i}`);
+  // Common router subnets
+  for (let i = 1; i <= 50; i++) ipsToScan.add(`192.168.1.${i}`);
+  for (let i = 1; i <= 30; i++) ipsToScan.add(`192.168.0.${i}`);
+  // Wi-Fi Direct range
+  for (let i = 1; i <= 20; i++) ipsToScan.add(`192.168.49.${i}`);
+  // Xiaomi / other hotspots
+  for (let i = 1; i <= 20; i++) ipsToScan.add(`192.168.31.${i}`);
+  // 10.x range
+  for (let i = 1; i <= 20; i++) ipsToScan.add(`10.0.0.${i}`);
 
   const allIps = Array.from(ipsToScan);
   const total = allIps.length;
