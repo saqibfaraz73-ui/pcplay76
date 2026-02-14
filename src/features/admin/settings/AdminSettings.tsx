@@ -72,6 +72,7 @@ export function AdminSettings() {
   const [advanceBookingEnabled, setAdvanceBookingEnabled] = React.useState(false);
   const [showAdvanceBookingInReports, setShowAdvanceBookingInReports] = React.useState(false);
   const [syncEnabled, setSyncEnabled] = React.useState(false);
+  const [cashierReportsEnabled, setCashierReportsEnabled] = React.useState(false);
 
   // Admin account
   const [adminAccount, setAdminAccount] = React.useState<AdminAccount | null>(null);
@@ -127,6 +128,7 @@ export function AdminSettings() {
     setAdvanceBookingEnabled(!!s.advanceBookingEnabled);
     setShowAdvanceBookingInReports(!!s.showAdvanceBookingInReports);
     setSyncEnabled(!!s.syncEnabled);
+    setCashierReportsEnabled(!!s?.cashierReportsEnabled);
     setLogoPath(s.receiptLogoPath);
 
     // Load admin account
@@ -203,6 +205,7 @@ export function AdminSettings() {
         advanceBookingEnabled,
         showAdvanceBookingInReports,
         syncEnabled,
+        cashierReportsEnabled,
         receiptLogoPath: logoPath,
         updatedAt: Date.now(),
       };
@@ -626,6 +629,26 @@ export function AdminSettings() {
               <div className="text-xs text-muted-foreground">Show "Sync" in the admin menu to configure Main/Sub device roles.</div>
             </div>
             <Switch checked={syncEnabled} onCheckedChange={setSyncEnabled} />
+          </div>
+          <div className="flex justify-end">
+            <Button onClick={() => void save()} disabled={!settings}>Save</Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Cashier Permissions */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Cashier Permissions</CardTitle>
+          <CardDescription>Control what sections cashiers can access.</CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-4">
+          <div className="flex items-center justify-between gap-3 rounded-md border p-3">
+            <div>
+              <div className="text-sm font-medium">Allow cashier to view Reports</div>
+              <div className="text-xs text-muted-foreground">If enabled, cashiers can access the Reports section.</div>
+            </div>
+            <Switch checked={cashierReportsEnabled} onCheckedChange={setCashierReportsEnabled} />
           </div>
           <div className="flex justify-end">
             <Button onClick={() => void save()} disabled={!settings}>Save</Button>

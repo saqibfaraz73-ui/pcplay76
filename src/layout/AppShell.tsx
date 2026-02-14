@@ -42,12 +42,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [tableManagementEnabled, setTableManagementEnabled] = React.useState(false);
   const [advanceBookingEnabled, setAdvanceBookingEnabled] = React.useState(false);
   const [syncEnabled, setSyncEnabled] = React.useState(false);
+  const [cashierReportsEnabled, setCashierReportsEnabled] = React.useState(false);
 
   const loadTableSetting = React.useCallback(async () => {
     const s = await db.settings.get("app");
     setTableManagementEnabled(!!s?.tableManagementEnabled);
     setAdvanceBookingEnabled(!!s?.advanceBookingEnabled);
     setSyncEnabled(!!s?.syncEnabled);
+    setCashierReportsEnabled(!!s?.cashierReportsEnabled);
   }, []);
 
   // Also reload when route changes (e.g. navigating away from settings)
@@ -72,6 +74,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   });
 
   const isAdmin = session?.role === "admin";
+  const isCashier = session?.role === "cashier";
   const isWaiter = session?.role === "waiter";
 
   const visibleNavItems = React.useMemo(() => {
@@ -154,6 +157,22 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                           {advanceBookingEnabled && !isWaiter && (
                             <Link to="/pos/advance-booking" className={cn("flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors", isActive("/pos/advance-booking") ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground")}>
                               <CalendarCheck className="h-4 w-4" /> Advance/Booking
+                            </Link>
+                          )}
+
+                          {/* Reports link for cashier when enabled */}
+                          {isCashier && cashierReportsEnabled && (
+                            <Link
+                              to="/admin/reports"
+                              className={cn(
+                                "flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors",
+                                isActive("/admin/reports")
+                                  ? "bg-accent text-accent-foreground"
+                                  : "text-muted-foreground hover:text-foreground",
+                              )}
+                            >
+                              <BarChart3 className="h-4 w-4" />
+                              Reports
                             </Link>
                           )}
 
@@ -255,6 +274,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   {advanceBookingEnabled && !isWaiter && (
                     <Link to="/pos/advance-booking" className={cn("rounded-md px-3 py-2 text-sm transition-colors", isActive("/pos/advance-booking") ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground")}>
                       Advance/Booking
+                    </Link>
+                  )}
+                  {isCashier && cashierReportsEnabled && (
+                    <Link to="/admin/reports" className={cn("rounded-md px-3 py-2 text-sm transition-colors", isActive("/admin/reports") ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground")}>
+                      Reports
                     </Link>
                   )}
                   {!isAdmin && (

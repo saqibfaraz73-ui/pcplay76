@@ -105,7 +105,7 @@ const App = () => (
                 <Route
                   path="/admin/reports"
                   element={
-                    <ProtectedRoute allow={["admin"]}>
+                    <ProtectedRoute allow={["admin", "cashier"]}>
                       <AdminReportsPage />
                     </ProtectedRoute>
                   }
