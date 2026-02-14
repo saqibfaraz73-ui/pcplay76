@@ -242,7 +242,7 @@ export function SyncSettingsPanel() {
               <div className="text-left">
                 <div className="font-medium">Sub Device</div>
                 <div className="text-xs text-muted-foreground">
-                  Sends sales data to Main device, uses Main's printer
+                  Sends sales data to Main device. Can use its own printer or Main's printer.
                 </div>
               </div>
             </Button>
