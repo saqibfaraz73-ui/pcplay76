@@ -291,6 +291,8 @@ export type Settings = {
   // Advance/Booking settings
   advanceBookingEnabled?: boolean;
   showAdvanceBookingInReports?: boolean;
+  // Sync settings
+  syncEnabled?: boolean; // if true, sync feature is available
   updatedAt: number;
 };
 
