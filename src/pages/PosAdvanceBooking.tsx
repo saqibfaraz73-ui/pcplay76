@@ -699,7 +699,7 @@ export default function PosAdvanceBooking() {
       <Tabs defaultValue="advance">
         <TabsList>
           <TabsTrigger value="advance">Advance Item Sales</TabsTrigger>
-          <TabsTrigger value="booking">Time-Based Booking</TabsTrigger>
+          <TabsTrigger value="booking">Appointment & Booking</TabsTrigger>
         </TabsList>
 
         {/* ═══ ADVANCE ITEM SALES TAB ═══ */}
