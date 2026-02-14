@@ -81,7 +81,7 @@ export async function createOrder(args: {
   }
 
   if (isSubConnected) {
-    // Sub device: build order WITHOUT saving locally, send to Main
+    // Sub device: save locally AND send to Main (so Sub reports also work)
     const counter = (await db.counters.get("receipt")) ?? { id: "receipt" as const, next: 1 };
     const receiptNo = counter.next;
     await db.counters.put({ id: "receipt", next: receiptNo + 1 });
@@ -109,19 +109,20 @@ export async function createOrder(args: {
       updatedAt: now,
     };
 
-    // Send to Main device
+    // Always save locally so Sub's own reports work
+    await db.orders.put(order);
+
+    // Also send to Main device for centralized reporting
     try {
       const { sendToMainApp } = await import("@/features/sync/sync-client");
       const { getLicense } = await import("@/features/licensing/licensing-db");
       const lic = await getLicense();
       const res = await sendToMainApp("order", order, lic.deviceId);
       if (!res.success) {
-        console.warn("[Sync] Main rejected order, saving locally as fallback:", res.error);
-        await db.orders.put(order);
+        console.warn("[Sync] Main rejected order:", res.error);
       }
     } catch (e) {
-      console.warn("[Sync] Failed to send order to Main, saving locally as fallback:", e);
-      await db.orders.put(order);
+      console.warn("[Sync] Failed to send order to Main:", e);
     }
 
     await incrementSaleCount(saleModule);
