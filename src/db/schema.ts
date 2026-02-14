@@ -361,6 +361,7 @@ export type AdminAccount = {
 export type StaffAccount = {
   id: string;
   name: string;
+  phone?: string; // optional mobile number for login
   role: "cashier" | "waiter";
   pin: string; // 4-digit PIN
   defaultTableId?: string;
