@@ -172,6 +172,16 @@ export function PosTablesManager() {
     }
   }, [loggedInWaiter, selectedWaiterId]);
 
+  // Auto-select default table when waiter changes and table selection is disabled
+  React.useEffect(() => {
+    if (settings?.tableSelectionDisabled && selectedWaiterId) {
+      const waiter = waitersById[selectedWaiterId];
+      if (waiter?.defaultTableId && !selectedTableId) {
+        setSelectedTableId(waiter.defaultTableId);
+      }
+    }
+  }, [selectedWaiterId, settings?.tableSelectionDisabled, waitersById, selectedTableId]);
+
   const getTableOrder = (tableId: string) => tableOrders.find((o) => o.tableId === tableId);
 
   // Get effective table ID - use waiter's default table when table selection disabled
@@ -592,6 +602,28 @@ export function PosTablesManager() {
         updatedAt: Date.now(),
       });
       toast({ title: "Order cancelled" });
+
+      // Sync cancelled table order to Main device if in Sub mode
+      try {
+        const { getSyncConfig } = await import("@/features/sync/sync-utils");
+        const config = getSyncConfig();
+        if (config.role === "sub") {
+          const cancelledOrder = await db.tableOrders.get(currentTableOrder.id);
+          if (cancelledOrder) {
+            const { sendToMainApp } = await import("@/features/sync/sync-client");
+            const { getLicense } = await import("@/features/licensing/licensing-db");
+            const lic = await getLicense();
+            const waiter = waitersById[cancelledOrder.waiterId];
+            const table = tablesById[cancelledOrder.tableId];
+            sendToMainApp("table-order", { ...cancelledOrder, _waiterName: waiter?.name, _tableNumber: table?.tableNumber }, lic.deviceId).catch((e) =>
+              console.warn("[Sync] Failed to sync cancelled table order:", e)
+            );
+          }
+        }
+      } catch {
+        // Sync module not available
+      }
+
       setCancelCheckoutOpen(false);
       setCancelCheckoutReason("");
       setCheckoutOpen(false);

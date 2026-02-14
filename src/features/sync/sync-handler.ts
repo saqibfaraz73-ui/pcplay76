@@ -84,24 +84,34 @@ async function handleTableOrderSync(tableOrder: TableOrder & { _waiterName?: str
   }
 
   // Map waiter ID: if Main has a waiter with the same name, remap the order to use Main's ID
-  if (tableOrder.waiterId && tableOrder._waiterName) {
+  if (tableOrder.waiterId) {
     const existingWaiter = await db.waiters.get(tableOrder.waiterId);
     if (!existingWaiter) {
-      // Look for a waiter with the same name on Main
-      const mainWaiter = await db.waiters.filter(
-        (w) => w.name.toLowerCase() === tableOrder._waiterName!.toLowerCase()
-      ).first();
-      if (mainWaiter) {
-        // Remap to Main's waiter ID so reports group correctly
-        tableOrder.waiterId = mainWaiter.id;
-        console.log(`[Sync] Remapped waiter to Main's "${mainWaiter.name}" (${mainWaiter.id})`);
+      if (tableOrder._waiterName) {
+        // Look for a waiter with the same name on Main
+        const mainWaiter = await db.waiters.filter(
+          (w) => w.name.toLowerCase() === tableOrder._waiterName!.toLowerCase()
+        ).first();
+        if (mainWaiter) {
+          // Remap to Main's waiter ID so reports group correctly
+          tableOrder.waiterId = mainWaiter.id;
+          console.log(`[Sync] Remapped waiter to Main's "${mainWaiter.name}" (${mainWaiter.id})`);
+        } else {
+          await db.waiters.put({
+            id: tableOrder.waiterId,
+            name: tableOrder._waiterName,
+            createdAt: Date.now(),
+          });
+          console.log(`[Sync] Created waiter record: ${tableOrder._waiterName}`);
+        }
       } else {
+        // No name provided — create stub record so reports don't show raw IDs
         await db.waiters.put({
           id: tableOrder.waiterId,
-          name: tableOrder._waiterName,
+          name: `Waiter (${tableOrder.waiterId.slice(-6)})`,
           createdAt: Date.now(),
         });
-        console.log(`[Sync] Created waiter record: ${tableOrder._waiterName}`);
+        console.log(`[Sync] Created stub waiter record for ${tableOrder.waiterId}`);
       }
     }
   }
