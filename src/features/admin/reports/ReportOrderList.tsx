@@ -52,7 +52,7 @@ export function ReportOrderList({ orders, customersById, deliveryPersonsById, ta
   const unified = React.useMemo<UnifiedEntry[]>(() => {
     const regular: UnifiedEntry[] = orders.map((o) => ({ id: o.id, order: o, source: "regular" }));
     const table: UnifiedEntry[] = tableOrders
-      .filter((t) => t.receiptNo != null)
+      .filter((t) => t.receiptNo != null || t.status === "cancelled")
       .map((t) => ({
         id: t.id,
         order: tableOrderToOrder(t, tablesById, waitersById),

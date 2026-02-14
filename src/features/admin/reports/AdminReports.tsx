@@ -648,8 +648,17 @@ export function AdminReports() {
   };
 
   const fetchTableOrdersByWorkPeriod = async (workPeriodId: string) => {
+    const wp = workPeriods.find((w) => w.id === workPeriodId);
     const all = await db.tableOrders.toArray();
-    return all.filter((o) => o.workPeriodId === workPeriodId);
+    return all.filter((o) => {
+      if (o.workPeriodId === workPeriodId) return true;
+      // Fallback: include cancelled orders within work period time range that have no workPeriodId
+      if (!o.workPeriodId && o.status === "cancelled" && wp) {
+        const wpEnd = wp.endedAt ?? Date.now();
+        return o.createdAt >= wp.startedAt && o.createdAt <= wpEnd;
+      }
+      return false;
+    });
   };
 
   const fetchExpensesByWorkPeriod = async (workPeriodId: string) => {

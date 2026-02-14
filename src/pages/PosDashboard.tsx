@@ -205,6 +205,7 @@ export default function PosDashboard() {
       await db.tableOrders.update(cancelTableOrderId, {
         status: "cancelled",
         cancelledReason: cancelTableReason.trim(),
+        workPeriodId: currentWorkPeriod?.id,
         updatedAt: Date.now(),
       });
       toast({ title: "Table order cancelled" });
