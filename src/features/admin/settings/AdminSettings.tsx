@@ -76,6 +76,9 @@ export function AdminSettings() {
   const [cashierReportsEnabled, setCashierReportsEnabled] = React.useState(false);
   const [waiterMainAppEnabled, setWaiterMainAppEnabled] = React.useState(false);
   const [waiterRestrictToOwnTables, setWaiterRestrictToOwnTables] = React.useState(false);
+  const [supervisorPrinterEnabled, setSupervisorPrinterEnabled] = React.useState(false);
+  const [salesDashboardEnabled, setSalesDashboardEnabled] = React.useState(true);
+  const [deliveryEnabled, setDeliveryEnabled] = React.useState(false);
 
   // Admin account
   const [adminAccount, setAdminAccount] = React.useState<AdminAccount | null>(null);
@@ -135,6 +138,9 @@ export function AdminSettings() {
     setCashierReportsEnabled(!!s?.cashierReportsEnabled);
     setWaiterMainAppEnabled(!!s?.waiterMainAppEnabled);
     setWaiterRestrictToOwnTables(!!s?.waiterRestrictToOwnTables);
+    setSupervisorPrinterEnabled(!!s?.supervisorPrinterEnabled);
+    setSalesDashboardEnabled(s?.salesDashboardEnabled !== false); // default true
+    setDeliveryEnabled(!!s?.deliveryEnabled);
     setLogoPath(s.receiptLogoPath);
 
     // Load admin account
@@ -215,6 +221,9 @@ export function AdminSettings() {
         cashierReportsEnabled,
         waiterMainAppEnabled,
         waiterRestrictToOwnTables,
+        supervisorPrinterEnabled,
+        salesDashboardEnabled,
+        deliveryEnabled,
         receiptLogoPath: logoPath,
         updatedAt: Date.now(),
       };
@@ -645,19 +654,40 @@ export function AdminSettings() {
         </CardContent>
       </Card>
 
-      {/* Cashier Permissions */}
+      {/* Permissions */}
       <Card>
         <CardHeader>
-          <CardTitle>Cashier Permissions</CardTitle>
-          <CardDescription>Control what sections cashiers can access.</CardDescription>
+          <CardTitle>Permissions & Features</CardTitle>
+          <CardDescription>Control access and visibility for different roles.</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4">
+          <div className="flex items-center justify-between gap-3 rounded-md border p-3">
+            <div>
+              <div className="text-sm font-medium">Enable Sales Dashboard</div>
+              <div className="text-xs text-muted-foreground">Show the Sales Dashboard page for cashiers and admin.</div>
+            </div>
+            <Switch checked={salesDashboardEnabled} onCheckedChange={setSalesDashboardEnabled} />
+          </div>
+          <div className="flex items-center justify-between gap-3 rounded-md border p-3">
+            <div>
+              <div className="text-sm font-medium">Enable Delivery</div>
+              <div className="text-xs text-muted-foreground">Show the Delivery section in admin menu.</div>
+            </div>
+            <Switch checked={deliveryEnabled} onCheckedChange={setDeliveryEnabled} />
+          </div>
           <div className="flex items-center justify-between gap-3 rounded-md border p-3">
             <div>
               <div className="text-sm font-medium">Allow cashier to view Reports</div>
               <div className="text-xs text-muted-foreground">If enabled, cashiers can access the Reports section.</div>
             </div>
             <Switch checked={cashierReportsEnabled} onCheckedChange={setCashierReportsEnabled} />
+          </div>
+          <div className="flex items-center justify-between gap-3 rounded-md border p-3">
+            <div>
+              <div className="text-sm font-medium">Allow supervisor to access Printer Settings</div>
+              <div className="text-xs text-muted-foreground">If enabled, supervisors can configure printer settings.</div>
+            </div>
+            <Switch checked={supervisorPrinterEnabled} onCheckedChange={setSupervisorPrinterEnabled} />
           </div>
           <div className="flex items-center justify-between gap-3 rounded-md border p-3">
             <div>
@@ -669,7 +699,7 @@ export function AdminSettings() {
           <div className="flex items-center justify-between gap-3 rounded-md border p-3">
             <div>
               <div className="text-sm font-medium">Restrict waiters to assigned tables</div>
-              <div className="text-xs text-muted-foreground">If enabled, waiters can only take orders on tables assigned to them. Assign tables in Admin → Tables & Waiters.</div>
+              <div className="text-xs text-muted-foreground">If enabled, waiters can only take orders on tables assigned to them.</div>
             </div>
             <Switch checked={waiterRestrictToOwnTables} onCheckedChange={setWaiterRestrictToOwnTables} />
           </div>

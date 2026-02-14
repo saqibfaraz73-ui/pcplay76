@@ -43,6 +43,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [advanceBookingEnabled, setAdvanceBookingEnabled] = React.useState(false);
   const [syncEnabled, setSyncEnabled] = React.useState(false);
   const [cashierReportsEnabled, setCashierReportsEnabled] = React.useState(false);
+  const [supervisorPrinterEnabled, setSupervisorPrinterEnabled] = React.useState(false);
+  const [salesDashboardEnabled, setSalesDashboardEnabled] = React.useState(true);
+  const [deliveryEnabled, setDeliveryEnabled] = React.useState(false);
   const [pendingTableCount, setPendingTableCount] = React.useState(0);
 
   const loadTableSetting = React.useCallback(async () => {
@@ -51,6 +54,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     setAdvanceBookingEnabled(!!s?.advanceBookingEnabled);
     setSyncEnabled(!!s?.syncEnabled);
     setCashierReportsEnabled(!!s?.cashierReportsEnabled);
+    setSupervisorPrinterEnabled(!!s?.supervisorPrinterEnabled);
+    setSalesDashboardEnabled(s?.salesDashboardEnabled !== false);
+    setDeliveryEnabled(!!s?.deliveryEnabled);
     // Count open (pending) table orders
     const openCount = await db.tableOrders.where("status").equals("open").count();
     setPendingTableCount(openCount);
@@ -80,18 +86,24 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const isAdmin = session?.role === "admin";
   const isCashier = session?.role === "cashier";
   const isWaiter = session?.role === "waiter" || session?.role === "supervisor";
+  const isSupervisor = session?.role === "supervisor";
 
   const visibleNavItems = React.useMemo(() => {
     if (isWaiter) return [];
-    return navItems.filter((n) => (isAdmin ? true : !n.adminOnly));
-  }, [isAdmin, isWaiter]);
+    return navItems.filter((n) => {
+      if (n.adminOnly && !isAdmin) return false;
+      if (n.to === "/pos" && !salesDashboardEnabled) return false;
+      return true;
+    });
+  }, [isAdmin, isWaiter, salesDashboardEnabled]);
 
   const visibleAdminSubNav = React.useMemo(() => {
     return adminSubNav.filter((n) => {
       if (n.to === "/admin/sync" && !syncEnabled) return false;
+      if (n.to === "/admin/delivery" && !deliveryEnabled) return false;
       return true;
     });
-  }, [syncEnabled]);
+  }, [syncEnabled, deliveryEnabled]);
 
   const isActive = (path: string) =>
     location.pathname === path || location.pathname.startsWith(`${path}/`);
@@ -183,8 +195,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                             </Link>
                           )}
 
-                          {/* Printer link for cashier/supervisor (not waiter) */}
-                          {(isCashier || session?.role === "supervisor") && (
+                          {/* Printer link for cashier/supervisor (when enabled) */}
+                          {(isCashier || (isSupervisor && supervisorPrinterEnabled)) && (
                             <Link
                               to="/admin/printer"
                               className={cn(
@@ -307,7 +319,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                       Reports
                     </Link>
                   )}
-                  {(isCashier || session?.role === "supervisor") && (
+                  {(isCashier || (isSupervisor && supervisorPrinterEnabled)) && (
                     <Link
                       to="/admin/printer"
                       className={cn(
