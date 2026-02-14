@@ -257,6 +257,7 @@ export type Settings = {
   printerConnection?: "bluetooth" | "usb" | "none";
   printerName?: string;
   printerAddress?: string; // Bluetooth MAC address for classic SPP printers
+  subPrinterMode?: "own" | "main"; // "own" = sub prints locally, "main" = send to main device's printer
   // Tax settings
   taxEnabled?: boolean;
   taxType?: ChargeType;

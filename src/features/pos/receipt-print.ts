@@ -5,6 +5,8 @@ import { usbSend } from "@/features/pos/usb-printer";
 import { generateLogoEscPos } from "@/features/pos/escpos-image";
 import { db } from "@/db/appDb";
 import { format } from "date-fns";
+import { getSyncConfig } from "@/features/sync/sync-utils";
+import { sendPrintJob } from "@/features/sync/sync-client";
 
 function escapeHtml(s: string) {
   return s.replace(/[&<>"']/g, (c) => {
@@ -210,6 +212,37 @@ async function getSettingsSafe(): Promise<Settings | null> {
   }
 }
 
+/* ---------- Check if Sub should route print to Main ---------- */
+
+async function shouldPrintViaMain(): Promise<boolean> {
+  try {
+    const syncConfig = getSyncConfig();
+    if (syncConfig.role !== "sub") return false;
+    const settings = await db.settings.get("app");
+    return settings?.subPrinterMode === "main";
+  } catch {
+    return false;
+  }
+}
+
+async function sendPrintToMain(text: string): Promise<void> {
+  // Base64-encode the ESC/POS raw text for transport
+  let b64 = "";
+  for (let i = 0; i < text.length; i++) {
+    b64 += String.fromCharCode(text.charCodeAt(i) & 0xff);
+  }
+  const encoded = btoa(b64);
+
+  // Determine Main's printer type from sync - we send as "usb" by default,
+  // Main will use whatever printer it has configured
+  const { getLicense } = await import("@/features/licensing/licensing-db");
+  const lic = await getLicense();
+  const res = await sendPrintJob(encoded, "usb", lic.deviceId);
+  if (!res.success) {
+    throw new Error(res.error || "Failed to send print job to Main device");
+  }
+}
+
 /* ---------- Print (classic format) ---------- */
 
 export async function printReceiptFromOrder(
@@ -226,15 +259,34 @@ export async function printReceiptFromOrder(
   }
 
   if (isNativeAndroid()) {
+    // Check if Sub device should send to Main's printer
+    const viaMain = await shouldPrintViaMain();
+
     if (!settings) {
+      if (viaMain) {
+        // Build receipt with defaults and send to Main
+        const defaultSettings: Settings = {
+          id: "app", restaurantName: "SANGI POS", paperSize: "58",
+          showAddress: false, showPhone: false, showLogo: false, updatedAt: 0,
+        };
+        const text = await buildEscPosReceipt(order, defaultSettings, opts);
+        await sendPrintToMain(text);
+        return;
+      }
       throw new Error("Settings not loaded. Please configure printer in Admin > Printer.");
-    }
-    const conn = settings.printerConnection ?? "none";
-    if (conn !== "bluetooth" && conn !== "usb") {
-      throw new Error("Printer not configured. Go to Admin > Printer and set Connection to Bluetooth or USB.");
     }
 
     const text = await buildEscPosReceipt(order, settings, opts);
+
+    if (viaMain) {
+      await sendPrintToMain(text);
+      return;
+    }
+
+    const conn = settings.printerConnection ?? "none";
+    if (conn !== "bluetooth" && conn !== "usb") {
+      throw new Error("Printer not configured. Go to Printer settings and set Connection to Bluetooth or USB, or enable 'Use Main Device Printer'.");
+    }
 
     if (conn === "usb") {
       try {
@@ -248,7 +300,7 @@ export async function printReceiptFromOrder(
 
     // Bluetooth
     if (!settings.printerAddress) {
-      throw new Error("No printer selected. Go to Admin > Printer, refresh paired devices, and select your printer.");
+      throw new Error("No printer selected. Go to Printer, refresh paired devices, and select your printer.");
     }
     try {
       await btConnect(settings.printerAddress);
@@ -359,10 +411,31 @@ export async function printKotFromOrder(order: Order) {
     return;
   }
 
-  if (!settings) throw new Error("Printer not configured");
-  const conn = settings.printerConnection ?? "none";
+  if (!settings) {
+    // If using Main's printer, build with defaults
+    const viaMain = await shouldPrintViaMain();
+    if (viaMain) {
+      const defaultSettings: Settings = {
+        id: "app", restaurantName: "SANGI POS", paperSize: "58",
+        showAddress: false, showPhone: false, showLogo: false, updatedAt: 0,
+      };
+      const text = await buildKotReceipt(order, defaultSettings);
+      await sendPrintToMain(text);
+      return;
+    }
+    throw new Error("Printer not configured");
+  }
+
   const text = await buildKotReceipt(order, settings);
 
+  // Check if Sub should send to Main's printer
+  const viaMain = await shouldPrintViaMain();
+  if (viaMain) {
+    await sendPrintToMain(text);
+    return;
+  }
+
+  const conn = settings.printerConnection ?? "none";
   if (conn === "usb") {
     await usbSend(text);
     return;
