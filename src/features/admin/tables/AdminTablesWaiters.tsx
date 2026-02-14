@@ -8,6 +8,7 @@ import type { RestaurantTable, Settings, Waiter } from "@/db/schema";
 import { useToast } from "@/hooks/use-toast";
 import { makeId } from "@/features/admin/id";
 import { Trash2, Plus, Edit2, Check, X } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -32,6 +33,7 @@ export function AdminTablesWaiters() {
   const [newWaiterName, setNewWaiterName] = React.useState("");
   const [newWaiterPassword, setNewWaiterPassword] = React.useState("");
   const [newWaiterDefaultTable, setNewWaiterDefaultTable] = React.useState("");
+  const [newWaiterAssignedTables, setNewWaiterAssignedTables] = React.useState<string[]>([]);
 
   // Edit states
   const [editingTableId, setEditingTableId] = React.useState<string | null>(null);
@@ -40,6 +42,7 @@ export function AdminTablesWaiters() {
   const [editWaiterName, setEditWaiterName] = React.useState("");
   const [editWaiterPassword, setEditWaiterPassword] = React.useState("");
   const [editWaiterDefaultTable, setEditWaiterDefaultTable] = React.useState("");
+  const [editWaiterAssignedTables, setEditWaiterAssignedTables] = React.useState<string[]>([]);
 
   // Delete confirmations
   const [deleteTableId, setDeleteTableId] = React.useState<string | null>(null);
@@ -121,12 +124,14 @@ export function AdminTablesWaiters() {
       name,
       password: newWaiterPassword.trim() || undefined,
       defaultTableId: newWaiterDefaultTable || undefined,
+      assignedTableIds: newWaiterAssignedTables.length > 0 ? newWaiterAssignedTables : undefined,
       createdAt: Date.now(),
     };
     await db.waiters.put(waiter);
     setNewWaiterName("");
     setNewWaiterPassword("");
     setNewWaiterDefaultTable("");
+    setNewWaiterAssignedTables([]);
     toast({ title: `Waiter ${name} added` });
     await load();
   };
@@ -142,6 +147,7 @@ export function AdminTablesWaiters() {
       name,
       password: editWaiterPassword.trim() || undefined,
       defaultTableId: editWaiterDefaultTable || undefined,
+      assignedTableIds: editWaiterAssignedTables.length > 0 ? editWaiterAssignedTables : undefined,
     });
     setEditingWaiterId(null);
     toast({ title: "Waiter updated" });
@@ -166,6 +172,7 @@ export function AdminTablesWaiters() {
     setEditWaiterName(waiter.name);
     setEditWaiterPassword(waiter.password ?? "");
     setEditWaiterDefaultTable(waiter.defaultTableId ?? "");
+    setEditWaiterAssignedTables(waiter.assignedTableIds ?? []);
   };
 
   if (!settings?.tableManagementEnabled) {
@@ -297,6 +304,27 @@ export function AdminTablesWaiters() {
               Add
             </Button>
           </div>
+          {/* Assigned tables for new waiter */}
+          {tables.length > 0 && (
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">Assigned Tables (for restriction)</Label>
+              <div className="flex flex-wrap gap-2">
+                {tables.map((t) => (
+                  <label key={t.id} className="flex items-center gap-1.5 text-sm cursor-pointer">
+                    <Checkbox
+                      checked={newWaiterAssignedTables.includes(t.id)}
+                      onCheckedChange={(checked) => {
+                        setNewWaiterAssignedTables((prev) =>
+                          checked ? [...prev, t.id] : prev.filter((id) => id !== t.id)
+                        );
+                      }}
+                    />
+                    {t.tableNumber}
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Waiter list */}
           {waiters.length === 0 ? (
@@ -335,8 +363,29 @@ export function AdminTablesWaiters() {
                           {tables.map((t) => (
                             <option key={t.id} value={t.id}>Table {t.tableNumber}</option>
                           ))}
-                        </select>
-                      </div>
+                         </select>
+                        {/* Assigned tables checkboxes in edit mode */}
+                        {tables.length > 0 && (
+                          <div className="w-full space-y-1 mt-1">
+                            <span className="text-xs text-muted-foreground">Assigned Tables:</span>
+                            <div className="flex flex-wrap gap-2">
+                              {tables.map((t) => (
+                                <label key={t.id} className="flex items-center gap-1.5 text-xs cursor-pointer">
+                                  <Checkbox
+                                    checked={editWaiterAssignedTables.includes(t.id)}
+                                    onCheckedChange={(checked) => {
+                                      setEditWaiterAssignedTables((prev) =>
+                                        checked ? [...prev, t.id] : prev.filter((id) => id !== t.id)
+                                      );
+                                    }}
+                                  />
+                                  {t.tableNumber}
+                                </label>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                       </div>
                       <Button size="icon" variant="ghost" onClick={() => void saveEditWaiter()}>
                         <Check className="h-4 w-4" />
                       </Button>
@@ -353,8 +402,17 @@ export function AdminTablesWaiters() {
                         )}
                         {waiter.defaultTableId && tables.find((t) => t.id === waiter.defaultTableId) && (
                           <span className="ml-2 text-xs text-muted-foreground">
-                            (Table {tables.find((t) => t.id === waiter.defaultTableId)?.tableNumber})
+                            (Default: Table {tables.find((t) => t.id === waiter.defaultTableId)?.tableNumber})
                           </span>
+                        )}
+                        {waiter.assignedTableIds && waiter.assignedTableIds.length > 0 && (
+                          <div className="text-xs text-muted-foreground mt-0.5">
+                            Assigned: {waiter.assignedTableIds
+                              .map((tid) => tables.find((t) => t.id === tid)?.tableNumber)
+                              .filter(Boolean)
+                              .map((n) => `Table ${n}`)
+                              .join(", ")}
+                          </div>
                         )}
                       </div>
                       <div className="flex gap-1">

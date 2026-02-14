@@ -296,6 +296,7 @@ export type Settings = {
   // Cashier permissions
   cashierReportsEnabled?: boolean; // if true, cashier can access reports section
   waiterMainAppEnabled?: boolean; // if true, waiters can set device as Main in sync
+  waiterRestrictToOwnTables?: boolean; // if true, waiters can only take orders on their assigned tables
   updatedAt: number;
 };
 
@@ -305,6 +306,7 @@ export type Waiter = {
   name: string;
   password?: string; // optional password for waiter login
   defaultTableId?: string; // auto-assign this table when table selection is disabled
+  assignedTableIds?: string[]; // tables this waiter is allowed to serve (when restricted)
   createdAt: number;
 };
 

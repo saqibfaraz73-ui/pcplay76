@@ -74,6 +74,7 @@ export function AdminSettings() {
   const [syncEnabled, setSyncEnabled] = React.useState(false);
   const [cashierReportsEnabled, setCashierReportsEnabled] = React.useState(false);
   const [waiterMainAppEnabled, setWaiterMainAppEnabled] = React.useState(false);
+  const [waiterRestrictToOwnTables, setWaiterRestrictToOwnTables] = React.useState(false);
 
   // Admin account
   const [adminAccount, setAdminAccount] = React.useState<AdminAccount | null>(null);
@@ -131,6 +132,7 @@ export function AdminSettings() {
     setSyncEnabled(!!s.syncEnabled);
     setCashierReportsEnabled(!!s?.cashierReportsEnabled);
     setWaiterMainAppEnabled(!!s?.waiterMainAppEnabled);
+    setWaiterRestrictToOwnTables(!!s?.waiterRestrictToOwnTables);
     setLogoPath(s.receiptLogoPath);
 
     // Load admin account
@@ -209,6 +211,7 @@ export function AdminSettings() {
         syncEnabled,
         cashierReportsEnabled,
         waiterMainAppEnabled,
+        waiterRestrictToOwnTables,
         receiptLogoPath: logoPath,
         updatedAt: Date.now(),
       };
@@ -659,6 +662,13 @@ export function AdminSettings() {
               <div className="text-xs text-muted-foreground">If enabled, waiters can set their device as the Main sync server.</div>
             </div>
             <Switch checked={waiterMainAppEnabled} onCheckedChange={setWaiterMainAppEnabled} />
+          </div>
+          <div className="flex items-center justify-between gap-3 rounded-md border p-3">
+            <div>
+              <div className="text-sm font-medium">Restrict waiters to assigned tables</div>
+              <div className="text-xs text-muted-foreground">If enabled, waiters can only take orders on tables assigned to them. Assign tables in Admin → Tables & Waiters.</div>
+            </div>
+            <Switch checked={waiterRestrictToOwnTables} onCheckedChange={setWaiterRestrictToOwnTables} />
           </div>
           <div className="flex justify-end">
             <Button onClick={() => void save()} disabled={!settings}>Save</Button>
