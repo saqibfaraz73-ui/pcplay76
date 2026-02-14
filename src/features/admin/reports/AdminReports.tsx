@@ -156,7 +156,7 @@ function buildSalesPdf(args: {
   const exportCustomersById = Object.fromEntries(exportCustomersData.map((c) => [c.id, c]));
 
   // Advance/Booking — sales = advance payments received only
-  const showAdvBooking = args.settings?.showAdvanceBookingInReports ?? false;
+  const showAdvBooking = (args.settings?.advanceBookingEnabled ?? false) && (args.settings?.showAdvanceBookingInReports ?? false);
   const advOrders = args.advanceOrders ?? [];
   const bkOrders = args.bookingOrders ?? [];
   const advCompleted = advOrders.filter((o) => o.status !== "cancelled");
@@ -173,15 +173,18 @@ function buildSalesPdf(args: {
   const bkCancelledTotal = bkCancelled.reduce((s, o) => s + o.price, 0);
   const advBookingTotal = advTotal + bkTotal;
 
-  // Total Sales already has discounts subtracted (net totals), so remaining balance only subtracts expenses
-  const overallSales = takeawayTotal + deliveryTotal + tableSalesTotal + creditTotal + tableCreditTotal + (showExport ? exportAdvanceTotal : 0) + (showAdvBooking ? advBookingTotal : 0);
-  const overallDiscount = takeawayDiscount + deliveryDiscount + tableDiscount + creditDiscount + tableCreditDiscount + (showExport ? exportDiscount : 0) + (showAdvBooking ? advDiscount + bkDiscount : 0);
+  const deliveryEnabled = args.settings?.deliveryEnabled ?? true;
+  const tableEnabled = args.settings?.tableManagementEnabled ?? true;
+  const salesDashboardEnabled = args.settings?.salesDashboardEnabled !== false;
+
+  const overallSales = (salesDashboardEnabled ? takeawayTotal : 0) + (deliveryEnabled ? deliveryTotal : 0) + (tableEnabled ? tableSalesTotal : 0) + creditTotal + tableCreditTotal + (showExport ? exportAdvanceTotal : 0) + (showAdvBooking ? advBookingTotal : 0);
+  const overallDiscount = (salesDashboardEnabled ? takeawayDiscount : 0) + (deliveryEnabled ? deliveryDiscount : 0) + (tableEnabled ? tableDiscount : 0) + creditDiscount + tableCreditDiscount + (showExport ? exportDiscount : 0) + (showAdvBooking ? advDiscount + bkDiscount : 0);
   const totalExpenses = args.expenses.reduce((s, e) => s + e.amount, 0);
 
   const totalCreditSales = creditTotal + tableCreditTotal;
   const totalCreditDiscount = creditDiscount + tableCreditDiscount;
   const totalCreditCancelled = creditCancelledTotal + tableCreditCancelledTotal;
-  const totalCancelledAmount = takeawayCancelledTotal + deliveryCancelledTotal + tableCancelledTotal + totalCreditCancelled + (showExport ? exportCancelledTotal : 0) + (showAdvBooking ? advCancelledTotal + bkCancelledTotal : 0);
+  const totalCancelledAmount = (salesDashboardEnabled ? takeawayCancelledTotal : 0) + (deliveryEnabled ? deliveryCancelledTotal : 0) + (tableEnabled ? tableCancelledTotal : 0) + totalCreditCancelled + (showExport ? exportCancelledTotal : 0) + (showAdvBooking ? advCancelledTotal + bkCancelledTotal : 0);
   // Remaining balance = Total Sales - Expenses only (discounts & cancelled already excluded from total sales)
   const remainingBalance = overallSales - totalExpenses;
 
@@ -196,13 +199,10 @@ function buildSalesPdf(args: {
   doc.text(`${args.restaurantName} • ${toDateInputValue(args.from)} → ${toDateInputValue(args.to)}`, left, y);
   y += 24;
 
-  // ===== SUMMARY BOXES =====
-  const deliveryEnabled = args.settings?.deliveryEnabled ?? true;
-  const tableEnabled = args.settings?.tableManagementEnabled ?? true;
 
   const boxData: { label: string; value: string; color?: [number, number, number] }[] = [
     { label: "Total Sales", value: formatIntMoney(overallSales) },
-    { label: "Take Away Sales", value: formatIntMoney(takeawayTotal) },
+    ...(salesDashboardEnabled ? [{ label: "Take Away Sales", value: formatIntMoney(takeawayTotal) }] : []),
     ...(deliveryEnabled ? [{ label: "Delivery Sales", value: formatIntMoney(deliveryTotal) }] : []),
     ...(tableEnabled ? [{ label: "Table Sales", value: formatIntMoney(tableSalesTotal) }] : []),
     { label: "Credit Sales", value: formatIntMoney(totalCreditSales) },
@@ -248,11 +248,13 @@ function buildSalesPdf(args: {
   y += 8;
 
   // ===== TAKEAWAY SALES =====
-  heading("Takeaway Sales");
-  row("Takeaway Sales Total", formatIntMoney(takeawayTotal), true);
-  row("Discounts", formatIntMoney(takeawayDiscount));
-  if (takeawayCancelled.length > 0) {
-    row(`Cancelled Orders (${takeawayCancelled.length})`, formatIntMoney(takeawayCancelledTotal), false, [200, 0, 0]);
+  if (salesDashboardEnabled) {
+    heading("Takeaway Sales");
+    row("Takeaway Sales Total", formatIntMoney(takeawayTotal), true);
+    row("Discounts", formatIntMoney(takeawayDiscount));
+    if (takeawayCancelled.length > 0) {
+      row(`Cancelled Orders (${takeawayCancelled.length})`, formatIntMoney(takeawayCancelledTotal), false, [200, 0, 0]);
+    }
   }
 
   // ===== DELIVERY SALES =====
@@ -459,7 +461,7 @@ function buildSalesPdf(args: {
   // ===== OVERALL SUMMARY =====
   heading("Overall Summary");
   separator();
-  row("Takeaway Sales", formatIntMoney(takeawayTotal));
+  if (salesDashboardEnabled) row("Takeaway Sales", formatIntMoney(takeawayTotal));
   if (deliveryEnabled) row("Delivery Sales", formatIntMoney(deliveryTotal));
   if (tableEnabled) row("Table Sales", formatIntMoney(tableSalesTotal));
   row("Credit Sales", formatIntMoney(totalCreditSales));

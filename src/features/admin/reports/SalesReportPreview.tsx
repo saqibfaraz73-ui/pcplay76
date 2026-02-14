@@ -45,6 +45,7 @@ export function SalesReportPreview({
   const deliveryEnabled = settings?.deliveryEnabled ?? true;
   const tableEnabled = settings?.tableManagementEnabled ?? true;
   const showExport = settings?.showExportInReports ?? false;
+  const salesDashboardEnabled = settings?.salesDashboardEnabled !== false;
 
   const completed = React.useMemo(() => orders.filter((o) => o.status === "completed"), [orders]);
   const cancelled = React.useMemo(() => orders.filter((o) => o.status === "cancelled"), [orders]);
@@ -66,7 +67,7 @@ export function SalesReportPreview({
   );
 
   // Advance/Booking discount+cancelled for combined totals
-  const showAdvBooking = settings?.showAdvanceBookingInReports ?? false;
+  const showAdvBooking = (settings?.advanceBookingEnabled ?? false) && (settings?.showAdvanceBookingInReports ?? false);
   const advCompletedOrders = React.useMemo(() => advanceOrders.filter((o) => o.status !== "cancelled"), [advanceOrders]);
   const advCancelledOrders = React.useMemo(() => advanceOrders.filter((o) => o.status === "cancelled"), [advanceOrders]);
   const bkCompletedOrders = React.useMemo(() => bookingOrders.filter((o) => o.status !== "cancelled"), [bookingOrders]);
@@ -214,10 +215,12 @@ export function SalesReportPreview({
             <div className="text-xs text-muted-foreground">Credit sale</div>
             <div className="text-base font-semibold">{formatIntMoney(creditSale)}</div>
           </div>
-          <div className="rounded-md border p-3">
-            <div className="text-xs text-muted-foreground">Cash sale</div>
-            <div className="text-base font-semibold">{formatIntMoney(cashSale)}</div>
-          </div>
+          {salesDashboardEnabled && (
+            <div className="rounded-md border p-3">
+              <div className="text-xs text-muted-foreground">Cash sale</div>
+              <div className="text-base font-semibold">{formatIntMoney(cashSale)}</div>
+            </div>
+          )}
           {deliveryEnabled && deliverySale > 0 && (
             <div className="rounded-md border p-3">
               <div className="text-xs text-muted-foreground">Delivery sale</div>
@@ -408,7 +411,7 @@ export function SalesReportPreview({
         })()}
 
         {/* Advance/Booking Section */}
-        {(settings?.showAdvanceBookingInReports ?? false) && (advanceOrders.length > 0 || bookingOrders.length > 0) && (() => {
+        {showAdvBooking && (advanceOrders.length > 0 || bookingOrders.length > 0) && (() => {
           const advCompleted = advanceOrders.filter((o) => o.status !== "cancelled");
           const advCancelled = advanceOrders.filter((o) => o.status === "cancelled");
           const advTotal = advCompleted.reduce((s, o) => s + o.advancePayment, 0);
