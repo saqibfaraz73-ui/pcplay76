@@ -71,6 +71,7 @@ export function AdminSettings() {
   // Advance/Booking settings
   const [advanceBookingEnabled, setAdvanceBookingEnabled] = React.useState(false);
   const [showAdvanceBookingInReports, setShowAdvanceBookingInReports] = React.useState(false);
+  const [syncEnabled, setSyncEnabled] = React.useState(false);
 
   // Admin account
   const [adminAccount, setAdminAccount] = React.useState<AdminAccount | null>(null);
@@ -125,6 +126,7 @@ export function AdminSettings() {
     setTableSelectionDisabled(!!s.tableSelectionDisabled);
     setAdvanceBookingEnabled(!!s.advanceBookingEnabled);
     setShowAdvanceBookingInReports(!!s.showAdvanceBookingInReports);
+    setSyncEnabled(!!s.syncEnabled);
     setLogoPath(s.receiptLogoPath);
 
     // Load admin account
@@ -200,6 +202,7 @@ export function AdminSettings() {
         tableSelectionDisabled,
         advanceBookingEnabled,
         showAdvanceBookingInReports,
+        syncEnabled,
         receiptLogoPath: logoPath,
         updatedAt: Date.now(),
       };
@@ -602,6 +605,26 @@ export function AdminSettings() {
               <Switch checked={showAdvanceBookingInReports} onCheckedChange={setShowAdvanceBookingInReports} />
             </div>
           )}
+          <div className="flex justify-end">
+            <Button onClick={() => void save()} disabled={!settings}>Save</Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Sync Settings */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Device Sync</CardTitle>
+          <CardDescription>Enable multi-device sync for Main/Sub device setup over local network.</CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-4">
+          <div className="flex items-center justify-between gap-3 rounded-md border p-3">
+            <div>
+              <div className="text-sm font-medium">Enable Sync</div>
+              <div className="text-xs text-muted-foreground">Show "Sync" in the admin menu to configure Main/Sub device roles.</div>
+            </div>
+            <Switch checked={syncEnabled} onCheckedChange={setSyncEnabled} />
+          </div>
           <div className="flex justify-end">
             <Button onClick={() => void save()} disabled={!settings}>Save</Button>
           </div>

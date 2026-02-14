@@ -41,11 +41,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   const [tableManagementEnabled, setTableManagementEnabled] = React.useState(false);
   const [advanceBookingEnabled, setAdvanceBookingEnabled] = React.useState(false);
+  const [syncEnabled, setSyncEnabled] = React.useState(false);
 
   const loadTableSetting = React.useCallback(async () => {
     const s = await db.settings.get("app");
     setTableManagementEnabled(!!s?.tableManagementEnabled);
     setAdvanceBookingEnabled(!!s?.advanceBookingEnabled);
+    setSyncEnabled(!!s?.syncEnabled);
   }, []);
 
   // Also reload when route changes (e.g. navigating away from settings)
@@ -74,6 +76,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     if (isWaiter) return [];
     return navItems.filter((n) => (isAdmin ? true : !n.adminOnly));
   }, [isAdmin, isWaiter]);
+
+  const visibleAdminSubNav = React.useMemo(() => {
+    return adminSubNav.filter((n) => {
+      if (n.to === "/admin/sync" && !syncEnabled) return false;
+      return true;
+    });
+  }, [syncEnabled]);
 
   const isActive = (path: string) =>
     location.pathname === path || location.pathname.startsWith(`${path}/`);
@@ -168,7 +177,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                               <div className="mt-3 mb-1 px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                                 Admin Tools
                               </div>
-                              {adminSubNav.map((n) => {
+                              {visibleAdminSubNav.map((n) => {
                                 const Icon = n.icon;
                                 return (
                                   <Link
@@ -260,7 +269,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     </Link>
                   )}
                   {isAdmin
-                    ? adminSubNav.map((n) => (
+                    ? visibleAdminSubNav.map((n) => (
                         <Link
                           key={n.to}
                           to={n.to}
