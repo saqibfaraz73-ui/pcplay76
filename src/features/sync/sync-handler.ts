@@ -11,6 +11,10 @@ import type { SyncPayload, PrintJobPayload, SyncEndpoint } from "./sync-types";
 import { btSend } from "@/features/pos/bluetooth-printer";
 import { usbSend } from "@/features/pos/usb-printer";
 
+/** Dedup guard for all sync events — prevent processing same event multiple times */
+const recentSyncEvents = new Map<string, number>();
+const SYNC_DEDUP_WINDOW_MS = 3000;
+
 /**
  * Route incoming sync data to the correct handler based on endpoint.
  */
@@ -18,6 +22,19 @@ export async function handleSyncData(
   payload: SyncPayload,
   endpoint: string
 ): Promise<void> {
+  // Dedup: native plugin may fire the same event multiple times
+  const eventKey = `${endpoint}_${payload.sentAt}_${payload.sourceDeviceId}`;
+  const now = Date.now();
+  if (recentSyncEvents.has(eventKey) && now - recentSyncEvents.get(eventKey)! < SYNC_DEDUP_WINDOW_MS) {
+    console.log(`[Sync] Duplicate event ignored: ${endpoint} from ${payload.sourceDeviceId}`);
+    return;
+  }
+  recentSyncEvents.set(eventKey, now);
+  // Cleanup old entries
+  for (const [k, t] of recentSyncEvents) {
+    if (now - t > SYNC_DEDUP_WINDOW_MS * 2) recentSyncEvents.delete(k);
+  }
+
   console.log(`[Sync] Received ${endpoint} from ${payload.sourceDeviceId}`);
 
   switch (endpoint as SyncEndpoint) {
@@ -105,11 +122,39 @@ async function handleExpenseSync(expense: Expense): Promise<void> {
   console.log(`[Sync] Expense ${expense.id} saved`);
 }
 
+/** Dedup guard: track recent print job hashes to prevent duplicate prints */
+const recentPrintJobs = new Map<string, number>();
+const PRINT_DEDUP_WINDOW_MS = 5000; // ignore duplicate print data within 5 seconds
+
+function getPrintJobHash(data: string): string {
+  // Simple hash of the first 200 chars + length
+  const sample = data.slice(0, 200);
+  let hash = 0;
+  for (let i = 0; i < sample.length; i++) {
+    hash = ((hash << 5) - hash + sample.charCodeAt(i)) | 0;
+  }
+  return `${hash}_${data.length}`;
+}
+
 /** Forward a print job to the Main device's connected printer */
 async function handlePrintJob(job: PrintJobPayload): Promise<void> {
   try {
     // Decode base64 back to raw string
     const raw = atob(job.printData);
+
+    // Dedup check — skip if same print data was processed recently
+    const hash = getPrintJobHash(raw);
+    const now = Date.now();
+    const lastPrinted = recentPrintJobs.get(hash);
+    if (lastPrinted && now - lastPrinted < PRINT_DEDUP_WINDOW_MS) {
+      console.log(`[Sync] Duplicate print job ignored (same data within ${PRINT_DEDUP_WINDOW_MS}ms)`);
+      return;
+    }
+    recentPrintJobs.set(hash, now);
+    // Cleanup old entries
+    for (const [k, t] of recentPrintJobs) {
+      if (now - t > PRINT_DEDUP_WINDOW_MS * 2) recentPrintJobs.delete(k);
+    }
 
     // Auto-detect Main's actual printer connection
     const settings = await db.settings.get("app");
