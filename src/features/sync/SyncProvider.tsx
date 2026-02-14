@@ -7,6 +7,7 @@
  * - Provides helpers for syncing orders, expenses, print jobs
  */
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from "react";
+import { db } from "@/db/appDb";
 import type { DeviceRole, ConnectionStatus, SyncConfig } from "./sync-types";
 import { DEFAULT_SYNC_CONFIG, DEFAULT_SYNC_PORT } from "./sync-types";
 import {
@@ -170,7 +171,13 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
 
   const syncTableOrder = useCallback(async (tableOrder: TableOrder) => {
     if (!isSubConnected) return;
-    const res = await sendToMainApp("table-order", tableOrder, deviceIdRef.current);
+    // Enrich with waiter name and table number so Main can display them in reports
+    const [waiter, table] = await Promise.all([
+      db.waiters.get(tableOrder.waiterId),
+      db.restaurantTables.get(tableOrder.tableId),
+    ]);
+    const enriched = { ...tableOrder, _waiterName: waiter?.name, _tableNumber: table?.tableNumber };
+    const res = await sendToMainApp("table-order", enriched, deviceIdRef.current);
     if (!res.success) console.warn("[Sync] Failed to sync table order:", res.error);
   }, [isSubConnected]);
 

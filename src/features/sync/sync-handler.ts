@@ -76,22 +76,52 @@ async function handleOrderSync(order: Order): Promise<void> {
 }
 
 /** Save a synced table order (keeps Sub's original workPeriodId). Only saves completed/cancelled orders to avoid "stuck" open orders on Main. */
-async function handleTableOrderSync(tableOrder: TableOrder): Promise<void> {
+async function handleTableOrderSync(tableOrder: TableOrder & { _waiterName?: string; _tableNumber?: string }): Promise<void> {
   // Don't save "open" table orders from Sub on Main — they'd get stuck in Main's table management
   if (tableOrder.status === "open") {
     console.log(`[Sync] Skipping open table order ${tableOrder.id} (only completed/cancelled are synced to Main)`);
     return;
   }
-  const existing = await db.tableOrders.get(tableOrder.id);
+
+  // Ensure waiter record exists on Main so reports can display the name
+  if (tableOrder.waiterId && tableOrder._waiterName) {
+    const existingWaiter = await db.waiters.get(tableOrder.waiterId);
+    if (!existingWaiter) {
+      await db.waiters.put({
+        id: tableOrder.waiterId,
+        name: tableOrder._waiterName,
+        createdAt: Date.now(),
+      });
+      console.log(`[Sync] Created waiter record: ${tableOrder._waiterName}`);
+    }
+  }
+
+  // Ensure table record exists on Main so reports can display the number
+  if (tableOrder.tableId && tableOrder._tableNumber) {
+    const existingTable = await db.restaurantTables.get(tableOrder.tableId);
+    if (!existingTable) {
+      await db.restaurantTables.put({
+        id: tableOrder.tableId,
+        tableNumber: tableOrder._tableNumber,
+        createdAt: Date.now(),
+      });
+      console.log(`[Sync] Created table record: ${tableOrder._tableNumber}`);
+    }
+  }
+
+  // Strip internal sync fields before saving
+  const { _waiterName, _tableNumber, ...cleanOrder } = tableOrder;
+
+  const existing = await db.tableOrders.get(cleanOrder.id);
   if (existing) {
-    if (tableOrder.updatedAt > existing.updatedAt) {
-      await db.tableOrders.put(tableOrder);
-      console.log(`[Sync] Table order ${tableOrder.id} updated`);
+    if (cleanOrder.updatedAt > existing.updatedAt) {
+      await db.tableOrders.put(cleanOrder);
+      console.log(`[Sync] Table order ${cleanOrder.id} updated`);
     }
     return;
   }
-  await db.tableOrders.put(tableOrder);
-  console.log(`[Sync] Table order ${tableOrder.id} saved`);
+  await db.tableOrders.put(cleanOrder);
+  console.log(`[Sync] Table order ${cleanOrder.id} saved`);
 }
 
 /** Save a synced credit payment */
