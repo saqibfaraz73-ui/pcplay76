@@ -12,6 +12,11 @@ const config: CapacitorConfig = {
   appId: "app.lovable.a89517294eb14219b1dd14af0464d470",
   appName: "SANGI POS",
   webDir: "dist",
+  plugins: {
+    CapacitorHttp: {
+      enabled: true,
+    },
+  },
   ...(serverUrl
     ? {
         server: {
