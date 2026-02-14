@@ -393,7 +393,9 @@ export function PosTablesManager() {
             const { sendToMainApp } = await import("@/features/sync/sync-client");
             const { getLicense } = await import("@/features/licensing/licensing-db");
             const lic = await getLicense();
-            sendToMainApp("table-order", updatedOrder, lic.deviceId).catch((e) =>
+            const waiter = waitersById[updatedOrder.waiterId];
+            const table = tablesById[updatedOrder.tableId];
+            sendToMainApp("table-order", { ...updatedOrder, _waiterName: waiter?.name, _tableNumber: table?.tableNumber }, lic.deviceId).catch((e) =>
               console.warn("[Sync] Failed to sync table order:", e)
             );
           }
@@ -534,7 +536,9 @@ export function PosTablesManager() {
             const { sendToMainApp } = await import("@/features/sync/sync-client");
             const { getLicense } = await import("@/features/licensing/licensing-db");
             const lic = await getLicense();
-            sendToMainApp("table-order", completedOrder, lic.deviceId).catch((e) =>
+            const waiter = waitersById[completedOrder.waiterId];
+            const table = tablesById[completedOrder.tableId];
+            sendToMainApp("table-order", { ...completedOrder, _waiterName: waiter?.name, _tableNumber: table?.tableNumber }, lic.deviceId).catch((e) =>
               console.warn("[Sync] Failed to sync completed table order:", e)
             );
           }
