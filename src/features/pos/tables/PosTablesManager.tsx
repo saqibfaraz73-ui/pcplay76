@@ -147,30 +147,33 @@ export function PosTablesManager() {
   }, []);
 
   const isWaiter = session?.role === "waiter";
+  const isSupervisor = session?.role === "supervisor";
   const itemsById = React.useMemo(() => Object.fromEntries(items.map((i) => [i.id, i])), [items]);
   const tablesById = React.useMemo(() => Object.fromEntries(tables.map((t) => [t.id, t])), [tables]);
   const waitersById = React.useMemo(() => Object.fromEntries(waiters.map((w) => [w.id, w])), [waiters]);
 
   // Find the logged-in waiter record (match by name)
   const loggedInWaiter = React.useMemo(() => {
-    if (!isWaiter || !session?.username) return null;
+    if ((!isWaiter && !isSupervisor) || !session?.username) return null;
     return waiters.find((w) => w.name.toLowerCase() === session.username.toLowerCase()) ?? null;
-  }, [isWaiter, session?.username, waiters]);
+  }, [isWaiter, isSupervisor, session?.username, waiters]);
 
   // Filter tables: if waiter is restricted, only show their assigned tables
   const visibleTables = React.useMemo(() => {
+    // Supervisor sees all tables (no restriction)
+    if (isSupervisor) return tables;
     if (!isWaiter || !settings?.waiterRestrictToOwnTables || !loggedInWaiter) return tables;
     const assigned = loggedInWaiter.assignedTableIds;
     if (!assigned || assigned.length === 0) return tables; // no restriction if no tables assigned
     return tables.filter((t) => assigned.includes(t.id));
-  }, [tables, isWaiter, settings?.waiterRestrictToOwnTables, loggedInWaiter]);
+  }, [tables, isWaiter, isSupervisor, settings?.waiterRestrictToOwnTables, loggedInWaiter]);
 
-  // Auto-select waiter when logged in as waiter
+  // Auto-select waiter when logged in as waiter (not supervisor - they can pick any)
   React.useEffect(() => {
-    if (loggedInWaiter && !selectedWaiterId) {
+    if (isWaiter && !isSupervisor && loggedInWaiter && !selectedWaiterId) {
       setSelectedWaiterId(loggedInWaiter.id);
     }
-  }, [loggedInWaiter, selectedWaiterId]);
+  }, [isWaiter, isSupervisor, loggedInWaiter, selectedWaiterId]);
 
   // Auto-select default table when waiter changes and table selection is disabled
   React.useEffect(() => {
@@ -861,11 +864,11 @@ export function PosTablesManager() {
         <select
           value={selectedWaiterId}
           onChange={(e) => setSelectedWaiterId(e.target.value)}
-          disabled={isWaiter && settings?.waiterRestrictToOwnTables && !!loggedInWaiter}
+          disabled={isWaiter && !isSupervisor && settings?.waiterRestrictToOwnTables && !!loggedInWaiter}
           className="h-9 rounded-md border bg-background px-3 text-sm flex-1 max-w-xs disabled:opacity-70"
         >
           <option value="">Select waiter...</option>
-          {(isWaiter && settings?.waiterRestrictToOwnTables && loggedInWaiter
+          {(isWaiter && !isSupervisor && settings?.waiterRestrictToOwnTables && loggedInWaiter
             ? [loggedInWaiter]
             : waiters
           ).map((w) => (

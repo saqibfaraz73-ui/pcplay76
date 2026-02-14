@@ -97,7 +97,7 @@ const App = () => (
                 <Route
                   path="/admin/printer"
                   element={
-                    <ProtectedRoute allow={["admin", "cashier", "waiter"]}>
+                     <ProtectedRoute allow={["admin", "cashier", "waiter", "supervisor"]}>
                       <AdminPrinterPage />
                     </ProtectedRoute>
                   }
@@ -129,7 +129,7 @@ const App = () => (
                 <Route
                   path="/admin/sync"
                   element={
-                <ProtectedRoute allow={["admin", "cashier", "waiter"]}>
+                <ProtectedRoute allow={["admin", "cashier", "waiter", "supervisor"]}>
                       <AdminSyncPage />
                     </ProtectedRoute>
                   }
@@ -137,7 +137,7 @@ const App = () => (
                 <Route
                   path="/pos/tables"
                   element={
-                    <ProtectedRoute allow={["cashier", "admin", "waiter"]}>
+                    <ProtectedRoute allow={["cashier", "admin", "waiter", "supervisor"]}>
                       <PosTablesPage />
                     </ProtectedRoute>
                   }

@@ -74,7 +74,7 @@ export default function Login() {
 
   React.useEffect(() => {
     if (!session) return;
-    const dest = session.role === "admin" ? "/admin" : session.role === "waiter" ? "/pos/tables" : "/pos";
+    const dest = session.role === "admin" ? "/admin" : (session.role === "waiter" || session.role === "supervisor") ? "/pos/tables" : "/pos";
     navigate(dest, { replace: true });
   }, [navigate, session]);
 
@@ -121,7 +121,7 @@ export default function Login() {
       }
       const from = (location.state as any)?.from as string | undefined;
       if (result.role === "admin") { navigate("/admin", { replace: true }); return; }
-      if (result.role === "waiter") { navigate("/pos/tables", { replace: true }); return; }
+      if (result.role === "waiter" || result.role === "supervisor") { navigate("/pos/tables", { replace: true }); return; }
       const safeFrom = from && from !== "/login" && from !== "/admin" ? from : undefined;
       navigate(safeFrom ?? "/pos", { replace: true });
     } finally {

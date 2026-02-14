@@ -88,7 +88,7 @@ export function AdminSettings() {
   const [staffAccounts, setStaffAccounts] = React.useState<StaffAccount[]>([]);
   const [newStaffName, setNewStaffName] = React.useState("");
   const [newStaffPhone, setNewStaffPhone] = React.useState("");
-  const [newStaffRole, setNewStaffRole] = React.useState<"cashier" | "waiter">("cashier");
+  const [newStaffRole, setNewStaffRole] = React.useState<"cashier" | "waiter" | "supervisor">("cashier");
   const [newStaffPin, setNewStaffPin] = React.useState("");
   const [deleteStaffId, setDeleteStaffId] = React.useState<string | null>(null);
 
@@ -281,7 +281,7 @@ export function AdminSettings() {
     setNewStaffName("");
     setNewStaffPhone("");
     setNewStaffPin("");
-    toast({ title: `${newStaffRole === "cashier" ? "Cashier" : "Waiter"} added` });
+    toast({ title: `${newStaffRole === "cashier" ? "Cashier" : newStaffRole === "supervisor" ? "Supervisor" : "Waiter"} added` });
   };
 
   const deleteStaff = async (staffId: string) => {
@@ -736,9 +736,10 @@ export function AdminSettings() {
             </div>
             <div className="space-y-2">
               <Label>Role</Label>
-              <select value={newStaffRole} onChange={(e) => setNewStaffRole(e.target.value as "cashier" | "waiter")} className="h-10 w-full rounded-md border bg-background px-3 text-sm">
+              <select value={newStaffRole} onChange={(e) => setNewStaffRole(e.target.value as "cashier" | "waiter" | "supervisor")} className="h-10 w-full rounded-md border bg-background px-3 text-sm">
                 <option value="cashier">Cashier</option>
                 <option value="waiter">Waiter</option>
+                <option value="supervisor">Supervisor</option>
               </select>
             </div>
             <div className="space-y-2">
