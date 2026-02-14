@@ -28,14 +28,37 @@ import { Plus, Trash2, X, Check, Ban, Printer, FileText, Share2 } from "lucide-r
 
 /* ─── helpers ─── */
 
-function calcEndTime(start: string, durationHours: number): string {
+type DurationUnit = "minutes" | "hours" | "days";
+
+function calcEndTime(start: string, duration: number, unit: DurationUnit = "hours"): string {
   const [h, m] = start.split(":").map(Number);
-  const totalMin = h * 60 + m + Math.round(durationHours * 60);
+  let totalMin: number;
+  switch (unit) {
+    case "minutes": totalMin = h * 60 + m + duration; break;
+    case "days":    totalMin = h * 60 + m + duration * 24 * 60; break;
+    default:        totalMin = h * 60 + m + Math.round(duration * 60); break;
+  }
   const eh = Math.floor(totalMin / 60) % 24;
   const em = totalMin % 60;
   const period = eh >= 12 ? "PM" : "AM";
   const h12 = eh === 0 ? 12 : eh > 12 ? eh - 12 : eh;
   return `${h12}:${String(em).padStart(2, "0")} ${period}`;
+}
+
+function durationToHours(duration: number, unit: DurationUnit): number {
+  switch (unit) {
+    case "minutes": return duration / 60;
+    case "days":    return duration * 24;
+    default:        return duration;
+  }
+}
+
+function formatDuration(duration: number, unit: DurationUnit): string {
+  switch (unit) {
+    case "minutes": return `${duration}min`;
+    case "days":    return `${duration}d`;
+    default:        return `${duration}h`;
+  }
 }
 
 function toDateInputValue(ts: number) {
@@ -407,6 +430,7 @@ export default function PosAdvanceBooking() {
   const [bookDate, setBookDate] = React.useState(toDateInputValue(Date.now()));
   const [bookStart, setBookStart] = React.useState("09:00");
   const [bookDuration, setBookDuration] = React.useState("1");
+  const [bookDurationUnit, setBookDurationUnit] = React.useState<DurationUnit>("hours");
   const [bookDiscount, setBookDiscount] = React.useState("");
   const [bookAdvance, setBookAdvance] = React.useState("");
   const [bookManualPrice, setBookManualPrice] = React.useState("");
@@ -417,7 +441,7 @@ export default function PosAdvanceBooking() {
   const selectedBookItem = bookableItems.find((b) => b.id === bookItemId);
   const bookItemPrice = selectedBookItem?.price ?? 0;
   const bookPrice = bookManualPrice !== "" ? (Number(bookManualPrice) || 0) : bookItemPrice;
-  const bookEndTime = calcEndTime(bookStart, Number(bookDuration) || 0);
+  const bookEndTime = calcEndTime(bookStart, Number(bookDuration) || 0, bookDurationUnit);
   const bookDiscountAmt = Math.min(Math.max(0, Number(bookDiscount) || 0), bookPrice);
   const bookTotal = Math.max(0, bookPrice - bookDiscountAmt);
   const bookRemaining = Math.max(0, bookTotal - (Number(bookAdvance) || 0));
@@ -427,6 +451,7 @@ export default function PosAdvanceBooking() {
     setBookDate(toDateInputValue(Date.now()));
     setBookStart("09:00");
     setBookDuration("1");
+    setBookDurationUnit("hours");
     setBookDiscount("");
     setBookAdvance("");
     setBookManualPrice("");
@@ -441,9 +466,10 @@ export default function PosAdvanceBooking() {
     if (!bookItemId) return [];
     const dateTs = new Date(bookDate).setHours(0, 0, 0, 0);
     const dur = Number(bookDuration) || 0;
+    const durHours = durationToHours(dur, bookDurationUnit);
     const [sh, sm] = bookStart.split(":").map(Number);
     const startMin = sh * 60 + sm;
-    const endMin = startMin + Math.round(dur * 60);
+    const endMin = startMin + Math.round(durHours * 60);
     return bookingOrders.filter((o) => {
       if (o.bookableItemId !== bookItemId || o.status === "cancelled") return false;
       const oDate = new Date(o.date).setHours(0, 0, 0, 0);
@@ -469,7 +495,7 @@ export default function PosAdvanceBooking() {
       status: "pending",
       date: new Date(bookDate).setHours(0, 0, 0, 0),
       startTime: bookStart,
-      durationHours: Number(bookDuration) || 1,
+      durationHours: durationToHours(Number(bookDuration) || 1, bookDurationUnit),
       endTime: bookEndTime,
       price: bookPrice,
       discountAmount: bookDiscountAmt,
@@ -781,7 +807,7 @@ export default function PosAdvanceBooking() {
                       <div>
                         <div className="text-sm font-medium">Bkg #{o.receiptNo} — {o.bookableItemName}</div>
                         <div className="text-xs text-muted-foreground">
-                          {fmtDate(o.date)} • {o.startTime} → {o.endTime} ({o.durationHours}h)
+                          {fmtDate(o.date)} • {o.startTime} → {o.endTime} ({o.durationHours >= 24 ? `${Math.round(o.durationHours / 24)}d` : o.durationHours >= 1 ? `${o.durationHours}h` : `${Math.round(o.durationHours * 60)}min`})
                         </div>
                         {o.customerName && <div className="text-xs text-muted-foreground">{o.customerName} {o.customerPhone ? `• ${o.customerPhone}` : ""}</div>}
                       </div>
@@ -947,10 +973,34 @@ export default function PosAdvanceBooking() {
                 <Input type="time" value={bookStart} onChange={(e) => setBookStart(e.target.value)} />
               </div>
             </div>
+            <div className="space-y-2">
+              <Label className="text-xs">Duration Unit</Label>
+              <div className="flex gap-3">
+                {(["minutes", "hours", "days"] as DurationUnit[]).map((u) => (
+                  <label key={u} className="flex items-center gap-1.5 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="durationUnit"
+                      checked={bookDurationUnit === u}
+                      onChange={() => setBookDurationUnit(u)}
+                      className="accent-primary"
+                    />
+                    <span className="text-sm capitalize">{u}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <Label className="text-xs">Duration (hours)</Label>
-                <Input type="number" inputMode="decimal" step="0.5" value={bookDuration} onChange={(e) => setBookDuration(e.target.value)} placeholder="1" />
+                <Label className="text-xs">Duration ({bookDurationUnit})</Label>
+                <Input
+                  type="number"
+                  inputMode="decimal"
+                  step={bookDurationUnit === "minutes" ? "15" : "0.5"}
+                  value={bookDuration}
+                  onChange={(e) => setBookDuration(e.target.value)}
+                  placeholder="1"
+                />
               </div>
               <div className="space-y-1">
                 <Label className="text-xs">End Time</Label>
