@@ -3,6 +3,7 @@
  * and managing the local P2P connection.
  */
 import { useState, useEffect, useCallback } from "react";
+import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/auth/AuthProvider";
@@ -11,11 +12,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import { Wifi, WifiOff, Server, Smartphone, Printer, Loader2, Search, Radio } from "lucide-react";
+import { Wifi, WifiOff, Server, Smartphone, Printer as PrinterIcon, Loader2, Search, Radio } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import type { DeviceRole, ConnectionStatus, SyncConfig } from "./sync-types";
 import { DEFAULT_SYNC_CONFIG, DEFAULT_SYNC_PORT } from "./sync-types";
+import type { Settings } from "@/db/schema";
 import {
   startSyncServer,
   stopSyncServer,
@@ -39,6 +42,61 @@ function loadConfig(): SyncConfig {
 
 function saveConfig(config: SyncConfig) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
+}
+
+function SubPrinterModeContent() {
+  const { toast } = useToast();
+  const [subPrinterMode, setSubPrinterMode] = React.useState<"own" | "main">("own");
+  const [settings, setSettings] = React.useState<Settings | null>(null);
+
+  React.useEffect(() => {
+    db.settings.get("app").then((s) => {
+      if (s) {
+        setSettings(s);
+        setSubPrinterMode(s.subPrinterMode ?? "own");
+      }
+    });
+  }, []);
+
+  const savePrinterMode = async (mode: "own" | "main") => {
+    if (!settings) return;
+    const next: Settings = { ...settings, subPrinterMode: mode, updatedAt: Date.now() };
+    await db.settings.put(next);
+    setSettings(next);
+    setSubPrinterMode(mode);
+    toast({ title: "Saved" });
+  };
+
+  return (
+    <>
+      <div className="flex items-center justify-between gap-3 rounded-md border p-3">
+        <div>
+          <div className="text-sm font-medium">Use Main Device's Printer</div>
+          <div className="text-xs text-muted-foreground">
+            Send all print jobs to the Main device's connected printer instead of printing locally.
+          </div>
+        </div>
+        <Switch
+          checked={subPrinterMode === "main"}
+          onCheckedChange={(checked) => void savePrinterMode(checked ? "main" : "own")}
+        />
+      </div>
+      {subPrinterMode === "main" && (
+        <div className="rounded-md bg-muted/50 p-3">
+          <p className="text-sm text-muted-foreground">
+            ✅ Print jobs will be sent to the Main device over sync. Make sure Main device has a printer connected and sync is active.
+          </p>
+        </div>
+      )}
+      {subPrinterMode === "own" && (
+        <div className="rounded-md bg-muted/50 p-3">
+          <p className="text-sm text-muted-foreground">
+            🖨️ This device will use its own printer. Configure it in Printer Settings.
+          </p>
+        </div>
+      )}
+    </>
+  );
 }
 
 export function SyncSettingsPanel() {
@@ -224,7 +282,7 @@ export function SyncSettingsPanel() {
 
   return (
     <div className="space-y-4">
-      {/* Status */}
+      {/* Status - also show for sub connected */}
       <Card>
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
@@ -332,7 +390,7 @@ export function SyncSettingsPanel() {
                   </p>
                 </div>
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Printer className="h-4 w-4" />
+                  <PrinterIcon className="h-4 w-4" />
                   Sub devices can use this device's printer
                 </div>
                 <Button variant="destructive" size="sm" onClick={handleStopServer}>
@@ -420,6 +478,20 @@ export function SyncSettingsPanel() {
                 </Button>
               </>
             )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Sub Device Printer Mode */}
+      {config.role === "sub" && status === "connected" && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <PrinterIcon className="h-5 w-5" /> Sub Device Printer
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <SubPrinterModeContent />
           </CardContent>
         </Card>
       )}
