@@ -53,13 +53,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   // Also reload when route changes (e.g. navigating away from settings)
   React.useEffect(() => { loadTableSetting(); }, [location.pathname, loadTableSetting]);
 
-  // Re-check when user navigates back or app regains focus
+  // Re-check when user navigates back, app regains focus, or settings change
   React.useEffect(() => {
     const refresh = () => void loadTableSetting();
     window.addEventListener("focus", refresh);
+    window.addEventListener("sangi-settings-changed", refresh);
     document.addEventListener("visibilitychange", refresh);
     return () => {
       window.removeEventListener("focus", refresh);
+      window.removeEventListener("sangi-settings-changed", refresh);
       document.removeEventListener("visibilitychange", refresh);
     };
   }, [loadTableSetting]);
