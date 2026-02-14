@@ -14,6 +14,7 @@ export type SyncEndpoint =
   | "credit-payment"
   | "expense"
   | "print"
+  | "work-period"
   | "bulk";
 
 /** Payload sent from Sub → Main for each sync endpoint */

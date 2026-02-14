@@ -293,6 +293,7 @@ export type Settings = {
   showAdvanceBookingInReports?: boolean;
   // Sync settings
   syncEnabled?: boolean; // if true, sync feature is available
+  subWorkPeriodMode?: "own" | "main"; // "own" = sub uses its own work period, "main" = inherits from main app
   // Cashier permissions
   cashierReportsEnabled?: boolean; // if true, cashier can access reports section
   waiterMainAppEnabled?: boolean; // if true, waiters can set device as Main in sync
