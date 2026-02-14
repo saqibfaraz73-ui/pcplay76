@@ -373,7 +373,7 @@ export type StaffAccount = {
   id: string;
   name: string;
   phone?: string; // optional mobile number for login
-  role: "cashier" | "waiter";
+  role: "cashier" | "waiter" | "supervisor";
   pin: string; // 4-digit PIN
   defaultTableId?: string;
   createdAt: number;

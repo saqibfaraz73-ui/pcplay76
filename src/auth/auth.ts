@@ -89,5 +89,5 @@ export function canAccessAdmin(session: AuthSession | null): boolean {
 }
 
 export function canAccessPOS(session: AuthSession | null): boolean {
-  return session?.role === "admin" || session?.role === "cashier" || session?.role === "waiter";
+  return session?.role === "admin" || session?.role === "cashier" || session?.role === "waiter" || session?.role === "supervisor";
 }

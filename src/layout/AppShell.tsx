@@ -79,7 +79,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   const isAdmin = session?.role === "admin";
   const isCashier = session?.role === "cashier";
-  const isWaiter = session?.role === "waiter";
+  const isWaiter = session?.role === "waiter" || session?.role === "supervisor";
 
   const visibleNavItems = React.useMemo(() => {
     if (isWaiter) return [];
