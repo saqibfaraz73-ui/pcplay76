@@ -146,9 +146,31 @@ export function PosTablesManager() {
     setTableOrders(orders);
   }, []);
 
+  const isWaiter = session?.role === "waiter";
   const itemsById = React.useMemo(() => Object.fromEntries(items.map((i) => [i.id, i])), [items]);
   const tablesById = React.useMemo(() => Object.fromEntries(tables.map((t) => [t.id, t])), [tables]);
   const waitersById = React.useMemo(() => Object.fromEntries(waiters.map((w) => [w.id, w])), [waiters]);
+
+  // Find the logged-in waiter record (match by name)
+  const loggedInWaiter = React.useMemo(() => {
+    if (!isWaiter || !session?.username) return null;
+    return waiters.find((w) => w.name === session.username) ?? null;
+  }, [isWaiter, session?.username, waiters]);
+
+  // Filter tables: if waiter is restricted, only show their assigned tables
+  const visibleTables = React.useMemo(() => {
+    if (!isWaiter || !settings?.waiterRestrictToOwnTables || !loggedInWaiter) return tables;
+    const assigned = loggedInWaiter.assignedTableIds;
+    if (!assigned || assigned.length === 0) return tables; // no restriction if no tables assigned
+    return tables.filter((t) => assigned.includes(t.id));
+  }, [tables, isWaiter, settings?.waiterRestrictToOwnTables, loggedInWaiter]);
+
+  // Auto-select waiter when logged in as waiter
+  React.useEffect(() => {
+    if (loggedInWaiter && !selectedWaiterId) {
+      setSelectedWaiterId(loggedInWaiter.id);
+    }
+  }, [loggedInWaiter, selectedWaiterId]);
 
   const getTableOrder = (tableId: string) => tableOrders.find((o) => o.tableId === tableId);
 
@@ -668,10 +690,14 @@ export function PosTablesManager() {
           <p className="text-sm text-muted-foreground">Select a table to take orders.</p>
         </header>
 
-        {tables.length === 0 ? (
+        {visibleTables.length === 0 ? (
           <Card>
             <CardContent className="py-8 text-center">
-              <p className="text-muted-foreground">No tables configured.</p>
+              <p className="text-muted-foreground">
+                {isWaiter && settings?.waiterRestrictToOwnTables
+                  ? "No tables assigned to you. Ask admin to assign tables."
+                  : "No tables configured."}
+              </p>
               <p className="text-sm text-muted-foreground mt-2">
                 Admin can add tables in Admin → Tables & Waiters.
               </p>
@@ -679,7 +705,7 @@ export function PosTablesManager() {
           </Card>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-            {tables.map((table) => {
+            {visibleTables.map((table) => {
               const order = getTableOrder(table.id);
               const hasOrder = !!order;
               return (
@@ -734,7 +760,7 @@ export function PosTablesManager() {
       </div>
 
       {/* Table Selection (only in waiter-only mode) */}
-      {tableSelectionDisabled && tables.length > 0 && (
+      {tableSelectionDisabled && visibleTables.length > 0 && (
         <div className="flex items-center gap-2">
           <Label className="shrink-0">Table (optional):</Label>
           <select
@@ -743,7 +769,7 @@ export function PosTablesManager() {
             className="h-9 rounded-md border bg-background px-3 text-sm flex-1 max-w-xs"
           >
             <option value="">No table</option>
-            {tables.map((t) => (
+            {visibleTables.map((t) => (
               <option key={t.id} value={t.id}>Table {t.tableNumber}</option>
             ))}
           </select>
@@ -756,10 +782,14 @@ export function PosTablesManager() {
         <select
           value={selectedWaiterId}
           onChange={(e) => setSelectedWaiterId(e.target.value)}
-          className="h-9 rounded-md border bg-background px-3 text-sm flex-1 max-w-xs"
+          disabled={isWaiter && settings?.waiterRestrictToOwnTables && !!loggedInWaiter}
+          className="h-9 rounded-md border bg-background px-3 text-sm flex-1 max-w-xs disabled:opacity-70"
         >
           <option value="">Select waiter...</option>
-          {waiters.map((w) => (
+          {(isWaiter && settings?.waiterRestrictToOwnTables && loggedInWaiter
+            ? [loggedInWaiter]
+            : waiters
+          ).map((w) => (
             <option key={w.id} value={w.id}>{w.name}</option>
           ))}
         </select>
