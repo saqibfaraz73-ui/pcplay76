@@ -25,16 +25,25 @@ export function getMainAppUrl() {
 
 /** Ping the Main app to check if it's reachable */
 export async function pingMainApp(): Promise<boolean> {
-  if (!mainAppUrl) return false;
+  if (!mainAppUrl) {
+    console.error("[Sync] pingMainApp: No mainAppUrl set");
+    return false;
+  }
+  const url = `${mainAppUrl}/ping`;
+  console.log("[Sync] Pinging Main app at:", url);
   try {
-    const res = await fetch(`${mainAppUrl}/ping`, {
+    const res = await fetch(url, {
       method: "GET",
-      signal: AbortSignal.timeout(3000),
+      mode: "cors",
+      signal: AbortSignal.timeout(8000),
     });
+    console.log("[Sync] Ping response status:", res.status);
     if (!res.ok) return false;
     const json = await res.json();
+    console.log("[Sync] Ping response body:", JSON.stringify(json));
     return json.status === "ok" && json.role === "main";
-  } catch {
+  } catch (e: any) {
+    console.error("[Sync] Ping failed:", e?.message || e, "URL was:", url);
     return false;
   }
 }
