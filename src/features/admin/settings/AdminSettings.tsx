@@ -209,6 +209,8 @@ export function AdminSettings() {
       await db.settings.put(next);
       toast({ title: "Saved" });
       setSettings(next);
+      // Notify nav to refresh immediately
+      window.dispatchEvent(new Event("sangi-settings-changed"));
     } catch (e: any) {
       toast({ title: "Could not save", description: e?.message ?? String(e), variant: "destructive" });
     }
