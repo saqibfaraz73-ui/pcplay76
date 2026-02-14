@@ -183,8 +183,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                             </Link>
                           )}
 
-                          {/* Printer link for all roles */}
-                          {!isAdmin && (
+                          {/* Printer link for cashier/supervisor (not waiter) */}
+                          {(isCashier || session?.role === "supervisor") && (
                             <Link
                               to="/admin/printer"
                               className={cn(
@@ -307,7 +307,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                       Reports
                     </Link>
                   )}
-                  {!isAdmin && (
+                  {(isCashier || session?.role === "supervisor") && (
                     <Link
                       to="/admin/printer"
                       className={cn(
