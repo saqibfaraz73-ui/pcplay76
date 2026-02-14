@@ -94,6 +94,10 @@ export function PosTablesManager() {
   const [cancelCheckoutOpen, setCancelCheckoutOpen] = React.useState(false);
   const [cancelCheckoutReason, setCancelCheckoutReason] = React.useState("");
 
+  // Cancel specific item dialog
+  const [cancelItemIdx, setCancelItemIdx] = React.useState<number | null>(null);
+  const [cancelItemReason, setCancelItemReason] = React.useState("");
+
   // Variant picker state
   const [variantPickerItem, setVariantPickerItem] = React.useState<MenuItem | null>(null);
 
@@ -533,6 +537,64 @@ export function PosTablesManager() {
     }
   };
 
+  // Cancel a specific item from the existing table order
+  const cancelSpecificItem = async () => {
+    if (cancelItemIdx === null || !currentTableOrder) return;
+    if (!cancelItemReason.trim()) {
+      toast({ title: "Enter cancellation reason", variant: "destructive" });
+      return;
+    }
+
+    try {
+      const line = currentTableOrder.lines[cancelItemIdx];
+      if (!line) return;
+
+      // Restock inventory for cancelled item
+      const realId = line.itemId.includes("__v") ? line.itemId.split("__v")[0] : line.itemId;
+      const item = itemsById[realId];
+      if (item?.trackInventory) {
+        const row = await db.inventory.get(realId);
+        const current = row?.quantity ?? 0;
+        await db.inventory.put({ itemId: realId, quantity: current + line.qty, updatedAt: Date.now() });
+      }
+
+      const newLines = currentTableOrder.lines.filter((_, i) => i !== cancelItemIdx);
+
+      if (newLines.length === 0) {
+        // If no items left, cancel the whole order
+        await db.tableOrders.update(currentTableOrder.id, {
+          status: "cancelled",
+          cancelledReason: `Item cancelled: ${line.name} - ${cancelItemReason.trim()}`,
+          workPeriodId: currentWorkPeriod?.id,
+          updatedAt: Date.now(),
+        });
+        toast({ title: "Order cancelled (last item removed)" });
+        setCancelItemIdx(null);
+        setCancelItemReason("");
+        setCheckoutOpen(false);
+        backToTables();
+      } else {
+        const newSubtotal = newLines.reduce((s, l) => s + l.subtotal, 0);
+        const { taxAmount: newTax, serviceChargeAmount: newService } = calculateCharges(newSubtotal, settings);
+        await db.tableOrders.update(currentTableOrder.id, {
+          lines: newLines,
+          subtotal: newSubtotal,
+          taxAmount: newTax,
+          serviceChargeAmount: newService,
+          total: newSubtotal + newTax + newService,
+          updatedAt: Date.now(),
+        });
+        toast({ title: `${line.name} cancelled` });
+        setCancelItemIdx(null);
+        setCancelItemReason("");
+      }
+
+      await refreshAfterMutation();
+    } catch (e: any) {
+      toast({ title: "Failed", description: e?.message ?? String(e), variant: "destructive" });
+    }
+  };
+
   const cancelTableOrder = async (reason: string) => {
     if (!currentTableOrder) return;
     if (!reason.trim()) {
@@ -960,7 +1022,7 @@ export function PosTablesManager() {
       )}
 
       {/* Action Buttons */}
-      <div className="flex gap-2 flex-wrap">
+      <div className="flex gap-2 flex-wrap pb-20">
         <Button 
           onClick={() => void saveOrder(true)} 
           disabled={cart.length === 0 || !selectedWaiterId}
@@ -1009,10 +1071,21 @@ export function PosTablesManager() {
                 <div className="px-3 py-2 bg-muted/40 text-xs font-medium">Order Items</div>
                 <div className="divide-y">
                   {currentTableOrder.lines.map((line, idx) => (
-                    <div key={idx} className="flex items-center justify-between px-3 py-1.5 text-sm">
+                    <div key={idx} className="flex items-center justify-between px-3 py-1.5 text-sm gap-1">
                       <span className="flex-1 truncate">{line.name}</span>
-                      <span className="text-muted-foreground mx-2">x{line.qty}</span>
+                      <span className="text-muted-foreground">x{line.qty}</span>
                       <span className="font-medium">{formatIntMoney(line.subtotal)}</span>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-6 w-6 text-destructive shrink-0"
+                        onClick={() => {
+                          setCancelItemIdx(idx);
+                          setCancelItemReason("");
+                        }}
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
                     </div>
                   ))}
                 </div>
@@ -1191,6 +1264,35 @@ export function PosTablesManager() {
             <Button variant="destructive" onClick={() => void handleCancelFromCheckout()}>
               Cancel Order
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Cancel Specific Item Dialog */}
+      <Dialog open={cancelItemIdx !== null} onOpenChange={() => setCancelItemIdx(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Cancel Item</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            {cancelItemIdx !== null && currentTableOrder?.lines[cancelItemIdx] && (
+              <p className="text-sm">
+                Cancel <strong>{currentTableOrder.lines[cancelItemIdx].name}</strong> (x{currentTableOrder.lines[cancelItemIdx].qty})?
+              </p>
+            )}
+            <div className="space-y-2">
+              <Label htmlFor="cancelItemReason">Reason</Label>
+              <Input
+                id="cancelItemReason"
+                value={cancelItemReason}
+                onChange={(e) => setCancelItemReason(e.target.value)}
+                placeholder="Enter reason..."
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCancelItemIdx(null)}>Back</Button>
+            <Button variant="destructive" onClick={() => void cancelSpecificItem()}>Cancel Item</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

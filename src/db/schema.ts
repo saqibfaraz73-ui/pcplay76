@@ -293,6 +293,8 @@ export type Settings = {
   showAdvanceBookingInReports?: boolean;
   // Sync settings
   syncEnabled?: boolean; // if true, sync feature is available
+  // Cashier permissions
+  cashierReportsEnabled?: boolean; // if true, cashier can access reports section
   updatedAt: number;
 };
 
