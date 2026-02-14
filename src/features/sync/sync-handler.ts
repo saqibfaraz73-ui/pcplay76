@@ -47,7 +47,7 @@ export async function handleSyncData(
   }
 }
 
-/** Save a synced order into the Main device's database */
+/** Save a synced order into the Main device's database, overriding workPeriodId with Main's active WP */
 async function handleOrderSync(order: Order): Promise<void> {
   // Check if order already exists (avoid duplicates)
   const existing = await db.orders.get(order.id);
@@ -55,21 +55,32 @@ async function handleOrderSync(order: Order): Promise<void> {
     console.log(`[Sync] Order ${order.id} already exists, skipping`);
     return;
   }
+  // Override workPeriodId with Main's active work period so it appears in Main's reports
+  const activeWp = await db.workPeriods.filter((wp) => !wp.isClosed).first();
+  if (activeWp) {
+    order.workPeriodId = activeWp.id;
+  }
   await db.orders.put(order);
-  console.log(`[Sync] Order ${order.id} saved (receipt #${order.receiptNo})`);
+  console.log(`[Sync] Order ${order.id} saved (receipt #${order.receiptNo}, wp: ${order.workPeriodId})`);
 }
 
-/** Save a synced table order */
+/** Save a synced table order, overriding workPeriodId with Main's active WP */
 async function handleTableOrderSync(tableOrder: TableOrder): Promise<void> {
   const existing = await db.tableOrders.get(tableOrder.id);
   if (existing) {
     // Update if newer
     if (tableOrder.updatedAt > existing.updatedAt) {
+      // Override workPeriodId with Main's active WP
+      const activeWp = await db.workPeriods.filter((wp) => !wp.isClosed).first();
+      if (activeWp) tableOrder.workPeriodId = activeWp.id;
       await db.tableOrders.put(tableOrder);
       console.log(`[Sync] Table order ${tableOrder.id} updated`);
     }
     return;
   }
+  // Override workPeriodId with Main's active WP
+  const activeWp = await db.workPeriods.filter((wp) => !wp.isClosed).first();
+  if (activeWp) tableOrder.workPeriodId = activeWp.id;
   await db.tableOrders.put(tableOrder);
   console.log(`[Sync] Table order ${tableOrder.id} saved`);
 }
@@ -83,10 +94,13 @@ async function handleCreditPaymentSync(data: unknown): Promise<void> {
   console.log(`[Sync] Credit payment ${payment.id} saved`);
 }
 
-/** Save a synced expense */
+/** Save a synced expense, overriding workPeriodId with Main's active WP */
 async function handleExpenseSync(expense: Expense): Promise<void> {
   const existing = await db.expenses.get(expense.id);
   if (existing) return;
+  // Override workPeriodId with Main's active WP
+  const activeWp = await db.workPeriods.filter((wp) => !wp.isClosed).first();
+  if (activeWp) (expense as any).workPeriodId = activeWp.id;
   await db.expenses.put(expense);
   console.log(`[Sync] Expense ${expense.id} saved`);
 }
