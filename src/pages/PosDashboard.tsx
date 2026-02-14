@@ -19,7 +19,7 @@ import { ReceiptDialog } from "@/components/ReceiptDialog";
 import { printReceiptFromOrder, printKotFromOrder } from "@/features/pos/receipt-print";
 import { useWorkPeriod } from "@/features/pos/WorkPeriodProvider";
 import { saveDeliveryCustomer } from "@/features/admin/delivery/delivery-customers";
-import { Play, Square, Printer, Save, Truck, ClipboardList, UtensilsCrossed } from "lucide-react";
+import { Play, Square, Printer, Save, Truck, ClipboardList, UtensilsCrossed, X } from "lucide-react";
 import { format } from "date-fns";
 import { UpgradeDialog } from "@/features/licensing/UpgradeDialog";
 import { Link } from "react-router-dom";
@@ -104,6 +104,10 @@ export default function PosDashboard() {
   const [tableMap, setTableMap] = React.useState<Record<string, RestaurantTable>>({});
   const [waiterMap, setWaiterMap] = React.useState<Record<string, Waiter>>({});
 
+  // Cancel pending table order dialog
+  const [cancelTableOrderId, setCancelTableOrderId] = React.useState<string | null>(null);
+  const [cancelTableReason, setCancelTableReason] = React.useState("");
+
   // Variant picker state
   const [variantPickerItem, setVariantPickerItem] = React.useState<MenuItem | null>(null);
 
@@ -179,6 +183,38 @@ export default function PosDashboard() {
     setDeliveryPersons(delPersons);
     setPendingTableOrders(openTableOrders);
   }, []);
+
+  const cancelPendingTableOrder = async () => {
+    if (!cancelTableOrderId || !cancelTableReason.trim()) {
+      toast({ title: "Enter cancellation reason", variant: "destructive" });
+      return;
+    }
+    try {
+      const order = await db.tableOrders.get(cancelTableOrderId);
+      if (!order) return;
+      // Restock inventory
+      const allItems = await db.items.toArray();
+      const itemsById = Object.fromEntries(allItems.map((i) => [i.id, i]));
+      for (const l of order.lines) {
+        const item = itemsById[l.itemId];
+        if (!item?.trackInventory) continue;
+        const row = await db.inventory.get(l.itemId);
+        const current = row?.quantity ?? 0;
+        await db.inventory.put({ itemId: l.itemId, quantity: current + l.qty, updatedAt: Date.now() });
+      }
+      await db.tableOrders.update(cancelTableOrderId, {
+        status: "cancelled",
+        cancelledReason: cancelTableReason.trim(),
+        updatedAt: Date.now(),
+      });
+      toast({ title: "Table order cancelled" });
+      setCancelTableOrderId(null);
+      setCancelTableReason("");
+      await refreshAfterMutation();
+    } catch (e: any) {
+      toast({ title: "Failed", description: e?.message ?? String(e), variant: "destructive" });
+    }
+  };
 
   const deliveryPersonsById = React.useMemo(() => Object.fromEntries(deliveryPersons.map((p) => [p.id, p])), [deliveryPersons]);
 
@@ -635,12 +671,14 @@ export default function PosDashboard() {
                 const itemCount = to.lines.reduce((s, l) => s + l.qty, 0);
                 const timeAgo = Math.round((Date.now() - to.createdAt) / 60000);
                 return (
-                  <Link
+                  <div
                     key={to.id}
-                    to="/pos/tables"
-                    className="flex items-center justify-between gap-3 rounded-md border p-2 hover:bg-accent transition-colors"
+                    className="flex items-center justify-between gap-3 rounded-md border p-2"
                   >
-                    <div className="flex items-center gap-3 min-w-0">
+                    <Link
+                      to="/pos/tables"
+                      className="flex items-center gap-3 min-w-0 flex-1 hover:bg-accent rounded-md transition-colors"
+                    >
                       <div className="flex h-8 w-8 items-center justify-center rounded-md bg-orange-100 dark:bg-orange-950/40 text-orange-600 dark:text-orange-400 text-xs font-bold shrink-0">
                         {table?.tableNumber ?? "?"}
                       </div>
@@ -652,9 +690,21 @@ export default function PosDashboard() {
                           {timeAgo < 1 ? "Just now" : `${timeAgo}m ago`} • {formatIntMoney(to.total)}
                         </div>
                       </div>
-                    </div>
-                    <span className="text-xs text-orange-600 dark:text-orange-400 font-medium shrink-0">Pending</span>
-                  </Link>
+                    </Link>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="shrink-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        setCancelTableOrderId(to.id);
+                        setCancelTableReason("");
+                      }}
+                      title="Cancel this order"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
                 );
               })}
             </div>
@@ -1232,6 +1282,30 @@ export default function PosDashboard() {
       ) : null}
 
       <UpgradeDialog open={upgradeOpen} onOpenChange={setUpgradeOpen} message={upgradeMsg} />
+
+      {/* Cancel pending table order dialog */}
+      <Dialog open={!!cancelTableOrderId} onOpenChange={(open) => { if (!open) setCancelTableOrderId(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Cancel Table Order</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            This will cancel the order and restock inventory. Enter a reason:
+          </p>
+          <Input
+            value={cancelTableReason}
+            onChange={(e) => setCancelTableReason(e.target.value)}
+            placeholder="Reason for cancellation"
+            autoFocus
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCancelTableOrderId(null)}>Back</Button>
+            <Button variant="destructive" onClick={() => void cancelPendingTableOrder()} disabled={!cancelTableReason.trim()}>
+              Cancel Order
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
