@@ -6,6 +6,7 @@ import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/auth/AuthProvider";
+import { db } from "@/db/appDb";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
@@ -43,6 +44,7 @@ export function SyncSettingsPanel() {
   const { toast } = useToast();
   const { session } = useAuth();
   const isWaiter = session?.role === "waiter";
+  const [waiterMainAppEnabled, setWaiterMainAppEnabled] = useState(false);
   const [config, setConfig] = useState<SyncConfig>(loadConfig);
   const [status, setStatus] = useState<ConnectionStatus>("disconnected");
   const [serverIp, setServerIp] = useState("");
@@ -51,6 +53,15 @@ export function SyncSettingsPanel() {
   const [loading, setLoading] = useState(false);
 
   const isAndroid = isNativeAndroid();
+
+  // Load waiter main app permission
+  useEffect(() => {
+    db.settings.get("app").then((s) => {
+      setWaiterMainAppEnabled(!!s?.waiterMainAppEnabled);
+    });
+  }, []);
+
+  const canBeMain = !isWaiter || waiterMainAppEnabled;
 
   // Check server status on mount for Main devices
   useEffect(() => {
@@ -216,7 +227,7 @@ export function SyncSettingsPanel() {
             <CardTitle className="text-lg">Choose Device Role</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            {!isWaiter && (
+            {canBeMain && (
               <Button
                 className="w-full justify-start gap-3 h-auto py-3"
                 variant="outline"
@@ -252,9 +263,9 @@ export function SyncSettingsPanel() {
               </div>
             </Button>
 
-            {isWaiter && (
+            {isWaiter && !waiterMainAppEnabled && (
               <p className="text-xs text-muted-foreground">
-                Waiters can only connect as Sub device. Admin can set up the Main device.
+                Waiters can only connect as Sub device. Admin can enable Main device access in Settings.
               </p>
             )}
           </CardContent>
