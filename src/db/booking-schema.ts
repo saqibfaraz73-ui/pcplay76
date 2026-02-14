@@ -58,6 +58,7 @@ export type BookingOrder = {
   total: number; // price - discount
   advancePayment: number;
   remainingPayment: number;
+  isMaintenance?: boolean; // if true, slot is blocked as "Not Available" and not counted in sales
   customerName?: string;
   customerPhone?: string;
   customerAddress?: string;
