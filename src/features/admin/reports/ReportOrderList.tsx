@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 
 // Convert TableOrder to Order shape for ReceiptDialog
 function tableOrderToOrder(t: TableOrder, tablesById: Record<string, RestaurantTable>, waitersById: Record<string, Waiter>): Order {
-  const waiterName = waitersById[t.waiterId]?.name;
+  const waiterName = waitersById[t.waiterId]?.name ?? t.waiterName;
   return {
     id: t.id,
     receiptNo: t.receiptNo ?? 0,
@@ -57,8 +57,8 @@ export function ReportOrderList({ orders, customersById, deliveryPersonsById, ta
         id: t.id,
         order: tableOrderToOrder(t, tablesById, waitersById),
         source: "table",
-        tableNumber: tablesById[t.tableId]?.tableNumber,
-        waiterName: waitersById[t.waiterId]?.name,
+        tableNumber: tablesById[t.tableId]?.tableNumber ?? t.tableNumber,
+        waiterName: waitersById[t.waiterId]?.name ?? t.waiterName,
       }));
     return [...regular, ...table].sort((a, b) => b.order.createdAt - a.order.createdAt);
   }, [orders, tableOrders, tablesById, waitersById]);

@@ -286,8 +286,8 @@ export function SalesReportPreview({
                   {tableOrders.map((o, idx) => (
                     <tr key={o.id} className="border-t">
                       <td className="px-3 py-2 text-muted-foreground">{idx + 1}</td>
-                      <td className="px-3 py-2">{tablesById[o.tableId]?.tableNumber ?? o.tableId}</td>
-                      <td className="px-3 py-2">{waitersById[o.waiterId]?.name ?? o.waiterId}</td>
+                      <td className="px-3 py-2">{tablesById[o.tableId]?.tableNumber ?? o.tableNumber ?? o.tableId}</td>
+                      <td className="px-3 py-2">{waitersById[o.waiterId]?.name ?? o.waiterName ?? o.waiterId}</td>
                       <td className={`whitespace-nowrap px-3 py-2 ${o.status === "cancelled" ? "text-destructive" : ""}`}>
                         {o.status}
                       </td>

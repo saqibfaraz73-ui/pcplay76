@@ -137,8 +137,11 @@ async function handleTableOrderSync(tableOrder: TableOrder & { _waiterName?: str
     }
   }
 
-  // Strip internal sync fields before saving
+  // Strip internal sync fields before saving, but preserve waiterName/tableNumber for reports
   const { _waiterName, _tableNumber, ...cleanOrder } = tableOrder;
+  // Ensure denormalized names are stored on the order for report display
+  if (_waiterName && !cleanOrder.waiterName) cleanOrder.waiterName = _waiterName;
+  if (_tableNumber && !cleanOrder.tableNumber) cleanOrder.tableNumber = _tableNumber;
 
   const existing = await db.tableOrders.get(cleanOrder.id);
   if (existing) {

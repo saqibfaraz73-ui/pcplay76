@@ -312,7 +312,7 @@ function buildSalesPdf(args: {
     }
     for (const [wid, data] of Object.entries(byWaiter)) {
       y += 4;
-      const name = waitersById[wid]?.name ?? wid;
+      const name = waitersById[wid]?.name ?? args.tableOrders.find(o => o.waiterId === wid)?.waiterName ?? wid;
       row(`Sales By ${name}`, formatIntMoney(data.total), true);
       if (data.cancelCount > 0) row(`  Cancelled (${data.cancelCount})`, formatIntMoney(data.cancelled), false, [200, 0, 0]);
       if (data.discount > 0) row(`  Discounts`, formatIntMoney(data.discount));
