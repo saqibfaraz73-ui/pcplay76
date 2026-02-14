@@ -20,6 +20,7 @@ import { setMainAppUrl, pingMainApp, sendToMainApp, sendPrintJob } from "./sync-
 import { handleSyncData } from "./sync-handler";
 import type { Order, Expense, TableOrder, WorkPeriod } from "@/db/schema";
 import type { SyncEndpoint } from "./sync-types";
+import type { PluginListenerHandle } from "@capacitor/core";
 
 const STORAGE_KEY = "sangi_sync_config";
 
@@ -71,6 +72,7 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
   const deviceIdRef = useRef("");
   const initDone = useRef(false);
   const healthIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const listenerRef = useRef<PluginListenerHandle | null>(null);
 
   // Load device ID for sync payloads
   useEffect(() => {
@@ -93,19 +95,26 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
 
     if (config.role === "main") {
       // Auto-start server
+      const attachListener = async () => {
+        // Remove previous listener to prevent duplicates
+        if (listenerRef.current) {
+          try { await listenerRef.current.remove(); } catch {}
+          listenerRef.current = null;
+        }
+        const handle = await onSyncDataReceived((payload, endpoint) => {
+          handleSyncData(payload, endpoint);
+        });
+        listenerRef.current = handle;
+      };
+
       getSyncServerStatus().then((s) => {
         if (s.running) {
           setStatus("connected");
-          // Re-attach listener
-          onSyncDataReceived((payload, endpoint) => {
-            handleSyncData(payload, endpoint);
-          });
+          attachListener();
         } else {
           startSyncServer(config.port).then(() => {
             setStatus("connected");
-            onSyncDataReceived((payload, endpoint) => {
-              handleSyncData(payload, endpoint);
-            });
+            attachListener();
           }).catch(() => setStatus("error"));
         }
       });
@@ -117,19 +126,27 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
         setStatus(ok ? "connected" : "disconnected");
       });
 
-      // Start periodic health check every 15 seconds to maintain connection
+      // Start periodic health check every 8 seconds with auto-reconnect
       healthIntervalRef.current = setInterval(async () => {
         try {
           const ok = await pingMainApp();
-          setStatus(ok ? "connected" : "disconnected");
+          setStatus((prev) => {
+            if (ok && prev !== "connected") console.log("[Sync] Reconnected to Main");
+            if (!ok && prev === "connected") console.log("[Sync] Lost connection to Main");
+            return ok ? "connected" : "disconnected";
+          });
         } catch {
           setStatus("disconnected");
         }
-      }, 15000);
+      }, 8000);
     }
 
     return () => {
       if (healthIntervalRef.current) clearInterval(healthIntervalRef.current);
+      if (listenerRef.current) {
+        listenerRef.current.remove().catch(() => {});
+        listenerRef.current = null;
+      }
     };
   }, []);
 
