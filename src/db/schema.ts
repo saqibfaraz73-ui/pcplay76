@@ -336,6 +336,8 @@ export type TableOrder = {
   id: string;
   tableId: string;
   waiterId: string;
+  waiterName?: string; // denormalized for reports (avoid ID lookups)
+  tableNumber?: string; // denormalized for reports (avoid ID lookups)
   status: TableOrderStatus;
   lines: TableOrderLine[];
   subtotal: number;

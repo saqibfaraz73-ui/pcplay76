@@ -349,6 +349,8 @@ export function PosTablesManager() {
           serviceChargeAmount: newService,
           total: newSubtotal + newTax + newService,
           waiterId: selectedWaiterId,
+          waiterName: waitersById[selectedWaiterId]?.name,
+          tableNumber: tablesById[tableId]?.tableNumber,
           updatedAt: now,
         });
       } else {
@@ -359,6 +361,8 @@ export function PosTablesManager() {
           id: makeId("tord"),
           tableId,
           waiterId: selectedWaiterId,
+          waiterName: waitersById[selectedWaiterId]?.name,
+          tableNumber: tablesById[tableId]?.tableNumber,
           status: "open",
           lines,
           subtotal: newSubtotal,
