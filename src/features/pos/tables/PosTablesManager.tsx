@@ -154,7 +154,7 @@ export function PosTablesManager() {
   // Find the logged-in waiter record (match by name)
   const loggedInWaiter = React.useMemo(() => {
     if (!isWaiter || !session?.username) return null;
-    return waiters.find((w) => w.name === session.username) ?? null;
+    return waiters.find((w) => w.name.toLowerCase() === session.username.toLowerCase()) ?? null;
   }, [isWaiter, session?.username, waiters]);
 
   // Filter tables: if waiter is restricted, only show their assigned tables

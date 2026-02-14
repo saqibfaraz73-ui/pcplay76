@@ -31,7 +31,6 @@ export function AdminTablesWaiters() {
 
   // New waiter form
   const [newWaiterName, setNewWaiterName] = React.useState("");
-  const [newWaiterPassword, setNewWaiterPassword] = React.useState("");
   const [newWaiterDefaultTable, setNewWaiterDefaultTable] = React.useState("");
   const [newWaiterAssignedTables, setNewWaiterAssignedTables] = React.useState<string[]>([]);
 
@@ -40,7 +39,6 @@ export function AdminTablesWaiters() {
   const [editTableNumber, setEditTableNumber] = React.useState("");
   const [editingWaiterId, setEditingWaiterId] = React.useState<string | null>(null);
   const [editWaiterName, setEditWaiterName] = React.useState("");
-  const [editWaiterPassword, setEditWaiterPassword] = React.useState("");
   const [editWaiterDefaultTable, setEditWaiterDefaultTable] = React.useState("");
   const [editWaiterAssignedTables, setEditWaiterAssignedTables] = React.useState<string[]>([]);
 
@@ -122,14 +120,12 @@ export function AdminTablesWaiters() {
     const waiter: Waiter = {
       id: makeId("wtr"),
       name,
-      password: newWaiterPassword.trim() || undefined,
       defaultTableId: newWaiterDefaultTable || undefined,
       assignedTableIds: newWaiterAssignedTables.length > 0 ? newWaiterAssignedTables : undefined,
       createdAt: Date.now(),
     };
     await db.waiters.put(waiter);
     setNewWaiterName("");
-    setNewWaiterPassword("");
     setNewWaiterDefaultTable("");
     setNewWaiterAssignedTables([]);
     toast({ title: `Waiter ${name} added` });
@@ -145,7 +141,6 @@ export function AdminTablesWaiters() {
     }
     await db.waiters.update(editingWaiterId, {
       name,
-      password: editWaiterPassword.trim() || undefined,
       defaultTableId: editWaiterDefaultTable || undefined,
       assignedTableIds: editWaiterAssignedTables.length > 0 ? editWaiterAssignedTables : undefined,
     });
@@ -170,7 +165,6 @@ export function AdminTablesWaiters() {
   const startEditWaiter = (waiter: Waiter) => {
     setEditingWaiterId(waiter.id);
     setEditWaiterName(waiter.name);
-    setEditWaiterPassword(waiter.password ?? "");
     setEditWaiterDefaultTable(waiter.defaultTableId ?? "");
     setEditWaiterAssignedTables(waiter.assignedTableIds ?? []);
   };
@@ -267,8 +261,7 @@ export function AdminTablesWaiters() {
         <CardHeader>
           <CardTitle>Waiters</CardTitle>
           <CardDescription>
-            Manage waiter staff.
-            {settings.waiterLoginEnabled && " Waiters can log in with their password."}
+            Manage waiter staff and table assignments. Login credentials are managed in Staff Accounts below.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -280,15 +273,6 @@ export function AdminTablesWaiters() {
               onChange={(e) => setNewWaiterName(e.target.value)}
               className="flex-1 min-w-[150px]"
             />
-            {settings.waiterLoginEnabled && (
-              <Input
-                placeholder="Password (optional)"
-                type="password"
-                value={newWaiterPassword}
-                onChange={(e) => setNewWaiterPassword(e.target.value)}
-                className="w-40"
-              />
-            )}
             <select
               value={newWaiterDefaultTable}
               onChange={(e) => setNewWaiterDefaultTable(e.target.value)}
@@ -345,15 +329,6 @@ export function AdminTablesWaiters() {
                           className="h-8 flex-1 min-w-[120px]"
                           autoFocus
                         />
-                        {settings.waiterLoginEnabled && (
-                          <Input
-                            type="password"
-                            placeholder="New password"
-                            value={editWaiterPassword}
-                            onChange={(e) => setEditWaiterPassword(e.target.value)}
-                            className="h-8 w-32"
-                          />
-                        )}
                         <select
                           value={editWaiterDefaultTable}
                           onChange={(e) => setEditWaiterDefaultTable(e.target.value)}
