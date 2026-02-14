@@ -24,7 +24,8 @@ import { buildBookingLodgePdf } from "@/features/admin/reports/booking-lodge-pdf
 import { buildAdvanceLodgePdf } from "@/features/admin/reports/advance-lodge-pdf";
 import { writePdfFile, shareFile } from "@/features/files/sangi-folders";
 import { Capacitor } from "@capacitor/core";
-import { Plus, Trash2, X, Check, Ban, Printer, FileText, Share2 } from "lucide-react";
+import { Plus, Trash2, X, Check, Ban, Printer, FileText, Share2, Wrench } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 
 /* ─── helpers ─── */
 
@@ -180,7 +181,7 @@ function BookingLodgeSection({ bookingOrders, settings }: { bookingOrders: Booki
     return bookingOrders.filter((o) => o.createdAt >= fromTs && o.createdAt <= toTs);
   }, [bookingOrders, lodgeFrom, lodgeTo]);
 
-  const completed = filteredBookings.filter((o) => o.status !== "cancelled");
+  const completed = filteredBookings.filter((o) => o.status !== "cancelled" && !o.isMaintenance);
   const totalHours = completed.reduce((s, o) => s + o.durationHours, 0);
   const totalRevenue = completed.reduce((s, o) => s + o.total, 0);
 
@@ -437,6 +438,7 @@ export default function PosAdvanceBooking() {
   const [bookCustName, setBookCustName] = React.useState("");
   const [bookCustPhone, setBookCustPhone] = React.useState("");
   const [bookCustAddress, setBookCustAddress] = React.useState("");
+  const [bookIsMaintenance, setBookIsMaintenance] = React.useState(false);
 
   const selectedBookItem = bookableItems.find((b) => b.id === bookItemId);
   const bookItemPrice = selectedBookItem?.price ?? 0;
@@ -458,6 +460,7 @@ export default function PosAdvanceBooking() {
     setBookCustName("");
     setBookCustPhone("");
     setBookCustAddress("");
+    setBookIsMaintenance(false);
     setBookDlg(true);
   };
 
@@ -487,6 +490,11 @@ export default function PosAdvanceBooking() {
       return null;
     }
     const receiptNo = await getNextCounter("bookingOrder");
+    const finalPrice = bookIsMaintenance ? 0 : bookPrice;
+    const finalDiscount = bookIsMaintenance ? 0 : bookDiscountAmt;
+    const finalTotal = bookIsMaintenance ? 0 : bookTotal;
+    const finalAdvance = bookIsMaintenance ? 0 : (Number(bookAdvance) || 0);
+    const finalRemaining = bookIsMaintenance ? 0 : bookRemaining;
     const order: BookingOrder = {
       id: makeId("bkng"),
       receiptNo,
@@ -497,11 +505,12 @@ export default function PosAdvanceBooking() {
       startTime: bookStart,
       durationHours: durationToHours(Number(bookDuration) || 1, bookDurationUnit),
       endTime: bookEndTime,
-      price: bookPrice,
-      discountAmount: bookDiscountAmt,
-      total: bookTotal,
-      advancePayment: Number(bookAdvance) || 0,
-      remainingPayment: bookRemaining,
+      price: finalPrice,
+      discountAmount: finalDiscount,
+      total: finalTotal,
+      advancePayment: finalAdvance,
+      remainingPayment: finalRemaining,
+      isMaintenance: bookIsMaintenance || undefined,
       customerName: bookCustName.trim() || undefined,
       customerPhone: bookCustPhone.trim() || undefined,
       customerAddress: bookCustAddress.trim() || undefined,
@@ -805,13 +814,18 @@ export default function PosAdvanceBooking() {
                   <CardContent className="pt-4 space-y-2">
                     <div className="flex items-start justify-between gap-2 flex-wrap">
                       <div>
-                        <div className="text-sm font-medium">Bkg #{o.receiptNo} — {o.bookableItemName}</div>
-                        <div className="text-xs text-muted-foreground">
-                          {fmtDate(o.date)} • {o.startTime} → {o.endTime} ({o.durationHours >= 24 ? `${Math.round(o.durationHours / 24)}d` : o.durationHours >= 1 ? `${o.durationHours}h` : `${Math.round(o.durationHours * 60)}min`})
-                        </div>
-                        {o.customerName && <div className="text-xs text-muted-foreground">{o.customerName} {o.customerPhone ? `• ${o.customerPhone}` : ""}</div>}
-                      </div>
-                      <Badge variant={statusColor(o.status)}>{o.status}</Badge>
+                         <div className="text-sm font-medium">
+                           Bkg #{o.receiptNo} — {o.bookableItemName}
+                           {o.isMaintenance && <span className="ml-1.5 text-xs text-muted-foreground">(Maintenance)</span>}
+                         </div>
+                         <div className="text-xs text-muted-foreground">
+                           {fmtDate(o.date)} • {o.startTime} → {o.endTime} ({o.durationHours >= 24 ? `${Math.round(o.durationHours / 24)}d` : o.durationHours >= 1 ? `${o.durationHours}h` : `${Math.round(o.durationHours * 60)}min`})
+                         </div>
+                         {o.customerName && <div className="text-xs text-muted-foreground">{o.customerName} {o.customerPhone ? `• ${o.customerPhone}` : ""}</div>}
+                       </div>
+                       <Badge variant={o.isMaintenance ? "outline" : statusColor(o.status)}>
+                         {o.isMaintenance ? "🔧 Maintenance" : o.status}
+                       </Badge>
                     </div>
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-sm">
                       <div><span className="text-muted-foreground">Price:</span> {formatIntMoney(o.price)}</div>
@@ -1010,44 +1024,65 @@ export default function PosAdvanceBooking() {
 
             {/* Overlap warning */}
             {getOverlaps().length > 0 && (
-              <div className="rounded-md border border-yellow-500/50 bg-yellow-50 dark:bg-yellow-900/20 p-2 text-xs text-yellow-700 dark:text-yellow-400">
-                ⚠️ This item is already booked at overlapping times on this date. You can still proceed.
+              <div className="rounded-md border border-destructive/50 bg-destructive/10 p-2 text-xs text-destructive">
+                {getOverlaps().some((o) => o.isMaintenance)
+                  ? "🚫 Not Available — This slot is blocked for maintenance."
+                  : "⚠️ This item is already booked at overlapping times on this date. You can still proceed."}
               </div>
             )}
 
-            <div className="grid grid-cols-2 gap-3 border-t pt-3">
-              <div className="space-y-1">
-                <Label className="text-xs">Price {bookItemPrice > 0 ? `(default: ${formatIntMoney(bookItemPrice)})` : ""}</Label>
-                <Input type="number" inputMode="numeric" value={bookManualPrice} onChange={(e) => setBookManualPrice(e.target.value)} placeholder={bookItemPrice > 0 ? String(bookItemPrice) : "Enter price"} />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs">Discount</Label>
-                <Input type="number" inputMode="numeric" value={bookDiscount} onChange={(e) => setBookDiscount(e.target.value)} placeholder="0" />
-              </div>
+            {/* Maintenance checkbox */}
+            <div className="flex items-center gap-2 border-t pt-3">
+              <Checkbox
+                id="bookMaintenance"
+                checked={bookIsMaintenance}
+                onCheckedChange={(v) => setBookIsMaintenance(!!v)}
+              />
+              <label htmlFor="bookMaintenance" className="text-sm cursor-pointer flex items-center gap-1.5">
+                <Wrench className="h-3.5 w-3.5" /> Maintenance / Not Available
+              </label>
             </div>
-            <div className="grid grid-cols-3 gap-3">
-              <div className="space-y-1">
-                <Label className="text-xs">Total</Label>
-                <div className="h-9 flex items-center text-sm font-semibold">{formatIntMoney(bookTotal)}</div>
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs">Advance</Label>
-                <Input type="number" inputMode="numeric" value={bookAdvance} onChange={(e) => setBookAdvance(e.target.value)} placeholder="0" />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs">Remaining</Label>
-                <div className="h-9 flex items-center text-sm font-semibold">{formatIntMoney(bookRemaining)}</div>
-              </div>
-            </div>
+            {bookIsMaintenance && (
+              <div className="text-xs text-muted-foreground">This will block the time slot and will NOT count in sales.</div>
+            )}
 
-            <div className="space-y-2 border-t pt-3">
-              <Label className="text-xs font-medium text-muted-foreground">Customer (optional)</Label>
-              <div className="grid grid-cols-2 gap-2">
-                <Input value={bookCustName} onChange={(e) => setBookCustName(e.target.value)} placeholder="Name" />
-                <Input value={bookCustPhone} onChange={(e) => setBookCustPhone(e.target.value)} placeholder="Phone" inputMode="tel" />
-              </div>
-              <Input value={bookCustAddress} onChange={(e) => setBookCustAddress(e.target.value)} placeholder="Address" />
-            </div>
+            {!bookIsMaintenance && (
+              <>
+                <div className="grid grid-cols-2 gap-3 border-t pt-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs">Price {bookItemPrice > 0 ? `(default: ${formatIntMoney(bookItemPrice)})` : ""}</Label>
+                    <Input type="number" inputMode="numeric" value={bookManualPrice} onChange={(e) => setBookManualPrice(e.target.value)} placeholder={bookItemPrice > 0 ? String(bookItemPrice) : "Enter price"} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Discount</Label>
+                    <Input type="number" inputMode="numeric" value={bookDiscount} onChange={(e) => setBookDiscount(e.target.value)} placeholder="0" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs">Total</Label>
+                    <div className="h-9 flex items-center text-sm font-semibold">{formatIntMoney(bookTotal)}</div>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Advance</Label>
+                    <Input type="number" inputMode="numeric" value={bookAdvance} onChange={(e) => setBookAdvance(e.target.value)} placeholder="0" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Remaining</Label>
+                    <div className="h-9 flex items-center text-sm font-semibold">{formatIntMoney(bookRemaining)}</div>
+                  </div>
+                </div>
+
+                <div className="space-y-2 border-t pt-3">
+                  <Label className="text-xs font-medium text-muted-foreground">Customer (optional)</Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Input value={bookCustName} onChange={(e) => setBookCustName(e.target.value)} placeholder="Name" />
+                    <Input value={bookCustPhone} onChange={(e) => setBookCustPhone(e.target.value)} placeholder="Phone" inputMode="tel" />
+                  </div>
+                  <Input value={bookCustAddress} onChange={(e) => setBookCustAddress(e.target.value)} placeholder="Address" />
+                </div>
+              </>
+            )}
           </div>
           <DialogFooter className="flex flex-wrap gap-2">
             <Button variant="outline" onClick={() => setBookDlg(false)}>Cancel</Button>
