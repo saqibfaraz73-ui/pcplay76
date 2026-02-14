@@ -83,29 +83,47 @@ async function handleTableOrderSync(tableOrder: TableOrder & { _waiterName?: str
     return;
   }
 
-  // Ensure waiter record exists on Main so reports can display the name
+  // Map waiter ID: if Main has a waiter with the same name, remap the order to use Main's ID
   if (tableOrder.waiterId && tableOrder._waiterName) {
     const existingWaiter = await db.waiters.get(tableOrder.waiterId);
     if (!existingWaiter) {
-      await db.waiters.put({
-        id: tableOrder.waiterId,
-        name: tableOrder._waiterName,
-        createdAt: Date.now(),
-      });
-      console.log(`[Sync] Created waiter record: ${tableOrder._waiterName}`);
+      // Look for a waiter with the same name on Main
+      const mainWaiter = await db.waiters.filter(
+        (w) => w.name.toLowerCase() === tableOrder._waiterName!.toLowerCase()
+      ).first();
+      if (mainWaiter) {
+        // Remap to Main's waiter ID so reports group correctly
+        tableOrder.waiterId = mainWaiter.id;
+        console.log(`[Sync] Remapped waiter to Main's "${mainWaiter.name}" (${mainWaiter.id})`);
+      } else {
+        await db.waiters.put({
+          id: tableOrder.waiterId,
+          name: tableOrder._waiterName,
+          createdAt: Date.now(),
+        });
+        console.log(`[Sync] Created waiter record: ${tableOrder._waiterName}`);
+      }
     }
   }
 
-  // Ensure table record exists on Main so reports can display the number
+  // Map table ID: if Main has a table with the same number, remap the order to use Main's ID
   if (tableOrder.tableId && tableOrder._tableNumber) {
     const existingTable = await db.restaurantTables.get(tableOrder.tableId);
     if (!existingTable) {
-      await db.restaurantTables.put({
-        id: tableOrder.tableId,
-        tableNumber: tableOrder._tableNumber,
-        createdAt: Date.now(),
-      });
-      console.log(`[Sync] Created table record: ${tableOrder._tableNumber}`);
+      const mainTable = await db.restaurantTables.filter(
+        (t) => t.tableNumber.toLowerCase() === tableOrder._tableNumber!.toLowerCase()
+      ).first();
+      if (mainTable) {
+        tableOrder.tableId = mainTable.id;
+        console.log(`[Sync] Remapped table to Main's "${mainTable.tableNumber}" (${mainTable.id})`);
+      } else {
+        await db.restaurantTables.put({
+          id: tableOrder.tableId,
+          tableNumber: tableOrder._tableNumber,
+          createdAt: Date.now(),
+        });
+        console.log(`[Sync] Created table record: ${tableOrder._tableNumber}`);
+      }
     }
   }
 
