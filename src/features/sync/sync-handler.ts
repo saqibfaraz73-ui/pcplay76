@@ -6,7 +6,7 @@
  * and optionally forwards print jobs to the connected printer.
  */
 import { db } from "@/db/appDb";
-import type { Order, Expense, TableOrder } from "@/db/schema";
+import type { Order, Expense, TableOrder, WorkPeriod } from "@/db/schema";
 import type { SyncPayload, PrintJobPayload, SyncEndpoint } from "./sync-types";
 import { btSend } from "@/features/pos/bluetooth-printer";
 import { usbSend } from "@/features/pos/usb-printer";
@@ -35,6 +35,9 @@ export async function handleSyncData(
       break;
     case "print":
       await handlePrintJob(payload.data as PrintJobPayload);
+      break;
+    case "work-period":
+      await handleWorkPeriodSync(payload.data as WorkPeriod);
       break;
     case "bulk":
       await handleBulkSync(payload.data as Array<{ endpoint: SyncEndpoint; data: unknown }>);
@@ -104,6 +107,12 @@ async function handlePrintJob(job: PrintJobPayload): Promise<void> {
     console.error("[Sync] Failed to forward print job:", e);
     throw e;
   }
+}
+
+/** Save/update a synced work period */
+async function handleWorkPeriodSync(wp: WorkPeriod): Promise<void> {
+  await db.workPeriods.put(wp);
+  console.log(`[Sync] Work period ${wp.id} saved (closed: ${wp.isClosed})`);
 }
 
 /** Handle bulk sync — multiple items in one request */

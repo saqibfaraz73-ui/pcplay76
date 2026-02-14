@@ -72,6 +72,7 @@ export function AdminSettings() {
   const [advanceBookingEnabled, setAdvanceBookingEnabled] = React.useState(false);
   const [showAdvanceBookingInReports, setShowAdvanceBookingInReports] = React.useState(false);
   const [syncEnabled, setSyncEnabled] = React.useState(false);
+  const [subWorkPeriodMode, setSubWorkPeriodMode] = React.useState<"own" | "main">("own");
   const [cashierReportsEnabled, setCashierReportsEnabled] = React.useState(false);
   const [waiterMainAppEnabled, setWaiterMainAppEnabled] = React.useState(false);
   const [waiterRestrictToOwnTables, setWaiterRestrictToOwnTables] = React.useState(false);
@@ -130,6 +131,7 @@ export function AdminSettings() {
     setAdvanceBookingEnabled(!!s.advanceBookingEnabled);
     setShowAdvanceBookingInReports(!!s.showAdvanceBookingInReports);
     setSyncEnabled(!!s.syncEnabled);
+    setSubWorkPeriodMode(s.subWorkPeriodMode ?? "own");
     setCashierReportsEnabled(!!s?.cashierReportsEnabled);
     setWaiterMainAppEnabled(!!s?.waiterMainAppEnabled);
     setWaiterRestrictToOwnTables(!!s?.waiterRestrictToOwnTables);
@@ -209,6 +211,7 @@ export function AdminSettings() {
         advanceBookingEnabled,
         showAdvanceBookingInReports,
         syncEnabled,
+        subWorkPeriodMode,
         cashierReportsEnabled,
         waiterMainAppEnabled,
         waiterRestrictToOwnTables,
@@ -632,10 +635,24 @@ export function AdminSettings() {
           <div className="flex items-center justify-between gap-3 rounded-md border p-3">
             <div>
               <div className="text-sm font-medium">Enable Sync</div>
-              <div className="text-xs text-muted-foreground">Show "Sync" in the admin menu to configure Main/Sub device roles.</div>
+              <div className="text-xs text-muted-foreground">Show "Sync" in the menu for all roles to configure Main/Sub device roles.</div>
             </div>
             <Switch checked={syncEnabled} onCheckedChange={setSyncEnabled} />
           </div>
+          {syncEnabled && (
+            <div className="space-y-2 rounded-md border p-3">
+              <div className="text-sm font-medium">Sub Device Work Period</div>
+              <div className="text-xs text-muted-foreground">Choose whether Sub devices manage their own work period or follow the Main device's work period.</div>
+              <select
+                value={subWorkPeriodMode}
+                onChange={(e) => setSubWorkPeriodMode(e.target.value as "own" | "main")}
+                className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+              >
+                <option value="own">Own Work Period (Sub starts/ends independently)</option>
+                <option value="main">Main Work Period (Sub inherits Main's work period)</option>
+              </select>
+            </div>
+          )}
           <div className="flex justify-end">
             <Button onClick={() => void save()} disabled={!settings}>Save</Button>
           </div>

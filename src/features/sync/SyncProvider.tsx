@@ -18,7 +18,7 @@ import {
 } from "./local-sync-server";
 import { setMainAppUrl, pingMainApp, sendToMainApp, sendPrintJob } from "./sync-client";
 import { handleSyncData } from "./sync-handler";
-import type { Order, Expense, TableOrder } from "@/db/schema";
+import type { Order, Expense, TableOrder, WorkPeriod } from "@/db/schema";
 import type { SyncEndpoint } from "./sync-types";
 
 const STORAGE_KEY = "sangi_sync_config";
@@ -45,6 +45,8 @@ type SyncContextValue = {
   syncCreditPayment: (payment: { id: string; customerId: string; amount: number; note?: string; createdAt: number }) => Promise<void>;
   /** Send a print job to Main's printer */
   syncPrintJob: (printData: string, printerType: "bluetooth" | "usb") => Promise<void>;
+  /** Sync work period to Main */
+  syncWorkPeriod: (wp: WorkPeriod) => Promise<void>;
   /** Whether this device is in Sub mode and connected */
   isSubConnected: boolean;
 };
@@ -57,6 +59,7 @@ const SyncContext = createContext<SyncContextValue>({
   syncExpense: async () => {},
   syncCreditPayment: async () => {},
   syncPrintJob: async () => {},
+  syncWorkPeriod: async () => {},
   isSubConnected: false,
 });
 
@@ -67,6 +70,7 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
   const [status, setStatus] = useState<ConnectionStatus>("disconnected");
   const deviceIdRef = useRef("");
   const initDone = useRef(false);
+  const healthIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Load device ID for sync payloads
   useEffect(() => {
@@ -112,7 +116,21 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
       pingMainApp().then((ok) => {
         setStatus(ok ? "connected" : "disconnected");
       });
+
+      // Start periodic health check every 15 seconds to maintain connection
+      healthIntervalRef.current = setInterval(async () => {
+        try {
+          const ok = await pingMainApp();
+          setStatus(ok ? "connected" : "disconnected");
+        } catch {
+          setStatus("disconnected");
+        }
+      }, 15000);
     }
+
+    return () => {
+      if (healthIntervalRef.current) clearInterval(healthIntervalRef.current);
+    };
   }, []);
 
   // Listen for config changes from the settings panel
@@ -157,8 +175,14 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
     if (!res.success) console.warn("[Sync] Failed to sync print job:", res.error);
   }, [isSubConnected]);
 
+  const syncWorkPeriod = useCallback(async (wp: WorkPeriod) => {
+    if (!isSubConnected) return;
+    const res = await sendToMainApp("work-period", wp, deviceIdRef.current);
+    if (!res.success) console.warn("[Sync] Failed to sync work period:", res.error);
+  }, [isSubConnected]);
+
   return (
-    <SyncContext.Provider value={{ role, status, syncOrder, syncTableOrder, syncExpense, syncCreditPayment, syncPrintJob, isSubConnected }}>
+    <SyncContext.Provider value={{ role, status, syncOrder, syncTableOrder, syncExpense, syncCreditPayment, syncPrintJob, syncWorkPeriod, isSubConnected }}>
       {children}
     </SyncContext.Provider>
   );
