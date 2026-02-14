@@ -21,6 +21,7 @@ import AdminDeliveryPage from "./pages/AdminDeliveryPage";
 import AdminSyncPage from "./pages/AdminSyncPage";
 import PosTablesPage from "./pages/PosTablesPage";
 import PosAdvanceBooking from "./pages/PosAdvanceBooking";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
 import { AuthProvider } from "@/auth/AuthProvider";
 import { ProtectedRoute } from "@/auth/ProtectedRoute";
 import { AppShell } from "@/layout/AppShell";
@@ -150,6 +151,7 @@ const App = () => (
                   }
                 />
 
+                <Route path="/privacy-policy" element={<PrivacyPolicy />} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>
