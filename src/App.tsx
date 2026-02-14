@@ -129,7 +129,7 @@ const App = () => (
                 <Route
                   path="/admin/sync"
                   element={
-                    <ProtectedRoute allow={["admin"]}>
+                <ProtectedRoute allow={["admin", "cashier", "waiter"]}>
                       <AdminSyncPage />
                     </ProtectedRoute>
                   }
