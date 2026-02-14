@@ -119,14 +119,27 @@ export function SyncSettingsPanel() {
 
   // ─── Sub: Connect to Main ────────────────────────────
   const handleConnectToMain = useCallback(async () => {
-    if (!ipInput.trim()) {
+    const ip = ipInput.trim();
+    if (!ip) {
       toast({ title: "Enter Main app IP", variant: "destructive" });
       return;
     }
+
+    // Validate it's a private/local IP
+    const isPrivateIp = /^(192\.168\.|10\.|172\.(1[6-9]|2\d|3[01])\.)/.test(ip);
+    if (!isPrivateIp) {
+      toast({
+        title: "Invalid IP Address",
+        description: "Enter a local/private IP (e.g. 192.168.43.1). This should NOT be your mobile data IP. Both devices must be on the same WiFi or hotspot.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setLoading(true);
     setStatus("connecting");
     try {
-      setMainAppUrl(ipInput.trim(), config.port);
+      setMainAppUrl(ip, config.port);
       const ok = await pingMainApp();
       if (!ok) {
         setStatus("error");
@@ -328,7 +341,7 @@ export function SyncSettingsPanel() {
                     disabled={loading}
                   />
                   <p className="text-xs text-muted-foreground">
-                    Ask the Main device operator for their IP address shown on screen.
+                    Enter the <strong>local</strong> IP shown on the Main device screen. If using hotspot, it's usually <strong>192.168.43.1</strong>. Do NOT enter your mobile data IP.
                   </p>
                 </div>
                 <Button onClick={handleConnectToMain} disabled={loading || !ipInput.trim()}>
