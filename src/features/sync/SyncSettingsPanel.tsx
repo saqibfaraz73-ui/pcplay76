@@ -5,6 +5,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/auth/AuthProvider";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
@@ -40,6 +41,8 @@ function saveConfig(config: SyncConfig) {
 
 export function SyncSettingsPanel() {
   const { toast } = useToast();
+  const { session } = useAuth();
+  const isWaiter = session?.role === "waiter";
   const [config, setConfig] = useState<SyncConfig>(loadConfig);
   const [status, setStatus] = useState<ConnectionStatus>("disconnected");
   const [serverIp, setServerIp] = useState("");
@@ -213,21 +216,23 @@ export function SyncSettingsPanel() {
             <CardTitle className="text-lg">Choose Device Role</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            <Button
-              className="w-full justify-start gap-3 h-auto py-3"
-              variant="outline"
-              onClick={handleStartServer}
-              disabled={loading}
-            >
-              <Server className="h-5 w-5 text-primary" />
-              <div className="text-left">
-                <div className="font-medium">Main Device</div>
-                <div className="text-xs text-muted-foreground">
-                  Receives data from sub devices, has the printer
+            {!isWaiter && (
+              <Button
+                className="w-full justify-start gap-3 h-auto py-3"
+                variant="outline"
+                onClick={handleStartServer}
+                disabled={loading}
+              >
+                <Server className="h-5 w-5 text-primary" />
+                <div className="text-left">
+                  <div className="font-medium">Main Device</div>
+                  <div className="text-xs text-muted-foreground">
+                    Receives data from sub devices, has the printer
+                  </div>
                 </div>
-              </div>
-              {loading && <Loader2 className="ml-auto h-4 w-4 animate-spin" />}
-            </Button>
+                {loading && <Loader2 className="ml-auto h-4 w-4 animate-spin" />}
+              </Button>
+            )}
 
             <Button
               className="w-full justify-start gap-3 h-auto py-3"
@@ -246,6 +251,12 @@ export function SyncSettingsPanel() {
                 </div>
               </div>
             </Button>
+
+            {isWaiter && (
+              <p className="text-xs text-muted-foreground">
+                Waiters can only connect as Sub device. Admin can set up the Main device.
+              </p>
+            )}
           </CardContent>
         </Card>
       )}
