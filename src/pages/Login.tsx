@@ -242,7 +242,7 @@ export default function Login() {
         <Card className="w-full">
           <CardHeader>
             <CardTitle>Login</CardTitle>
-            <CardDescription>Admin: phone + password · Staff: name or phone + PIN</CardDescription>
+            <CardDescription>Admin: name or phone + password · Staff: name or phone + PIN</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={onLogin} className="space-y-4">

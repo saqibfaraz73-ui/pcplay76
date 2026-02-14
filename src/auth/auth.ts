@@ -63,9 +63,9 @@ export async function authenticate(
   identifier: string,
   credential: string
 ): Promise<{ ok: true; role: UserRole; displayName: string } | { ok: false }> {
-  // Check admin account (phone + password)
+  // Check admin account (phone or name + password)
   const admin = await db.adminAccount.get("admin");
-  if (admin && identifier === admin.phone && credential === admin.password) {
+  if (admin && (identifier === admin.phone || identifier.toLowerCase() === admin.name.toLowerCase()) && credential === admin.password) {
     return { ok: true, role: "admin", displayName: admin.name };
   }
 
