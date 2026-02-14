@@ -97,12 +97,24 @@ async function handlePrintJob(job: PrintJobPayload): Promise<void> {
     // Decode base64 back to raw string
     const raw = atob(job.printData);
 
-    if (job.printerType === "usb") {
+    // Auto-detect Main's actual printer connection
+    const settings = await db.settings.get("app");
+    const conn = settings?.printerConnection ?? "none";
+
+    if (conn === "usb") {
       await usbSend(raw);
-    } else {
+    } else if (conn === "bluetooth") {
+      // Ensure connected to the configured BT printer
+      const { btConnect } = await import("@/features/pos/bluetooth-printer");
+      if (settings?.printerAddress) {
+        await btConnect(settings.printerAddress);
+      }
       await btSend(raw);
+    } else {
+      console.warn("[Sync] Main device has no printer configured, cannot forward print job");
+      return;
     }
-    console.log(`[Sync] Print job forwarded to ${job.printerType} printer`);
+    console.log(`[Sync] Print job forwarded to ${conn} printer`);
   } catch (e) {
     console.error("[Sync] Failed to forward print job:", e);
     throw e;

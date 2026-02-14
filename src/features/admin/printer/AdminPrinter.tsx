@@ -3,6 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
 import { db } from "@/db/appDb";
 import type { ReceiptSize, Settings } from "@/db/schema";
 import { ensureSeedData } from "@/db/seed";
@@ -22,6 +24,8 @@ import {
   usbDisconnect,
   type UsbDevice,
 } from "@/features/pos/usb-printer";
+import { getSyncConfig } from "@/features/sync/sync-utils";
+import { Server } from "lucide-react";
 
 const RECEIPT_SIZES: { value: ReceiptSize; label: string }[] = [
   { value: "1x1", label: '1×1 inch' },
@@ -72,6 +76,8 @@ export function AdminPrinter() {
   const [receiptSize, setReceiptSize] = React.useState<ReceiptSize>("2x3");
   const [paperSize, setPaperSize] = React.useState<"58" | "80">("58");
   const [previewOpen, setPreviewOpen] = React.useState(false);
+  const [subPrinterMode, setSubPrinterMode] = React.useState<"own" | "main">("own");
+  const [isSubDevice, setIsSubDevice] = React.useState(false);
 
   const [paired, setPaired] = React.useState<PairedBluetoothDevice[]>([]);
   const [btBusy, setBtBusy] = React.useState(false);
@@ -90,6 +96,11 @@ export function AdminPrinter() {
     setPrinterAddress(s.printerAddress ?? "");
     setReceiptSize(s.receiptSize ?? "2x3");
     setPaperSize(s.paperSize ?? "58");
+    setSubPrinterMode(s.subPrinterMode ?? "own");
+
+    // Check if device is configured as Sub
+    const syncConfig = getSyncConfig();
+    setIsSubDevice(syncConfig.role === "sub");
   }, []);
 
   React.useEffect(() => {
@@ -106,6 +117,7 @@ export function AdminPrinter() {
         printerAddress: printerAddress.trim() || undefined,
         receiptSize,
         paperSize,
+        subPrinterMode,
         updatedAt: Date.now(),
       };
       await db.settings.put(next);
@@ -213,6 +225,48 @@ export function AdminPrinter() {
 
   return (
     <div className="space-y-4">
+      {/* Sub Device Printer Mode */}
+      {isSubDevice && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Server className="h-5 w-5" /> Sub Device Printer
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex items-center justify-between gap-3 rounded-md border p-3">
+              <div>
+                <div className="text-sm font-medium">Use Main Device's Printer</div>
+                <div className="text-xs text-muted-foreground">
+                  Send all print jobs to the Main device's connected printer instead of printing locally.
+                </div>
+              </div>
+              <Switch
+                checked={subPrinterMode === "main"}
+                onCheckedChange={(checked) => setSubPrinterMode(checked ? "main" : "own")}
+              />
+            </div>
+            {subPrinterMode === "main" && (
+              <div className="rounded-md bg-muted/50 p-3">
+                <p className="text-sm text-muted-foreground">
+                  ✅ Print jobs will be sent to the Main device over sync. Make sure Main device has a printer connected and sync is active.
+                </p>
+              </div>
+            )}
+            {subPrinterMode === "own" && (
+              <div className="rounded-md bg-muted/50 p-3">
+                <p className="text-sm text-muted-foreground">
+                  🖨️ This device will use its own printer configured below.
+                </p>
+              </div>
+            )}
+            <div className="flex justify-end">
+              <Button onClick={() => void save()} disabled={!settings}>Save</Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <Card>
         <CardHeader>
           <CardTitle>Printer Setup</CardTitle>

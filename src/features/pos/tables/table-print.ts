@@ -3,6 +3,8 @@ import { btConnect, btSend, isNativeAndroid } from "@/features/pos/bluetooth-pri
 import { usbSend } from "@/features/pos/usb-printer";
 import { db } from "@/db/appDb";
 import { fmtDateTime, fmtTime12 } from "@/features/pos/format";
+import { getSyncConfig } from "@/features/sync/sync-utils";
+import { sendPrintJob } from "@/features/sync/sync-client";
 
 type KotItem = {
   name: string;
@@ -50,16 +52,35 @@ export async function printTableKot(args: {
     return;
   }
 
-  // Native Android - Bluetooth thermal printing
-  if (!settings) {
-    throw new Error("Settings not loaded. Please configure printer in Admin > Printer.");
-  }
-  const conn = settings.printerConnection ?? "none";
-  if (conn !== "bluetooth" && conn !== "usb") {
-    throw new Error("Printer not configured. Go to Admin > Printer and set Connection to Bluetooth or USB.");
+  // Native Android - check if Sub should route to Main
+  const syncConfig = getSyncConfig();
+  const dbSettings = settings || await db.settings.get("app");
+  const viaMain = syncConfig.role === "sub" && dbSettings?.subPrinterMode === "main";
+
+  if (!settings && !viaMain) {
+    throw new Error("Settings not loaded. Please configure printer in Printer settings.");
   }
 
   const escPos = buildKotEscPos(tableNumber, waiterName, items);
+
+  if (viaMain) {
+    // Send to Main's printer
+    let b64 = "";
+    for (let i = 0; i < escPos.length; i++) {
+      b64 += String.fromCharCode(escPos.charCodeAt(i) & 0xff);
+    }
+    const encoded = btoa(b64);
+    const { getLicense } = await import("@/features/licensing/licensing-db");
+    const lic = await getLicense();
+    const res = await sendPrintJob(encoded, "usb", lic.deviceId);
+    if (!res.success) throw new Error(res.error || "Failed to send KOT to Main device");
+    return;
+  }
+
+  const conn = settings!.printerConnection ?? "none";
+  if (conn !== "bluetooth" && conn !== "usb") {
+    throw new Error("Printer not configured. Go to Printer and set Connection to Bluetooth or USB, or enable 'Use Main Device Printer'.");
+  }
 
   if (conn === "usb") {
     await usbSend(escPos);
@@ -67,10 +88,10 @@ export async function printTableKot(args: {
   }
 
   // Bluetooth
-  if (!settings.printerAddress) {
-    throw new Error("No printer selected. Go to Admin > Printer, refresh paired devices, and select your printer.");
+  if (!settings!.printerAddress) {
+    throw new Error("No printer selected. Go to Printer, refresh paired devices, and select your printer.");
   }
-  await btConnect(settings.printerAddress);
+  await btConnect(settings!.printerAddress);
   await btSend(escPos);
 }
 
