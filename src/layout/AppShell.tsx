@@ -43,6 +43,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [advanceBookingEnabled, setAdvanceBookingEnabled] = React.useState(false);
   const [syncEnabled, setSyncEnabled] = React.useState(false);
   const [cashierReportsEnabled, setCashierReportsEnabled] = React.useState(false);
+  const [pendingTableCount, setPendingTableCount] = React.useState(0);
 
   const loadTableSetting = React.useCallback(async () => {
     const s = await db.settings.get("app");
@@ -50,6 +51,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     setAdvanceBookingEnabled(!!s?.advanceBookingEnabled);
     setSyncEnabled(!!s?.syncEnabled);
     setCashierReportsEnabled(!!s?.cashierReportsEnabled);
+    // Count open (pending) table orders
+    const openCount = await db.tableOrders.where("status").equals("open").count();
+    setPendingTableCount(openCount);
   }, []);
 
   // Also reload when route changes (e.g. navigating away from settings)
@@ -152,6 +156,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                           {(tableManagementEnabled || isWaiter) && (
                             <Link to="/pos/tables" className={cn("flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors", isActive("/pos/tables") ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground")}>
                               <UtensilsCrossed className="h-4 w-4" /> Tables
+                              {pendingTableCount > 0 && (
+                                <span className="ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-destructive-foreground">{pendingTableCount}</span>
+                              )}
                             </Link>
                           )}
                           {advanceBookingEnabled && !isWaiter && (
@@ -267,8 +274,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     </>
                   )}
                   {(tableManagementEnabled || isWaiter) && (
-                    <Link to="/pos/tables" className={cn("rounded-md px-3 py-2 text-sm transition-colors", isActive("/pos/tables") ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground")}>
+                    <Link to="/pos/tables" className={cn("relative rounded-md px-3 py-2 text-sm transition-colors", isActive("/pos/tables") ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground")}>
                       Tables
+                      {pendingTableCount > 0 && (
+                        <span className="absolute -top-1 -right-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-0.5 text-[10px] font-bold text-destructive-foreground">{pendingTableCount}</span>
+                      )}
                     </Link>
                   )}
                   {advanceBookingEnabled && !isWaiter && (
