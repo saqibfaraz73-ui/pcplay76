@@ -382,6 +382,25 @@ export function PosTablesManager() {
 
       clearCart();
       await refreshAfterMutation();
+
+      // Sync table order to Main device if in Sub mode (fire-and-forget)
+      try {
+        const { getSyncConfig } = await import("@/features/sync/sync-utils");
+        const config = getSyncConfig();
+        if (config.role === "sub") {
+          const updatedOrder = await db.tableOrders.where("tableId").equals(tableId).and(o => o.status === "open").first();
+          if (updatedOrder) {
+            const { sendToMainApp } = await import("@/features/sync/sync-client");
+            const { getLicense } = await import("@/features/licensing/licensing-db");
+            const lic = await getLicense();
+            sendToMainApp("table-order", updatedOrder, lic.deviceId).catch((e) =>
+              console.warn("[Sync] Failed to sync table order:", e)
+            );
+          }
+        }
+      } catch {
+        // Sync module not available — ignore
+      }
     } catch (e: any) {
       toast({ title: "Failed", description: e?.message ?? String(e), variant: "destructive" });
     }
@@ -504,6 +523,26 @@ export function PosTablesManager() {
       }
 
       toast({ title: "Table checked out", description: `Receipt #${receiptNo}` });
+
+      // Sync completed table order to Main device if in Sub mode
+      try {
+        const { getSyncConfig } = await import("@/features/sync/sync-utils");
+        const config = getSyncConfig();
+        if (config.role === "sub") {
+          const completedOrder = await db.tableOrders.get(currentTableOrder.id);
+          if (completedOrder) {
+            const { sendToMainApp } = await import("@/features/sync/sync-client");
+            const { getLicense } = await import("@/features/licensing/licensing-db");
+            const lic = await getLicense();
+            sendToMainApp("table-order", completedOrder, lic.deviceId).catch((e) =>
+              console.warn("[Sync] Failed to sync completed table order:", e)
+            );
+          }
+        }
+      } catch {
+        // Sync module not available — ignore
+      }
+
       setCheckoutOpen(false);
       setCreditCustomerId("");
       setNewCustomerName("");
