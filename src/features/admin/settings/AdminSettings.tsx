@@ -73,6 +73,7 @@ export function AdminSettings() {
   const [showAdvanceBookingInReports, setShowAdvanceBookingInReports] = React.useState(false);
   const [syncEnabled, setSyncEnabled] = React.useState(false);
   const [cashierReportsEnabled, setCashierReportsEnabled] = React.useState(false);
+  const [waiterMainAppEnabled, setWaiterMainAppEnabled] = React.useState(false);
 
   // Admin account
   const [adminAccount, setAdminAccount] = React.useState<AdminAccount | null>(null);
@@ -129,6 +130,7 @@ export function AdminSettings() {
     setShowAdvanceBookingInReports(!!s.showAdvanceBookingInReports);
     setSyncEnabled(!!s.syncEnabled);
     setCashierReportsEnabled(!!s?.cashierReportsEnabled);
+    setWaiterMainAppEnabled(!!s?.waiterMainAppEnabled);
     setLogoPath(s.receiptLogoPath);
 
     // Load admin account
@@ -206,6 +208,7 @@ export function AdminSettings() {
         showAdvanceBookingInReports,
         syncEnabled,
         cashierReportsEnabled,
+        waiterMainAppEnabled,
         receiptLogoPath: logoPath,
         updatedAt: Date.now(),
       };
@@ -649,6 +652,13 @@ export function AdminSettings() {
               <div className="text-xs text-muted-foreground">If enabled, cashiers can access the Reports section.</div>
             </div>
             <Switch checked={cashierReportsEnabled} onCheckedChange={setCashierReportsEnabled} />
+          </div>
+          <div className="flex items-center justify-between gap-3 rounded-md border p-3">
+            <div>
+              <div className="text-sm font-medium">Allow waiter to use Main App (Sync)</div>
+              <div className="text-xs text-muted-foreground">If enabled, waiters can set their device as the Main sync server.</div>
+            </div>
+            <Switch checked={waiterMainAppEnabled} onCheckedChange={setWaiterMainAppEnabled} />
           </div>
           <div className="flex justify-end">
             <Button onClick={() => void save()} disabled={!settings}>Save</Button>

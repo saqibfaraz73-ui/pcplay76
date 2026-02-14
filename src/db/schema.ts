@@ -295,6 +295,7 @@ export type Settings = {
   syncEnabled?: boolean; // if true, sync feature is available
   // Cashier permissions
   cashierReportsEnabled?: boolean; // if true, cashier can access reports section
+  waiterMainAppEnabled?: boolean; // if true, waiters can set device as Main in sync
   updatedAt: number;
 };
 
