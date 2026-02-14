@@ -68,6 +68,67 @@ export async function createOrder(args: {
   const serviceChargeAmount = args.serviceChargeAmount ?? 0;
   const total = subtotal - discountTotal + taxAmount + serviceChargeAmount;
 
+  // Check if Sub device is connected to Main — if so, send order to Main only
+  let isSubConnected = false;
+  try {
+    const { getSyncConfig } = await import("@/features/sync/sync-utils");
+    const config = getSyncConfig();
+    if (config.role === "sub" && config.mainAppIp) {
+      isSubConnected = true;
+    }
+  } catch {
+    // Sync module not available
+  }
+
+  if (isSubConnected) {
+    // Sub device: build order WITHOUT saving locally, send to Main
+    const counter = (await db.counters.get("receipt")) ?? { id: "receipt" as const, next: 1 };
+    const receiptNo = counter.next;
+    await db.counters.put({ id: "receipt", next: receiptNo + 1 });
+
+    const order: Order = {
+      id: makeId("ord"),
+      receiptNo,
+      cashier: args.cashier,
+      status: "completed",
+      paymentMethod: args.paymentMethod,
+      creditCustomerId: args.creditCustomerId,
+      deliveryPersonId: args.deliveryPersonId,
+      deliveryCustomerName: args.deliveryCustomerName,
+      deliveryCustomerAddress: args.deliveryCustomerAddress,
+      deliveryCustomerPhone: args.deliveryCustomerPhone,
+      discount,
+      lines,
+      subtotal,
+      discountTotal,
+      taxAmount,
+      serviceChargeAmount,
+      total,
+      workPeriodId: args.workPeriodId,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    // Send to Main device
+    try {
+      const { sendToMainApp } = await import("@/features/sync/sync-client");
+      const { getLicense } = await import("@/features/licensing/licensing-db");
+      const lic = await getLicense();
+      const res = await sendToMainApp("order", order, lic.deviceId);
+      if (!res.success) {
+        console.warn("[Sync] Main rejected order, saving locally as fallback:", res.error);
+        await db.orders.put(order);
+      }
+    } catch (e) {
+      console.warn("[Sync] Failed to send order to Main, saving locally as fallback:", e);
+      await db.orders.put(order);
+    }
+
+    await incrementSaleCount(saleModule);
+    return order;
+  }
+
+  // Main device or standalone: save locally as before
   const createdOrder = await db.transaction("rw", db.orders, db.inventory, db.counters, db.license, async () => {
     // Receipt counter
     const counter = (await db.counters.get("receipt")) ?? { id: "receipt" as const, next: 1 };
@@ -124,22 +185,6 @@ export async function createOrder(args: {
 
     return order;
   });
-
-  // Sync to Main device if in Sub mode (fire-and-forget, outside transaction)
-  try {
-    const { getSyncConfig } = await import("@/features/sync/sync-utils");
-    const config = getSyncConfig();
-    if (config.role === "sub") {
-      const { sendToMainApp } = await import("@/features/sync/sync-client");
-      const { getLicense } = await import("@/features/licensing/licensing-db");
-      const lic = await getLicense();
-      sendToMainApp("order", createdOrder, lic.deviceId).catch((e) =>
-        console.warn("[Sync] Failed to sync order:", e)
-      );
-    }
-  } catch {
-    // Sync module not available — ignore
-  }
 
   return createdOrder;
 }
