@@ -193,7 +193,7 @@ export function SyncSettingsPanel() {
       } else {
         toast({
           title: "No device found",
-          description: "Make sure the Main device server is running and both devices are on the same hotspot.",
+          description: "Make sure: 1) Main device has started its server, 2) Both devices are on the same WiFi/hotspot, 3) Try entering the Main device's IP manually (shown on Main screen).",
           variant: "destructive",
         });
       }
