@@ -146,6 +146,22 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                             </Link>
                           )}
 
+                          {/* Printer link for all roles */}
+                          {!isAdmin && (
+                            <Link
+                              to="/admin/printer"
+                              className={cn(
+                                "flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors",
+                                isActive("/admin/printer")
+                                  ? "bg-accent text-accent-foreground"
+                                  : "text-muted-foreground hover:text-foreground",
+                              )}
+                            >
+                              <Printer className="h-4 w-4" />
+                              Printer
+                            </Link>
+                          )}
+
                           {/* Admin sub-navigation */}
                           {isAdmin ? (
                             <>
@@ -228,6 +244,19 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   {advanceBookingEnabled && !isWaiter && (
                     <Link to="/pos/advance-booking" className={cn("rounded-md px-3 py-2 text-sm transition-colors", isActive("/pos/advance-booking") ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground")}>
                       Advance/Booking
+                    </Link>
+                  )}
+                  {!isAdmin && (
+                    <Link
+                      to="/admin/printer"
+                      className={cn(
+                        "rounded-md px-3 py-2 text-sm transition-colors",
+                        isActive("/admin/printer")
+                          ? "bg-accent text-accent-foreground"
+                          : "text-muted-foreground hover:text-foreground",
+                      )}
+                    >
+                      Printer
                     </Link>
                   )}
                   {isAdmin
