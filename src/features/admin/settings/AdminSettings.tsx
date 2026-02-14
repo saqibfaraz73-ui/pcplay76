@@ -82,6 +82,7 @@ export function AdminSettings() {
   // Staff accounts
   const [staffAccounts, setStaffAccounts] = React.useState<StaffAccount[]>([]);
   const [newStaffName, setNewStaffName] = React.useState("");
+  const [newStaffPhone, setNewStaffPhone] = React.useState("");
   const [newStaffRole, setNewStaffRole] = React.useState<"cashier" | "waiter">("cashier");
   const [newStaffPin, setNewStaffPin] = React.useState("");
   const [deleteStaffId, setDeleteStaffId] = React.useState<string | null>(null);
@@ -253,6 +254,7 @@ export function AdminSettings() {
     const staff: StaffAccount = {
       id: id("staff"),
       name: newStaffName.trim(),
+      phone: newStaffPhone.trim() || undefined,
       role: newStaffRole,
       pin: newStaffPin,
       createdAt: Date.now(),
@@ -260,6 +262,7 @@ export function AdminSettings() {
     await db.staffAccounts.add(staff);
     setStaffAccounts((prev) => [...prev, staff]);
     setNewStaffName("");
+    setNewStaffPhone("");
     setNewStaffPin("");
     toast({ title: `${newStaffRole === "cashier" ? "Cashier" : "Waiter"} added` });
   };
@@ -647,14 +650,18 @@ export function AdminSettings() {
       <Card>
         <CardHeader>
           <CardTitle>Staff Accounts</CardTitle>
-          <CardDescription>Create cashier and waiter logins. Staff log in with their name + 4-digit PIN.</CardDescription>
+          <CardDescription>Create cashier and waiter logins. Staff log in with their name or mobile number + 4-digit PIN.</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4">
           {/* Add new staff */}
-          <div className="grid gap-3 sm:grid-cols-4 items-end">
+          <div className="grid gap-3 sm:grid-cols-5 items-end">
             <div className="space-y-2">
               <Label>Name</Label>
               <Input value={newStaffName} onChange={(e) => setNewStaffName(e.target.value)} placeholder="e.g. Ali" />
+            </div>
+            <div className="space-y-2">
+              <Label>Phone <span className="text-muted-foreground text-xs">(optional)</span></Label>
+              <Input value={newStaffPhone} onChange={(e) => setNewStaffPhone(e.target.value)} inputMode="tel" placeholder="e.g. 03001234567" />
             </div>
             <div className="space-y-2">
               <Label>Role</Label>
@@ -679,6 +686,7 @@ export function AdminSettings() {
                 <thead>
                   <tr className="border-b bg-muted/50">
                     <th className="px-3 py-2 text-left font-medium">Name</th>
+                    <th className="px-3 py-2 text-left font-medium">Phone</th>
                     <th className="px-3 py-2 text-left font-medium">Role</th>
                     <th className="px-3 py-2 text-left font-medium">PIN</th>
                     <th className="px-3 py-2 text-right font-medium">Action</th>
@@ -688,6 +696,7 @@ export function AdminSettings() {
                   {staffAccounts.map((s) => (
                     <tr key={s.id} className="border-b last:border-0">
                       <td className="px-3 py-2">{s.name}</td>
+                      <td className="px-3 py-2 text-muted-foreground">{s.phone || "—"}</td>
                       <td className="px-3 py-2 capitalize">{s.role}</td>
                       <td className="px-3 py-2 font-mono">{s.pin}</td>
                       <td className="px-3 py-2 text-right">

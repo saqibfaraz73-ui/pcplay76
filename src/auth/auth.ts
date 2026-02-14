@@ -69,10 +69,13 @@ export async function authenticate(
     return { ok: true, role: "admin", displayName: admin.name };
   }
 
-  // Check staff accounts (name + PIN)
+  // Check staff accounts (name or phone + PIN)
   const staff = await db.staffAccounts.toArray();
   const match = staff.find(
-    (s) => s.name.toLowerCase() === identifier.toLowerCase() && s.pin === credential
+    (s) =>
+      (s.name.toLowerCase() === identifier.toLowerCase() ||
+        (s.phone && s.phone === identifier.trim())) &&
+      s.pin === credential
   );
   if (match) {
     return { ok: true, role: match.role as UserRole, displayName: match.name };
