@@ -7,7 +7,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { db } from "@/db/appDb";
-import type { Category, CreditCustomer, DeliveryPerson, MenuItem, Order, Settings } from "@/db/schema";
+import type { Category, CreditCustomer, DeliveryPerson, MenuItem, Order, Settings, TableOrder, RestaurantTable, Waiter } from "@/db/schema";
 import { ensureSeedData } from "@/db/seed";
 import { useAuth } from "@/auth/AuthProvider";
 import { cn } from "@/lib/utils";
@@ -19,9 +19,10 @@ import { ReceiptDialog } from "@/components/ReceiptDialog";
 import { printReceiptFromOrder, printKotFromOrder } from "@/features/pos/receipt-print";
 import { useWorkPeriod } from "@/features/pos/WorkPeriodProvider";
 import { saveDeliveryCustomer } from "@/features/admin/delivery/delivery-customers";
-import { Play, Square, Printer, Save, Truck, ClipboardList } from "lucide-react";
+import { Play, Square, Printer, Save, Truck, ClipboardList, UtensilsCrossed } from "lucide-react";
 import { format } from "date-fns";
 import { UpgradeDialog } from "@/features/licensing/UpgradeDialog";
+import { Link } from "react-router-dom";
 
 type CartLine = {
   itemId: string;
@@ -98,6 +99,11 @@ export default function PosDashboard() {
   const [showItemImages, setShowItemImages] = React.useState<boolean>(true);
   const [endWorkDialogOpen, setEndWorkDialogOpen] = React.useState(false);
 
+  // Pending table orders (for cashier/admin awareness)
+  const [pendingTableOrders, setPendingTableOrders] = React.useState<TableOrder[]>([]);
+  const [tableMap, setTableMap] = React.useState<Record<string, RestaurantTable>>({});
+  const [waiterMap, setWaiterMap] = React.useState<Record<string, Waiter>>({});
+
   // Variant picker state
   const [variantPickerItem, setVariantPickerItem] = React.useState<MenuItem | null>(null);
 
@@ -122,19 +128,26 @@ export default function PosDashboard() {
     (async () => {
       await ensureSeedData();
       await loadPosSettings();
-      const cats = await db.categories.orderBy("createdAt").toArray();
-      const its = await db.items.orderBy("createdAt").toArray();
-      const inv = await db.inventory.toArray();
-      const custs = await db.customers.orderBy("createdAt").toArray();
-      const delPersons = await db.deliveryPersons.orderBy("createdAt").toArray();
+      const [cats, its, inv, custs, delPersons, openTableOrders, allTables, allWaiters] = await Promise.all([
+        db.categories.orderBy("createdAt").toArray(),
+        db.items.orderBy("createdAt").toArray(),
+        db.inventory.toArray(),
+        db.customers.orderBy("createdAt").toArray(),
+        db.deliveryPersons.orderBy("createdAt").toArray(),
+        db.tableOrders.where("status").equals("open").toArray(),
+        db.restaurantTables.toArray(),
+        db.waiters.toArray(),
+      ]);
       if (ignore) return;
       setCategories(cats);
       setItems(its);
       setInventory(Object.fromEntries(inv.map((r) => [r.itemId, r.quantity])));
-      setActiveCategoryId(null); // Start with "All" selected
+      setActiveCategoryId(null);
       setCustomers(custs);
       setDeliveryPersons(delPersons);
-      // Refresh work period for current user
+      setPendingTableOrders(openTableOrders);
+      setTableMap(Object.fromEntries(allTables.map((t) => [t.id, t])));
+      setWaiterMap(Object.fromEntries(allWaiters.map((w) => [w.id, w])));
       if (session?.username) {
         await refreshWorkPeriod(session.username);
       }
@@ -155,12 +168,16 @@ export default function PosDashboard() {
   }, [loadPosSettings]);
 
   const refreshAfterMutation = React.useCallback(async () => {
-    const inv = await db.inventory.toArray();
-    const custs = await db.customers.orderBy("createdAt").toArray();
-    const delPersons = await db.deliveryPersons.orderBy("createdAt").toArray();
+    const [inv, custs, delPersons, openTableOrders] = await Promise.all([
+      db.inventory.toArray(),
+      db.customers.orderBy("createdAt").toArray(),
+      db.deliveryPersons.orderBy("createdAt").toArray(),
+      db.tableOrders.where("status").equals("open").toArray(),
+    ]);
     setInventory(Object.fromEntries(inv.map((r) => [r.itemId, r.quantity])));
     setCustomers(custs);
     setDeliveryPersons(delPersons);
+    setPendingTableOrders(openTableOrders);
   }, []);
 
   const deliveryPersonsById = React.useMemo(() => Object.fromEntries(deliveryPersons.map((p) => [p.id, p])), [deliveryPersons]);
@@ -600,6 +617,50 @@ export default function PosDashboard() {
           </div>
         )}
       </div>
+
+      {/* Pending Table Orders */}
+      {pendingTableOrders.length > 0 && (
+        <Card className="mb-4 border-orange-500/30">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <UtensilsCrossed className="h-4 w-4 text-orange-500" />
+              Pending Table Orders ({pendingTableOrders.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <div className="space-y-2">
+              {pendingTableOrders.map((to) => {
+                const table = tableMap[to.tableId];
+                const waiter = waiterMap[to.waiterId];
+                const itemCount = to.lines.reduce((s, l) => s + l.qty, 0);
+                const timeAgo = Math.round((Date.now() - to.createdAt) / 60000);
+                return (
+                  <Link
+                    key={to.id}
+                    to="/pos/tables"
+                    className="flex items-center justify-between gap-3 rounded-md border p-2 hover:bg-accent transition-colors"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-md bg-orange-100 dark:bg-orange-950/40 text-orange-600 dark:text-orange-400 text-xs font-bold shrink-0">
+                        {table?.tableNumber ?? "?"}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-sm font-medium truncate">
+                          {waiter?.name ?? "Unknown waiter"} • {itemCount} item{itemCount !== 1 ? "s" : ""}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {timeAgo < 1 ? "Just now" : `${timeAgo}m ago`} • {formatIntMoney(to.total)}
+                        </div>
+                      </div>
+                    </div>
+                    <span className="text-xs text-orange-600 dark:text-orange-400 font-medium shrink-0">Pending</span>
+                  </Link>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid gap-4 lg:grid-cols-[1fr_340px]">
         <div className="space-y-4 overflow-hidden">
