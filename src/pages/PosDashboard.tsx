@@ -655,63 +655,6 @@ export default function PosDashboard() {
         )}
       </div>
 
-      {/* Pending Table Orders */}
-      {pendingTableOrders.length > 0 && (
-        <Card className="mb-4 border-orange-500/30">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-semibold flex items-center gap-2">
-              <UtensilsCrossed className="h-4 w-4 text-orange-500" />
-              Pending Table Orders ({pendingTableOrders.length})
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="pt-0">
-            <div className="space-y-2">
-              {pendingTableOrders.map((to) => {
-                const table = tableMap[to.tableId];
-                const waiter = waiterMap[to.waiterId];
-                const itemCount = to.lines.reduce((s, l) => s + l.qty, 0);
-                const timeAgo = Math.round((Date.now() - to.createdAt) / 60000);
-                return (
-                  <div
-                    key={to.id}
-                    className="flex items-center justify-between gap-3 rounded-md border p-2"
-                  >
-                    <Link
-                      to="/pos/tables"
-                      className="flex items-center gap-3 min-w-0 flex-1 hover:bg-accent rounded-md transition-colors"
-                    >
-                      <div className="flex h-8 w-8 items-center justify-center rounded-md bg-orange-100 dark:bg-orange-950/40 text-orange-600 dark:text-orange-400 text-xs font-bold shrink-0">
-                        {table?.tableNumber ?? "?"}
-                      </div>
-                      <div className="min-w-0">
-                        <div className="text-sm font-medium truncate">
-                          {waiter?.name ?? "Unknown waiter"} • {itemCount} item{itemCount !== 1 ? "s" : ""}
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          {timeAgo < 1 ? "Just now" : `${timeAgo}m ago`} • {formatIntMoney(to.total)}
-                        </div>
-                      </div>
-                    </Link>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="shrink-0 text-destructive hover:text-destructive hover:bg-destructive/10"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        setCancelTableOrderId(to.id);
-                        setCancelTableReason("");
-                      }}
-                      title="Cancel this order"
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       <div className="grid gap-4 lg:grid-cols-[1fr_340px]">
         <div className="space-y-4 overflow-hidden">
