@@ -20,7 +20,8 @@ import { ItemImageThumb } from "@/features/pos/ItemImageThumb";
 import { makeId } from "@/features/admin/id";
 import { printTableKot } from "@/features/pos/tables/table-print";
 import { printReceiptFromOrder } from "@/features/pos/receipt-print";
-import { Printer, Save, CreditCard, Users, X, Plus, Minus, UtensilsCrossed, ClipboardList } from "lucide-react";
+import { Printer, Save, CreditCard, Users, X, Plus, Minus, UtensilsCrossed, ClipboardList, Share2 } from "lucide-react";
+import { generateMenuPdf } from "@/features/pos/menu-pdf";
 import { format } from "date-fns";
 
 type CartLine = {
@@ -833,12 +834,18 @@ export function PosTablesManager() {
             </p>
           )}
         </div>
-        {!tableSelectionDisabled && (
-          <Button variant="outline" onClick={backToTables}>
-            <X className="h-4 w-4 mr-1" />
-            Back to Tables
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => void generateMenuPdf().catch((e: any) => toast({ title: "Share failed", description: e?.message ?? String(e), variant: "destructive" }))}>
+            <Share2 className="h-4 w-4 mr-1" />
+            Share Menu
           </Button>
-        )}
+          {!tableSelectionDisabled && (
+            <Button variant="outline" onClick={backToTables}>
+              <X className="h-4 w-4 mr-1" />
+              Back to Tables
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Table Selection (only in waiter-only mode) */}
