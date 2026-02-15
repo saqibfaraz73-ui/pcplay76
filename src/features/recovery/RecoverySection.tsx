@@ -287,8 +287,26 @@ export function RecoverySection() {
     if (Capacitor.isNativePlatform()) {
       try { await Share.share({ title: "Payment Receipt", text }); } catch { /* cancelled */ }
     } else {
-      await navigator.clipboard?.writeText(text);
-      toast({ title: "Receipt copied to clipboard" });
+      // Generate PDF on web
+      const { jsPDF } = await import("jspdf");
+      const doc = new jsPDF({ unit: "mm", format: [80, 120] });
+      doc.setFontSize(12);
+      doc.text("PAYMENT RECEIPT", 40, 10, { align: "center" });
+      doc.setFontSize(9);
+      let y = 20;
+      const lines = [
+        `Receipt #: ${pay.receiptNo ?? "N/A"}`,
+        `Customer: ${cust.name}`,
+        `Package: ${cust.pkg ?? "N/A"}`,
+        `Amount: ${pay.amount}`,
+        `Status: ${pay.status.toUpperCase()}`,
+        `Month: ${pay.month}`,
+        `Agent: ${pay.agentName}`,
+        `Date: ${format(pay.createdAt, "dd/MM/yyyy hh:mm a")}`,
+      ];
+      for (const l of lines) { doc.text(l, 5, y); y += 6; }
+      doc.save(`receipt_${pay.receiptNo ?? pay.id}.pdf`);
+      toast({ title: "Receipt PDF downloaded" });
     }
   };
 
@@ -313,16 +331,38 @@ export function RecoverySection() {
   // ── Share history ──
   const shareHistory = async (cust: RecoveryCustomer) => {
     const custPayments = getCustomerPayments(cust.id);
-    const lines = [`Payment History: ${cust.name}`, `Pkg: ${cust.pkg ?? "N/A"}`, `Monthly: ${cust.monthlyBill}`, `Balance: ${cust.balance}`, `---`];
-    for (const p of custPayments) {
-      lines.push(`${p.month} | ${p.status.toUpperCase()} | ${p.amount} | ${p.agentName} | ${format(p.createdAt, "dd/MM/yyyy")}`);
-    }
-    const text = lines.join("\n");
     if (Capacitor.isNativePlatform()) {
-      try { await Share.share({ title: `History - ${cust.name}`, text }); } catch { /* cancelled */ }
+      const lines = [`Payment History: ${cust.name}`, `Pkg: ${cust.pkg ?? "N/A"}`, `Monthly: ${cust.monthlyBill}`, `Balance: ${cust.balance}`, `---`];
+      for (const p of custPayments) {
+        lines.push(`${p.month} | ${p.status.toUpperCase()} | ${p.amount} | ${p.agentName} | ${format(p.createdAt, "dd/MM/yyyy")}`);
+      }
+      try { await Share.share({ title: `History - ${cust.name}`, text: lines.join("\n") }); } catch { /* cancelled */ }
     } else {
-      await navigator.clipboard?.writeText(text);
-      toast({ title: "History copied" });
+      // Generate PDF on web
+      const { jsPDF } = await import("jspdf");
+      const doc = new jsPDF({ unit: "mm", format: "a4" });
+      doc.setFontSize(14);
+      doc.text(`Payment History: ${cust.name}`, 14, 15);
+      doc.setFontSize(10);
+      doc.text(`Package: ${cust.pkg ?? "N/A"}  |  Monthly: ${cust.monthlyBill}  |  Balance: ${cust.balance}`, 14, 23);
+      doc.setFontSize(9);
+      // Table header
+      let y = 32;
+      doc.setFont("helvetica", "bold");
+      doc.text("Month", 14, y); doc.text("Status", 45, y); doc.text("Amount", 75, y); doc.text("Agent", 105, y); doc.text("Date", 145, y);
+      doc.setFont("helvetica", "normal");
+      y += 6;
+      for (const p of custPayments) {
+        if (y > 280) { doc.addPage(); y = 15; }
+        doc.text(p.month, 14, y);
+        doc.text(p.status.toUpperCase(), 45, y);
+        doc.text(String(p.amount), 75, y);
+        doc.text(p.agentName, 105, y);
+        doc.text(format(p.createdAt, "dd/MM/yyyy"), 145, y);
+        y += 6;
+      }
+      doc.save(`history_${cust.name.replace(/\s+/g, "_")}.pdf`);
+      toast({ title: "History PDF downloaded" });
     }
   };
 
