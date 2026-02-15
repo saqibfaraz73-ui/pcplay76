@@ -1149,10 +1149,6 @@ export default function PosPartyLodge() {
                       <PackagePlus className="h-3 w-3 mr-1" />
                       Arrivals PDF
                     </Button>
-                    <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => void exportSingleSupplierExcel(sup)}>
-                      <FileSpreadsheet className="h-3 w-3 mr-1" />
-                      Excel
-                    </Button>
                     <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => downloadPartyImportTemplate(sup.name)} title="Download import template">
                       <Download className="h-3 w-3 mr-1" />
                       Template
@@ -1178,7 +1174,12 @@ export default function PosPartyLodge() {
           <CardHeader className="py-3">
             <div className="flex items-center justify-between">
               <CardTitle className="text-base">History: {selectedSupplier.name}</CardTitle>
-              <Button variant="ghost" size="sm" onClick={() => setSelectedId(null)}>✕</Button>
+              <div className="flex items-center gap-1">
+                <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => void exportSingleSupplierExcel(selectedSupplier)}>
+                  <FileSpreadsheet className="h-3 w-3 mr-1" /> Excel
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => setSelectedId(null)}>✕</Button>
+              </div>
             </div>
           </CardHeader>
           <CardContent className="space-y-4">

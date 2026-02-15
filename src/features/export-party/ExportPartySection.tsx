@@ -1076,9 +1076,6 @@ export function ExportPartySection() {
                     <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => void shareSingleSalesPdf(cust)}>
                       <PackagePlus className="h-3 w-3 mr-1" /> Sales PDF
                     </Button>
-                    <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => void exportSingleCustomerExcel(cust)}>
-                      <FileSpreadsheet className="h-3 w-3 mr-1" /> Excel
-                    </Button>
                     <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => downloadPartyImportTemplate(cust.name)} title="Download import template">
                       <Download className="h-3 w-3 mr-1" /> Template
                     </Button>
@@ -1102,7 +1099,12 @@ export function ExportPartySection() {
           <CardHeader className="py-3">
             <div className="flex items-center justify-between">
               <CardTitle className="text-base">History: {selectedCustomer.name}</CardTitle>
-              <Button variant="ghost" size="sm" onClick={() => setSelectedId(null)}>✕</Button>
+              <div className="flex items-center gap-1">
+                <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => void exportSingleCustomerExcel(selectedCustomer)}>
+                  <FileSpreadsheet className="h-3 w-3 mr-1" /> Excel
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => setSelectedId(null)}>✕</Button>
+              </div>
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
