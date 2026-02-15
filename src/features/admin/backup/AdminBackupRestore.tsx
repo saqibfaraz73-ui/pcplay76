@@ -42,6 +42,8 @@ type BackupPayloadV1 = {
     advanceOrders?: any[];
     bookableItems?: any[];
     bookingOrders?: any[];
+    recoveryCustomers?: any[];
+    recoveryPayments?: any[];
   };
 };
 
@@ -85,6 +87,8 @@ export function AdminBackupRestore() {
           advanceOrders: await db.advanceOrders.toArray(),
           bookableItems: await db.bookableItems.toArray(),
           bookingOrders: await db.bookingOrders.toArray(),
+          recoveryCustomers: await db.recoveryCustomers.toArray(),
+          recoveryPayments: await db.recoveryPayments.toArray(),
         },
       };
       const fileName = `backup_${payload.createdAt}.json`;
@@ -111,6 +115,7 @@ export function AdminBackupRestore() {
         db.waiters, db.restaurantTables, db.tableOrders,
         db.adminAccount, db.staffAccounts, db.settings, db.counters,
         db.advanceOrders, db.bookableItems, db.bookingOrders,
+        db.recoveryCustomers, db.recoveryPayments,
       ],
       async () => {
         await Promise.all([
@@ -141,6 +146,8 @@ export function AdminBackupRestore() {
           db.advanceOrders.clear(),
           db.bookableItems.clear(),
           db.bookingOrders.clear(),
+          db.recoveryCustomers.clear(),
+          db.recoveryPayments.clear(),
         ]);
         await db.categories.bulkAdd(payload.data.categories);
         await db.items.bulkAdd(payload.data.items);
@@ -167,6 +174,8 @@ export function AdminBackupRestore() {
         if (payload.data.advanceOrders?.length) await db.advanceOrders.bulkAdd(payload.data.advanceOrders);
         if (payload.data.bookableItems?.length) await db.bookableItems.bulkAdd(payload.data.bookableItems);
         if (payload.data.bookingOrders?.length) await db.bookingOrders.bulkAdd(payload.data.bookingOrders);
+        if (payload.data.recoveryCustomers?.length) await db.recoveryCustomers.bulkAdd(payload.data.recoveryCustomers);
+        if (payload.data.recoveryPayments?.length) await db.recoveryPayments.bulkAdd(payload.data.recoveryPayments);
         await db.settings.bulkAdd(payload.data.settings);
         await db.counters.bulkAdd(payload.data.counters);
       },
