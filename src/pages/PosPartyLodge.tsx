@@ -48,6 +48,7 @@ export default function PosPartyLodge() {
   const [arrivals, setArrivals] = React.useState<SupplierArrival[]>([]);
   const [settings, setSettings] = React.useState<Settings | null>(null);
 
+  const excelImportRef = React.useRef<HTMLInputElement>(null);
   const arrivalFileRef = React.useRef<HTMLInputElement>(null);
   const [importForSupplier, setImportForSupplier] = React.useState<Supplier | null>(null);
 
@@ -957,6 +958,70 @@ export default function PosPartyLodge() {
     }
   };
 
+  const handleExcelImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const data = await file.arrayBuffer();
+      const wb = XLSX.read(data, { type: "array" });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows: any[][] = XLSX.utils.sheet_to_json(ws, { header: 1 });
+      if (rows.length < 2) throw new Error("Excel file is empty or has no data rows.");
+
+      const now = Date.now();
+      const existingCats = await db.suppliers.toArray();
+      const supByName: Record<string, Supplier> = Object.fromEntries(existingCats.map((s) => [s.name.toLowerCase(), s]));
+
+      let suppliersCreated = 0, arrivalsCreated = 0, paymentsCreated = 0;
+
+      for (let i = 1; i < rows.length; i++) {
+        const [supplierName, type, itemName, qty, unit, unitPrice, amount, paymentType, note] = rows[i].map((c: any) => (c ?? "").toString().trim());
+        if (!supplierName) continue;
+
+        // Get or create supplier
+        let sup = supByName[supplierName.toLowerCase()];
+        if (!sup) {
+          sup = { id: makeId("sup"), name: supplierName, totalBalance: 0, createdAt: now };
+          await db.suppliers.put(sup);
+          supByName[supplierName.toLowerCase()] = sup;
+          suppliersCreated++;
+        }
+
+        const rowType = (type || "").toLowerCase();
+        if (rowType === "arrival") {
+          const total = parseInt(amount || "0", 10) || 0;
+          const arrival: SupplierArrival = {
+            id: makeId("sarr"), supplierId: sup.id,
+            itemName: itemName || "—", qty: parseInt(qty || "0", 10) || 0,
+            unit: unit || undefined, unitPrice: parseInt(unitPrice || "0", 10) || 0,
+            total, note: note || undefined, createdAt: now,
+          };
+          await db.supplierArrivals.put(arrival);
+          await db.suppliers.update(sup.id, { totalBalance: (sup.totalBalance || 0) + total });
+          sup.totalBalance = (sup.totalBalance || 0) + total;
+          arrivalsCreated++;
+        } else if (rowType === "payment") {
+          const amt = parseInt(amount || "0", 10) || 0;
+          if (amt > 0) {
+            const payment: SupplierPayment = {
+              id: makeId("spay"), supplierId: sup.id, amount: amt,
+              paymentType: (paymentType === "bank" ? "bank" : "cash") as any,
+              note: note || undefined, createdAt: now,
+            };
+            await db.supplierPayments.put(payment);
+            paymentsCreated++;
+          }
+        }
+      }
+
+      await refresh();
+      toast({ title: "Import complete", description: `${suppliersCreated} suppliers, ${arrivalsCreated} arrivals, ${paymentsCreated} payments imported` });
+    } catch (err: any) {
+      toast({ title: "Import failed", description: err?.message ?? String(err), variant: "destructive" });
+    }
+    e.target.value = "";
+  };
+
   const handleArrivalImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -1183,6 +1248,11 @@ export default function PosPartyLodge() {
               <FileSpreadsheet className="h-4 w-4 mr-1" />
               Export Excel
             </Button>
+            <Button variant="outline" size="sm" onClick={() => excelImportRef.current?.click()}>
+              <Upload className="h-4 w-4 mr-1" />
+              Import Excel
+            </Button>
+            <input ref={excelImportRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleExcelImport} />
           </div>
         </CardContent>
       </Card>
