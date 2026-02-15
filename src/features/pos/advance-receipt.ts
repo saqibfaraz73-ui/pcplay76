@@ -4,6 +4,7 @@ import { formatIntMoney, fmtDate, fmtDateTime, fmtTime12 } from "@/features/pos/
 import { btConnect, btSend, isNativeAndroid } from "@/features/pos/bluetooth-printer";
 import { usbSend } from "@/features/pos/usb-printer";
 import { db } from "@/db/appDb";
+import { isDuplicatePrint } from "@/features/pos/print-dedup";
 import jsPDF from "jspdf";
 
 /* ─── Receipt size feed (same logic as sales) ─── */
@@ -154,6 +155,9 @@ function buildBookingEscPos(order: BookingOrder, settings: Settings): string {
 /* ─── Generic send helper ─── */
 
 async function sendToPrinter(text: string) {
+  // Dedup: prevent duplicate prints from rapid taps or retries
+  if (isDuplicatePrint(text)) return;
+
   const settings = await db.settings.get("app");
   if (!isNativeAndroid()) {
     // Browser fallback - open in new window

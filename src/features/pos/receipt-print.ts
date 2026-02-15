@@ -7,6 +7,7 @@ import { db } from "@/db/appDb";
 import { format } from "date-fns";
 import { getSyncConfig } from "@/features/sync/sync-utils";
 import { sendPrintJob } from "@/features/sync/sync-client";
+import { isDuplicatePrint } from "@/features/pos/print-dedup";
 
 function escapeHtml(s: string) {
   return s.replace(/[&<>"']/g, (c) => {
@@ -226,6 +227,9 @@ async function shouldPrintViaMain(): Promise<boolean> {
 }
 
 async function sendPrintToMain(text: string): Promise<void> {
+  // Dedup: prevent duplicate prints when Main is slow or connection drops
+  if (isDuplicatePrint(text)) return;
+
   // Base64-encode the ESC/POS raw text for transport
   let b64 = "";
   for (let i = 0; i < text.length; i++) {
@@ -277,6 +281,9 @@ export async function printReceiptFromOrder(
     }
 
     const text = await buildEscPosReceipt(order, settings, opts);
+
+    // Dedup: prevent duplicate local prints from rapid taps
+    if (isDuplicatePrint(text)) return;
 
     if (viaMain) {
       await sendPrintToMain(text);
