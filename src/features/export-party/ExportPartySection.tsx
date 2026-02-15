@@ -17,11 +17,13 @@ import { makeId } from "@/features/admin/id";
 import { formatIntMoney, parseNonDecimalInt, fmtDate, fmtDateTime } from "@/features/pos/format";
 import { writePdfFile, shareFile } from "@/features/files/sangi-folders";
 import { Capacitor } from "@capacitor/core";
-import { Plus, Trash2, Share2, CreditCard, Banknote, PackagePlus, Upload, Download, Printer, XCircle } from "lucide-react";
+import { Plus, Trash2, Share2, CreditCard, Banknote, PackagePlus, Upload, Download, Printer, XCircle, FileSpreadsheet } from "lucide-react";
 import { printEntryReceipt, shareEntryReceipt, getNextEntryNo, type EntryReceiptData } from "@/features/pos/entry-receipt";
 import { importExportSalesFromExcel, importSalesForCustomer, downloadImportTemplate, downloadPartyImportTemplate } from "@/features/party-import/party-import";
 import { canMakeSale, incrementSaleCount } from "@/features/licensing/licensing-db";
 import { UpgradeDialog } from "@/features/licensing/UpgradeDialog";
+import * as XLSX from "xlsx";
+import { downloadExcel } from "@/features/admin/products/menu-import-export";
 
 type CustomerMode = { open: false } | { open: true; customer?: ExportCustomer };
 type PayMode = { open: false } | { open: true; customer: ExportCustomer };
@@ -57,6 +59,7 @@ export function ExportPartySection() {
   const [menuItems, setMenuItems] = React.useState<MenuItem[]>([]);
 
   const salesFileRef = React.useRef<HTMLInputElement>(null);
+  const excelImportRef = React.useRef<HTMLInputElement>(null);
   const [importForCustomer, setImportForCustomer] = React.useState<ExportCustomer | null>(null);
 
   const [customerMode, setCustomerMode] = React.useState<CustomerMode>({ open: false });
@@ -829,6 +832,118 @@ export function ExportPartySection() {
     }
   };
 
+  const exportExcel = async () => {
+    try {
+      if (customers.length === 0) { toast({ title: "No buyers to export", variant: "destructive" }); return; }
+      const [fy, fm, fd] = filterFrom.split("-").map(Number);
+      const [ty, tm, td] = filterTo.split("-").map(Number);
+      const fromTs = new Date(fy, fm - 1, fd).getTime();
+      const toTs = new Date(ty, tm - 1, td, 23, 59, 59, 999).getTime();
+
+      const rows: (string | number)[][] = [["Buyer", "Type", "Item", "Qty", "Unit", "Unit Price", "Total/Amount", "Payment Type", "Note", "Date", "Balance"]];
+      for (const cust of customers) {
+        const custSales = sales.filter((s) => s.customerId === cust.id && s.createdAt >= fromTs && s.createdAt <= toTs);
+        const custPayments = payments.filter((p) => p.customerId === cust.id && p.createdAt >= fromTs && p.createdAt <= toTs);
+        const balance = getBalance(cust);
+        for (const s of custSales) {
+          rows.push([cust.name, "Sale", s.itemName ?? "", s.qty, s.unit ?? "", s.unitPrice, s.total, "", s.note ?? "", fmtDate(s.createdAt), ""]);
+        }
+        for (const p of custPayments) {
+          rows.push([cust.name, "Payment", "", "", "", "", p.amount, p.paymentType ?? "cash", p.note ?? "", fmtDate(p.createdAt), ""]);
+        }
+        rows.push([cust.name, "Balance", "", "", "", "", "", "", "", "", balance]);
+      }
+      const ws = XLSX.utils.aoa_to_sheet(rows);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Export Party");
+      const buf = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+      const blob = new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+      await downloadExcel(blob, `export_party_${filterFrom}_${filterTo}.xlsx`);
+      toast({ title: "Export Party Excel exported" });
+    } catch (e: any) {
+      toast({ title: "Export failed", description: e?.message ?? String(e), variant: "destructive" });
+    }
+  };
+
+  const downloadTemplate = () => {
+    const headers = [["Buyer", "Type", "Item", "Qty", "Unit", "Unit Price", "Total/Amount", "Payment Type", "Note"]];
+    const sample = [
+      ["Ahmed Store", "Sale", "Flour", "100", "kg", "150", "15000", "", "Monthly order"],
+      ["Ahmed Store", "Payment", "", "", "", "", "10000", "cash", "Partial payment"],
+    ];
+    const ws = XLSX.utils.aoa_to_sheet([...headers, ...sample]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Template");
+    const buf = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+    const blob = new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = "export_party_template.xlsx";
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleExcelImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const data = await file.arrayBuffer();
+      const wb = XLSX.read(data, { type: "array" });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows: any[][] = XLSX.utils.sheet_to_json(ws, { header: 1 });
+      if (rows.length < 2) throw new Error("Excel file is empty or has no data rows.");
+
+      const now = Date.now();
+      const existing = await db.exportCustomers.toArray();
+      const custByName: Record<string, ExportCustomer> = Object.fromEntries(existing.map((c) => [c.name.toLowerCase(), c]));
+      let customersCreated = 0, salesCreated = 0, paymentsCreated = 0;
+
+      for (let i = 1; i < rows.length; i++) {
+        const [buyerName, type, itemName, qty, unit, unitPrice, amount, paymentType, note] = rows[i].map((c: any) => (c ?? "").toString().trim());
+        if (!buyerName) continue;
+
+        let cust = custByName[buyerName.toLowerCase()];
+        if (!cust) {
+          cust = { id: makeId("exp"), name: buyerName, totalBalance: 0, createdAt: now };
+          await db.exportCustomers.put(cust);
+          custByName[buyerName.toLowerCase()] = cust;
+          customersCreated++;
+        }
+
+        const rowType = (type || "").toLowerCase();
+        if (rowType === "sale") {
+          const total = parseInt(amount || "0", 10) || 0;
+          const sale: ExportSale = {
+            id: makeId("esal"), customerId: cust.id,
+            itemName: itemName || "—", qty: parseInt(qty || "0", 10) || 0,
+            unit: unit || undefined, unitPrice: parseInt(unitPrice || "0", 10) || 0,
+            total, note: note || undefined, createdAt: now,
+          };
+          await db.exportSales.put(sale);
+          await db.exportCustomers.update(cust.id, { totalBalance: (cust.totalBalance || 0) + total });
+          cust.totalBalance = (cust.totalBalance || 0) + total;
+          salesCreated++;
+        } else if (rowType === "payment") {
+          const amt = parseInt(amount || "0", 10) || 0;
+          if (amt > 0) {
+            const payment: ExportPayment = {
+              id: makeId("epay"), customerId: cust.id, amount: amt,
+              paymentType: (paymentType === "bank" ? "bank" : "cash") as any,
+              note: note || undefined, createdAt: now,
+            };
+            await db.exportPayments.put(payment);
+            paymentsCreated++;
+          }
+        }
+      }
+      await refresh();
+      toast({ title: "Import complete", description: `${customersCreated} buyers, ${salesCreated} sales, ${paymentsCreated} payments imported` });
+    } catch (err: any) {
+      toast({ title: "Import failed", description: err?.message ?? String(err), variant: "destructive" });
+    }
+    e.target.value = "";
+  };
+
   const sharePdf = async (type: "full" | "sales" | "payments") => {
     try {
       const doc = type === "full" ? buildExportPdf() : type === "sales" ? buildSalesPdf() : buildPaymentsPdf();
@@ -1078,6 +1193,16 @@ export function ExportPartySection() {
             <Button variant="outline" size="sm" onClick={() => void sharePdf("payments")} disabled={payments.length === 0}>
               <CreditCard className="h-4 w-4 mr-1" /> Payments PDF
             </Button>
+            <Button variant="outline" size="sm" onClick={() => void exportExcel()} disabled={customers.length === 0}>
+              <FileSpreadsheet className="h-4 w-4 mr-1" /> Export Excel
+            </Button>
+            <Button variant="outline" size="sm" onClick={downloadTemplate}>
+              <Download className="h-4 w-4 mr-1" /> Template
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => excelImportRef.current?.click()}>
+              <Upload className="h-4 w-4 mr-1" /> Import Excel
+            </Button>
+            <input ref={excelImportRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleExcelImport} />
           </div>
         </CardContent>
       </Card>
