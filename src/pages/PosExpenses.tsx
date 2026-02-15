@@ -35,6 +35,7 @@ export default function PosExpenses() {
   const { currentWorkPeriod, isWorkPeriodActive } = useWorkPeriod();
 
   const [expenses, setExpenses] = React.useState<Expense[]>([]);
+  const [allExpenses, setAllExpenses] = React.useState<Expense[]>([]);
   const [settings, setSettings] = React.useState<Settings | null>(null);
   const [addOpen, setAddOpen] = React.useState(false);
   const [deleteTarget, setDeleteTarget] = React.useState<Expense | null>(null);
@@ -61,29 +62,38 @@ export default function PosExpenses() {
   const refresh = React.useCallback(async () => {
     const all = await db.expenses.orderBy("createdAt").reverse().toArray();
     const s = await db.settings.get("app");
-    setExpenses(all);
+    setAllExpenses(all);
     setSettings(s ?? null);
-  }, []);
+
+    // Filter expenses to current work period if active, otherwise today
+    if (currentWorkPeriod && !currentWorkPeriod.isClosed) {
+      const wpStart = currentWorkPeriod.startedAt;
+      const wpEnd = currentWorkPeriod.endedAt ?? Date.now();
+      setExpenses(all.filter((e) => e.createdAt >= wpStart && e.createdAt <= wpEnd));
+    } else {
+      // Show today's expenses when no work period active
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+      setExpenses(all.filter((e) => e.createdAt >= todayStart.getTime()));
+    }
+  }, [currentWorkPeriod]);
 
   React.useEffect(() => {
     void refresh();
   }, [refresh]);
 
-  const todayExpenses = React.useMemo(() => {
-    const start = new Date();
-    start.setHours(0, 0, 0, 0);
-    return expenses.filter((e) => e.createdAt >= start.getTime());
-  }, [expenses]);
-
-  const todayTotal = todayExpenses.reduce((sum, e) => sum + e.amount, 0);
+  const periodTotal = expenses.reduce((sum, e) => sum + e.amount, 0);
+  const periodLabel = currentWorkPeriod && !currentWorkPeriod.isClosed
+    ? "Current Work Period Expenses"
+    : "Today's Expenses";
 
   const filteredExpenses = React.useMemo(() => {
     const [fy, fm, fd] = filterFrom.split("-").map(Number);
     const [ty, tm, td] = filterTo.split("-").map(Number);
     const fromTs = new Date(fy, fm - 1, fd, 0, 0, 0, 0).getTime();
     const toTs = new Date(ty, tm - 1, td, 23, 59, 59, 999).getTime();
-    return expenses.filter((e) => e.createdAt >= fromTs && e.createdAt <= toTs);
-  }, [expenses, filterFrom, filterTo]);
+    return allExpenses.filter((e) => e.createdAt >= fromTs && e.createdAt <= toTs);
+  }, [allExpenses, filterFrom, filterTo]);
 
   const filteredTotal = filteredExpenses.reduce((sum, e) => sum + e.amount, 0);
 
@@ -239,14 +249,14 @@ export default function PosExpenses() {
         </div>
       )}
 
-      {/* Today's summary */}
+      {/* Period summary */}
       <Card>
         <CardHeader className="py-3">
-          <CardTitle className="text-base">Today's Expenses</CardTitle>
-          <CardDescription>{todayExpenses.length} expenses</CardDescription>
+          <CardTitle className="text-base">{periodLabel}</CardTitle>
+          <CardDescription>{expenses.length} expenses</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold text-destructive">{formatIntMoney(todayTotal)}</div>
+          <div className="text-2xl font-bold text-destructive">{formatIntMoney(periodTotal)}</div>
         </CardContent>
       </Card>
 
@@ -280,7 +290,7 @@ export default function PosExpenses() {
       {/* Expense list */}
       <Card>
         <CardHeader className="py-3">
-          <CardTitle className="text-base">All Expenses</CardTitle>
+          <CardTitle className="text-base">{periodLabel} List</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
           {expenses.length === 0 ? (

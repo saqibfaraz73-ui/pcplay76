@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { formatIntMoney, fmtDate, fmtDateTime, fmtTime12 } from "@/features/pos/format";
 import { writePdfFile, shareFile } from "@/features/files/sangi-folders";
 import { SalesReportPreview } from "@/features/admin/reports/SalesReportPreview";
+import { useAuth } from "@/auth/AuthProvider";
 
 function toDateInputValue(ts: number) {
   const d = new Date(ts);
@@ -565,7 +566,9 @@ function buildSalesPdf(args: {
 }
 
 export function AdminReports() {
+  const { session } = useAuth();
   const { toast } = useToast();
+  const isAdmin = session?.role === "admin";
   const [settings, setSettings] = React.useState<Settings | null>(null);
   const [customers, setCustomers] = React.useState<CreditCustomer[]>([]);
   const [deliveryPersons, setDeliveryPersons] = React.useState<DeliveryPerson[]>([]);
@@ -613,7 +616,14 @@ export function AdminReports() {
         db.customers.orderBy("createdAt").toArray(),
         db.deliveryPersons.orderBy("createdAt").toArray(),
         db.items.orderBy("createdAt").toArray(),
-        db.workPeriods.orderBy("startedAt").reverse().limit(50).toArray(),
+        db.workPeriods.orderBy("startedAt").reverse().toArray().then((wps) => {
+          // Non-admin: limit to last 7 days of work periods
+          if (!isAdmin) {
+            const oneWeekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+            return wps.filter((wp) => wp.startedAt >= oneWeekAgo);
+          }
+          return wps;
+        }),
         db.restaurantTables.orderBy("createdAt").toArray(),
         db.waiters.orderBy("createdAt").toArray(),
         db.exportCustomers.orderBy("createdAt").toArray(),
