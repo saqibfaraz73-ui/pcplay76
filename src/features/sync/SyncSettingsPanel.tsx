@@ -329,24 +329,24 @@ export function SyncSettingsPanel() {
           <CardContent className="space-y-3">
             {canBeMain && (
               <Button
-                className="w-full justify-start gap-3 h-auto py-3"
+                className="w-full justify-start gap-3 h-auto py-3 overflow-hidden"
                 variant="outline"
                 onClick={handleStartServer}
                 disabled={loading}
               >
-                <Server className="h-5 w-5 text-primary" />
-                <div className="text-left">
+                <Server className="h-5 w-5 shrink-0 text-primary" />
+                <div className="text-left min-w-0">
                   <div className="font-medium">Main Device</div>
-                  <div className="text-xs text-muted-foreground">
+                  <div className="text-xs text-muted-foreground whitespace-normal break-words">
                     Receives data from sub devices, has the printer
                   </div>
                 </div>
-                {loading && <Loader2 className="ml-auto h-4 w-4 animate-spin" />}
+                {loading && <Loader2 className="ml-auto h-4 w-4 shrink-0 animate-spin" />}
               </Button>
             )}
 
             <Button
-              className="w-full justify-start gap-3 h-auto py-3"
+              className="w-full justify-start gap-3 h-auto py-3 overflow-hidden"
               variant="outline"
               onClick={() => {
                 const newConfig = { ...config, role: "sub" as DeviceRole };
@@ -354,10 +354,10 @@ export function SyncSettingsPanel() {
                 saveConfig(newConfig);
               }}
             >
-              <Smartphone className="h-5 w-5 text-primary" />
-              <div className="text-left">
+              <Smartphone className="h-5 w-5 shrink-0 text-primary" />
+              <div className="text-left min-w-0">
                 <div className="font-medium">Sub Device</div>
-                <div className="text-xs text-muted-foreground">
+                <div className="text-xs text-muted-foreground whitespace-normal break-words">
                   Sends sales data to Main device. Can use its own printer or Main's printer.
                 </div>
               </div>
