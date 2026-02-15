@@ -227,7 +227,7 @@ async function shouldPrintViaMain(): Promise<boolean> {
   }
 }
 
-async function sendPrintToMain(text: string): Promise<void> {
+async function sendPrintToMain(text: string, section: "sales" | "tables" = "sales"): Promise<void> {
   // Dedup: prevent duplicate prints when Main is slow or connection drops
   if (isDuplicatePrint(text)) return;
 
@@ -238,11 +238,9 @@ async function sendPrintToMain(text: string): Promise<void> {
   }
   const encoded = btoa(b64);
 
-  // Determine Main's printer type from sync - we send as "usb" by default,
-  // Main will use whatever printer it has configured
   const { getLicense } = await import("@/features/licensing/licensing-db");
   const lic = await getLicense();
-  const res = await sendPrintJob(encoded, "usb", lic.deviceId);
+  const res = await sendPrintJob(encoded, "usb", lic.deviceId, section);
   if (!res.success) {
     throw new Error(res.error || "Failed to send print job to Main device");
   }
@@ -275,7 +273,7 @@ export async function printReceiptFromOrder(
           showAddress: false, showPhone: false, showLogo: false, updatedAt: 0,
         };
         const text = await buildEscPosReceipt(order, defaultSettings, opts);
-        await sendPrintToMain(text);
+        await sendPrintToMain(text, opts?.section ?? "sales");
         return;
       }
       throw new Error("Settings not loaded. Please configure printer in Admin > Printer.");
@@ -287,7 +285,7 @@ export async function printReceiptFromOrder(
     if (isDuplicatePrint(text)) return;
 
     if (viaMain) {
-      await sendPrintToMain(text);
+      await sendPrintToMain(text, opts?.section ?? "sales");
       return;
     }
 
@@ -410,7 +408,7 @@ export async function printKotFromOrder(order: Order) {
         showAddress: false, showPhone: false, showLogo: false, updatedAt: 0,
       };
       const text = await buildKotReceipt(order, defaultSettings);
-      await sendPrintToMain(text);
+      await sendPrintToMain(text, "sales");
       return;
     }
     throw new Error("Printer not configured");
@@ -421,7 +419,7 @@ export async function printKotFromOrder(order: Order) {
   // Check if Sub should send to Main's printer
   const viaMain = await shouldPrintViaMain();
   if (viaMain) {
-    await sendPrintToMain(text);
+    await sendPrintToMain(text, "sales");
     return;
   }
 

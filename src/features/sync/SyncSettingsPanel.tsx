@@ -14,8 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import { Wifi, WifiOff, Server, Smartphone, Printer as PrinterIcon, Loader2, Search, Radio } from "lucide-react";
-import { Progress } from "@/components/ui/progress";
+import { Wifi, WifiOff, Server, Smartphone, Printer as PrinterIcon, Loader2 } from "lucide-react";
 import type { DeviceRole, ConnectionStatus, SyncConfig } from "./sync-types";
 import { DEFAULT_SYNC_CONFIG, DEFAULT_SYNC_PORT } from "./sync-types";
 import type { Settings } from "@/db/schema";
@@ -26,7 +25,7 @@ import {
   onSyncDataReceived,
   isNativeAndroid,
 } from "./local-sync-server";
-import { setMainAppUrl, pingMainApp, scanForMainDevice } from "./sync-client";
+import { setMainAppUrl, pingMainApp } from "./sync-client";
 import { handleSyncData } from "./sync-handler";
 
 const STORAGE_KEY = "sangi_sync_config";
@@ -110,8 +109,6 @@ export function SyncSettingsPanel() {
   const [serverPort, setServerPort] = useState(DEFAULT_SYNC_PORT);
   const [ipInput, setIpInput] = useState(config.mainAppIp ?? "");
   const [loading, setLoading] = useState(false);
-  const [scanning, setScanning] = useState(false);
-  const [scanProgress, setScanProgress] = useState(0);
 
   const isAndroid = isNativeAndroid();
 
@@ -237,31 +234,6 @@ export function SyncSettingsPanel() {
     saveConfig(newConfig);
   }, [config]);
 
-  // ─── Sub: Auto-scan for Main device ──────────────────
-  const handleScan = useCallback(async () => {
-    setScanning(true);
-    setScanProgress(0);
-    try {
-      const foundIp = await scanForMainDevice(config.port, (checked, total) => {
-        setScanProgress(Math.round((checked / total) * 100));
-      });
-      if (foundIp) {
-        setIpInput(foundIp);
-        toast({ title: "Device found!", description: `Main device found at ${foundIp}` });
-      } else {
-        toast({
-          title: "No device found",
-          description: "Make sure: 1) Main device has started its server, 2) Both devices are on the same WiFi/hotspot, 3) Try entering the Main device's IP manually (shown on Main screen).",
-          variant: "destructive",
-        });
-      }
-    } catch (e: any) {
-      toast({ title: "Scan failed", description: e.message, variant: "destructive" });
-    } finally {
-      setScanning(false);
-      setScanProgress(0);
-    }
-  }, [config.port, toast]);
 
   // ─── Reset role ──────────────────────────────────────
   const handleReset = useCallback(async () => {
@@ -418,38 +390,6 @@ export function SyncSettingsPanel() {
           <CardContent className="space-y-3">
             {status !== "connected" ? (
               <>
-                {/* Auto Scan Button */}
-                <Button
-                  variant="outline"
-                  className="w-full justify-start gap-3 h-auto py-3"
-                  onClick={handleScan}
-                  disabled={scanning || loading}
-                >
-                  {scanning ? (
-                    <Radio className="h-5 w-5 text-primary animate-pulse" />
-                  ) : (
-                    <Search className="h-5 w-5 text-primary" />
-                  )}
-                  <div className="text-left flex-1">
-                    <div className="font-medium">
-                      {scanning ? "Scanning..." : "Scan for Main Device"}
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      Auto-detect Main device on your network
-                    </div>
-                  </div>
-                </Button>
-
-                {scanning && (
-                  <Progress value={scanProgress} className="h-2" />
-                )}
-
-                <div className="flex items-center gap-2 my-1">
-                  <Separator className="flex-1" />
-                  <span className="text-xs text-muted-foreground">or enter IP manually</span>
-                  <Separator className="flex-1" />
-                </div>
-
                 <div className="space-y-2">
                   <Label htmlFor="main-ip">Main App IP Address</Label>
                   <Input
@@ -457,10 +397,10 @@ export function SyncSettingsPanel() {
                     placeholder="e.g. 192.168.43.1"
                     value={ipInput}
                     onChange={(e) => setIpInput(e.target.value)}
-                    disabled={loading || scanning}
+                    disabled={loading}
                   />
                 </div>
-                <Button onClick={handleConnectToMain} disabled={loading || scanning || !ipInput.trim()}>
+                <Button onClick={handleConnectToMain} disabled={loading || !ipInput.trim()}>
                   {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   Connect
                 </Button>

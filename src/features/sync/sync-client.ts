@@ -206,9 +206,10 @@ export async function sendToMainApp(
 export async function sendPrintJob(
   printData: string,
   printerType: "bluetooth" | "usb",
-  sourceDeviceId: string
+  sourceDeviceId: string,
+  section?: "sales" | "tables"
 ): Promise<SyncResponse> {
-  const job: PrintJobPayload = { printData, printerType };
+  const job: PrintJobPayload = { printData, printerType, section };
   return sendToMainApp("print", job, sourceDeviceId);
 }
 
