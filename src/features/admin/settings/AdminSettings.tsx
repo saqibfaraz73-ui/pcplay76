@@ -386,13 +386,13 @@ export function AdminSettings() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Restaurant & Receipt Settings</CardTitle>
+          <CardTitle>Business & Receipt Settings</CardTitle>
           <CardDescription>Basic settings used for receipts and reports.</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4">
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="restaurantName">Restaurant name</Label>
+              <Label htmlFor="restaurantName">Business name</Label>
               <Input id="restaurantName" value={restaurantName} onChange={(e) => setRestaurantName(e.target.value)} />
             </div>
           </div>
