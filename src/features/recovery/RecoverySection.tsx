@@ -79,7 +79,7 @@ export function RecoverySection() {
   const [formPkg, setFormPkg] = React.useState("");
   const [formBill, setFormBill] = React.useState<number>(0);
   const [formBalance, setFormBalance] = React.useState<number>(0);
-  const [formAgentId, setFormAgentId] = React.useState<string>("");
+  const [formAgentId, setFormAgentId] = React.useState<string>("__none");
 
   // History view
   const [historyId, setHistoryId] = React.useState<string | null>(null);
@@ -143,21 +143,22 @@ export function RecoverySection() {
 
   const resetForm = () => {
     setFormName(""); setFormContact(""); setFormAddress(""); setFormPkg(""); setFormBill(0); setFormBalance(0);
-    setFormAgentId(""); setEditId(null); setShowAdd(false);
+    setFormAgentId("__none"); setEditId(null); setShowAdd(false);
   };
 
   const saveCustomer = async () => {
     if (!formName.trim()) { toast({ title: "Name required", variant: "destructive" }); return; }
-    const assignedAgent = agents.find(a => a.id === formAgentId);
+    const realAgentId = formAgentId === "__none" ? "" : formAgentId;
+    const assignedAgent = agents.find(a => a.id === realAgentId);
     if (editId) {
       await db.recoveryCustomers.update(editId, {
         name: formName.trim(), contact: formContact.trim() || undefined, address: formAddress.trim() || undefined,
         pkg: formPkg.trim() || undefined, monthlyBill: formBill, balance: formBalance,
-        agentId: formAgentId || undefined, agentName: assignedAgent?.name || undefined,
+        agentId: realAgentId || undefined, agentName: assignedAgent?.name || undefined,
       });
     } else {
       // For recovery agents adding customers, auto-assign to themselves
-      const effectiveAgentId = isRecovery && myAgentId ? myAgentId : formAgentId;
+      const effectiveAgentId = isRecovery && myAgentId ? myAgentId : realAgentId;
       const effectiveAgentName = isRecovery ? agentName : assignedAgent?.name;
       await db.recoveryCustomers.add({
         id: uid("rcust"), name: formName.trim(), contact: formContact.trim() || undefined, address: formAddress.trim() || undefined,
@@ -174,7 +175,7 @@ export function RecoverySection() {
   const editCustomer = (c: RecoveryCustomer) => {
     setEditId(c.id); setFormName(c.name); setFormContact(c.contact ?? ""); setFormAddress(c.address ?? "");
     setFormPkg(c.pkg ?? ""); setFormBill(c.monthlyBill); setFormBalance(c.balance);
-    setFormAgentId(c.agentId ?? ""); setShowAdd(true);
+    setFormAgentId(c.agentId ?? "__none"); setShowAdd(true);
   };
 
   const deleteCustomer = async (id: string) => {
@@ -560,7 +561,7 @@ export function RecoverySection() {
                     <SelectValue placeholder="Select agent" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">No agent</SelectItem>
+                    <SelectItem value="__none">No agent</SelectItem>
                     {agents.map(a => (
                       <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
                     ))}
