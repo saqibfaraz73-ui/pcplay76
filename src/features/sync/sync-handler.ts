@@ -64,12 +64,18 @@ export async function handleSyncData(
   }
 }
 
-/** Save a synced order into the Main device's database (keeps Sub's original workPeriodId) */
+/** Save a synced order into the Main device's database, remapping workPeriodId to Main's active work period */
 async function handleOrderSync(order: Order): Promise<void> {
   const existing = await db.orders.get(order.id);
   if (existing) {
     console.log(`[Sync] Order ${order.id} already exists, skipping`);
     return;
+  }
+  // Remap workPeriodId to Main's active (open) work period so reports group correctly
+  const mainWp = await db.workPeriods.filter((wp) => !wp.isClosed).first();
+  if (mainWp) {
+    order.workPeriodId = mainWp.id;
+    console.log(`[Sync] Remapped order workPeriodId to Main's active WP: ${mainWp.id}`);
   }
   await db.orders.put(order);
   console.log(`[Sync] Order ${order.id} saved (receipt #${order.receiptNo}, wp: ${order.workPeriodId})`);
@@ -143,6 +149,12 @@ async function handleTableOrderSync(tableOrder: TableOrder & { _waiterName?: str
   if (_waiterName && !cleanOrder.waiterName) cleanOrder.waiterName = _waiterName;
   if (_tableNumber && !cleanOrder.tableNumber) cleanOrder.tableNumber = _tableNumber;
 
+  // Remap workPeriodId to Main's active work period so reports group correctly
+  const mainWp = await db.workPeriods.filter((wp) => !wp.isClosed).first();
+  if (mainWp) {
+    cleanOrder.workPeriodId = mainWp.id;
+  }
+
   const existing = await db.tableOrders.get(cleanOrder.id);
   if (existing) {
     if (cleanOrder.updatedAt > existing.updatedAt) {
@@ -152,7 +164,7 @@ async function handleTableOrderSync(tableOrder: TableOrder & { _waiterName?: str
     return;
   }
   await db.tableOrders.put(cleanOrder);
-  console.log(`[Sync] Table order ${cleanOrder.id} saved`);
+  console.log(`[Sync] Table order ${cleanOrder.id} saved (wp: ${cleanOrder.workPeriodId})`);
 }
 
 /** Save a synced credit payment */
@@ -164,12 +176,17 @@ async function handleCreditPaymentSync(data: unknown): Promise<void> {
   console.log(`[Sync] Credit payment ${payment.id} saved`);
 }
 
-/** Save a synced expense (keeps Sub's original workPeriodId) */
+/** Save a synced expense, remapping workPeriodId to Main's active work period */
 async function handleExpenseSync(expense: Expense): Promise<void> {
   const existing = await db.expenses.get(expense.id);
   if (existing) return;
+  // Remap workPeriodId to Main's active work period
+  const mainWp = await db.workPeriods.filter((wp) => !wp.isClosed).first();
+  if (mainWp) {
+    expense.workPeriodId = mainWp.id;
+  }
   await db.expenses.put(expense);
-  console.log(`[Sync] Expense ${expense.id} saved`);
+  console.log(`[Sync] Expense ${expense.id} saved (wp: ${expense.workPeriodId})`);
 }
 
 /** Dedup guard: track recent print job hashes to prevent duplicate prints */
@@ -230,10 +247,11 @@ async function handlePrintJob(job: PrintJobPayload): Promise<void> {
   }
 }
 
-/** Save/update a synced work period */
+/** Save/update a synced work period — Sub work periods are stored but Main uses its own for reports */
 async function handleWorkPeriodSync(wp: WorkPeriod): Promise<void> {
-  await db.workPeriods.put(wp);
-  console.log(`[Sync] Work period ${wp.id} saved (closed: ${wp.isClosed})`);
+  // Don't save Sub's work periods — they'd clutter Main's work period dropdown
+  // Sub orders/expenses are already remapped to Main's active work period
+  console.log(`[Sync] Work period sync from Sub ignored (Main uses its own work periods)`);
 }
 
 /** Handle bulk sync — multiple items in one request */
