@@ -74,6 +74,8 @@ export function AdminSettings() {
   const [syncEnabled, setSyncEnabled] = React.useState(false);
   const [subWorkPeriodMode, setSubWorkPeriodMode] = React.useState<"own" | "main">("own");
   const [cashierReportsEnabled, setCashierReportsEnabled] = React.useState(false);
+  const [cashierCancelOrderEnabled, setCashierCancelOrderEnabled] = React.useState(true);
+  const [cashierEndWorkPeriodPendingCheck, setCashierEndWorkPeriodPendingCheck] = React.useState(true);
   const [waiterMainAppEnabled, setWaiterMainAppEnabled] = React.useState(false);
   const [waiterRestrictToOwnTables, setWaiterRestrictToOwnTables] = React.useState(false);
   const [supervisorPrinterEnabled, setSupervisorPrinterEnabled] = React.useState(false);
@@ -136,6 +138,8 @@ export function AdminSettings() {
     setSyncEnabled(!!s.syncEnabled);
     setSubWorkPeriodMode(s.subWorkPeriodMode ?? "own");
     setCashierReportsEnabled(!!s?.cashierReportsEnabled);
+    setCashierCancelOrderEnabled(s?.cashierCancelOrderEnabled !== false); // default true
+    setCashierEndWorkPeriodPendingCheck(s?.cashierEndWorkPeriodPendingCheck !== false); // default true
     setWaiterMainAppEnabled(!!s?.waiterMainAppEnabled);
     setWaiterRestrictToOwnTables(!!s?.waiterRestrictToOwnTables);
     setSupervisorPrinterEnabled(!!s?.supervisorPrinterEnabled);
@@ -219,6 +223,8 @@ export function AdminSettings() {
         syncEnabled,
         subWorkPeriodMode,
         cashierReportsEnabled,
+        cashierCancelOrderEnabled,
+        cashierEndWorkPeriodPendingCheck,
         waiterMainAppEnabled,
         waiterRestrictToOwnTables,
         supervisorPrinterEnabled,
@@ -681,6 +687,20 @@ export function AdminSettings() {
               <div className="text-xs text-muted-foreground">If enabled, cashiers can access the Reports section.</div>
             </div>
             <Switch checked={cashierReportsEnabled} onCheckedChange={setCashierReportsEnabled} />
+          </div>
+          <div className="flex items-center justify-between gap-3 rounded-md border p-3">
+            <div>
+              <div className="text-sm font-medium">Allow cashier to cancel orders</div>
+              <div className="text-xs text-muted-foreground">If disabled, only admin can cancel orders.</div>
+            </div>
+            <Switch checked={cashierCancelOrderEnabled} onCheckedChange={setCashierCancelOrderEnabled} />
+          </div>
+          <div className="flex items-center justify-between gap-3 rounded-md border p-3">
+            <div>
+              <div className="text-sm font-medium">Pending orders check on work period end</div>
+              <div className="text-xs text-muted-foreground">Show warning about open table orders when ending a work period.</div>
+            </div>
+            <Switch checked={cashierEndWorkPeriodPendingCheck} onCheckedChange={setCashierEndWorkPeriodPendingCheck} />
           </div>
           <div className="flex items-center justify-between gap-3 rounded-md border p-3">
             <div>
