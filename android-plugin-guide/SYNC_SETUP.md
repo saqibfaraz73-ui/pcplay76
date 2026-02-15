@@ -56,7 +56,35 @@ public class MainActivity extends BridgeActivity {
 }
 ```
 
-### 4. Add permissions to AndroidManifest.xml
+### 4. Create network security config
+
+Create `android/app/src/main/res/xml/network_security_config.xml`:
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- Allow HTTP (cleartext) for local network sync over hotspot/WiFi -->
+    <base-config cleartextTrafficPermitted="true" />
+</network-security-config>
+```
+
+> ⚠️ **CRITICAL**: You MUST set `cleartextTrafficPermitted="true"` on `<base-config>`.
+> Android does NOT support IP addresses in `<domain>` tags — only real domain names.
+> Since local sync uses raw IPs (e.g. `192.168.43.1`), the only way to allow HTTP
+> to all local IPs is `<base-config cleartextTrafficPermitted="true" />`.
+
+### 5. Update AndroidManifest.xml
+
+Add these TWO attributes to the `<application>` tag:
+
+```xml
+<application
+    ...
+    android:usesCleartextTraffic="true"
+    android:networkSecurityConfig="@xml/network_security_config">
+```
+
+Add all required permissions:
 
 ```xml
 <uses-permission android:name="android.permission.INTERNET" />
@@ -67,7 +95,7 @@ public class MainActivity extends BridgeActivity {
 <uses-permission android:name="android.permission.WAKE_LOCK" />
 ```
 
-### 5. Register the Foreground Service in AndroidManifest.xml
+### 6. Register the Foreground Service in AndroidManifest.xml
 
 Inside the `<application>` tag:
 
