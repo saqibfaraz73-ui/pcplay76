@@ -87,7 +87,7 @@ export async function generateMenuPdf() {
   const marginX = 10;
   const usableW = pageW - marginX * 2;
 
-  const cols = 5;
+  const cols = 6;
   const colGap = 3;
   const cellW = (usableW - colGap * (cols - 1)) / cols;
   const imgH = cellW * 0.75; // 4:3 aspect
