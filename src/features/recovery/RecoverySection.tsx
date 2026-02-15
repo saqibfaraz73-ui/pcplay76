@@ -542,7 +542,7 @@ export function RecoverySection() {
             </div>
             <div className="space-y-1">
               <Label>Package</Label>
-              <Input value={formPkg} onChange={e => setFormPkg(e.target.value)} placeholder="e.g. 10 Mbps" />
+              <Input value={formPkg} onChange={e => setFormPkg(e.target.value)} placeholder="e.g. Basic Plan" />
             </div>
             <div className="space-y-1">
               <Label>Monthly Bill</Label>
