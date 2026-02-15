@@ -399,6 +399,8 @@ export type CounterId = "receipt" | "arrival" | "exportSale" | "advanceOrder" | 
 
 export type RecoveryCustomer = {
   id: string;
+  agentId?: string; // staff account id of assigned recovery agent
+  agentName?: string; // denormalized agent name for display
   name: string;
   contact?: string;
   address?: string;

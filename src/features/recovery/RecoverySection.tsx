@@ -4,17 +4,20 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { db } from "@/db/appDb";
-import type { RecoveryCustomer, RecoveryPayment } from "@/db/schema";
+import type { RecoveryCustomer, RecoveryPayment, StaffAccount } from "@/db/schema";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/auth/AuthProvider";
 import {
   Plus, Search, Upload, Download, FileSpreadsheet, Trash2, CheckCircle, XCircle,
-  History, Printer, Share2, X, FileText,
+  History, Printer, Share2, X, FileText, Users,
 } from "lucide-react";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
 import { format } from "date-fns";
 import * as XLSX from "xlsx";
 import { Capacitor } from "@capacitor/core";
@@ -59,10 +62,14 @@ export function RecoverySection() {
   const isRecovery = session?.role === "recovery";
   const agentName = session?.username ?? "Unknown";
 
-  const [customers, setCustomers] = React.useState<RecoveryCustomer[]>([]);
+  const [allCustomers, setAllCustomers] = React.useState<RecoveryCustomer[]>([]);
   const [payments, setPayments] = React.useState<RecoveryPayment[]>([]);
+  const [agents, setAgents] = React.useState<StaffAccount[]>([]);
   const [search, setSearch] = React.useState("");
   const [showAdd, setShowAdd] = React.useState(false);
+
+  // Agent filter for admin/cashier view
+  const [selectedAgent, setSelectedAgent] = React.useState<string>("all");
 
   // Add/Edit form
   const [editId, setEditId] = React.useState<string | null>(null);
@@ -72,6 +79,7 @@ export function RecoverySection() {
   const [formPkg, setFormPkg] = React.useState("");
   const [formBill, setFormBill] = React.useState<number>(0);
   const [formBalance, setFormBalance] = React.useState<number>(0);
+  const [formAgentId, setFormAgentId] = React.useState<string>("");
 
   // History view
   const [historyId, setHistoryId] = React.useState<string | null>(null);
@@ -90,11 +98,36 @@ export function RecoverySection() {
   const load = React.useCallback(async () => {
     const c = await db.recoveryCustomers.toArray();
     const p = await db.recoveryPayments.toArray();
-    setCustomers(c);
+    const staff = await db.staffAccounts.where("role").equals("recovery").toArray();
+    setAllCustomers(c);
     setPayments(p);
+    setAgents(staff);
   }, []);
 
   React.useEffect(() => { void load(); }, [load]);
+
+  // For recovery agents, auto-detect their staffAccount id
+  const [myAgentId, setMyAgentId] = React.useState<string | null>(null);
+  React.useEffect(() => {
+    if (isRecovery && agentName) {
+      db.staffAccounts.where("role").equals("recovery").toArray().then(staff => {
+        const me = staff.find(s => s.name.toLowerCase() === agentName.toLowerCase());
+        setMyAgentId(me?.id ?? null);
+      });
+    }
+  }, [isRecovery, agentName]);
+
+  // Filter customers: recovery agents see only their own; admin/cashier can filter by agent
+  const customers = React.useMemo(() => {
+    if (isRecovery && myAgentId) {
+      return allCustomers.filter(c => c.agentId === myAgentId);
+    }
+    if ((isAdmin || isCashier) && selectedAgent !== "all") {
+      if (selectedAgent === "__unassigned") return allCustomers.filter(c => !c.agentId);
+      return allCustomers.filter(c => c.agentId === selectedAgent);
+    }
+    return allCustomers;
+  }, [allCustomers, isRecovery, myAgentId, isAdmin, isCashier, selectedAgent]);
 
   const filtered = React.useMemo(() => {
     if (!search.trim()) return customers;
@@ -110,20 +143,27 @@ export function RecoverySection() {
 
   const resetForm = () => {
     setFormName(""); setFormContact(""); setFormAddress(""); setFormPkg(""); setFormBill(0); setFormBalance(0);
-    setEditId(null); setShowAdd(false);
+    setFormAgentId(""); setEditId(null); setShowAdd(false);
   };
 
   const saveCustomer = async () => {
     if (!formName.trim()) { toast({ title: "Name required", variant: "destructive" }); return; }
+    const assignedAgent = agents.find(a => a.id === formAgentId);
     if (editId) {
       await db.recoveryCustomers.update(editId, {
         name: formName.trim(), contact: formContact.trim() || undefined, address: formAddress.trim() || undefined,
         pkg: formPkg.trim() || undefined, monthlyBill: formBill, balance: formBalance,
+        agentId: formAgentId || undefined, agentName: assignedAgent?.name || undefined,
       });
     } else {
+      // For recovery agents adding customers, auto-assign to themselves
+      const effectiveAgentId = isRecovery && myAgentId ? myAgentId : formAgentId;
+      const effectiveAgentName = isRecovery ? agentName : assignedAgent?.name;
       await db.recoveryCustomers.add({
         id: uid("rcust"), name: formName.trim(), contact: formContact.trim() || undefined, address: formAddress.trim() || undefined,
-        pkg: formPkg.trim() || undefined, monthlyBill: formBill, balance: formBalance, createdAt: Date.now(),
+        pkg: formPkg.trim() || undefined, monthlyBill: formBill, balance: formBalance,
+        agentId: effectiveAgentId || undefined, agentName: effectiveAgentName || undefined,
+        createdAt: Date.now(),
       });
     }
     toast({ title: editId ? "Customer updated" : "Customer added" });
@@ -133,7 +173,8 @@ export function RecoverySection() {
 
   const editCustomer = (c: RecoveryCustomer) => {
     setEditId(c.id); setFormName(c.name); setFormContact(c.contact ?? ""); setFormAddress(c.address ?? "");
-    setFormPkg(c.pkg ?? ""); setFormBill(c.monthlyBill); setFormBalance(c.balance); setShowAdd(true);
+    setFormPkg(c.pkg ?? ""); setFormBill(c.monthlyBill); setFormBalance(c.balance);
+    setFormAgentId(c.agentId ?? ""); setShowAdd(true);
   };
 
   const deleteCustomer = async (id: string) => {
@@ -153,7 +194,6 @@ export function RecoverySection() {
       status: "paid", agentName, month: currentMonth, createdAt: Date.now(),
     };
     await db.recoveryPayments.add(payment);
-    // Zero out balance for this month
     const newBalance = Math.max(0, cust.balance - cust.monthlyBill);
     await db.recoveryCustomers.update(cust.id, { balance: newBalance });
     toast({ title: `${cust.name} marked PAID` });
@@ -169,7 +209,6 @@ export function RecoverySection() {
       status: "unpaid", agentName, month: currentMonth, createdAt: Date.now(),
     };
     await db.recoveryPayments.add(payment);
-    // Add monthly bill to balance
     await db.recoveryCustomers.update(cust.id, { balance: cust.balance + cust.monthlyBill });
     toast({ title: `${cust.name} marked UNPAID — balance increased` });
     void load();
@@ -185,6 +224,9 @@ export function RecoverySection() {
       const ws = wb.Sheets[wb.SheetNames[0]];
       const rows = XLSX.utils.sheet_to_json<any>(ws);
       let count = 0;
+      // Determine which agent to assign to imported customers
+      const importAgentId = isRecovery && myAgentId ? myAgentId : (selectedAgent !== "all" ? selectedAgent : undefined);
+      const importAgentName = isRecovery ? agentName : (importAgentId ? agents.find(a => a.id === importAgentId)?.name : undefined);
       for (const r of rows) {
         const name = String(r["Name"] || r["name"] || "").trim();
         if (!name) continue;
@@ -195,6 +237,8 @@ export function RecoverySection() {
           pkg: String(r["Pkg"] || r["pkg"] || r["Package"] || r["package"] || "").trim() || undefined,
           monthlyBill: Number(r["Monthly Bill"] || r["monthlyBill"] || r["monthly_bill"] || 0),
           balance: Number(r["Balance"] || r["balance"] || 0),
+          agentId: importAgentId || undefined,
+          agentName: importAgentName || undefined,
           createdAt: Date.now(),
         });
         count++;
@@ -214,6 +258,7 @@ export function RecoverySection() {
       return {
         Name: c.name, Contact: c.contact ?? "", Address: c.address ?? "", Pkg: c.pkg ?? "",
         "Monthly Bill": c.monthlyBill, Balance: c.balance,
+        Agent: c.agentName ?? "",
         "Last Payment": lastPay ? format(lastPay.createdAt, "dd/MM/yyyy") : "Never",
       };
     });
@@ -280,42 +325,80 @@ export function RecoverySection() {
     }
   };
 
-  // ── Report PDF ──
+  // ── Overall Report PDF (per-agent breakdown) ──
   const generateReport = async () => {
     const from = new Date(reportFrom); from.setHours(0, 0, 0, 0);
     const to = new Date(reportTo); to.setHours(23, 59, 59, 999);
 
     const periodPayments = payments.filter(p => p.createdAt >= from.getTime() && p.createdAt <= to.getTime());
-    const agentMap = new Map<string, { paid: number; paidCount: number; unpaidCount: number }>();
 
-    for (const p of periodPayments) {
-      const entry = agentMap.get(p.agentName) ?? { paid: 0, paidCount: 0, unpaidCount: 0 };
-      if (p.status === "paid") { entry.paid += p.amount; entry.paidCount++; }
-      else { entry.unpaidCount++; }
-      agentMap.set(p.agentName, entry);
+    // Build per-agent stats using agentName from payments
+    const agentMap = new Map<string, { totalCustomers: number; totalRecovery: number; paidCount: number; paidAmount: number; unpaidCount: number; unpaidAmount: number }>();
+
+    // Group customers by agent
+    const agentCustomerMap = new Map<string, Set<string>>();
+    for (const c of allCustomers) {
+      const aName = c.agentName || "Unassigned";
+      if (!agentCustomerMap.has(aName)) agentCustomerMap.set(aName, new Set());
+      agentCustomerMap.get(aName)!.add(c.id);
     }
 
-    const totalCustomers = customers.length;
-    const totalRecovered = periodPayments.filter(p => p.status === "paid").reduce((s, p) => s + p.amount, 0);
-    const totalPaid = periodPayments.filter(p => p.status === "paid").length;
-    const totalUnpaid = periodPayments.filter(p => p.status === "unpaid").length;
-    const totalBalance = customers.reduce((s, c) => s + c.balance, 0);
+    // Initialize agent entries
+    for (const [aName, custSet] of agentCustomerMap) {
+      const agentCusts = allCustomers.filter(c => custSet.has(c.id));
+      const totalRecovery = agentCusts.reduce((s, c) => s + c.monthlyBill, 0);
+      agentMap.set(aName, { totalCustomers: custSet.size, totalRecovery, paidCount: 0, paidAmount: 0, unpaidCount: 0, unpaidAmount: 0 });
+    }
 
-    const doc = new jsPDF({ unit: "mm", format: [80, 200] });
+    // Tally payments in the date range
+    for (const p of periodPayments) {
+      const cust = allCustomers.find(c => c.id === p.customerId);
+      const aName = cust?.agentName || p.agentName || "Unassigned";
+      if (!agentMap.has(aName)) {
+        agentMap.set(aName, { totalCustomers: 0, totalRecovery: 0, paidCount: 0, paidAmount: 0, unpaidCount: 0, unpaidAmount: 0 });
+      }
+      const entry = agentMap.get(aName)!;
+      if (p.status === "paid") { entry.paidCount++; entry.paidAmount += p.amount; }
+      else { entry.unpaidCount++; entry.unpaidAmount += (cust?.monthlyBill ?? 0); }
+    }
+
+    // Grand totals
+    const grandTotalCustomers = allCustomers.length;
+    const grandTotalRecovery = allCustomers.reduce((s, c) => s + c.monthlyBill, 0);
+    const grandPaidAmount = periodPayments.filter(p => p.status === "paid").reduce((s, p) => s + p.amount, 0);
+    const grandPaidCount = periodPayments.filter(p => p.status === "paid").length;
+    const grandUnpaidCount = periodPayments.filter(p => p.status === "unpaid").length;
+    const grandUnpaidAmount = grandTotalRecovery - grandPaidAmount;
+    const grandBalance = allCustomers.reduce((s, c) => s + c.balance, 0);
+
+    const agentEntries = Array.from(agentMap.entries());
+    const pageHeight = Math.max(150, 60 + agentEntries.length * 40);
+    const doc = new jsPDF({ unit: "mm", format: [80, pageHeight] });
     let y = 8;
-    doc.setFontSize(11); doc.text("RECOVERY REPORT", 40, y, { align: "center" }); y += 5;
+    doc.setFontSize(11); doc.text("OVERALL RECOVERY REPORT", 40, y, { align: "center" }); y += 5;
     doc.setFontSize(8);
     doc.text(`${format(from, "dd/MM/yyyy")} - ${format(to, "dd/MM/yyyy")}`, 40, y, { align: "center" }); y += 6;
-    doc.text(`Total Customers: ${totalCustomers}`, 4, y); y += 4;
-    doc.text(`Total Recovered: ${totalRecovered}`, 4, y); y += 4;
-    doc.text(`Paid: ${totalPaid}  |  Unpaid: ${totalUnpaid}`, 4, y); y += 4;
-    doc.text(`Remaining Balance: ${totalBalance}`, 4, y); y += 6;
 
-    for (const [agent, data] of agentMap) {
-      doc.setFontSize(9); doc.text(`Agent: ${agent}`, 4, y); y += 4;
+    // Grand summary
+    doc.setFontSize(9); doc.text("=== Grand Total ===", 4, y); y += 4;
+    doc.setFontSize(8);
+    doc.text(`Total Customers: ${grandTotalCustomers}`, 4, y); y += 4;
+    doc.text(`Total Recovery: ${grandTotalRecovery}`, 4, y); y += 4;
+    doc.text(`Paid Customers: ${grandPaidCount}`, 4, y); y += 4;
+    doc.text(`Paid Amount: ${grandPaidAmount}`, 4, y); y += 4;
+    doc.text(`Unpaid Customers: ${grandUnpaidCount}`, 4, y); y += 4;
+    doc.text(`Unpaid Amount: ${grandUnpaidAmount}`, 4, y); y += 4;
+    doc.text(`Remaining Balance: ${grandBalance}`, 4, y); y += 6;
+
+    // Per-agent breakdown
+    for (const [aName, data] of agentEntries) {
+      doc.setFontSize(9); doc.text(`--- ${aName} ---`, 4, y); y += 4;
       doc.setFontSize(8);
-      doc.text(`  Recovered: ${data.paid} (${data.paidCount} customers)`, 4, y); y += 4;
-      doc.text(`  Unrecovered: ${data.unpaidCount} customers`, 4, y); y += 5;
+      doc.text(`Total Customers: ${data.totalCustomers}`, 6, y); y += 4;
+      doc.text(`Total Recovery: ${data.totalRecovery}`, 6, y); y += 4;
+      doc.text(`Paid: ${data.paidCount} customers = ${data.paidAmount}`, 6, y); y += 4;
+      doc.text(`Unpaid: ${data.unpaidCount} customers = ${data.unpaidAmount}`, 6, y); y += 4;
+      y += 2;
     }
 
     const blob = doc.output("blob");
@@ -328,7 +411,7 @@ export function RecoverySection() {
     const custIds = new Set(monthPayments.map(p => p.customerId));
     const list = customers.filter(c => custIds.has(c.id));
     const rows = list.map(c => ({
-      Name: c.name, Contact: c.contact ?? "", Pkg: c.pkg ?? "", "Monthly Bill": c.monthlyBill, Balance: c.balance,
+      Name: c.name, Contact: c.contact ?? "", Pkg: c.pkg ?? "", "Monthly Bill": c.monthlyBill, Balance: c.balance, Agent: c.agentName ?? "",
     }));
     const ws = XLSX.utils.json_to_sheet(rows);
     const wb = XLSX.utils.book_new();
@@ -375,19 +458,45 @@ export function RecoverySection() {
               </Button>
             </>
           )}
+          {isRecovery && (
+            <>
+              <input ref={fileInputRef} type="file" accept=".xlsx,.xls,.csv" onChange={importExcel} className="hidden" />
+              <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
+                <Upload className="h-3 w-3 mr-1" /> Import
+              </Button>
+            </>
+          )}
           <Button variant="outline" size="sm" onClick={() => void exportExcel()}>
             <Download className="h-3 w-3 mr-1" /> Export
           </Button>
           <Button variant="outline" size="sm" onClick={() => setShowReport(true)}>
             <FileText className="h-3 w-3 mr-1" /> Report
           </Button>
-          {(isAdmin || isCashier) && (
-            <Button size="sm" onClick={() => { resetForm(); setShowAdd(true); }}>
-              <Plus className="h-3 w-3 mr-1" /> Add Customer
-            </Button>
-          )}
+          <Button size="sm" onClick={() => { resetForm(); setShowAdd(true); }}>
+            <Plus className="h-3 w-3 mr-1" /> Add Customer
+          </Button>
         </div>
       </header>
+
+      {/* Agent filter for admin/cashier */}
+      {(isAdmin || isCashier) && agents.length > 0 && (
+        <div className="flex items-center gap-2">
+          <Users className="h-4 w-4 text-muted-foreground" />
+          <Select value={selectedAgent} onValueChange={setSelectedAgent}>
+            <SelectTrigger className="w-48 h-8 text-sm">
+              <SelectValue placeholder="Filter by agent" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Agents</SelectItem>
+              {agents.map(a => (
+                <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
+              ))}
+              <SelectItem value="__unassigned">Unassigned</SelectItem>
+            </SelectContent>
+          </Select>
+          <span className="text-xs text-muted-foreground">{customers.length} customers</span>
+        </div>
+      )}
 
       {/* Search */}
       <div className="relative">
@@ -442,6 +551,23 @@ export function RecoverySection() {
               <Label>Previous Balance</Label>
               <Input type="number" inputMode="numeric" value={formBalance || ""} onChange={e => setFormBalance(Number(e.target.value) || 0)} />
             </div>
+            {/* Agent assignment (admin/cashier only) */}
+            {(isAdmin || isCashier) && agents.length > 0 && (
+              <div className="space-y-1">
+                <Label>Assign Agent</Label>
+                <Select value={formAgentId} onValueChange={setFormAgentId}>
+                  <SelectTrigger className="h-9">
+                    <SelectValue placeholder="Select agent" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">No agent</SelectItem>
+                    {agents.map(a => (
+                      <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <div className="sm:col-span-3 flex gap-2 justify-end">
               <Button variant="outline" onClick={resetForm}>Cancel</Button>
               <Button onClick={() => void saveCustomer()}>{editId ? "Update" : "Add"}</Button>
@@ -463,7 +589,7 @@ export function RecoverySection() {
             </div>
           </CardHeader>
           <CardContent className="p-2">
-            <div className="text-xs text-muted-foreground mb-2">Pkg: {historyCustomer.pkg ?? "N/A"} | Bill: {historyCustomer.monthlyBill} | Balance: {historyCustomer.balance}</div>
+            <div className="text-xs text-muted-foreground mb-2">Pkg: {historyCustomer.pkg ?? "N/A"} | Bill: {historyCustomer.monthlyBill} | Balance: {historyCustomer.balance} | Agent: {historyCustomer.agentName ?? "N/A"}</div>
             {historyPayments.length === 0 ? (
               <p className="text-sm text-muted-foreground p-2">No payment records yet.</p>
             ) : (
@@ -519,7 +645,8 @@ export function RecoverySection() {
                     <div className="text-xs text-muted-foreground">
                       {c.pkg && <span className="mr-2">📦 {c.pkg}</span>}
                       {c.contact && <span className="mr-2">📞 {c.contact}</span>}
-                      {c.address && <span>📍 {c.address}</span>}
+                      {c.address && <span className="mr-2">📍 {c.address}</span>}
+                      {c.agentName && <span>👤 {c.agentName}</span>}
                     </div>
                     <div className="text-xs mt-1">
                       Bill: <span className="font-semibold">{c.monthlyBill}</span>
@@ -566,7 +693,7 @@ export function RecoverySection() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Recovery Report</AlertDialogTitle>
-            <AlertDialogDescription>Select date range to generate a recovery report PDF.</AlertDialogDescription>
+            <AlertDialogDescription>Generate overall report with per-agent breakdown.</AlertDialogDescription>
           </AlertDialogHeader>
           <div className="grid gap-3 sm:grid-cols-2 my-2">
             <div className="space-y-1"><Label>From</Label><Input type="date" value={reportFrom} onChange={e => setReportFrom(e.target.value)} /></div>
