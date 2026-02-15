@@ -884,6 +884,32 @@ export default function PosPartyLodge() {
     }
   };
 
+  const exportSingleSupplierExcel = async (sup: Supplier) => {
+    try {
+      const supArrivals = arrivals.filter((a) => a.supplierId === sup.id).sort((a, b) => a.createdAt - b.createdAt);
+      const supPayments = payments.filter((p) => p.supplierId === sup.id).sort((a, b) => a.createdAt - b.createdAt);
+      const balance = getSupplierBalance(sup);
+      const rows: (string | number)[][] = [["Type", "Item", "Qty", "Unit", "Unit Price", "Total/Amount", "Payment Type", "Note", "Date"]];
+      for (const a of supArrivals) {
+        rows.push(["Arrival", a.itemName ?? "", a.qty, a.unit ?? "", a.unitPrice, a.total, "", a.note ?? "", fmtDate(a.createdAt)]);
+      }
+      for (const p of supPayments) {
+        rows.push(["Payment", "", "", "", "", p.amount, p.paymentType ?? "cash", p.note ?? "", fmtDate(p.createdAt)]);
+      }
+      rows.push(["Balance", "", "", "", "", balance, "", "", ""]);
+      const ws = XLSX.utils.aoa_to_sheet(rows);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, sup.name.slice(0, 31));
+      const buf = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+      const blob = new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+      const safeName = sup.name.replace(/[^a-zA-Z0-9]/g, "_").slice(0, 30);
+      await downloadExcel(blob, `${safeName}_ledger.xlsx`);
+      toast({ title: `${sup.name} Excel exported` });
+    } catch (e: any) {
+      toast({ title: "Export failed", description: e?.message ?? String(e), variant: "destructive" });
+    }
+  };
+
   const shareSingleSupplierPdf = async (sup: Supplier) => {
     try {
       const doc = buildSingleSupplierPdf(sup);
@@ -1122,6 +1148,10 @@ export default function PosPartyLodge() {
                     <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => void shareSingleArrivalsPdf(sup)}>
                       <PackagePlus className="h-3 w-3 mr-1" />
                       Arrivals PDF
+                    </Button>
+                    <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => void exportSingleSupplierExcel(sup)}>
+                      <FileSpreadsheet className="h-3 w-3 mr-1" />
+                      Excel
                     </Button>
                     <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => downloadPartyImportTemplate(sup.name)} title="Download import template">
                       <Download className="h-3 w-3 mr-1" />
