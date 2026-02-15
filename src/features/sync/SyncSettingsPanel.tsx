@@ -486,8 +486,9 @@ export function SyncSettingsPanel() {
       {config.role === "sub" && status === "connected" && (
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <PrinterIcon className="h-5 w-5" /> Sub Device Printer
+            <CardTitle className="text-lg flex items-center gap-2 min-w-0">
+              <PrinterIcon className="h-5 w-5 shrink-0" />
+              <span className="truncate">Sub Device Printer</span>
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
