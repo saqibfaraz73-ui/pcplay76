@@ -6,6 +6,7 @@ import { fmtDateTime, fmtTime12 } from "@/features/pos/format";
 import { getSyncConfig } from "@/features/sync/sync-utils";
 import { sendPrintJob } from "@/features/sync/sync-client";
 import { isDuplicatePrint } from "@/features/pos/print-dedup";
+import { sendToSectionPrinter } from "@/features/pos/printer-routing";
 
 type KotItem = {
   name: string;
@@ -81,22 +82,13 @@ export async function printTableKot(args: {
     return;
   }
 
-  const conn = settings!.printerConnection ?? "none";
-  if (conn !== "bluetooth" && conn !== "usb") {
-    throw new Error("Printer not configured. Go to Printer and set Connection to Bluetooth or USB, or enable 'Use Main Device Printer'.");
+  // Use section-based printer routing for tables
+  try {
+    await sendToSectionPrinter(settings!, "tables", escPos);
+  } catch (printErr: any) {
+    console.error("Table KOT print error:", printErr);
+    throw new Error(printErr?.message || "Table KOT printing failed. Check printer connection.");
   }
-
-  if (conn === "usb") {
-    await usbSend(escPos);
-    return;
-  }
-
-  // Bluetooth
-  if (!settings!.printerAddress) {
-    throw new Error("No printer selected. Go to Printer, refresh paired devices, and select your printer.");
-  }
-  await btConnect(settings!.printerAddress);
-  await btSend(escPos);
 }
 
 function buildKotHtml(tableNumber: string, waiterName: string, items: KotItem[]): string {

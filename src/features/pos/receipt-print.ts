@@ -8,6 +8,7 @@ import { format } from "date-fns";
 import { getSyncConfig } from "@/features/sync/sync-utils";
 import { sendPrintJob } from "@/features/sync/sync-client";
 import { isDuplicatePrint } from "@/features/pos/print-dedup";
+import { sendToSectionPrinter, type PrintSection } from "@/features/pos/printer-routing";
 
 function escapeHtml(s: string) {
   return s.replace(/[&<>"']/g, (c) => {
@@ -251,7 +252,7 @@ async function sendPrintToMain(text: string): Promise<void> {
 
 export async function printReceiptFromOrder(
   order: Order,
-  opts?: { creditCustomerName?: string; deliveryPersonName?: string; deliveryCustomerName?: string }
+  opts?: { creditCustomerName?: string; deliveryPersonName?: string; deliveryCustomerName?: string; section?: PrintSection }
 ) {
   let settings: Settings | null = null;
 
@@ -290,31 +291,13 @@ export async function printReceiptFromOrder(
       return;
     }
 
-    const conn = settings.printerConnection ?? "none";
-    if (conn !== "bluetooth" && conn !== "usb") {
-      throw new Error("Printer not configured. Go to Printer settings and set Connection to Bluetooth or USB, or enable 'Use Main Device Printer'.");
-    }
-
-    if (conn === "usb") {
-      try {
-        await usbSend(text);
-      } catch (usbErr: any) {
-        console.error("USB print error:", usbErr);
-        throw new Error(usbErr?.message || "USB printing failed. Check printer connection.");
-      }
-      return;
-    }
-
-    // Bluetooth
-    if (!settings.printerAddress) {
-      throw new Error("No printer selected. Go to Printer, refresh paired devices, and select your printer.");
-    }
+    // Use section-based printer routing
+    const section: PrintSection = opts?.section ?? "sales";
     try {
-      await btConnect(settings.printerAddress);
-      await btSend(text);
-    } catch (btError: any) {
-      console.error("Bluetooth print error:", btError);
-      throw new Error(btError?.message || "Bluetooth printing failed. Check printer connection.");
+      await sendToSectionPrinter(settings, section, text);
+    } catch (printErr: any) {
+      console.error("Print error:", printErr);
+      throw new Error(printErr?.message || "Printing failed. Check printer connection.");
     }
     return;
   }
@@ -442,15 +425,11 @@ export async function printKotFromOrder(order: Order) {
     return;
   }
 
-  const conn = settings.printerConnection ?? "none";
-  if (conn === "usb") {
-    await usbSend(text);
-    return;
+  // Use section-based printer routing (KOT from sales dashboard)
+  try {
+    await sendToSectionPrinter(settings, "sales", text);
+  } catch (printErr: any) {
+    console.error("KOT print error:", printErr);
+    throw new Error(printErr?.message || "KOT printing failed. Check printer connection.");
   }
-
-  if (!settings.printerAddress) {
-    throw new Error("Printer not configured");
-  }
-  await btConnect(settings.printerAddress);
-  await btSend(text);
 }

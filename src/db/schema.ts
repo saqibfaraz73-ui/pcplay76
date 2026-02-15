@@ -258,6 +258,14 @@ export type Settings = {
   printerName?: string;
   printerAddress?: string; // Bluetooth MAC address for classic SPP printers
   subPrinterMode?: "own" | "main"; // "own" = sub prints locally, "main" = send to main device's printer
+  // Dual-printer support: configure both BT and USB independently
+  btPrinterAddress?: string; // Bluetooth MAC address
+  btPrinterName?: string; // Bluetooth printer friendly name
+  usbDeviceName?: string; // USB device name/path
+  usbPrinterLabel?: string; // USB printer friendly label
+  // Section-based printer routing
+  salesPrinterType?: "bluetooth" | "usb" | "none"; // which printer for Sales Dashboard
+  tablePrinterType?: "bluetooth" | "usb" | "none"; // which printer for Table Management
   // Tax settings
   taxEnabled?: boolean;
   taxType?: ChargeType;
