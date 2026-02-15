@@ -534,7 +534,7 @@ export function PosTablesManager() {
           const custName = paymentMethod === "credit" && custId
             ? customers.find((c) => c.id === custId)?.name
             : undefined;
-          await printReceiptFromOrder(receiptOrder as any, { creditCustomerName: custName });
+          await printReceiptFromOrder(receiptOrder as any, { creditCustomerName: custName, section: "tables" });
           toast({ title: "Receipt printed" });
         } catch (printErr: any) {
           toast({ title: "Print failed", description: printErr?.message ?? String(printErr), variant: "destructive" });

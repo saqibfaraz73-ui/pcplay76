@@ -35,15 +35,14 @@ const RECEIPT_SIZES: { value: ReceiptSize; label: string }[] = [
   { value: "2x5", label: '2×5 inch' },
 ];
 
-// Map receipt size to height in pixels for preview (96 DPI: 1 inch = 96px)
 const RECEIPT_HEIGHT_MAP: Record<ReceiptSize, number> = {
-  "1x1": 96,   // 1 inch
-  "2x1": 96,   // 1 inch
-  "3x1": 96,   // 1 inch
-  "2x2": 192,  // 2 inches
-  "2x3": 288,  // 3 inches
-  "2x4": 384,  // 4 inches
-  "2x5": 480,  // 5 inches
+  "1x1": 96,
+  "2x1": 96,
+  "3x1": 96,
+  "2x2": 192,
+  "2x3": 288,
+  "2x4": 384,
+  "2x5": 480,
 };
 
 function receiptPreviewText(args: { paperSize: "58" | "80" }) {
@@ -65,12 +64,27 @@ function receiptPreviewText(args: { paperSize: "58" | "80" }) {
   ].join("\n");
 }
 
+type PrinterType = "bluetooth" | "usb" | "none";
+
 export function AdminPrinter() {
   const { toast } = useToast();
   const [settings, setSettings] = React.useState<Settings | null>(null);
-  const [connection, setConnection] = React.useState<"none" | "bluetooth" | "usb">("none");
+
+  // Legacy single-printer (kept for backward compat / sub devices)
+  const [connection, setConnection] = React.useState<PrinterType>("none");
   const [printerName, setPrinterName] = React.useState("");
   const [printerAddress, setPrinterAddress] = React.useState("");
+
+  // Dual-printer config
+  const [btPrinterAddress, setBtPrinterAddress] = React.useState("");
+  const [btPrinterName, setBtPrinterName] = React.useState("");
+  const [usbDeviceName, setUsbDeviceName] = React.useState("");
+  const [usbPrinterLabel, setUsbPrinterLabel] = React.useState("");
+
+  // Section routing
+  const [salesPrinterType, setSalesPrinterType] = React.useState<PrinterType>("none");
+  const [tablePrinterType, setTablePrinterType] = React.useState<PrinterType>("none");
+
   const [receiptSize, setReceiptSize] = React.useState<ReceiptSize>("2x3");
   const [paperSize, setPaperSize] = React.useState<"58" | "80">("58");
   const [previewOpen, setPreviewOpen] = React.useState(false);
@@ -81,7 +95,6 @@ export function AdminPrinter() {
 
   const [usbDevices, setUsbDevices] = React.useState<UsbDevice[]>([]);
   const [usbBusy, setUsbBusy] = React.useState(false);
-  const [selectedUsb, setSelectedUsb] = React.useState("");
 
   const load = React.useCallback(async () => {
     await ensureSeedData();
@@ -91,6 +104,12 @@ export function AdminPrinter() {
     setConnection(s.printerConnection ?? "none");
     setPrinterName(s.printerName ?? "");
     setPrinterAddress(s.printerAddress ?? "");
+    setBtPrinterAddress(s.btPrinterAddress ?? "");
+    setBtPrinterName(s.btPrinterName ?? "");
+    setUsbDeviceName(s.usbDeviceName ?? "");
+    setUsbPrinterLabel(s.usbPrinterLabel ?? "");
+    setSalesPrinterType(s.salesPrinterType ?? s.printerConnection ?? "none");
+    setTablePrinterType(s.tablePrinterType ?? s.printerConnection ?? "none");
     setReceiptSize(s.receiptSize ?? "2x3");
     setPaperSize(s.paperSize ?? "58");
     setSubPrinterMode(s.subPrinterMode ?? "own");
@@ -100,14 +119,30 @@ export function AdminPrinter() {
     void load();
   }, [load]);
 
+  // Derive which printers are configured
+  const hasBt = !!btPrinterAddress.trim();
+  const hasUsb = !!usbDeviceName.trim();
+
+  // Auto-set legacy connection field for backward compat
+  const derivedConnection: PrinterType = hasBt && hasUsb ? "usb" : hasBt ? "bluetooth" : hasUsb ? "usb" : "none";
+
   const save = async () => {
     try {
       if (!settings) throw new Error("Settings not loaded.");
       const next: Settings = {
         ...settings,
-        printerConnection: connection,
-        printerName: printerName.trim() || undefined,
-        printerAddress: printerAddress.trim() || undefined,
+        // Legacy fields — derived from dual config
+        printerConnection: derivedConnection,
+        printerName: btPrinterName.trim() || usbPrinterLabel.trim() || undefined,
+        printerAddress: btPrinterAddress.trim() || usbDeviceName.trim() || undefined,
+        // Dual-printer fields
+        btPrinterAddress: btPrinterAddress.trim() || undefined,
+        btPrinterName: btPrinterName.trim() || undefined,
+        usbDeviceName: usbDeviceName.trim() || undefined,
+        usbPrinterLabel: usbPrinterLabel.trim() || undefined,
+        // Section routing
+        salesPrinterType,
+        tablePrinterType,
         receiptSize,
         paperSize,
         subPrinterMode,
@@ -121,6 +156,7 @@ export function AdminPrinter() {
     }
   };
 
+  // ---- Bluetooth handlers ----
   const loadPaired = async () => {
     setBtBusy(true);
     try {
@@ -141,19 +177,31 @@ export function AdminPrinter() {
     }
   };
 
-  const connectSelected = async () => {
-    if (!printerAddress.trim()) {
-      toast({ title: "Select a printer", description: "Choose a paired device first.", variant: "destructive" });
+  const connectBt = async () => {
+    if (!btPrinterAddress.trim()) {
+      toast({ title: "Select a printer", description: "Choose a paired Bluetooth device first.", variant: "destructive" });
       return;
     }
     setBtBusy(true);
     try {
       await btInitialize();
       await btEnable();
-      await btConnect(printerAddress.trim());
-      toast({ title: "Printer connected" });
+      await btConnect(btPrinterAddress.trim());
+      toast({ title: "Bluetooth printer connected" });
     } catch (e: any) {
       toast({ title: "Could not connect", description: e?.message ?? String(e), variant: "destructive" });
+    } finally {
+      setBtBusy(false);
+    }
+  };
+
+  const disconnectBt = async () => {
+    setBtBusy(true);
+    try {
+      await btDisconnect();
+      toast({ title: "Bluetooth printer disconnected" });
+    } catch (e: any) {
+      toast({ title: "Could not disconnect", description: e?.message ?? String(e), variant: "destructive" });
     } finally {
       setBtBusy(false);
     }
@@ -176,15 +224,13 @@ export function AdminPrinter() {
   };
 
   const connectUsb = async () => {
-    const dev = selectedUsb || printerAddress;
-    if (!dev.trim()) {
+    if (!usbDeviceName.trim()) {
       toast({ title: "Select a printer", description: "Choose a USB device first.", variant: "destructive" });
       return;
     }
     setUsbBusy(true);
     try {
-      await usbConnect(dev.trim());
-      setPrinterAddress(dev.trim());
+      await usbConnect(usbDeviceName.trim());
       toast({ title: "USB printer connected" });
     } catch (e: any) {
       toast({ title: "Could not connect", description: e?.message ?? String(e), variant: "destructive" });
@@ -204,146 +250,188 @@ export function AdminPrinter() {
       setUsbBusy(false);
     }
   };
-  const disconnect = async () => {
-    setBtBusy(true);
-    try {
-      await btDisconnect();
-      toast({ title: "Printer disconnected" });
-    } catch (e: any) {
-      toast({ title: "Could not disconnect", description: e?.message ?? String(e), variant: "destructive" });
-    } finally {
-      setBtBusy(false);
-    }
-  };
+
+  // Available printer options for section routing
+  const sectionOptions: { value: PrinterType; label: string; disabled: boolean }[] = [
+    { value: "none", label: "None (No Printing)", disabled: false },
+    { value: "bluetooth", label: `Bluetooth${hasBt ? ` (${btPrinterName || btPrinterAddress})` : ""}`, disabled: !hasBt },
+    { value: "usb", label: `USB${hasUsb ? ` (${usbPrinterLabel || usbDeviceName})` : ""}`, disabled: !hasUsb },
+  ];
 
   return (
     <div className="space-y-4">
+      {/* ── Bluetooth Printer ── */}
       <Card>
         <CardHeader>
-          <CardTitle>Printer Setup</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            Bluetooth Printer
+            {hasBt && <Badge variant="outline" className="text-xs">Configured</Badge>}
+          </CardTitle>
           <CardDescription>
-            Connect a Bluetooth thermal printer (Android app). For Bluetooth, first pair the printer in Android settings, then select it here.
+            Pair the printer in Android Bluetooth settings first, then select it here.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="space-y-2">
+            <Label>Printer name (optional)</Label>
+            <input
+              value={btPrinterName}
+              onChange={(e) => setBtPrinterName(e.target.value)}
+              className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+              placeholder="e.g. XP-58 Bluetooth"
+            />
+          </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="text-xs text-muted-foreground">
+              {isNativeAndroid()
+                ? "Select a paired device, then connect."
+                : "Bluetooth works only in the installed Android app."}
+            </div>
+            <Button variant="outline" size="sm" onClick={() => void loadPaired()} disabled={btBusy}>
+              Refresh paired devices
+            </Button>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Paired devices</Label>
+            <select
+              value={btPrinterAddress}
+              onChange={(e) => setBtPrinterAddress(e.target.value)}
+              className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+            >
+              <option value="">Select printer…</option>
+              {paired.map((d) => (
+                <option key={d.address} value={d.address}>
+                  {(d.name ?? "(Unnamed)") + " — " + d.address}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" onClick={() => void connectBt()} disabled={btBusy || !isNativeAndroid()}>
+              Connect
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => void disconnectBt()} disabled={btBusy || !isNativeAndroid()}>
+              Disconnect
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* ── USB Printer ── */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            USB OTG Printer
+            {hasUsb && <Badge variant="outline" className="text-xs">Configured</Badge>}
+          </CardTitle>
+          <CardDescription>
+            Connect a thermal printer via USB OTG cable.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="space-y-2">
+            <Label>Printer label (optional)</Label>
+            <input
+              value={usbPrinterLabel}
+              onChange={(e) => setUsbPrinterLabel(e.target.value)}
+              className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+              placeholder="e.g. XP-58 USB"
+            />
+          </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="text-xs text-muted-foreground">
+              {isNativeAndroid()
+                ? "Connect via OTG cable, then tap Refresh."
+                : "USB OTG works only in the installed Android app."}
+            </div>
+            <Button variant="outline" size="sm" onClick={() => void loadUsbDevices()} disabled={usbBusy}>
+              Refresh USB devices
+            </Button>
+          </div>
+
+          <div className="space-y-2">
+            <Label>USB Devices</Label>
+            <select
+              value={usbDeviceName}
+              onChange={(e) => setUsbDeviceName(e.target.value)}
+              className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+            >
+              <option value="">Select printer…</option>
+              {usbDevices.map((d) => (
+                <option key={d.deviceName} value={d.deviceName}>
+                  {(d.productName || d.manufacturerName || "USB Printer") + ` (${d.vendorId}:${d.productId})`}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" onClick={() => void connectUsb()} disabled={usbBusy || !isNativeAndroid()}>
+              Connect
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => void disconnectUsb()} disabled={usbBusy || !isNativeAndroid()}>
+              Disconnect
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* ── Section Routing ── */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Printer Assignment</CardTitle>
+          <CardDescription>
+            Choose which printer to use for each section. You can use both printers at the same time — one for Sales and another for Tables.
+            Sub devices will use the same section assignments as the Main device.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="printerConnection">Connection</Label>
+              <Label htmlFor="salesPrinter">Sales Dashboard Printer</Label>
               <select
-                id="printerConnection"
-                value={connection}
-                onChange={(e) => setConnection(e.target.value as any)}
+                id="salesPrinter"
+                value={salesPrinterType}
+                onChange={(e) => setSalesPrinterType(e.target.value as PrinterType)}
                 className="h-10 w-full rounded-md border bg-background px-3 text-sm"
               >
-                <option value="none">None</option>
-                <option value="bluetooth">Bluetooth</option>
-                <option value="usb">USB (OTG)</option>
+                {sectionOptions.map((o) => (
+                  <option key={o.value} value={o.value} disabled={o.disabled}>
+                    {o.label}
+                  </option>
+                ))}
               </select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="printerName">Printer name (optional)</Label>
-              <input
-                id="printerName"
-                value={printerName}
-                onChange={(e) => setPrinterName(e.target.value)}
+              <Label htmlFor="tablePrinter">Table Management Printer</Label>
+              <select
+                id="tablePrinter"
+                value={tablePrinterType}
+                onChange={(e) => setTablePrinterType(e.target.value as PrinterType)}
                 className="h-10 w-full rounded-md border bg-background px-3 text-sm"
-                placeholder="e.g. XP-58"
-              />
+              >
+                {sectionOptions.map((o) => (
+                  <option key={o.value} value={o.value} disabled={o.disabled}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
 
-          {connection === "bluetooth" ? (
-            <div className="space-y-3 rounded-md border p-3">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div>
-                  <div className="text-sm font-medium">Bluetooth printer</div>
-                  <div className="text-xs text-muted-foreground">
-                    {isNativeAndroid()
-                      ? "Select a paired device, then connect."
-                      : "Bluetooth connection works only inside the installed Android app."}
-                  </div>
-                </div>
-                <Button variant="outline" onClick={() => void loadPaired()} disabled={btBusy || !settings}>
-                  Refresh paired devices
-                </Button>
-              </div>
-
-              <div className="grid gap-2">
-                <Label htmlFor="printerAddress">Paired devices</Label>
-                <select
-                  id="printerAddress"
-                  value={printerAddress}
-                  onChange={(e) => setPrinterAddress(e.target.value)}
-                  className="h-10 w-full rounded-md border bg-background px-3 text-sm"
-                >
-                  <option value="">Select printer…</option>
-                  {paired.map((d) => (
-                    <option key={d.address} value={d.address}>
-                      {(d.name ?? "(Unnamed)") + " — " + d.address}
-                    </option>
-                  ))}
-                </select>
-                <div className="text-xs text-muted-foreground">Tip: If the printer is missing, pair it first in Android Bluetooth settings.</div>
-              </div>
-
-              <div className="flex flex-wrap gap-2">
-                <Button onClick={() => void connectSelected()} disabled={btBusy || !settings || !isNativeAndroid()}>
-                  Connect
-                </Button>
-                <Button variant="outline" onClick={() => void disconnect()} disabled={btBusy || !settings || !isNativeAndroid()}>
-                  Disconnect
-                </Button>
-              </div>
-            </div>
-          ) : null}
-
-          {connection === "usb" ? (
-            <div className="space-y-3 rounded-md border p-3">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div>
-                  <div className="text-sm font-medium">USB OTG Printer</div>
-                  <div className="text-xs text-muted-foreground">
-                    {isNativeAndroid()
-                      ? "Connect a thermal printer via USB OTG cable."
-                      : "USB OTG connection works only inside the installed Android app."}
-                  </div>
-                </div>
-                <Button variant="outline" onClick={() => void loadUsbDevices()} disabled={usbBusy || !settings}>
-                  Refresh USB devices
-                </Button>
-              </div>
-
-              <div className="grid gap-2">
-                <Label htmlFor="usbDevice">USB Devices</Label>
-                <select
-                  id="usbDevice"
-                  value={selectedUsb}
-                  onChange={(e) => setSelectedUsb(e.target.value)}
-                  className="h-10 w-full rounded-md border bg-background px-3 text-sm"
-                >
-                  <option value="">Select printer…</option>
-                  {usbDevices.map((d) => (
-                    <option key={d.deviceName} value={d.deviceName}>
-                      {(d.productName || d.manufacturerName || "USB Printer") + ` (${d.vendorId}:${d.productId})`}
-                    </option>
-                  ))}
-                </select>
-                <div className="text-xs text-muted-foreground">Tip: Connect the printer via OTG cable, then tap Refresh.</div>
-              </div>
-
-              <div className="flex flex-wrap gap-2">
-                <Button onClick={() => void connectUsb()} disabled={usbBusy || !settings || !isNativeAndroid()}>
-                  Connect
-                </Button>
-                <Button variant="outline" onClick={() => void disconnectUsb()} disabled={usbBusy || !settings || !isNativeAndroid()}>
-                  Disconnect
-                </Button>
-              </div>
-            </div>
-          ) : null}
+          {!hasBt && !hasUsb && (
+            <p className="text-xs text-muted-foreground">
+              Configure at least one printer above to assign it to a section.
+            </p>
+          )}
         </CardContent>
       </Card>
 
+      {/* ── Receipt Settings ── */}
       <Card>
         <CardHeader>
           <CardTitle>Receipt Settings</CardTitle>
@@ -380,6 +468,17 @@ export function AdminPrinter() {
             </div>
           </div>
 
+          <div className="flex items-center gap-3">
+            <Switch
+              id="subPrinterMode"
+              checked={subPrinterMode === "main"}
+              onCheckedChange={(v) => setSubPrinterMode(v ? "main" : "own")}
+            />
+            <Label htmlFor="subPrinterMode" className="text-sm">
+              Sub device: use Main device's printer (instead of own)
+            </Label>
+          </div>
+
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" onClick={() => setPreviewOpen(true)} disabled={!settings}>
               Receipt Preview
@@ -400,7 +499,7 @@ export function AdminPrinter() {
             <div
               className="overflow-hidden rounded border bg-white"
               style={{
-                width: 192, // 2 inches at 96 DPI
+                width: 192,
                 height: RECEIPT_HEIGHT_MAP[receiptSize],
               }}
             >
