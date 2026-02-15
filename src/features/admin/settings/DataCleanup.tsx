@@ -238,6 +238,12 @@ export function DataCleanup() {
                 })}
               </ul>
               <p className="text-destructive font-medium">This action cannot be undone!</p>
+              <div className="rounded-md border border-yellow-500/30 bg-yellow-500/10 p-3 text-sm">
+                <p className="font-medium">💡 Have you created a backup?</p>
+                <p className="text-muted-foreground mt-1">
+                  We recommend creating a backup before deleting data. You can restore it later from Backup &amp; Restore if you ever need this data again.
+                </p>
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
