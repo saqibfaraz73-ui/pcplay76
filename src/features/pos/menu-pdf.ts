@@ -170,9 +170,10 @@ export async function generateMenuPdf() {
         if (name !== item.name) name += "…";
         doc.text(name, x + cellW / 2, y + imgH + 4, { align: "center" });
 
-        // Price
+        // Price (bold green)
         doc.setFontSize(7);
-        doc.setFont("helvetica", "normal");
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(0, 128, 0);
         const priceText = item.variations && item.variations.length > 0
           ? item.variations.map(v => `${v.name}: ${formatIntMoney(v.price)}`).join(" | ")
           : formatIntMoney(item.price);
@@ -184,6 +185,7 @@ export async function generateMenuPdf() {
         }
         if (pText !== priceText) pText += "…";
         doc.text(pText, x + cellW / 2, y + imgH + 8, { align: "center" });
+        doc.setTextColor(0, 0, 0); // reset to black
       }
 
       y += cellH + 3;
@@ -192,7 +194,7 @@ export async function generateMenuPdf() {
     y += 2; // gap between categories
   }
 
-  // Save and share
+  // Always use share dialog (web uses Web Share API, native uses Capacitor Share)
   if (Capacitor.isNativePlatform()) {
     const pdfBytes = doc.output("arraybuffer");
     const result = await writePdfFile({
@@ -202,7 +204,16 @@ export async function generateMenuPdf() {
     });
     await shareFile({ title: "Menu", uri: result.uri });
   } else {
-    // Web fallback: download
-    doc.save("Menu.pdf");
+    // Web: use Web Share API if available, otherwise fallback to download
+    const pdfBlob = doc.output("blob");
+    const file = new File([pdfBlob], "Menu.pdf", { type: "application/pdf" });
+    if (navigator.share && navigator.canShare?.({ files: [file] })) {
+      await navigator.share({ title: "Menu", files: [file] });
+    } else {
+      // Fallback: trigger share-like behavior via blob URL
+      const url = URL.createObjectURL(pdfBlob);
+      window.open(url, "_blank");
+      setTimeout(() => URL.revokeObjectURL(url), 10000);
+    }
   }
 }
