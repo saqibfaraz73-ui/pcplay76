@@ -119,6 +119,9 @@ export default function PosDashboard() {
   const [editTaxAmount, setEditTaxAmount] = React.useState<number | null>(null);
   const [editServiceAmount, setEditServiceAmount] = React.useState<number | null>(null);
 
+  // Guard against rapid double-clicks on save/print buttons
+  const [saving, setSaving] = React.useState(false);
+
   const loadPosSettings = React.useCallback(async () => {
     const s = await db.settings.get("app");
     setPosSettings(s ?? null);
@@ -310,10 +313,12 @@ export default function PosDashboard() {
 
   // Save only (no print)
   const onSaveOnly = async () => {
+    if (saving) return;
     if (!isWorkPeriodActive) {
       toast({ title: "Start work period first", variant: "destructive" });
       return;
     }
+    setSaving(true);
     try {
       const order = await createOrder({
         cashier: session?.username ?? "Unknown",
@@ -331,15 +336,19 @@ export default function PosDashboard() {
       await refreshAfterMutation();
     } catch (e: any) {
       handleSaleError(e, "Could not save sale");
+    } finally {
+      setSaving(false);
     }
   };
 
   // Save and print
   const onSaveAndPrint = async () => {
+    if (saving) return;
     if (!isWorkPeriodActive) {
       toast({ title: "Start work period first", variant: "destructive" });
       return;
     }
+    setSaving(true);
     try {
       const order = await createOrder({
         cashier: session?.username ?? "Unknown",
@@ -370,15 +379,19 @@ export default function PosDashboard() {
       await refreshAfterMutation();
     } catch (e: any) {
       handleSaleError(e, "Could not save sale");
+    } finally {
+      setSaving(false);
     }
   };
 
   // Save and print KOT (Kitchen Order Ticket - always centered format)
   const onSaveAndPrintKot = async () => {
+    if (saving) return;
     if (!isWorkPeriodActive) {
       toast({ title: "Start work period first", variant: "destructive" });
       return;
     }
+    setSaving(true);
     try {
       const order = await createOrder({
         cashier: session?.username ?? "Unknown",
@@ -409,6 +422,8 @@ export default function PosDashboard() {
       await refreshAfterMutation();
     } catch (e: any) {
       handleSaleError(e, "Could not save sale");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -442,6 +457,8 @@ export default function PosDashboard() {
   };
 
   const onCreditSaveOnly = async () => {
+    if (saving) return;
+    setSaving(true);
     try {
       const { custId, creditCustomerName } = await resolveCreditCustomer();
       const order = await createOrder({
@@ -462,10 +479,14 @@ export default function PosDashboard() {
       await refreshAfterMutation();
     } catch (e: any) {
       handleSaleError(e, "Could not save credit sale");
+    } finally {
+      setSaving(false);
     }
   };
 
   const onCreditSaveAndPrint = async () => {
+    if (saving) return;
+    setSaving(true);
     try {
       const { custId, creditCustomerName } = await resolveCreditCustomer();
       const order = await createOrder({
@@ -494,6 +515,8 @@ export default function PosDashboard() {
       await refreshAfterMutation();
     } catch (e: any) {
       handleSaleError(e, "Could not save credit sale");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -526,12 +549,13 @@ export default function PosDashboard() {
   };
 
   const onDeliverySaveOnly = async () => {
+    if (saving) return;
     if (!deliveryPersonId) {
       toast({ title: "Select delivery person", variant: "destructive" });
       return;
     }
+    setSaving(true);
     try {
-      // Save delivery customer details if name is provided
       if (deliveryCustomerName.trim()) {
         await saveDeliveryCustomer({
           name: deliveryCustomerName.trim(),
@@ -561,17 +585,20 @@ export default function PosDashboard() {
       await refreshAfterMutation();
     } catch (e: any) {
       handleSaleError(e, "Could not save delivery sale");
+    } finally {
+      setSaving(false);
     }
   };
 
 
   const onDeliverySaveAndPrint = async () => {
+    if (saving) return;
     if (!deliveryPersonId) {
       toast({ title: "Select delivery person", variant: "destructive" });
       return;
     }
+    setSaving(true);
     try {
-      // Save delivery customer details if name is provided
       if (deliveryCustomerName.trim()) {
         await saveDeliveryCustomer({
           name: deliveryCustomerName.trim(),
@@ -610,6 +637,8 @@ export default function PosDashboard() {
       await refreshAfterMutation();
     } catch (e: any) {
       handleSaleError(e, "Could not save delivery sale");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -1000,7 +1029,7 @@ export default function PosDashboard() {
         <div className="mx-auto max-w-6xl flex gap-2">
           <Button 
             className="flex-1 bg-green-600 hover:bg-green-700 text-white"
-            disabled={cart.length === 0 || !isWorkPeriodActive}
+            disabled={cart.length === 0 || !isWorkPeriodActive || saving}
             onClick={onSaveAndPrint}
           >
             <Printer className="h-4 w-4 mr-1" />
@@ -1008,7 +1037,7 @@ export default function PosDashboard() {
           </Button>
           <Button 
             className="flex-1 bg-yellow-500 hover:bg-yellow-600 text-black"
-            disabled={cart.length === 0 || !isWorkPeriodActive}
+            disabled={cart.length === 0 || !isWorkPeriodActive || saving}
             onClick={onSaveAndPrintKot}
           >
             <ClipboardList className="h-4 w-4 mr-1" />
@@ -1016,7 +1045,7 @@ export default function PosDashboard() {
           </Button>
           <Button 
             className="flex-1 bg-orange-500 hover:bg-orange-600 text-white"
-            disabled={cart.length === 0 || !isWorkPeriodActive}
+            disabled={cart.length === 0 || !isWorkPeriodActive || saving}
             onClick={onSaveOnly}
           >
             <Save className="h-4 w-4 mr-1" />
