@@ -814,6 +814,32 @@ export function ExportPartySection() {
     }
   };
 
+  const exportSingleCustomerExcel = async (cust: ExportCustomer) => {
+    try {
+      const custSales = sales.filter((s) => s.customerId === cust.id).sort((a, b) => a.createdAt - b.createdAt);
+      const custPayments = payments.filter((p) => p.customerId === cust.id).sort((a, b) => a.createdAt - b.createdAt);
+      const balance = getBalance(cust);
+      const rows: (string | number)[][] = [["Type", "Item", "Qty", "Unit", "Unit Price", "Total/Amount", "Payment Type", "Note", "Date"]];
+      for (const s of custSales) {
+        rows.push(["Sale", s.itemName ?? "", s.qty, s.unit ?? "", s.unitPrice, s.total, "", s.note ?? "", fmtDate(s.createdAt)]);
+      }
+      for (const p of custPayments) {
+        rows.push(["Payment", "", "", "", "", p.amount, p.paymentType ?? "cash", p.note ?? "", fmtDate(p.createdAt)]);
+      }
+      rows.push(["Balance", "", "", "", "", balance, "", "", ""]);
+      const ws = XLSX.utils.aoa_to_sheet(rows);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, cust.name.slice(0, 31));
+      const buf = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+      const blob = new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+      const safeName = cust.name.replace(/[^a-zA-Z0-9]/g, "_").slice(0, 30);
+      await downloadExcel(blob, `${safeName}_ledger.xlsx`);
+      toast({ title: `${cust.name} Excel exported` });
+    } catch (e: any) {
+      toast({ title: "Export failed", description: e?.message ?? String(e), variant: "destructive" });
+    }
+  };
+
   const shareSingleCustomerPdf = async (cust: ExportCustomer) => {
     try {
       const doc = buildSingleCustomerPdf(cust);
@@ -1049,6 +1075,9 @@ export function ExportPartySection() {
                     <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => openEdit(cust)}>Edit</Button>
                     <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => void shareSingleSalesPdf(cust)}>
                       <PackagePlus className="h-3 w-3 mr-1" /> Sales PDF
+                    </Button>
+                    <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => void exportSingleCustomerExcel(cust)}>
+                      <FileSpreadsheet className="h-3 w-3 mr-1" /> Excel
                     </Button>
                     <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => downloadPartyImportTemplate(cust.name)} title="Download import template">
                       <Download className="h-3 w-3 mr-1" /> Template
