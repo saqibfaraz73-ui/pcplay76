@@ -1,38 +1,39 @@
 package app.lovable.sangi;
 
+import android.Manifest;
+import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.os.Build;
 import android.util.Log;
+
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
+import com.getcapacitor.annotation.Permission;
 
-import org.json.JSONException;
-import org.json.JSONObject;
-
-import java.io.IOException;
 import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.util.Collections;
-import java.util.Map;
-
-import fi.iki.elonen.NanoHTTPD;
 
 /**
- * Capacitor Plugin: Local HTTP Sync Server
+ * Capacitor Plugin: Local HTTP Sync Server (Foreground Service version)
  *
- * Runs a lightweight NanoHTTPD server on the Main device so Sub devices
- * can POST sales, credit entries, table orders, expenses, and print jobs
- * over the local WiFi / hotspot network.
+ * Runs the sync server inside an Android Foreground Service so it stays
+ * alive even when the screen is off — just like Zapya, SHAREit, etc.
  *
  * ─── SETUP ───────────────────────────────────────────────
  * 1. Add NanoHTTPD dependency in android/app/build.gradle:
  *      implementation 'org.nanohttpd:nanohttpd:2.3.1'
  *
- * 2. Copy this file to:
- *      android/app/src/main/java/app/lovable/sangi/LocalSyncServerPlugin.java
+ * 2. Copy these files to android/app/src/main/java/app/lovable/sangi/:
+ *      - LocalSyncServerPlugin.java  (this file)
+ *      - SyncForegroundService.java
  *
  * 3. Register in MainActivity.java:
  *      import app.lovable.sangi.LocalSyncServerPlugin;
@@ -43,58 +44,80 @@ import fi.iki.elonen.NanoHTTPD;
  *          }
  *      }
  *
- * 4. Add internet permission in AndroidManifest.xml (usually already present):
+ * 4. Add to AndroidManifest.xml:
  *      <uses-permission android:name="android.permission.INTERNET" />
  *      <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
  *      <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+ *      <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+ *      <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+ *      <uses-permission android:name="android.permission.WAKE_LOCK" />
+ *
+ *      Inside <application>:
+ *      <service
+ *          android:name=".SyncForegroundService"
+ *          android:foregroundServiceType="dataSync"
+ *          android:exported="false" />
  * ─────────────────────────────────────────────────────────
  */
 @CapacitorPlugin(name = "LocalSyncServer")
 public class LocalSyncServerPlugin extends Plugin {
 
     private static final String TAG = "LocalSyncServer";
-    private static final int DEFAULT_PORT = 8942; // Sangi sync port
 
-    private SyncHttpServer server;
+    @Override
+    public void load() {
+        // Register as listener so the service can forward events to the web layer
+        SyncForegroundService.syncDataListener = (endpoint, data) -> {
+            JSObject eventData = new JSObject();
+            eventData.put("endpoint", endpoint);
+            eventData.put("data", data);
+            eventData.put("timestamp", System.currentTimeMillis());
+            notifyListeners("syncDataReceived", eventData);
+        };
+    }
 
-    // ─── Start the server ──────────────────────────────────
+    // ─── Start the server (as Foreground Service) ──────────
 
     @PluginMethod
     public void startServer(PluginCall call) {
-        int port = call.getInt("port", DEFAULT_PORT);
+        int port = call.getInt("port", SyncForegroundService.DEFAULT_PORT);
 
-        if (server != null && server.isAlive()) {
+        // Request POST_NOTIFICATIONS permission on Android 13+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(getActivity(), Manifest.permission.POST_NOTIFICATIONS)
+                    != PackageManager.PERMISSION_GRANTED) {
+                ActivityCompat.requestPermissions(getActivity(),
+                        new String[]{Manifest.permission.POST_NOTIFICATIONS}, 1001);
+            }
+        }
+
+        // Start the foreground service
+        Intent intent = new Intent(getContext(), SyncForegroundService.class);
+        intent.putExtra("port", port);
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            getContext().startForegroundService(intent);
+        } else {
+            getContext().startService(intent);
+        }
+
+        // Small delay to let service start, then respond
+        getBridge().getActivity().getWindow().getDecorView().postDelayed(() -> {
             JSObject ret = new JSObject();
             ret.put("success", true);
             ret.put("address", getLocalIpAddress());
             ret.put("port", port);
             call.resolve(ret);
-            return;
-        }
-
-        try {
-            server = new SyncHttpServer(port);
-            server.start(NanoHTTPD.SOCKET_READ_TIMEOUT, false);
-
-            JSObject ret = new JSObject();
-            ret.put("success", true);
-            ret.put("address", getLocalIpAddress());
-            ret.put("port", port);
-            call.resolve(ret);
-        } catch (IOException e) {
-            Log.e(TAG, "Failed to start server", e);
-            call.reject("Failed to start sync server: " + e.getMessage());
-        }
+        }, 300);
     }
 
     // ─── Stop the server ───────────────────────────────────
 
     @PluginMethod
     public void stopServer(PluginCall call) {
-        if (server != null) {
-            server.stop();
-            server = null;
-        }
+        Intent intent = new Intent(getContext(), SyncForegroundService.class);
+        getContext().stopService(intent);
+
         JSObject ret = new JSObject();
         ret.put("success", true);
         call.resolve(ret);
@@ -104,10 +127,13 @@ public class LocalSyncServerPlugin extends Plugin {
 
     @PluginMethod
     public void getStatus(PluginCall call) {
+        boolean running = SyncForegroundService.instance != null
+                && SyncForegroundService.instance.isServerRunning();
+
         JSObject ret = new JSObject();
-        ret.put("running", server != null && server.isAlive());
+        ret.put("running", running);
         ret.put("address", getLocalIpAddress());
-        ret.put("port", DEFAULT_PORT);
+        ret.put("port", SyncForegroundService.DEFAULT_PORT);
         call.resolve(ret);
     }
 
@@ -115,13 +141,14 @@ public class LocalSyncServerPlugin extends Plugin {
 
     @PluginMethod
     public void getLastSyncData(PluginCall call) {
-        if (server == null || server.lastReceivedData == null) {
+        SyncForegroundService svc = SyncForegroundService.instance;
+        if (svc == null || svc.lastReceivedData == null) {
             call.reject("No sync data available");
             return;
         }
         JSObject ret = new JSObject();
-        ret.put("data", server.lastReceivedData);
-        ret.put("endpoint", server.lastEndpoint);
+        ret.put("data", svc.lastReceivedData);
+        ret.put("endpoint", svc.lastEndpoint);
         ret.put("timestamp", System.currentTimeMillis());
         call.resolve(ret);
     }
@@ -141,121 +168,5 @@ public class LocalSyncServerPlugin extends Plugin {
             Log.e(TAG, "Failed to get IP", e);
         }
         return "0.0.0.0";
-    }
-
-    // ═══════════════════════════════════════════════════════
-    // Inner class: NanoHTTPD server
-    // ═══════════════════════════════════════════════════════
-
-    private class SyncHttpServer extends NanoHTTPD {
-
-        String lastReceivedData = null;
-        String lastEndpoint = null;
-
-        SyncHttpServer(int port) {
-            super(port);
-        }
-
-        @Override
-        public Response serve(IHTTPSession session) {
-            // CORS headers for all responses
-            String corsHeaders = "Content-Type, Authorization";
-
-            if (Method.OPTIONS.equals(session.getMethod())) {
-                Response resp = newFixedLengthResponse(Response.Status.OK, "text/plain", "");
-                resp.addHeader("Access-Control-Allow-Origin", "*");
-                resp.addHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-                resp.addHeader("Access-Control-Allow-Headers", corsHeaders);
-                return resp;
-            }
-
-            String uri = session.getUri();
-            Method method = session.getMethod();
-
-            // ─── GET /ping — health check ──────────────
-            if ("/ping".equals(uri) && Method.GET.equals(method)) {
-                Response resp = newFixedLengthResponse(Response.Status.OK,
-                        "application/json", "{\"status\":\"ok\",\"role\":\"main\"}");
-                resp.addHeader("Access-Control-Allow-Origin", "*");
-                return resp;
-            }
-
-            // ─── POST /sync/order — receive an order ───
-            if ("/sync/order".equals(uri) && Method.POST.equals(method)) {
-                return handleSyncPost(session, "order");
-            }
-
-            // ─── POST /sync/table-order — receive a table order ──
-            if ("/sync/table-order".equals(uri) && Method.POST.equals(method)) {
-                return handleSyncPost(session, "table-order");
-            }
-
-            // ─── POST /sync/credit-payment — receive credit payment ──
-            if ("/sync/credit-payment".equals(uri) && Method.POST.equals(method)) {
-                return handleSyncPost(session, "credit-payment");
-            }
-
-            // ─── POST /sync/expense — receive expense ──
-            if ("/sync/expense".equals(uri) && Method.POST.equals(method)) {
-                return handleSyncPost(session, "expense");
-            }
-
-            // ─── POST /sync/print — receive print job ──
-            if ("/sync/print".equals(uri) && Method.POST.equals(method)) {
-                return handleSyncPost(session, "print");
-            }
-
-            // ─── POST /sync/bulk — receive multiple items at once ──
-            if ("/sync/bulk".equals(uri) && Method.POST.equals(method)) {
-                return handleSyncPost(session, "bulk");
-            }
-
-            // 404 for unknown routes
-            Response resp = newFixedLengthResponse(Response.Status.NOT_FOUND,
-                    "application/json", "{\"error\":\"Not found\"}");
-            resp.addHeader("Access-Control-Allow-Origin", "*");
-            return resp;
-        }
-
-        private Response handleSyncPost(IHTTPSession session, String endpoint) {
-            try {
-                // Read request body
-                Map<String, String> bodyMap = new java.util.HashMap<>();
-                session.parseBody(bodyMap);
-                String body = bodyMap.get("postData");
-
-                if (body == null || body.isEmpty()) {
-                    Response resp = newFixedLengthResponse(Response.Status.BAD_REQUEST,
-                            "application/json", "{\"error\":\"Empty body\"}");
-                    resp.addHeader("Access-Control-Allow-Origin", "*");
-                    return resp;
-                }
-
-                // Store the data for the web layer to pick up
-                lastReceivedData = body;
-                lastEndpoint = endpoint;
-
-                // Notify the web layer via bridge event
-                JSObject eventData = new JSObject();
-                eventData.put("endpoint", endpoint);
-                eventData.put("data", body);
-                eventData.put("timestamp", System.currentTimeMillis());
-                notifyListeners("syncDataReceived", eventData);
-
-                Log.d(TAG, "Received sync data on /" + endpoint + " (" + body.length() + " bytes)");
-
-                Response resp = newFixedLengthResponse(Response.Status.OK,
-                        "application/json", "{\"success\":true,\"endpoint\":\"" + endpoint + "\"}");
-                resp.addHeader("Access-Control-Allow-Origin", "*");
-                return resp;
-
-            } catch (Exception e) {
-                Log.e(TAG, "Error handling sync POST", e);
-                Response resp = newFixedLengthResponse(Response.Status.INTERNAL_ERROR,
-                        "application/json", "{\"error\":\"" + e.getMessage() + "\"}");
-                resp.addHeader("Access-Control-Allow-Origin", "*");
-                return resp;
-            }
-        }
     }
 }
