@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/auth/AuthProvider";
-import { Menu, Printer, BarChart3, Settings, ShoppingCart, ClipboardList, Users, DollarSign, Truck, UtensilsCrossed, CalendarCheck, Wifi } from "lucide-react";
+import { Menu, Printer, BarChart3, Settings, ShoppingCart, ClipboardList, Users, DollarSign, Truck, UtensilsCrossed, CalendarCheck, Wifi, Shield } from "lucide-react";
 import { useAndroidBackExitConfirm } from "@/hooks/useAndroidBackExitConfirm";
 import appLogo from "@/assets/app-logo.jpg";
 import { db } from "@/db/appDb";
@@ -46,6 +46,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [supervisorPrinterEnabled, setSupervisorPrinterEnabled] = React.useState(false);
   const [salesDashboardEnabled, setSalesDashboardEnabled] = React.useState(true);
   const [deliveryEnabled, setDeliveryEnabled] = React.useState(false);
+  const [recoveryEnabled, setRecoveryEnabled] = React.useState(false);
   const [pendingTableCount, setPendingTableCount] = React.useState(0);
 
   const loadTableSetting = React.useCallback(async () => {
@@ -57,6 +58,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     setSupervisorPrinterEnabled(!!s?.supervisorPrinterEnabled);
     setSalesDashboardEnabled(s?.salesDashboardEnabled !== false);
     setDeliveryEnabled(!!s?.deliveryEnabled);
+    setRecoveryEnabled(!!s?.recoveryEnabled);
     // Count open (pending) table orders
     const openCount = await db.tableOrders.where("status").equals("open").count();
     setPendingTableCount(openCount);
@@ -87,15 +89,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const isCashier = session?.role === "cashier";
   const isWaiter = session?.role === "waiter" || session?.role === "supervisor";
   const isSupervisor = session?.role === "supervisor";
+  const isRecoveryAgent = session?.role === "recovery";
 
   const visibleNavItems = React.useMemo(() => {
-    if (isWaiter) return [];
+    if (isWaiter || isRecoveryAgent) return [];
     return navItems.filter((n) => {
       if (n.adminOnly && !isAdmin) return false;
       if (n.to === "/pos" && !salesDashboardEnabled) return false;
       return true;
     });
-  }, [isAdmin, isWaiter, salesDashboardEnabled]);
+  }, [isAdmin, isWaiter, isRecoveryAgent, salesDashboardEnabled]);
 
   const visibleAdminSubNav = React.useMemo(() => {
     return adminSubNav.filter((n) => {
@@ -149,7 +152,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                               </Link>
                             );
                           })}
-                          {!isWaiter && (
+                          {!isWaiter && !isRecoveryAgent && (
                             <>
                               <Link to="/pos/orders" className={cn("flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors", isActive("/pos/orders") ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground")}>
                                 <ClipboardList className="h-4 w-4" /> Orders
@@ -173,9 +176,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                               )}
                             </Link>
                           )}
-                          {advanceBookingEnabled && !isWaiter && (
+                          {advanceBookingEnabled && !isWaiter && !isRecoveryAgent && (
                             <Link to="/pos/advance-booking" className={cn("flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors", isActive("/pos/advance-booking") ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground")}>
                               <CalendarCheck className="h-4 w-4" /> Advance/Booking
+                            </Link>
+                          )}
+                          {recoveryEnabled && (isAdmin || isCashier || isRecoveryAgent) && (
+                            <Link to="/recovery" className={cn("flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors", isActive("/recovery") ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground")}>
+                              <Shield className="h-4 w-4" /> Recovery
                             </Link>
                           )}
 
@@ -285,7 +293,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                       {n.label}
                     </Link>
                   ))}
-                  {!isWaiter && (
+                  {!isWaiter && !isRecoveryAgent && (
                     <>
                       <Link to="/pos/orders" className={cn("rounded-md px-3 py-2 text-sm transition-colors", isActive("/pos/orders") ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground")}>
                         Orders
@@ -309,9 +317,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                       )}
                     </Link>
                   )}
-                  {advanceBookingEnabled && !isWaiter && (
+                  {advanceBookingEnabled && !isWaiter && !isRecoveryAgent && (
                     <Link to="/pos/advance-booking" className={cn("rounded-md px-3 py-2 text-sm transition-colors", isActive("/pos/advance-booking") ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground")}>
                       Advance/Booking
+                    </Link>
+                  )}
+                  {recoveryEnabled && (isAdmin || isCashier || isRecoveryAgent) && (
+                    <Link to="/recovery" className={cn("rounded-md px-3 py-2 text-sm transition-colors", isActive("/recovery") ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground")}>
+                      Recovery
                     </Link>
                   )}
                   {isCashier && cashierReportsEnabled && (

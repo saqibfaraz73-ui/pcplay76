@@ -81,6 +81,7 @@ export function AdminSettings() {
   const [supervisorPrinterEnabled, setSupervisorPrinterEnabled] = React.useState(false);
   const [salesDashboardEnabled, setSalesDashboardEnabled] = React.useState(true);
   const [deliveryEnabled, setDeliveryEnabled] = React.useState(false);
+  const [recoveryEnabled, setRecoveryEnabled] = React.useState(false);
 
   // Admin account
   const [adminAccount, setAdminAccount] = React.useState<AdminAccount | null>(null);
@@ -93,7 +94,7 @@ export function AdminSettings() {
   const [staffAccounts, setStaffAccounts] = React.useState<StaffAccount[]>([]);
   const [newStaffName, setNewStaffName] = React.useState("");
   const [newStaffPhone, setNewStaffPhone] = React.useState("");
-  const [newStaffRole, setNewStaffRole] = React.useState<"cashier" | "waiter" | "supervisor">("cashier");
+  const [newStaffRole, setNewStaffRole] = React.useState<"cashier" | "waiter" | "supervisor" | "recovery">("cashier");
   const [newStaffPin, setNewStaffPin] = React.useState("");
   const [deleteStaffId, setDeleteStaffId] = React.useState<string | null>(null);
 
@@ -145,6 +146,7 @@ export function AdminSettings() {
     setSupervisorPrinterEnabled(!!s?.supervisorPrinterEnabled);
     setSalesDashboardEnabled(s?.salesDashboardEnabled !== false); // default true
     setDeliveryEnabled(!!s?.deliveryEnabled);
+    setRecoveryEnabled(!!s?.recoveryEnabled);
     setLogoPath(s.receiptLogoPath);
 
     // Load admin account
@@ -230,6 +232,7 @@ export function AdminSettings() {
         supervisorPrinterEnabled,
         salesDashboardEnabled,
         deliveryEnabled,
+        recoveryEnabled,
         receiptLogoPath: logoPath,
         updatedAt: Date.now(),
       };
@@ -296,7 +299,7 @@ export function AdminSettings() {
     setNewStaffName("");
     setNewStaffPhone("");
     setNewStaffPin("");
-    toast({ title: `${newStaffRole === "cashier" ? "Cashier" : newStaffRole === "supervisor" ? "Supervisor" : "Waiter"} added` });
+    toast({ title: `${newStaffRole === "cashier" ? "Cashier" : newStaffRole === "supervisor" ? "Supervisor" : newStaffRole === "recovery" ? "Recovery Agent" : "Waiter"} added` });
   };
 
   const deleteStaff = async (staffId: string) => {
@@ -683,6 +686,13 @@ export function AdminSettings() {
           </div>
           <div className="flex items-center justify-between gap-3 rounded-md border p-3">
             <div>
+              <div className="text-sm font-medium">Enable Recovery</div>
+              <div className="text-xs text-muted-foreground">Show the Recovery section for bill collection (e.g. internet services).</div>
+            </div>
+            <Switch checked={recoveryEnabled} onCheckedChange={setRecoveryEnabled} />
+          </div>
+          <div className="flex items-center justify-between gap-3 rounded-md border p-3">
+            <div>
               <div className="text-sm font-medium">Allow cashier to view Reports</div>
               <div className="text-xs text-muted-foreground">If enabled, cashiers can access the Reports section.</div>
             </div>
@@ -786,10 +796,11 @@ export function AdminSettings() {
             </div>
             <div className="space-y-2">
               <Label>Role</Label>
-              <select value={newStaffRole} onChange={(e) => setNewStaffRole(e.target.value as "cashier" | "waiter" | "supervisor")} className="h-10 w-full rounded-md border bg-background px-3 text-sm">
+              <select value={newStaffRole} onChange={(e) => setNewStaffRole(e.target.value as "cashier" | "waiter" | "supervisor" | "recovery")} className="h-10 w-full rounded-md border bg-background px-3 text-sm">
                 <option value="cashier">Cashier</option>
                 <option value="waiter">Waiter</option>
                 <option value="supervisor">Supervisor</option>
+                <option value="recovery">Recovery Agent</option>
               </select>
             </div>
             <div className="space-y-2">

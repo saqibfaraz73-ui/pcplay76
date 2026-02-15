@@ -300,6 +300,8 @@ export type Settings = {
   // Advance/Booking settings
   advanceBookingEnabled?: boolean;
   showAdvanceBookingInReports?: boolean;
+  // Recovery settings
+  recoveryEnabled?: boolean;
   // Sync settings
   syncEnabled?: boolean; // if true, sync feature is available
   subWorkPeriodMode?: "own" | "main"; // "own" = sub uses its own work period, "main" = inherits from main app
@@ -385,13 +387,40 @@ export type StaffAccount = {
   id: string;
   name: string;
   phone?: string; // optional mobile number for login
-  role: "cashier" | "waiter" | "supervisor";
+  role: "cashier" | "waiter" | "supervisor" | "recovery";
   pin: string; // 4-digit PIN
   defaultTableId?: string;
   createdAt: number;
 };
 
-export type CounterId = "receipt" | "arrival" | "exportSale" | "advanceOrder" | "bookingOrder";
+export type CounterId = "receipt" | "arrival" | "exportSale" | "advanceOrder" | "bookingOrder" | "recoveryPayment";
+
+// ─── Recovery (bill collection) ────────────────────
+
+export type RecoveryCustomer = {
+  id: string;
+  name: string;
+  contact?: string;
+  address?: string;
+  pkg?: string; // package name
+  monthlyBill: number; // monthly bill amount
+  balance: number; // outstanding balance
+  createdAt: number;
+};
+
+export type RecoveryPaymentStatus = "paid" | "unpaid";
+
+export type RecoveryPayment = {
+  id: string;
+  customerId: string;
+  receiptNo?: number;
+  amount: number;
+  status: RecoveryPaymentStatus;
+  agentName: string; // recovery agent who processed
+  note?: string;
+  month: string; // e.g. "2026-02" for which month this payment is for
+  createdAt: number;
+};
 
 export type Counter = {
   id: CounterId;

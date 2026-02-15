@@ -21,6 +21,7 @@ import AdminDeliveryPage from "./pages/AdminDeliveryPage";
 import AdminSyncPage from "./pages/AdminSyncPage";
 import PosTablesPage from "./pages/PosTablesPage";
 import PosAdvanceBooking from "./pages/PosAdvanceBooking";
+import RecoveryPage from "./pages/RecoveryPage";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import { AuthProvider } from "@/auth/AuthProvider";
 import { ProtectedRoute } from "@/auth/ProtectedRoute";
@@ -147,6 +148,14 @@ const App = () => (
                   element={
                     <ProtectedRoute allow={["cashier", "admin"]}>
                       <PosAdvanceBooking />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/recovery"
+                  element={
+                    <ProtectedRoute allow={["admin", "cashier", "recovery"]}>
+                      <RecoveryPage />
                     </ProtectedRoute>
                   }
                 />
