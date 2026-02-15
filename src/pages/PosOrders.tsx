@@ -86,7 +86,7 @@ export default function PosOrders() {
       db.orders.orderBy("createdAt").reverse().limit(200).toArray(),
       db.customers.orderBy("createdAt").toArray(),
       db.deliveryPersons.orderBy("createdAt").toArray(),
-      db.tableOrders.where("status").anyOf(["completed", "cancelled"]).reverse().limit(200).toArray(),
+      db.tableOrders.where("status").anyOf(["open", "completed", "cancelled"]).reverse().limit(200).toArray(),
       db.restaurantTables.toArray(),
       db.waiters.toArray(),
       db.advanceOrders.orderBy("createdAt").reverse().limit(100).toArray(),
@@ -121,16 +121,15 @@ export default function PosOrders() {
       order: o,
     }));
     const table: UnifiedOrder[] = tableOrders
-      .filter((t) => t.receiptNo != null)
       .map((t) => ({
         id: t.id,
-        receiptNo: t.receiptNo!,
+        receiptNo: t.receiptNo ?? 0,
         paymentMethod: t.paymentMethod ?? "cash",
         status: t.status,
         total: t.total,
-        createdAt: t.completedAt ?? t.updatedAt,
-        source: "table",
-        order: tableOrderToOrder(t, tablesById, waitersById),
+        createdAt: t.status === "open" ? t.createdAt : (t.completedAt ?? t.updatedAt),
+        source: "table" as const,
+        order: t.status !== "open" ? tableOrderToOrder(t, tablesById, waitersById) : undefined,
         tableNumber: tablesById[t.tableId]?.tableNumber,
         waiterName: waitersById[t.waiterId]?.name,
       }));
@@ -176,8 +175,8 @@ export default function PosOrders() {
       } else if (cancelTarget.source === "table") {
         const tOrder = tableOrders.find((o) => o.id === cancelTarget.id);
         if (!tOrder) throw new Error("Table order not found");
-        if (tOrder.status !== "completed") throw new Error("Only completed orders can be cancelled");
-        if (!isSameLocalDay(tOrder.completedAt ?? tOrder.createdAt, Date.now())) throw new Error("Same-day cancellation only");
+        if (tOrder.status !== "completed" && tOrder.status !== "open") throw new Error("Only open or completed orders can be cancelled");
+        if (tOrder.status === "completed" && !isSameLocalDay(tOrder.completedAt ?? tOrder.createdAt, Date.now())) throw new Error("Same-day cancellation only");
         
         await db.tableOrders.update(cancelTarget.id, {
           status: "cancelled",
@@ -261,8 +260,9 @@ export default function PosOrders() {
               {unifiedOrders.map((o) => {
                 const canCancel =
                   (o.source === "regular" && o.status === "completed" && isSameLocalDay(o.createdAt, now)) ||
-                  (o.source === "table" && o.status === "completed" && isSameLocalDay(o.createdAt, now)) ||
+                  (o.source === "table" && (o.status === "open" || (o.status === "completed" && isSameLocalDay(o.createdAt, now)))) ||
                   ((o.source === "advance" || o.source === "booking") && o.status !== "cancelled");
+                const isOpenTableOrder = o.source === "table" && o.status === "open";
                 const src = sourceLabel(o);
                 return (
                   <div key={o.id} className="flex items-center justify-between gap-3 rounded-md border p-2">
@@ -281,6 +281,7 @@ export default function PosOrders() {
                       </div>
                       <div className="truncate text-xs text-muted-foreground">
                         {fmtDateTime(o.createdAt)} • {o.paymentMethod} • {o.status}
+                        {isOpenTableOrder && <Badge variant="outline" className="ml-1 text-[10px] border-destructive text-destructive">OPEN</Badge>}
                       </div>
                     </div>
                     <div className="flex items-center gap-2">

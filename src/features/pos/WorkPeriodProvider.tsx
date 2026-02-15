@@ -48,11 +48,6 @@ export function WorkPeriodProvider({ children }: { children: React.ReactNode }) 
 
   const endWorkPeriod = React.useCallback(async () => {
     if (!currentWorkPeriod) return;
-    // Block ending work period if there are open (unchecked-out) table orders
-    const openTableOrders = await db.tableOrders.where("status").equals("open").count();
-    if (openTableOrders > 0) {
-      throw new Error(`Cannot end work period: ${openTableOrders} open table order(s) still need checkout.`);
-    }
     const updated: WorkPeriod = {
       ...currentWorkPeriod,
       endedAt: Date.now(),
