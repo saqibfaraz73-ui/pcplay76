@@ -958,6 +958,24 @@ export default function PosPartyLodge() {
     }
   };
 
+  const downloadPartyTemplate = () => {
+    const headers = [["Supplier", "Type", "Item", "Qty", "Unit", "Unit Price", "Total/Amount", "Payment Type", "Note"]];
+    const sample = [
+      ["Ali Traders", "Arrival", "Rice", "50", "kg", "200", "10000", "", "First batch"],
+      ["Ali Traders", "Payment", "", "", "", "", "5000", "cash", "Advance payment"],
+    ];
+    const ws = XLSX.utils.aoa_to_sheet([...headers, ...sample]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Template");
+    const buf = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+    const blob = new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = "party_lodge_template.xlsx";
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   const handleExcelImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -1247,6 +1265,10 @@ export default function PosPartyLodge() {
             <Button variant="outline" size="sm" onClick={() => void exportPartyExcel()} disabled={suppliers.length === 0}>
               <FileSpreadsheet className="h-4 w-4 mr-1" />
               Export Excel
+            </Button>
+            <Button variant="outline" size="sm" onClick={downloadPartyTemplate}>
+              <Download className="h-4 w-4 mr-1" />
+              Template
             </Button>
             <Button variant="outline" size="sm" onClick={() => excelImportRef.current?.click()}>
               <Upload className="h-4 w-4 mr-1" />
