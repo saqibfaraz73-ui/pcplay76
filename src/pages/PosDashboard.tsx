@@ -19,7 +19,7 @@ import { ReceiptDialog } from "@/components/ReceiptDialog";
 import { printReceiptFromOrder, printKotFromOrder } from "@/features/pos/receipt-print";
 import { useWorkPeriod } from "@/features/pos/WorkPeriodProvider";
 import { saveDeliveryCustomer } from "@/features/admin/delivery/delivery-customers";
-import { Play, Square, Printer, Save, Truck, ClipboardList, UtensilsCrossed, X } from "lucide-react";
+import { Play, Square, Printer, Save, Truck, ClipboardList, UtensilsCrossed, X, Share2 } from "lucide-react";
 import { format } from "date-fns";
 import { UpgradeDialog } from "@/features/licensing/UpgradeDialog";
 import { Link } from "react-router-dom";
@@ -710,11 +710,28 @@ export default function PosDashboard() {
 
       <div className="grid gap-4 lg:grid-cols-[1fr_340px]">
         <div className="space-y-4 overflow-hidden">
-          <div className="flex items-end justify-between gap-4">
+          <div className="flex items-center justify-between gap-4">
             <div>
               <h1 className="text-xl font-semibold">Sales Dashboard</h1>
               <p className="text-sm text-muted-foreground">Cashier: {session?.username}</p>
             </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={async () => {
+                try {
+                  toast({ title: "Generating menu PDF…" });
+                  const { generateMenuPdf } = await import("@/features/pos/menu-pdf");
+                  await generateMenuPdf();
+                  toast({ title: "Menu PDF ready" });
+                } catch (e: any) {
+                  toast({ title: "Failed", description: e?.message ?? String(e), variant: "destructive" });
+                }
+              }}
+            >
+              <Share2 className="h-4 w-4 mr-1" />
+              Share Menu
+            </Button>
           </div>
 
           {/* Search - searches ALL categories */}
