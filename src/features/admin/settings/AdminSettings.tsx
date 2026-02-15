@@ -392,7 +392,7 @@ export function AdminSettings() {
         <CardContent className="grid gap-4">
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="restaurantName">Business name</Label>
+              <Label htmlFor="restaurantName">Business Name</Label>
               <Input id="restaurantName" value={restaurantName} onChange={(e) => setRestaurantName(e.target.value)} />
             </div>
           </div>
