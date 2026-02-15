@@ -316,6 +316,9 @@ export function AdminPrinter() {
             <Button variant="outline" size="sm" onClick={() => void disconnectBt()} disabled={btBusy || !isNativeAndroid()}>
               Disconnect
             </Button>
+            <Button size="sm" variant="default" onClick={() => void save()} disabled={!settings}>
+              Save
+            </Button>
           </div>
         </CardContent>
       </Card>
@@ -375,6 +378,9 @@ export function AdminPrinter() {
             </Button>
             <Button variant="outline" size="sm" onClick={() => void disconnectUsb()} disabled={usbBusy || !isNativeAndroid()}>
               Disconnect
+            </Button>
+            <Button size="sm" variant="default" onClick={() => void save()} disabled={!settings}>
+              Save
             </Button>
           </div>
         </CardContent>
