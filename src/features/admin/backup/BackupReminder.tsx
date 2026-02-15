@@ -50,7 +50,7 @@ export function BackupReminder() {
   const goBackup = () => {
     localStorage.setItem(STORAGE_KEY, String(Date.now()));
     setOpen(false);
-    navigate("/admin");
+    navigate("/admin?tab=backup");
   };
 
   if (!session) return null;
