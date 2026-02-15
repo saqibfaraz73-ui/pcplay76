@@ -5,6 +5,7 @@ import { db } from "@/db/appDb";
 import { fmtDateTime, fmtTime12 } from "@/features/pos/format";
 import { getSyncConfig } from "@/features/sync/sync-utils";
 import { sendPrintJob } from "@/features/sync/sync-client";
+import { isDuplicatePrint } from "@/features/pos/print-dedup";
 
 type KotItem = {
   name: string;
@@ -62,6 +63,9 @@ export async function printTableKot(args: {
   }
 
   const escPos = buildKotEscPos(tableNumber, waiterName, items);
+
+  // Dedup: prevent duplicate prints from rapid taps or retries
+  if (isDuplicatePrint(escPos)) return;
 
   if (viaMain) {
     // Send to Main's printer
