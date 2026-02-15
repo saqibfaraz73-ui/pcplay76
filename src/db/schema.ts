@@ -305,6 +305,8 @@ export type Settings = {
   subWorkPeriodMode?: "own" | "main"; // "own" = sub uses its own work period, "main" = inherits from main app
   // Cashier permissions
   cashierReportsEnabled?: boolean; // if true, cashier can access reports section
+  cashierCancelOrderEnabled?: boolean; // if true, cashier can cancel orders (default true)
+  cashierEndWorkPeriodPendingCheck?: boolean; // if true, show pending table orders warning when cashier ends work period
   waiterMainAppEnabled?: boolean; // if true, waiters can set device as Main in sync
   waiterRestrictToOwnTables?: boolean; // if true, waiters can only take orders on their assigned tables
   supervisorPrinterEnabled?: boolean; // if true, supervisors can access printer settings

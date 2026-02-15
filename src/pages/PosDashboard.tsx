@@ -121,6 +121,8 @@ export default function PosDashboard() {
 
   // Guard against rapid double-clicks on save/print buttons
   const [saving, setSaving] = React.useState(false);
+  const [pendingOrdersForClose, setPendingOrdersForClose] = React.useState<number>(0);
+  const [pendingOrdersConfirmed, setPendingOrdersConfirmed] = React.useState(false);
 
   const loadPosSettings = React.useCallback(async () => {
     const s = await db.settings.get("app");
@@ -649,8 +651,29 @@ export default function PosDashboard() {
   };
 
   const handleEndWorkPeriod = async () => {
+    // Check for pending table orders
+    const openTableOrders = await db.tableOrders.where("status").equals("open").toArray();
+    if (openTableOrders.length > 0) {
+      // Check if setting requires showing warning
+      const shouldWarn = posSettings?.cashierEndWorkPeriodPendingCheck !== false; // default true
+      if (shouldWarn && !pendingOrdersConfirmed) {
+        setPendingOrdersForClose(openTableOrders.length);
+        return;
+      }
+    }
     await endWorkPeriod();
     setEndWorkDialogOpen(false);
+    setPendingOrdersConfirmed(false);
+    toast({ title: "Work period ended" });
+  };
+
+
+  const confirmEndWithPending = async () => {
+    setPendingOrdersConfirmed(true);
+    setPendingOrdersForClose(0);
+    await endWorkPeriod();
+    setEndWorkDialogOpen(false);
+    setPendingOrdersConfirmed(false);
     toast({ title: "Work period ended" });
   };
 
@@ -1238,6 +1261,29 @@ export default function PosDashboard() {
             </Button>
             <Button variant="destructive" onClick={handleEndWorkPeriod}>
               End Work Period
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Pending table orders warning dialog */}
+      <Dialog open={pendingOrdersForClose > 0} onOpenChange={(open) => { if (!open) setPendingOrdersForClose(0); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>⚠️ Pending Table Orders</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            There {pendingOrdersForClose === 1 ? "is" : "are"} <span className="font-semibold text-foreground">{pendingOrdersForClose}</span> open table order{pendingOrdersForClose !== 1 ? "s" : ""} that have not been checked out or cancelled.
+          </p>
+          <p className="text-sm text-muted-foreground">
+            Are you sure you want to end the work period? Open orders will remain for manual resolution.
+          </p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPendingOrdersForClose(0)}>
+              Go Back
+            </Button>
+            <Button variant="destructive" onClick={() => void confirmEndWithPending()}>
+              End Anyway
             </Button>
           </DialogFooter>
         </DialogContent>

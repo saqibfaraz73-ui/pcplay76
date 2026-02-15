@@ -1,6 +1,6 @@
 import * as React from "react";
 import { db } from "@/db/appDb";
-import type { CreditCustomer, DeliveryPerson, Order, TableOrder, RestaurantTable, Waiter } from "@/db/schema";
+import type { CreditCustomer, DeliveryPerson, Order, Settings, TableOrder, RestaurantTable, Waiter } from "@/db/schema";
 import type { AdvanceOrder, BookingOrder } from "@/db/booking-schema";
 import { ensureSeedData } from "@/db/seed";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,6 +14,7 @@ import { formatIntMoney, fmtDateTime } from "@/features/pos/format";
 import { cancelOrder } from "@/features/pos/pos-db";
 import { printAdvanceReceipt, printBookingReceipt } from "@/features/pos/advance-receipt";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/auth/AuthProvider";
 import { isSameLocalDay } from "@/features/pos/time";
 import { Printer } from "lucide-react";
 
@@ -67,6 +68,7 @@ type UnifiedOrder = {
 
 export default function PosOrders() {
   const { toast } = useToast();
+  const { session } = useAuth();
   const [orders, setOrders] = React.useState<Order[]>([]);
   const [customers, setCustomers] = React.useState<CreditCustomer[]>([]);
   const [deliveryPersons, setDeliveryPersons] = React.useState<DeliveryPerson[]>([]);
@@ -75,6 +77,7 @@ export default function PosOrders() {
   const [waiters, setWaiters] = React.useState<Waiter[]>([]);
   const [advanceOrders, setAdvanceOrders] = React.useState<AdvanceOrder[]>([]);
   const [bookingOrders, setBookingOrders] = React.useState<BookingOrder[]>([]);
+  const [posSettings, setPosSettings] = React.useState<Settings | null>(null);
 
   const [cancelDialogOpen, setCancelDialogOpen] = React.useState(false);
   const [cancelTarget, setCancelTarget] = React.useState<{ id: string; source: "regular" | "table" | "advance" | "booking" } | null>(null);
@@ -82,7 +85,7 @@ export default function PosOrders() {
 
   const refresh = React.useCallback(async () => {
     await ensureSeedData();
-    const [ords, custs, dps, tOrds, tbls, wtrs, advOrds, bkOrds] = await Promise.all([
+    const [ords, custs, dps, tOrds, tbls, wtrs, advOrds, bkOrds, settings] = await Promise.all([
       db.orders.orderBy("createdAt").reverse().limit(200).toArray(),
       db.customers.orderBy("createdAt").toArray(),
       db.deliveryPersons.orderBy("createdAt").toArray(),
@@ -91,6 +94,7 @@ export default function PosOrders() {
       db.waiters.toArray(),
       db.advanceOrders.orderBy("createdAt").reverse().limit(100).toArray(),
       db.bookingOrders.orderBy("createdAt").reverse().limit(100).toArray(),
+      db.settings.get("app"),
     ]);
     setOrders(ords);
     setCustomers(custs);
@@ -100,6 +104,7 @@ export default function PosOrders() {
     setWaiters(wtrs);
     setAdvanceOrders(advOrds);
     setBookingOrders(bkOrds);
+    setPosSettings(settings ?? null);
   }, []);
 
   React.useEffect(() => { void refresh(); }, [refresh]);
@@ -258,9 +263,12 @@ export default function PosOrders() {
           ) : (
             <div className="space-y-2">
               {unifiedOrders.map((o) => {
-                const canCancel =
+                const isCashier = session?.role === "cashier";
+                const canCancelByRole = !isCashier || posSettings?.cashierCancelOrderEnabled !== false;
+                const canCancel = canCancelByRole && (
                   (o.source === "regular" && o.status === "completed" && isSameLocalDay(o.createdAt, now)) ||
                   (o.source === "table" && (o.status === "open" || (o.status === "completed" && isSameLocalDay(o.createdAt, now)))) ||
+                  ((o.source === "advance" || o.source === "booking") && o.status !== "cancelled"));
                   ((o.source === "advance" || o.source === "booking") && o.status !== "cancelled");
                 const isOpenTableOrder = o.source === "table" && o.status === "open";
                 const src = sourceLabel(o);
