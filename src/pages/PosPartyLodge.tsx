@@ -25,10 +25,12 @@ import { makeId } from "@/features/admin/id";
 import { formatIntMoney, parseNonDecimalInt, fmtDate, fmtDateTime } from "@/features/pos/format";
 import { writePdfFile, shareFile } from "@/features/files/sangi-folders";
 import { Capacitor } from "@capacitor/core";
-import { Plus, Trash2, Share2, CreditCard, Banknote, PackagePlus, Upload, Download, Printer, XCircle } from "lucide-react";
+import { Plus, Trash2, Share2, CreditCard, Banknote, PackagePlus, Upload, Download, Printer, XCircle, FileSpreadsheet } from "lucide-react";
 import { printEntryReceipt, shareEntryReceipt, getNextEntryNo, type EntryReceiptData } from "@/features/pos/entry-receipt";
 import { importArrivalsFromExcel, importArrivalsForSupplier, downloadImportTemplate, downloadPartyImportTemplate } from "@/features/party-import/party-import";
 import { canMakeSale, incrementSaleCount } from "@/features/licensing/licensing-db";
+import * as XLSX from "xlsx";
+import { downloadExcel } from "@/features/admin/products/menu-import-export";
 import { UpgradeDialog } from "@/features/licensing/UpgradeDialog";
 import { ExportPartySection } from "@/features/export-party/ExportPartySection";
 
@@ -917,6 +919,44 @@ export default function PosPartyLodge() {
     }
   };
 
+  const exportPartyExcel = async () => {
+    try {
+      if (suppliers.length === 0) { toast({ title: "No suppliers to export", variant: "destructive" }); return; }
+      const [fy, fm, fd] = filterFrom.split("-").map(Number);
+      const [ty, tm, td] = filterTo.split("-").map(Number);
+      const fromTs = new Date(fy, fm - 1, fd).getTime();
+      const toTs = new Date(ty, tm - 1, td, 23, 59, 59, 999).getTime();
+
+      const rows: (string | number)[][] = [["Supplier", "Type", "Item", "Qty", "Unit", "Unit Price", "Total/Amount", "Payment Type", "Note", "Date", "Balance"]];
+
+      for (const sup of suppliers) {
+        const supArrivals = arrivals.filter((a) => a.supplierId === sup.id && a.createdAt >= fromTs && a.createdAt <= toTs).sort((a, b) => a.createdAt - b.createdAt);
+        const supPayments = payments.filter((p) => p.supplierId === sup.id && p.createdAt >= fromTs && p.createdAt <= toTs).sort((a, b) => a.createdAt - b.createdAt);
+        const balance = getSupplierBalance(sup);
+
+        for (const a of supArrivals) {
+          rows.push([sup.name, "Arrival", a.itemName ?? "", a.qty, a.unit ?? "", a.unitPrice, a.total, "", a.note ?? "", fmtDate(a.createdAt), ""]);
+        }
+        for (const p of supPayments) {
+          rows.push([sup.name, "Payment", "", "", "", "", p.amount, p.paymentType ?? "cash", p.note ?? "", fmtDate(p.createdAt), ""]);
+        }
+        // Summary row
+        rows.push([sup.name, "Balance", "", "", "", "", "", "", "", "", balance]);
+      }
+
+      const ws = XLSX.utils.aoa_to_sheet(rows);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Party Lodge");
+      const buf = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+      const blob = new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+      const fileName = `party_lodge_${filterFrom}_${filterTo}.xlsx`;
+      await downloadExcel(blob, fileName);
+      toast({ title: "Party Lodge Excel exported" });
+    } catch (e: any) {
+      toast({ title: "Export failed", description: e?.message ?? String(e), variant: "destructive" });
+    }
+  };
+
   const handleArrivalImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -1138,6 +1178,10 @@ export default function PosPartyLodge() {
             <Button variant="outline" size="sm" onClick={() => void sharePaymentsPdf()} disabled={payments.length === 0}>
               <CreditCard className="h-4 w-4 mr-1" />
               Share Payments PDF
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => void exportPartyExcel()} disabled={suppliers.length === 0}>
+              <FileSpreadsheet className="h-4 w-4 mr-1" />
+              Export Excel
             </Button>
           </div>
         </CardContent>
