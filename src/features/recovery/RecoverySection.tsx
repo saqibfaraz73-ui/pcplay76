@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { db } from "@/db/appDb";
-import type { RecoveryCustomer, RecoveryPayment, StaffAccount } from "@/db/schema";
+import type { RecoveryCustomer, RecoveryPayment, StaffAccount, Settings } from "@/db/schema";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/auth/AuthProvider";
 import {
@@ -65,6 +65,7 @@ export function RecoverySection() {
   const [allCustomers, setAllCustomers] = React.useState<RecoveryCustomer[]>([]);
   const [payments, setPayments] = React.useState<RecoveryPayment[]>([]);
   const [agents, setAgents] = React.useState<StaffAccount[]>([]);
+  const [businessName, setBusinessName] = React.useState("SANGI POS");
   const [search, setSearch] = React.useState("");
   const [showAdd, setShowAdd] = React.useState(false);
 
@@ -99,9 +100,11 @@ export function RecoverySection() {
     const c = await db.recoveryCustomers.toArray();
     const p = await db.recoveryPayments.toArray();
     const staff = await db.staffAccounts.where("role").equals("recovery").toArray();
+    const s = await db.settings.get("app");
     setAllCustomers(c);
     setPayments(p);
     setAgents(staff);
+    if (s?.restaurantName) setBusinessName(s.restaurantName);
   }, []);
 
   React.useEffect(() => { void load(); }, [load]);
@@ -273,6 +276,7 @@ export function RecoverySection() {
   // ── Share/Print receipt ──
   const shareReceipt = async (cust: RecoveryCustomer, pay: RecoveryPayment) => {
     const text = [
+      businessName,
       `--- PAYMENT RECEIPT ---`,
       `Receipt #: ${pay.receiptNo ?? "N/A"}`,
       `Customer: ${cust.name}`,
@@ -291,9 +295,11 @@ export function RecoverySection() {
       const { jsPDF } = await import("jspdf");
       const doc = new jsPDF({ unit: "mm", format: [80, 120] });
       doc.setFontSize(12);
-      doc.text("PAYMENT RECEIPT", 40, 10, { align: "center" });
+      doc.text(businessName, 40, 8, { align: "center" });
+      doc.setFontSize(10);
+      doc.text("PAYMENT RECEIPT", 40, 14, { align: "center" });
       doc.setFontSize(9);
-      let y = 20;
+      let y = 22;
       const lines = [
         `Receipt #: ${pay.receiptNo ?? "N/A"}`,
         `Customer: ${cust.name}`,
@@ -313,8 +319,8 @@ export function RecoverySection() {
   const printReceipt = (cust: RecoveryCustomer, pay: RecoveryPayment) => {
     const w = window.open("", "_blank", "width=350,height=500");
     if (!w) return;
-    w.document.write(`<html><head><title>Receipt</title><style>body{font-family:monospace;font-size:12px;padding:10px}h3{text-align:center;margin:0}</style></head><body>
-      <h3>PAYMENT RECEIPT</h3><hr/>
+    w.document.write(`<html><head><title>Receipt</title><style>body{font-family:monospace;font-size:12px;padding:10px}h3{text-align:center;margin:0}h2{text-align:center;margin:0 0 4px}</style></head><body>
+      <h2>${businessName}</h2><h3>PAYMENT RECEIPT</h3><hr/>
       <p>Receipt #: ${pay.receiptNo ?? "N/A"}</p>
       <p>Customer: ${cust.name}</p>
       <p>Package: ${cust.pkg ?? "N/A"}</p>
