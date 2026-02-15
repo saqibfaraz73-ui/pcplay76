@@ -24,13 +24,13 @@ export function getMainAppUrl() {
 }
 
 /** Ping a specific IP to check if Main app is running there */
-export async function pingIp(ip: string, port = DEFAULT_SYNC_PORT): Promise<boolean> {
+export async function pingIp(ip: string, port = DEFAULT_SYNC_PORT, timeoutMs = 1200): Promise<boolean> {
   const url = `http://${ip}:${port}/ping`;
   try {
     const res = await fetch(url, {
       method: "GET",
       mode: "cors",
-      signal: AbortSignal.timeout(3000),
+      signal: AbortSignal.timeout(timeoutMs),
     });
     if (!res.ok) return false;
     const json = await res.json();
@@ -65,53 +65,79 @@ export async function pingMainApp(): Promise<boolean> {
   }
 }
 
-/** Common hotspot/router gateway IPs to scan */
-const COMMON_IPS = [
+/** Common hotspot/router gateway IPs to try first (highest priority) */
+const PRIORITY_IPS = [
   "192.168.43.1",   // Android hotspot default
   "192.168.1.1",    // Common router
   "192.168.0.1",    // Common router
   "192.168.49.1",   // Wi-Fi Direct
-  "10.0.0.1",       // Some routers
   "172.20.10.1",    // iPhone hotspot
   "192.168.137.1",  // Windows hotspot
-  "192.168.2.1",    // Some routers
-  "10.0.0.138",     // Some configurations
   "192.168.8.1",    // Huawei hotspot
+  "192.168.31.1",   // Xiaomi routers
+  "10.0.0.1",       // Some routers
+  "192.168.2.1",    // Some routers
   "192.168.4.1",    // Some routers
   "192.168.100.1",  // Some ISP routers
   "192.168.10.1",   // Some routers
-  "192.168.31.1",   // Xiaomi routers
 ];
 
-/** Scan common IPs + broader subnet ranges to find the Main device */
+/** Try to detect the device's own subnet from the Main server status or common patterns */
+function guessSubnets(): string[] {
+  const subnets: string[] = [];
+  // Android hotspot subnet
+  subnets.push("192.168.43");
+  // Common home/office subnets
+  subnets.push("192.168.1");
+  subnets.push("192.168.0");
+  // Wi-Fi Direct
+  subnets.push("192.168.49");
+  // Xiaomi
+  subnets.push("192.168.31");
+  // 10.x
+  subnets.push("10.0.0");
+  return subnets;
+}
+
+/** Scan to find the Main device — fast priority scan first, then broader sweep */
 export async function scanForMainDevice(
   port = DEFAULT_SYNC_PORT,
   onProgress?: (checked: number, total: number) => void
 ): Promise<string | null> {
-  const ipsToScan = new Set(COMMON_IPS);
-  // Android hotspot range
-  for (let i = 1; i <= 50; i++) ipsToScan.add(`192.168.43.${i}`);
-  // Common router subnets
-  for (let i = 1; i <= 50; i++) ipsToScan.add(`192.168.1.${i}`);
-  for (let i = 1; i <= 30; i++) ipsToScan.add(`192.168.0.${i}`);
-  // Wi-Fi Direct range
-  for (let i = 1; i <= 20; i++) ipsToScan.add(`192.168.49.${i}`);
-  // Xiaomi / other hotspots
-  for (let i = 1; i <= 20; i++) ipsToScan.add(`192.168.31.${i}`);
-  // 10.x range
-  for (let i = 1; i <= 20; i++) ipsToScan.add(`10.0.0.${i}`);
+  // Phase 1: Quick scan of priority IPs (very fast, ~1.2s)
+  const priorityResults = await Promise.all(
+    PRIORITY_IPS.map(async (ip) => {
+      const ok = await pingIp(ip, port, 1200);
+      return ok ? ip : null;
+    })
+  );
+  const priorityFound = priorityResults.find((r) => r !== null);
+  if (priorityFound) {
+    onProgress?.(1, 1);
+    return priorityFound;
+  }
 
-  const allIps = Array.from(ipsToScan);
-  const total = allIps.length;
+  // Phase 2: Scan subnets .2 to .30 in parallel batches of 30
+  const subnets = guessSubnets();
+  const ipsToScan: string[] = [];
+  for (const subnet of subnets) {
+    for (let i = 2; i <= 30; i++) {
+      const ip = `${subnet}.${i}`;
+      if (!PRIORITY_IPS.includes(ip)) {
+        ipsToScan.push(ip);
+      }
+    }
+  }
+
+  const total = ipsToScan.length;
   let checked = 0;
+  const BATCH = 30;
 
-  // Scan in batches of 10 for speed
-  const BATCH = 10;
-  for (let i = 0; i < allIps.length; i += BATCH) {
-    const batch = allIps.slice(i, i + BATCH);
+  for (let i = 0; i < ipsToScan.length; i += BATCH) {
+    const batch = ipsToScan.slice(i, i + BATCH);
     const results = await Promise.all(
       batch.map(async (ip) => {
-        const ok = await pingIp(ip, port);
+        const ok = await pingIp(ip, port, 1200);
         checked++;
         onProgress?.(checked, total);
         return ok ? ip : null;
@@ -120,6 +146,29 @@ export async function scanForMainDevice(
     const found = results.find((r) => r !== null);
     if (found) return found;
   }
+
+  // Phase 3: Extended range .31 to .60 (less common)
+  const extendedIps: string[] = [];
+  for (const subnet of subnets) {
+    for (let i = 31; i <= 60; i++) {
+      extendedIps.push(`${subnet}.${i}`);
+    }
+  }
+
+  for (let i = 0; i < extendedIps.length; i += BATCH) {
+    const batch = extendedIps.slice(i, i + BATCH);
+    const results = await Promise.all(
+      batch.map(async (ip) => {
+        const ok = await pingIp(ip, port, 1200);
+        checked++;
+        onProgress?.(checked, total + extendedIps.length);
+        return ok ? ip : null;
+      })
+    );
+    const found = results.find((r) => r !== null);
+    if (found) return found;
+  }
+
   return null;
 }
 
