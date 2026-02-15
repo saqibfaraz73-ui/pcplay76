@@ -8,8 +8,7 @@
 import { db } from "@/db/appDb";
 import type { Order, Expense, TableOrder, WorkPeriod } from "@/db/schema";
 import type { SyncPayload, PrintJobPayload, SyncEndpoint } from "./sync-types";
-import { btSend } from "@/features/pos/bluetooth-printer";
-import { usbSend } from "@/features/pos/usb-printer";
+
 
 /** Dedup guard for all sync events — prevent processing same event multiple times */
 const recentSyncEvents = new Map<string, number>();
@@ -203,7 +202,7 @@ function getPrintJobHash(data: string): string {
   return `${hash}_${data.length}`;
 }
 
-/** Forward a print job to the Main device's connected printer */
+/** Forward a print job to the Main device's connected printer using section-based routing */
 async function handlePrintJob(job: PrintJobPayload): Promise<void> {
   try {
     // Decode base64 back to raw string
@@ -223,24 +222,17 @@ async function handlePrintJob(job: PrintJobPayload): Promise<void> {
       if (now - t > PRINT_DEDUP_WINDOW_MS * 2) recentPrintJobs.delete(k);
     }
 
-    // Auto-detect Main's actual printer connection
     const settings = await db.settings.get("app");
-    const conn = settings?.printerConnection ?? "none";
-
-    if (conn === "usb") {
-      await usbSend(raw);
-    } else if (conn === "bluetooth") {
-      // Ensure connected to the configured BT printer
-      const { btConnect } = await import("@/features/pos/bluetooth-printer");
-      if (settings?.printerAddress) {
-        await btConnect(settings.printerAddress);
-      }
-      await btSend(raw);
-    } else {
-      console.warn("[Sync] Main device has no printer configured, cannot forward print job");
+    if (!settings) {
+      console.warn("[Sync] Main device has no settings, cannot forward print job");
       return;
     }
-    console.log(`[Sync] Print job forwarded to ${conn} printer`);
+
+    // Use section-based printer routing (same as local printing)
+    const { sendToSectionPrinter } = await import("@/features/pos/printer-routing");
+    const section = job.section ?? "sales";
+    await sendToSectionPrinter(settings, section, raw);
+    console.log(`[Sync] Print job forwarded via section routing (${section})`);
   } catch (e) {
     console.error("[Sync] Failed to forward print job:", e);
     throw e;

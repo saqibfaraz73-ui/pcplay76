@@ -51,8 +51,10 @@ export type SyncResponse = {
 export type PrintJobPayload = {
   /** Base64-encoded ESC/POS raw bytes */
   printData: string;
-  /** "bluetooth" | "usb" */
+  /** "bluetooth" | "usb" — legacy, Main now auto-detects via section routing */
   printerType: "bluetooth" | "usb";
+  /** Which section originated this print job */
+  section?: "sales" | "tables";
 };
 
 /** Connection configuration stored locally on each device */

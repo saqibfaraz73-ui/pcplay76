@@ -77,7 +77,7 @@ export async function printTableKot(args: {
     const encoded = btoa(b64);
     const { getLicense } = await import("@/features/licensing/licensing-db");
     const lic = await getLicense();
-    const res = await sendPrintJob(encoded, "usb", lic.deviceId);
+    const res = await sendPrintJob(encoded, "usb", lic.deviceId, "tables");
     if (!res.success) throw new Error(res.error || "Failed to send KOT to Main device");
     return;
   }
