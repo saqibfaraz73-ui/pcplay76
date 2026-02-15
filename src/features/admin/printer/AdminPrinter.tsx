@@ -252,10 +252,10 @@ export function AdminPrinter() {
   };
 
   // Available printer options for section routing
-  const sectionOptions: { value: PrinterType; label: string; disabled: boolean }[] = [
-    { value: "none", label: "None (No Printing)", disabled: false },
-    { value: "bluetooth", label: `Bluetooth${hasBt ? ` (${btPrinterName || btPrinterAddress})` : ""}`, disabled: !hasBt },
-    { value: "usb", label: `USB${hasUsb ? ` (${usbPrinterLabel || usbDeviceName})` : ""}`, disabled: !hasUsb },
+  const sectionOptions: { value: PrinterType; label: string }[] = [
+    { value: "none", label: "None (No Printing)" },
+    { value: "bluetooth", label: `Bluetooth${hasBt ? ` (${btPrinterName || btPrinterAddress})` : ""}` },
+    { value: "usb", label: `USB${hasUsb ? ` (${usbPrinterLabel || usbDeviceName})` : ""}` },
   ];
 
   return (
@@ -400,7 +400,7 @@ export function AdminPrinter() {
                 className="h-10 w-full rounded-md border bg-background px-3 text-sm"
               >
                 {sectionOptions.map((o) => (
-                  <option key={o.value} value={o.value} disabled={o.disabled}>
+                  <option key={o.value} value={o.value}>
                     {o.label}
                   </option>
                 ))}
@@ -415,7 +415,7 @@ export function AdminPrinter() {
                 className="h-10 w-full rounded-md border bg-background px-3 text-sm"
               >
                 {sectionOptions.map((o) => (
-                  <option key={o.value} value={o.value} disabled={o.disabled}>
+                  <option key={o.value} value={o.value}>
                     {o.label}
                   </option>
                 ))}
