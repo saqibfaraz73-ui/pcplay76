@@ -82,21 +82,21 @@ async function buildEscPosReceipt(
     }
   }
 
-  const center = (s: string) => {
-    const trimmed = s.slice(0, width);
-    const pad = Math.max(0, Math.floor((width - trimmed.length) / 2));
-    return " ".repeat(pad) + trimmed;
-  };
+  // Use ESC/POS hardware centering for clean output on all paper sizes
+  const CENTER_ON = "\x1ba\x01";  // ESC a 1 = center alignment
+  const LEFT_ON = "\x1ba\x00";    // ESC a 0 = left alignment
 
   const headerLines = [
-    center(title),
-    settings.showAddress && settings.address ? center(settings.address) : null,
-    settings.showPhone && settings.phone ? center(settings.phone) : null,
-    center(`Bill #: ${order.receiptNo}`),
-    center(`Date: ${when}`),
-    center(`Prepared By: ${order.cashier}`),
-    center(`Payment: ${payLabel}`),
-    ...deliveryLines,
+    CENTER_ON,
+    title,
+    settings.showAddress && settings.address ? settings.address : null,
+    settings.showPhone && settings.phone ? settings.phone : null,
+    `Bill #: ${order.receiptNo}`,
+    `Date: ${when}`,
+    `Prepared By: ${order.cashier}`,
+    `Payment: ${payLabel}`,
+    ...deliveryLines.map(l => l.trim()),
+    LEFT_ON,
   ].filter(Boolean) as string[];
 
   // Column header: Item / Qty / Total
@@ -114,21 +114,25 @@ async function buildEscPosReceipt(
     return lines;
   });
 
+  const lr = (l: string, r: string) => l.padEnd(width - r.length) + r;
+
   const totals = [
     hr,
-    line(`Subtotal:`.padEnd(width - money(order.subtotal).length) + money(order.subtotal)),
+    lr("Subtotal:", money(order.subtotal)),
     ...(order.discountTotal > 0
-      ? [line(`Discount:`.padEnd(width - money(order.discountTotal).length) + money(order.discountTotal))]
+      ? [lr("Discount:", money(order.discountTotal))]
       : []),
     ...(order.taxAmount > 0
-      ? [line((settings.taxLabel || "Tax") + ":").padEnd(width - money(order.taxAmount).length) + money(order.taxAmount)]
+      ? [lr((settings.taxLabel || "Tax") + ":", money(order.taxAmount))]
       : []),
     ...(order.serviceChargeAmount > 0
-      ? [line((settings.serviceChargeLabel || "Service") + ":").padEnd(width - money(order.serviceChargeAmount).length) + money(order.serviceChargeAmount)]
+      ? [lr((settings.serviceChargeLabel || "Service") + ":", money(order.serviceChargeAmount))]
       : []),
-    line(`Grand Total:`.padEnd(width - money(order.total).length) + money(order.total)),
+    lr("Grand Total:", money(order.total)),
     hr,
-    center("Thank you, come again!"),
+    CENTER_ON,
+    "Thank you, come again!",
+    LEFT_ON,
   ];
 
   const totalContentLines = headerLines.length + 1 + itemLines.length + totals.length + (logoCommands ? 4 : 0);
@@ -154,15 +158,12 @@ async function buildEscPosReceipt(
 /* ---------- Centered KOT receipt (for KOT button) ---------- */
 
 async function buildKotReceipt(order: Order, settings: Settings): Promise<string> {
-  const WIDTH = 32;
+  const WIDTH = settings.paperSize === "80" ? 48 : 32;
   const hr = "-".repeat(WIDTH);
   const money = (n: number) => formatIntMoney(n);
+  const CENTER_ON = "\x1ba\x01";
+  const LEFT_ON = "\x1ba\x00";
 
-  const center = (s = "") => {
-    const trimmed = s.slice(0, WIDTH);
-    const pad = Math.max(0, Math.floor((WIDTH - trimmed.length) / 2));
-    return " ".repeat(pad) + trimmed;
-  };
   const lr = (l = "", r = "") => {
     const sp = WIDTH - l.length - r.length;
     return l + " ".repeat(Math.max(1, sp)) + r;
@@ -176,22 +177,25 @@ async function buildKotReceipt(order: Order, settings: Settings): Promise<string
   out.push("\x1b@");       // init
   out.push("\x1b3\x14");   // tight line spacing (20/180 inch)
 
-  out.push(center("KITCHEN ORDER"));
+  out.push(CENTER_ON);
+  out.push("KITCHEN ORDER");
   out.push(hr);
-  out.push(center(`Bill #: ${order.receiptNo}`));
-  out.push(center(`Cashier: ${order.cashier}`));
-  out.push(center(`Payment: ${order.paymentMethod.toUpperCase()}`));
-  out.push(center(timeStr));
+  out.push(`Bill #: ${order.receiptNo}`);
+  out.push(`Cashier: ${order.cashier}`);
+  out.push(`Payment: ${order.paymentMethod.toUpperCase()}`);
+  out.push(timeStr);
+  out.push(LEFT_ON);
   out.push(hr);
 
   // Items with qty and price
-  out.push("Item".padEnd(16) + "Qty".padStart(5) + "Total".padStart(11));
+  const nameW = WIDTH - 14;
+  out.push("Item".padEnd(nameW) + "Qty".padStart(5) + "Total".padStart(9));
   out.push(hr);
   for (const item of order.lines) {
     out.push(
-      item.name.slice(0, 16).padEnd(16) +
+      item.name.slice(0, nameW).padEnd(nameW) +
       String(item.qty).padStart(5) +
-      money(item.subtotal).padStart(11)
+      money(item.subtotal).padStart(9)
     );
   }
 
