@@ -111,22 +111,26 @@ export async function btSend(text: string) {
     throw new Error("Printer disconnected. Please reconnect in Admin > Printer.");
   }
 
-  // Bluetooth has limited buffer size — send data in chunks to avoid
-  // the printer stalling mid-print (especially with large logo images).
-  const CHUNK_SIZE = 256; // bytes per chunk (smaller for reliable BT transfer)
-  const CHUNK_DELAY = 80; // ms between chunks (allow printer buffer to drain)
+  // For small payloads (normal receipts without logo), send in one shot — this
+  // is how it always worked and is reliable for the sales dashboard etc.
+  // Only use chunked sending for large payloads (>2KB, typically logo data)
+  // to prevent Bluetooth buffer overflow.
+  const LARGE_THRESHOLD = 2048;
 
-  if (text.length <= CHUNK_SIZE) {
+  if (text.length <= LARGE_THRESHOLD) {
     const data = base64FromRawBytes(text);
     await BluetoothSerial.write({ data });
     return;
   }
 
+  // Chunked sending for large payloads (logo images etc.)
+  const CHUNK_SIZE = 256;
+  const CHUNK_DELAY = 80;
+
   for (let offset = 0; offset < text.length; offset += CHUNK_SIZE) {
     const chunk = text.slice(offset, offset + CHUNK_SIZE);
     const data = base64FromRawBytes(chunk);
     await BluetoothSerial.write({ data });
-    // Small delay to let the printer's buffer drain
     if (offset + CHUNK_SIZE < text.length) {
       await new Promise((r) => setTimeout(r, CHUNK_DELAY));
     }
