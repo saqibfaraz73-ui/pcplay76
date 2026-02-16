@@ -27,13 +27,18 @@ function buildAdvanceEscPos(order: AdvanceOrder, settings: Settings): string {
   const money = (n: number) => formatIntMoney(n);
   const title = settings.restaurantName || "SANGI POS";
   const dateStr = fmtDateTime(order.createdAt);
+  const CENTER_ON = "\x1ba\x01";
+  const LEFT_ON = "\x1ba\x00";
+  const lr = (l: string, r: string) => l.padEnd(width - r.length) + r;
 
   const headerLines = [
-    line(title),
-    settings.showAddress && settings.address ? line(settings.address) : null,
-    settings.showPhone && settings.phone ? line(settings.phone) : null,
-    line("ADVANCE ORDER"),
-    line(`Receipt #: ${order.receiptNo}`),
+    CENTER_ON,
+    title,
+    settings.showAddress && settings.address ? settings.address : null,
+    settings.showPhone && settings.phone ? settings.phone : null,
+    "ADVANCE ORDER",
+    `Receipt #: ${order.receiptNo}`,
+    LEFT_ON,
     hr,
     line(`Date: ${dateStr}`),
     order.cashier ? line(`Cashier: ${order.cashier}`) : null,
@@ -56,11 +61,11 @@ function buildAdvanceEscPos(order: AdvanceOrder, settings: Settings): string {
 
   const footerLines = [
     hr,
-    line("Subtotal:".padEnd(width - money(order.subtotal).length) + money(order.subtotal)),
-    order.discountAmount > 0 ? line("Discount:".padEnd(width - money(order.discountAmount).length) + money(order.discountAmount)) : null,
-    line("Total:".padEnd(width - money(order.total).length) + money(order.total)),
-    line("Advance:".padEnd(width - money(order.advancePayment).length) + money(order.advancePayment)),
-    line("Remaining:".padEnd(width - money(order.remainingPayment).length) + money(order.remainingPayment)),
+    lr("Subtotal:", money(order.subtotal)),
+    order.discountAmount > 0 ? lr("Discount:", money(order.discountAmount)) : null,
+    lr("Total:", money(order.total)),
+    lr("Advance:", money(order.advancePayment)),
+    lr("Remaining:", money(order.remainingPayment)),
     hr,
   ].filter(Boolean) as string[];
 
@@ -73,29 +78,33 @@ function buildAdvanceEscPos(order: AdvanceOrder, settings: Settings): string {
 /* ─── Advance Order KOT ─── */
 
 function buildAdvanceKot(order: AdvanceOrder, settings: Settings): string {
-  const WIDTH = 32;
+  const WIDTH = settings.paperSize === "80" ? 48 : 32;
   const hr = "-".repeat(WIDTH);
   const money = (n: number) => formatIntMoney(n);
-  const center = (s = "") => { const pad = Math.max(0, Math.floor((WIDTH - s.length) / 2)); return " ".repeat(pad) + s; };
+  const CENTER_ON = "\x1ba\x01";
+  const LEFT_ON = "\x1ba\x00";
   const lr = (l = "", r = "") => { const sp = WIDTH - l.length - r.length; return l + " ".repeat(Math.max(1, sp)) + r; };
 
   const now = new Date();
   const timeStr = fmtTime12(now.toTimeString().slice(0, 5));
 
+  const nameW = WIDTH - 16;
   const out: string[] = ["\x1b@", "\x1b3\x18"];
-  out.push(center("KITCHEN ORDER"));
+  out.push(CENTER_ON);
+  out.push("KITCHEN ORDER");
   out.push(hr);
-  out.push(center(`Adv #: ${order.receiptNo}`));
-  if (order.cashier) out.push(center(`By: ${order.cashier}`));
-  if (order.customerName) out.push(center(`Customer: ${order.customerName}`));
-  out.push(center(timeStr));
+  out.push(`Adv #: ${order.receiptNo}`);
+  if (order.cashier) out.push(`By: ${order.cashier}`);
+  if (order.customerName) out.push(`Customer: ${order.customerName}`);
+  out.push(timeStr);
+  out.push(LEFT_ON);
   out.push(hr);
 
   // Items with qty and price
-  out.push("Item".padEnd(16) + "Qty".padStart(5) + "Total".padStart(11));
+  out.push("Item".padEnd(nameW) + "Qty".padStart(5) + "Total".padStart(11));
   out.push(hr);
   for (const l of order.lines) {
-    out.push(l.name.slice(0, 16).padEnd(16) + String(l.qty || "").padStart(5) + money(l.subtotal).padStart(11));
+    out.push(l.name.slice(0, nameW).padEnd(nameW) + String(l.qty || "").padStart(5) + money(l.subtotal).padStart(11));
   }
 
   out.push(hr);
@@ -119,13 +128,18 @@ function buildBookingEscPos(order: BookingOrder, settings: Settings): string {
   const money = (n: number) => formatIntMoney(n);
   const title = settings.restaurantName || "SANGI POS";
   const dateStr = fmtDate(order.date);
+  const CENTER_ON = "\x1ba\x01";
+  const LEFT_ON = "\x1ba\x00";
+  const lr = (l: string, r: string) => l.padEnd(width - r.length) + r;
 
   const headerLines = [
-    line(title),
-    settings.showAddress && settings.address ? line(settings.address) : null,
-    settings.showPhone && settings.phone ? line(settings.phone) : null,
-    line("BOOKING"),
-    line(`Receipt #: ${order.receiptNo}`),
+    CENTER_ON,
+    title,
+    settings.showAddress && settings.address ? settings.address : null,
+    settings.showPhone && settings.phone ? settings.phone : null,
+    "BOOKING",
+    `Receipt #: ${order.receiptNo}`,
+    LEFT_ON,
     hr,
     line(`Item: ${order.bookableItemName}`),
     line(`Date: ${dateStr}`),
@@ -138,11 +152,11 @@ function buildBookingEscPos(order: BookingOrder, settings: Settings): string {
   ].filter(Boolean) as string[];
 
   const footerLines = [
-    line("Price:".padEnd(width - money(order.price).length) + money(order.price)),
-    order.discountAmount > 0 ? line("Discount:".padEnd(width - money(order.discountAmount).length) + money(order.discountAmount)) : null,
-    line("Total:".padEnd(width - money(order.total).length) + money(order.total)),
-    line("Advance:".padEnd(width - money(order.advancePayment).length) + money(order.advancePayment)),
-    line("Remaining:".padEnd(width - money(order.remainingPayment).length) + money(order.remainingPayment)),
+    lr("Price:", money(order.price)),
+    order.discountAmount > 0 ? lr("Discount:", money(order.discountAmount)) : null,
+    lr("Total:", money(order.total)),
+    lr("Advance:", money(order.advancePayment)),
+    lr("Remaining:", money(order.remainingPayment)),
     hr,
   ].filter(Boolean) as string[];
 
@@ -204,22 +218,25 @@ export async function printBookingReceipt(order: BookingOrder) {
 /* ─── Booking KOT ─── */
 
 export function buildBookingKot(order: BookingOrder, settings: Settings): string {
-  const WIDTH = 32;
+  const WIDTH = settings.paperSize === "80" ? 48 : 32;
   const hr = "-".repeat(WIDTH);
   const money = (n: number) => formatIntMoney(n);
-  const center = (s = "") => { const pad = Math.max(0, Math.floor((WIDTH - s.length) / 2)); return " ".repeat(pad) + s; };
+  const CENTER_ON = "\x1ba\x01";
+  const LEFT_ON = "\x1ba\x00";
   const lr = (l = "", r = "") => { const sp = WIDTH - l.length - r.length; return l + " ".repeat(Math.max(1, sp)) + r; };
 
   const now = new Date();
   const timeStr = fmtTime12(now.toTimeString().slice(0, 5));
 
   const out: string[] = ["\x1b@", "\x1b3\x18"];
-  out.push(center("KITCHEN ORDER"));
+  out.push(CENTER_ON);
+  out.push("KITCHEN ORDER");
   out.push(hr);
-  out.push(center(`Bkg #: ${order.receiptNo}`));
-  if (order.cashier) out.push(center(`By: ${order.cashier}`));
-  if (order.customerName) out.push(center(`Customer: ${order.customerName}`));
-  out.push(center(timeStr));
+  out.push(`Bkg #: ${order.receiptNo}`);
+  if (order.cashier) out.push(`By: ${order.cashier}`);
+  if (order.customerName) out.push(`Customer: ${order.customerName}`);
+  out.push(timeStr);
+  out.push(LEFT_ON);
   out.push(hr);
   out.push(lr("Item:", order.bookableItemName));
   out.push(lr("Price:", money(order.price)));

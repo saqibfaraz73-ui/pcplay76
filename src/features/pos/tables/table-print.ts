@@ -63,7 +63,7 @@ export async function printTableKot(args: {
     throw new Error("Settings not loaded. Please configure printer in Printer settings.");
   }
 
-  const escPos = buildKotEscPos(tableNumber, waiterName, items);
+  const escPos = buildKotEscPos(tableNumber, waiterName, items, settings);
 
   // Dedup: prevent duplicate prints from rapid taps or retries
   if (isDuplicatePrint(escPos)) return;
@@ -110,16 +110,14 @@ function buildKotHtml(tableNumber: string, waiterName: string, items: KotItem[])
   `;
 }
 
-function buildKotEscPos(tableNumber: string, waiterName: string, items: KotItem[]): string {
-  const width = 32; // 58mm thermal printer
+function buildKotEscPos(tableNumber: string, waiterName: string, items: KotItem[], settings?: Settings | null): string {
+  const width = settings?.paperSize === "80" ? 48 : 32;
   const hr = "-".repeat(width);
   const now = new Date();
   const timeStr = fmtTime12(now.toTimeString().slice(0, 5));
 
-  const center = (s: string) => {
-    const pad = Math.max(0, Math.floor((width - s.length) / 2));
-    return " ".repeat(pad) + s;
-  };
+  const CENTER_ON = "\x1ba\x01";
+  const LEFT_ON = "\x1ba\x00";
 
   const out: string[] = [];
   
@@ -127,12 +125,14 @@ function buildKotEscPos(tableNumber: string, waiterName: string, items: KotItem[
   out.push("\x1b@");         // init
   out.push("\x1b3\x14");     // tight line spacing (20/180 inch)
   
-  // Header - centered
-  out.push(center("KITCHEN ORDER"));
+  // Header - hardware centered
+  out.push(CENTER_ON);
+  out.push("KITCHEN ORDER");
   out.push(hr);
-  out.push(center(`Table: ${tableNumber}`));
-  out.push(center(`Waiter: ${waiterName}`));
-  out.push(center(timeStr));
+  out.push(`Table: ${tableNumber}`);
+  out.push(`Waiter: ${waiterName}`);
+  out.push(timeStr);
+  out.push(LEFT_ON);
   out.push(hr);
 
   // Items - name and quantity only
