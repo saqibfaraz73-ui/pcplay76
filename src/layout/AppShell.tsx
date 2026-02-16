@@ -158,37 +158,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                             );
                           })}
                           {!isWaiter && !isRecoveryAgent && (
-                            <>
-                              <Link to="/pos/orders" className={cn("flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors", isActive("/pos/orders") ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground")}>
-                                <ClipboardList className="h-4 w-4" /> Orders
-                              </Link>
-                              <Link to="/pos/expenses" className={cn("flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors", isActive("/pos/expenses") ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground")}>
-                                <DollarSign className="h-4 w-4" /> Expenses
-                              </Link>
-                              <Link to="/pos/credit-lodge" className={cn("flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors", isActive("/pos/credit-lodge") ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground")}>
-                                <Users className="h-4 w-4" /> Credit Lodge
-                              </Link>
-                              <Link to="/pos/party-lodge" className={cn("flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors", isActive("/pos/party-lodge") ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground")}>
-                                <Truck className="h-4 w-4" /> Party Lodge
-                              </Link>
-                            </>
-                          )}
-                          {(tableManagementEnabled || isWaiter) && (
-                            <Link to="/pos/tables" className={cn("flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors", isActive("/pos/tables") ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground")}>
-                              <UtensilsCrossed className="h-4 w-4" /> Tables
-                              {pendingTableCount > 0 && (
-                                <span className="ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-destructive-foreground">{pendingTableCount}</span>
-                              )}
-                            </Link>
-                          )}
-                          {advanceBookingEnabled && !isWaiter && !isRecoveryAgent && (
-                            <Link to="/pos/advance-booking" className={cn("flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors", isActive("/pos/advance-booking") ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground")}>
-                              <CalendarCheck className="h-4 w-4" /> Advance/Booking
-                            </Link>
-                          )}
-                          {recoveryEnabled && (isAdmin || isCashier || isRecoveryAgent) && (
-                            <Link to="/recovery" className={cn("flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors", isActive("/recovery") ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground")}>
-                              <Shield className="h-4 w-4" /> Recovery
+                            <Link to="/pos/orders" className={cn("flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors", isActive("/pos/orders") ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground")}>
+                              <ClipboardList className="h-4 w-4" /> Orders
                             </Link>
                           )}
 
@@ -299,37 +270,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     </Link>
                   ))}
                   {!isWaiter && !isRecoveryAgent && (
-                    <>
-                      <Link to="/pos/orders" className={cn("rounded-md px-3 py-2 text-sm transition-colors", isActive("/pos/orders") ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground")}>
-                        Orders
-                      </Link>
-                      <Link to="/pos/expenses" className={cn("rounded-md px-3 py-2 text-sm transition-colors", isActive("/pos/expenses") ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground")}>
-                        Expenses
-                      </Link>
-                      <Link to="/pos/credit-lodge" className={cn("rounded-md px-3 py-2 text-sm transition-colors", isActive("/pos/credit-lodge") ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground")}>
-                        Credit Lodge
-                      </Link>
-                      <Link to="/pos/party-lodge" className={cn("rounded-md px-3 py-2 text-sm transition-colors", isActive("/pos/party-lodge") ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground")}>
-                        Party Lodge
-                      </Link>
-                    </>
-                  )}
-                  {(tableManagementEnabled || isWaiter) && (
-                    <Link to="/pos/tables" className={cn("relative rounded-md px-3 py-2 text-sm transition-colors", isActive("/pos/tables") ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground")}>
-                      Tables
-                      {pendingTableCount > 0 && (
-                        <span className="absolute -top-1 -right-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-0.5 text-[10px] font-bold text-destructive-foreground">{pendingTableCount}</span>
-                      )}
-                    </Link>
-                  )}
-                  {advanceBookingEnabled && !isWaiter && !isRecoveryAgent && (
-                    <Link to="/pos/advance-booking" className={cn("rounded-md px-3 py-2 text-sm transition-colors", isActive("/pos/advance-booking") ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground")}>
-                      Advance/Booking
-                    </Link>
-                  )}
-                  {recoveryEnabled && (isAdmin || isCashier || isRecoveryAgent) && (
-                    <Link to="/recovery" className={cn("rounded-md px-3 py-2 text-sm transition-colors", isActive("/recovery") ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground")}>
-                      Recovery
+                    <Link to="/pos/orders" className={cn("rounded-md px-3 py-2 text-sm transition-colors", isActive("/pos/orders") ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground")}>
+                      Orders
                     </Link>
                   )}
                   {isCashier && cashierReportsEnabled && (
