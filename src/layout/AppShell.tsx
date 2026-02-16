@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/auth/AuthProvider";
-import { Menu, Printer, BarChart3, Settings, ShoppingCart, ClipboardList, Users, DollarSign, Truck, UtensilsCrossed, CalendarCheck, Wifi, Shield, Home } from "lucide-react";
+import { Menu, Printer, BarChart3, Settings, ShoppingCart, ClipboardList, Users, DollarSign, Truck, UtensilsCrossed, CalendarCheck, Wifi, Shield, Home, Info } from "lucide-react";
 import { useAndroidBackExitConfirm } from "@/hooks/useAndroidBackExitConfirm";
 import appLogo from "@/assets/app-logo.jpg";
 import { db } from "@/db/appDb";
@@ -236,6 +236,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                               })}
                             </>
                           ) : null}
+
+                          <div className="mt-3 mb-1 px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                            Info
+                          </div>
+                          <Link to="/about" className={cn("flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors", isActive("/about") ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground")}>
+                            <Info className="h-4 w-4" /> About App
+                          </Link>
                         </nav>
 
                         <div className="rounded-md border bg-muted/20 p-3 text-sm">
@@ -320,6 +327,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                         </Link>
                       ))
                     : null}
+                  <Link to="/about" className={cn("rounded-md px-3 py-2 text-sm transition-colors", isActive("/about") ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground")}>
+                    About
+                  </Link>
                 </nav>
 
                 <div className="hidden md:block">
