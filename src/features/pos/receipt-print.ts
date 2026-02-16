@@ -31,7 +31,7 @@ function escapeHtml(s: string) {
 
 // Minimal feed before cut — no extra paper waste
 function getFeedLinesForSize(_settings: Settings, _contentLines: number): number {
-  return 2;
+  return 0;
 }
 
 /* ---------- Classic ESC/POS receipt (for Print button) ---------- */
@@ -134,19 +134,21 @@ async function buildEscPosReceipt(
   const totalContentLines = headerLines.length + 1 + itemLines.length + totals.length + (logoCommands ? 4 : 0);
   const feedCount = getFeedLinesForSize(settings, totalContentLines);
 
-  return [
+  const parts: string[] = [
     "\x1b@",
     "\x1b3\x14",   // tight line spacing (20/180 inch ≈ 2.8mm)
-    logoCommands,
+  ];
+  if (logoCommands) parts.push(logoCommands);
+  parts.push(
     headerLines.join("\n"),
-    "",
     colHeader,
     hr,
     itemLines.join("\n"),
     totals.join("\n"),
-    "\n".repeat(feedCount),
-    "\x1dV\x41\x03",
-  ].join("\n");
+  );
+  if (feedCount > 0) parts.push("\n".repeat(feedCount));
+  parts.push("\x1dV\x41\x03");
+  return parts.join("\n");
 }
 
 /* ---------- Centered KOT receipt (for KOT button) ---------- */
