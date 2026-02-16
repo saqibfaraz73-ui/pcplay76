@@ -21,7 +21,8 @@ import { WAGE_PERIODS } from "@/db/schema";
 import { useToast } from "@/hooks/use-toast";
 import { makeId } from "@/features/admin/id";
 import { formatIntMoney, parseNonDecimalInt } from "@/features/pos/format";
-import { Plus, Trash2, ArrowLeft, Wallet, ArrowDownCircle, ArrowUpCircle, MinusCircle, PlusCircle } from "lucide-react";
+import { Plus, Trash2, ArrowLeft, Wallet, ArrowDownCircle, ArrowUpCircle, MinusCircle, PlusCircle, Share2 } from "lucide-react";
+import { jsPDF } from "jspdf";
 
 interface Props {
   workPeriodId?: string;
@@ -281,6 +282,65 @@ export default function LabourWagesSection({ workPeriodId, onBack }: Props) {
     return "text-orange-500";
   };
 
+  const shareLabourPdf = async (labour: Labour) => {
+    const txs = transactions.filter((t) => t.labourId === labour.id);
+    if (txs.length === 0) {
+      toast({ title: "No transactions to share" });
+      return;
+    }
+    const doc = new jsPDF({ unit: "mm", format: "a4" });
+    const pw = doc.internal.pageSize.getWidth();
+    let y = 15;
+    const lm = 14;
+    const addPage = () => { doc.addPage(); y = 15; };
+    const checkPage = (need: number) => { if (y + need > 280) addPage(); };
+
+    doc.setFontSize(14);
+    doc.setFont("helvetica", "bold");
+    doc.text(`${labour.name} — Wage Log`, pw / 2, y, { align: "center" });
+    y += 7;
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "normal");
+    doc.text(`Wage: ${formatIntMoney(labour.wageAmount)} (${wagePeriodLabel(labour.wagePeriod)})`, pw / 2, y, { align: "center" });
+    y += 5;
+    doc.text(`Advance Balance: ${formatIntMoney(labour.advanceBalance)}  |  Short Balance: ${formatIntMoney(labour.shortBalance)}`, pw / 2, y, { align: "center" });
+    y += 8;
+
+    // Table header
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "bold");
+    doc.text("Date", lm, y);
+    doc.text("Type", lm + 35, y);
+    doc.text("Amount", lm + 80, y);
+    doc.text("Note", lm + 110, y);
+    y += 1;
+    doc.setDrawColor(180);
+    doc.line(lm, y, pw - lm, y);
+    y += 4;
+
+    doc.setFont("helvetica", "normal");
+    for (const tx of txs) {
+      checkPage(6);
+      const d = new Date(tx.createdAt);
+      doc.text(`${d.toLocaleDateString()} ${d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`, lm, y);
+      doc.text(txTypeLabel(tx.type), lm + 35, y);
+      doc.text(formatIntMoney(tx.amount), lm + 80, y);
+      doc.text(tx.note || "-", lm + 110, y, { maxWidth: pw - lm - 115 });
+      y += 5;
+    }
+
+    const blob = doc.output("blob");
+    const file = new File([blob], `${labour.name}-wage-log.pdf`, { type: "application/pdf" });
+    if (navigator.canShare?.({ files: [file] })) {
+      await navigator.share({ files: [file], title: `${labour.name} Wage Log` });
+    } else {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = file.name; a.click();
+      URL.revokeObjectURL(url);
+    }
+  };
+
   // Detail view for selected labour
   if (selectedLabour) {
     const fresh = labours.find((l) => l.id === selectedLabour.id) || selectedLabour;
@@ -296,6 +356,9 @@ export default function LabourWagesSection({ workPeriodId, onBack }: Props) {
               {wagePeriodLabel(fresh.wagePeriod)} — {formatIntMoney(fresh.wageAmount)}
             </p>
           </div>
+          <Button variant="outline" size="sm" onClick={() => void shareLabourPdf(fresh)} className="gap-1">
+            <Share2 className="h-3.5 w-3.5" /> Share
+          </Button>
           <Button variant="outline" size="sm" onClick={() => openEditLabour(fresh)}>Edit</Button>
         </div>
 
