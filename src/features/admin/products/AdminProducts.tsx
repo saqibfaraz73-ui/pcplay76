@@ -260,9 +260,17 @@ export function AdminProducts() {
 
   const stopSkuScanner = React.useCallback(() => {
     if (html5QrRef.current) {
-      html5QrRef.current.stop().catch(() => {});
-      html5QrRef.current.clear();
+      const qr = html5QrRef.current;
       html5QrRef.current = null;
+      try {
+        if (qr.isScanning) {
+          qr.stop().then(() => { try { qr.clear(); } catch {} }).catch(() => {});
+        } else {
+          try { qr.clear(); } catch {}
+        }
+      } catch {
+        // ignore
+      }
     }
     setSkuScanning(false);
   }, []);
