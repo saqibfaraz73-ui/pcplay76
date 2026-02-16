@@ -106,6 +106,8 @@ export function PosTablesManager() {
   const [priceEditItemId, setPriceEditItemId] = React.useState<string | null>(null);
   const [priceEditValue, setPriceEditValue] = React.useState<number>(0);
 
+  const [isSubKotOnly, setIsSubKotOnly] = React.useState(false);
+
   const canCreateCustomers = session?.role === "admin";
 
   const load = React.useCallback(async () => {
@@ -113,6 +115,15 @@ export function PosTablesManager() {
     const s = await db.settings.get("app");
     setSettings(s ?? null);
     setShowItemImages(s?.posShowItemImages ?? true);
+
+    // Check if sub device with KOT-only mode
+    try {
+      const { getSyncConfig } = await import("@/features/sync/sync-utils");
+      const config = getSyncConfig();
+      setIsSubKotOnly(config.role === "sub" && !!s?.subKotOnly);
+    } catch {
+      setIsSubKotOnly(false);
+    }
     
     const [cats, its, inv, custs, tbls, wtrs, orders] = await Promise.all([
       db.categories.orderBy("createdAt").toArray(),
@@ -1330,13 +1341,15 @@ export function PosTablesManager() {
             </Button>
             {creditCustomerId || newCustomerName.trim() ? (
               <>
-                <Button
-                  className="bg-green-600 hover:bg-green-700 text-white"
-                  onClick={() => void completeCheckout("credit", true)}
-                >
-                  <Printer className="h-4 w-4 mr-1" />
-                  Print Credit
-                </Button>
+                {!isSubKotOnly && (
+                  <Button
+                    className="bg-green-600 hover:bg-green-700 text-white"
+                    onClick={() => void completeCheckout("credit", true)}
+                  >
+                    <Printer className="h-4 w-4 mr-1" />
+                    Print Credit
+                  </Button>
+                )}
                 <Button
                   className="bg-orange-500 hover:bg-orange-600 text-white"
                   onClick={() => void completeCheckout("credit", false)}
@@ -1347,13 +1360,15 @@ export function PosTablesManager() {
               </>
             ) : (
               <>
-                <Button
-                  className="bg-green-600 hover:bg-green-700 text-white"
-                  onClick={() => void completeCheckout("cash", true)}
-                >
-                  <Printer className="h-4 w-4 mr-1" />
-                  Print
-                </Button>
+                {!isSubKotOnly && (
+                  <Button
+                    className="bg-green-600 hover:bg-green-700 text-white"
+                    onClick={() => void completeCheckout("cash", true)}
+                  >
+                    <Printer className="h-4 w-4 mr-1" />
+                    Print
+                  </Button>
+                )}
                 <Button
                   className="bg-orange-500 hover:bg-orange-600 text-white"
                   onClick={() => void completeCheckout("cash", false)}
