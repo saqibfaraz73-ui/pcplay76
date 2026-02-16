@@ -227,9 +227,10 @@ export default function PosDashboard() {
   // Filter items: if category selected, filter by category; then apply search
   const filteredByCategory = activeCategoryId ? items.filter((i) => i.categoryId === activeCategoryId) : items;
   const q = itemQuery.trim().toLowerCase();
+  const skuSearchEnabled = posSettings?.skuSearchEnabled ?? false;
   // Search across ALL items (ignoring category filter when searching)
   const filtered = q 
-    ? items.filter((i) => i.name.toLowerCase().includes(q)) 
+    ? items.filter((i) => i.name.toLowerCase().includes(q) || (skuSearchEnabled && i.sku?.toLowerCase().includes(q))) 
     : filteredByCategory;
 
   const subtotal = cart.reduce((sum, l) => sum + l.qty * l.unitPrice, 0);
@@ -739,7 +740,7 @@ export default function PosDashboard() {
             <Input
               value={itemQuery}
               onChange={(e) => setItemQuery(e.target.value)}
-              placeholder="Search all items…"
+              placeholder={skuSearchEnabled ? "Search by name or SKU…" : "Search all items…"}
               aria-label="Search items"
               className="w-full"
             />
@@ -789,6 +790,9 @@ export default function PosDashboard() {
                       </div>
                     ) : null}
                     <div className="text-xs font-semibold leading-tight truncate">{i.name}</div>
+                    {skuSearchEnabled && i.sku && (
+                      <div className="text-[10px] text-muted-foreground truncate">SKU: {i.sku}</div>
+                    )}
                     <div className="text-sm font-bold">{formatIntMoney(i.price)}</div>
                     {hasVariants && (
                       <div className="text-[10px] text-primary">+{i.variations!.length} variant{i.variations!.length > 1 ? "s" : ""}</div>

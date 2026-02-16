@@ -317,6 +317,7 @@ export type Settings = {
   waiterPrinterEnabled?: boolean; // if true, waiters can access printer settings
   recoveryPrinterEnabled?: boolean; // if true, recovery agents can access printer settings
   salesDashboardEnabled?: boolean; // if true, sales dashboard is shown (default true)
+  skuSearchEnabled?: boolean; // if true, show SKU on POS items and allow search by SKU
   updatedAt: number;
 };
 
