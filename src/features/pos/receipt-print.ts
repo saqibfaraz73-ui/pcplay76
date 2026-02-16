@@ -97,7 +97,8 @@ async function buildEscPosReceipt(
     `Prepared By: ${order.cashier}`,
     `Payment: ${payLabel}`,
     ...deliveryLines.map(l => l.trim()),
-    LEFT_ON,
+    // For USB: keep center alignment for items too; for BT: switch to left
+    ...(opts?.forUsb ? [] : [LEFT_ON]),
   ].filter(Boolean) as string[];
 
   // Column header: Item / Qty / Total
@@ -131,17 +132,26 @@ async function buildEscPosReceipt(
       : []),
     lr("Grand Total:", money(order.total)),
     hr,
-    CENTER_ON,
+    // For USB: already centered; for BT: switch to center for footer
+    ...(opts?.forUsb ? [] : [CENTER_ON]),
     "Thank you, come again!",
-    LEFT_ON,
+    ...(opts?.forUsb ? [] : [LEFT_ON]),
   ];
 
   const totalContentLines = headerLines.length + 1 + itemLines.length + totals.length + (logoCommands ? 4 : 0);
   const feedCount = getFeedLinesForSize(settings, totalContentLines);
 
   // Init commands joined without newlines to avoid blank lines at top
-  let receipt = "\x1b@" + "\x1b3\x14";
-  if (logoCommands) receipt += logoCommands;
+  let receipt = "\x1b@";
+  if (opts?.forUsb && logoCommands) {
+    // For USB: set zero line spacing before logo to eliminate gap above it
+    receipt += "\x1b3\x00";
+    receipt += logoCommands;
+    receipt += "\x1b3\x14"; // restore normal line spacing after logo
+  } else {
+    receipt += "\x1b3\x14";
+    if (logoCommands) receipt += logoCommands;
+  }
   receipt += headerLines.join("\n") + "\n";
   receipt += colHeader + "\n";
   receipt += hr + "\n";
