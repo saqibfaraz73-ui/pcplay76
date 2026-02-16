@@ -199,7 +199,31 @@ export default function LabourWagesSection({ workPeriodId, onBack }: Props) {
         tx.expenseId = expense.id;
         await db.labourTransactions.update(tx.id, { expenseId: expense.id });
       } else if (txType === "wage") {
-        // Normal wage paid
+        const diff = txAmount - txLabour.wageAmount;
+        if (diff > 0) {
+          // Paid more than fixed wage — offset short first, remainder goes to advance
+          const shortBal = txLabour.shortBalance;
+          if (shortBal > 0) {
+            const offset = Math.min(diff, shortBal);
+            const remainder = diff - offset;
+            updates.shortBalance = shortBal - offset;
+            if (remainder > 0) updates.advanceBalance = txLabour.advanceBalance + remainder;
+          } else {
+            updates.advanceBalance = txLabour.advanceBalance + diff;
+          }
+        } else if (diff < 0) {
+          // Paid less than fixed wage — offset advance first, remainder goes to short
+          const gap = Math.abs(diff);
+          const advBal = txLabour.advanceBalance;
+          if (advBal > 0) {
+            const offset = Math.min(gap, advBal);
+            const remainder = gap - offset;
+            updates.advanceBalance = advBal - offset;
+            if (remainder > 0) updates.shortBalance = txLabour.shortBalance + remainder;
+          } else {
+            updates.shortBalance = txLabour.shortBalance + gap;
+          }
+        }
       }
 
       if (Object.keys(updates).length > 0) {
