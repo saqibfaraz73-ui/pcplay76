@@ -23,7 +23,6 @@ import { SyncStatusIndicator } from "@/features/sync/SyncStatusIndicator";
 
 const navItems = [
   { to: "/home", label: "Home", icon: Home },
-  { to: "/pos", label: "Sales", icon: ShoppingCart },
   { to: "/admin", label: "Admin", icon: ClipboardList, adminOnly: true },
 ];
 
