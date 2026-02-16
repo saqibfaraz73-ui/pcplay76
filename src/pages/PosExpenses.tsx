@@ -1,5 +1,6 @@
 import React from "react";
 import jsPDF from "jspdf";
+import LabourWagesSection from "@/features/pos/LabourWagesSection";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -39,6 +40,7 @@ export default function PosExpenses() {
   const [settings, setSettings] = React.useState<Settings | null>(null);
   const [addOpen, setAddOpen] = React.useState(false);
   const [deleteTarget, setDeleteTarget] = React.useState<Expense | null>(null);
+  const [showLabour, setShowLabour] = React.useState(false);
 
   // Upgrade dialog
   const [upgradeOpen, setUpgradeOpen] = React.useState(false);
@@ -228,6 +230,10 @@ export default function PosExpenses() {
     await refresh();
   };
 
+  if (showLabour) {
+    return <LabourWagesSection workPeriodId={currentWorkPeriod?.id} onBack={() => setShowLabour(false)} />;
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -334,7 +340,14 @@ export default function PosExpenses() {
                   <button
                     key={preset}
                     type="button"
-                    onClick={() => setExpenseName(preset)}
+                    onClick={() => {
+                      if (preset === "Labour/Wages") {
+                        setAddOpen(false);
+                        setShowLabour(true);
+                        return;
+                      }
+                      setExpenseName(preset);
+                    }}
                     className={`rounded-md border px-3 py-2 text-sm text-left transition-colors ${
                       expenseName === preset
                         ? "border-primary bg-primary/10 font-medium"
