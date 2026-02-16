@@ -121,12 +121,14 @@ export default function PosDashboard() {
   const [editTaxAmount, setEditTaxAmount] = React.useState<number | null>(null);
   const [editServiceAmount, setEditServiceAmount] = React.useState<number | null>(null);
 
-  // Barcode scanner for POS search
-   const [posScanning, setPosScanning] = React.useState(false);
+  // Barcode scanner for POS search — fullscreen continuous mode
+  const [posScanning, setPosScanning] = React.useState(false);
+  const [scanCount, setScanCount] = React.useState(0);
   const posScannerRef = React.useRef<HTMLDivElement>(null);
   const posQrRef = React.useRef<Html5Qrcode | null>(null);
   const itemsRef = React.useRef(items);
-  const scanHandledRef = React.useRef(false);
+  const lastScannedRef = React.useRef<string>("");
+  const lastScanTimeRef = React.useRef(0);
   React.useEffect(() => { itemsRef.current = items; }, [items]);
 
   const stopPosScanner = React.useCallback(() => {
@@ -145,14 +147,17 @@ export default function PosDashboard() {
       posScannerRef.current.innerHTML = "";
     }
     setPosScanning(false);
+    setScanCount(0);
   }, []);
 
   const startPosScanner = React.useCallback(() => {
-    scanHandledRef.current = false;
+    lastScannedRef.current = "";
+    lastScanTimeRef.current = 0;
+    setScanCount(0);
     setPosScanning(true);
   }, []);
 
-  // Start scanner after the div becomes visible
+  // Start scanner after the overlay becomes visible
   React.useEffect(() => {
     if (!posScanning || !posScannerRef.current || posQrRef.current) return;
     let cancelled = false;
@@ -171,8 +176,8 @@ export default function PosDashboard() {
         { facingMode: "environment" },
         {
           fps: 15,
-          qrbox: { width: 280, height: 120 },
-          aspectRatio: 2.5,
+          qrbox: { width: 280, height: 140 },
+          aspectRatio: 1.0,
           formatsToSupport: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15] as any,
           videoConstraints: {
             facingMode: "environment",
@@ -182,19 +187,22 @@ export default function PosDashboard() {
           },
         } as any,
         (decodedText) => {
-          if (scanHandledRef.current) return;
-          scanHandledRef.current = true;
-          playScanBeep();
-          stopPosScanner();
+          const now = Date.now();
           const scanned = decodedText.trim().toLowerCase();
+          // Debounce: ignore same code within 1.5s
+          if (scanned === lastScannedRef.current && now - lastScanTimeRef.current < 1500) return;
+          lastScannedRef.current = scanned;
+          lastScanTimeRef.current = now;
+
+          playScanBeep();
           const currentItems = itemsRef.current;
           const matchedItem = currentItems.find((i) => i.sku?.toLowerCase() === scanned);
           if (matchedItem) {
             addToCart(matchedItem);
-            toast({ title: "Item scanned", description: matchedItem.name });
+            setScanCount((c) => c + 1);
+            toast({ title: "✓ Scanned", description: matchedItem.name });
           } else {
-            setItemQuery(decodedText);
-            toast({ title: "SKU not found", description: `No item with SKU "${decodedText}". Showing search results.`, variant: "destructive" });
+            toast({ title: "SKU not found", description: `No item with SKU "${decodedText}"`, variant: "destructive" });
           }
         },
         () => {},
@@ -212,7 +220,6 @@ export default function PosDashboard() {
       });
     };
 
-    // Longer delay to ensure DOM is fully painted before camera init
     const timer = setTimeout(attemptStart, 300);
     return () => { cancelled = true; clearTimeout(timer); };
   }, [posScanning, stopPosScanner]);
@@ -846,18 +853,37 @@ export default function PosDashboard() {
               />
               {skuSearchEnabled && (
                 <Button
-                  variant={posScanning ? "destructive" : "outline"}
+                  variant="outline"
                   size="icon"
                   className="shrink-0"
-                  onClick={() => (posScanning ? stopPosScanner() : startPosScanner())}
+                  onClick={startPosScanner}
                   title="Scan barcode"
                 >
                   <ScanBarcode className="h-4 w-4" />
                 </Button>
               )}
             </div>
-            <div ref={posScannerRef} className={posScanning ? "rounded-md overflow-hidden max-w-full aspect-[5/2]" : "hidden"} />
           </div>
+
+          {/* Fullscreen barcode scanner overlay */}
+          {posScanning && (
+            <div className="fixed inset-0 z-50 flex flex-col bg-black">
+              <div ref={posScannerRef} className="flex-1 w-full" />
+              {/* Scan guide overlay */}
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <div className="w-72 h-36 border-2 border-white/70 rounded-lg" />
+              </div>
+              {/* Bottom bar */}
+              <div className="absolute bottom-0 left-0 right-0 flex items-center justify-between px-4 py-5 bg-black/70">
+                <div className="text-white text-sm">
+                  {scanCount > 0 ? `${scanCount} item${scanCount > 1 ? "s" : ""} scanned` : "Point camera at barcode"}
+                </div>
+                <Button variant="secondary" size="sm" onClick={stopPosScanner}>
+                  Done
+                </Button>
+              </div>
+            </div>
+          )}
 
           {/* Categories */}
           <Card className="p-2">
