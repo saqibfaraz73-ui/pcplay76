@@ -83,6 +83,7 @@ export function AdminSettings() {
   const [waiterPrinterEnabled, setWaiterPrinterEnabled] = React.useState(false);
   const [recoveryPrinterEnabled, setRecoveryPrinterEnabled] = React.useState(false);
   const [salesDashboardEnabled, setSalesDashboardEnabled] = React.useState(true);
+  const [skuSearchEnabled, setSkuSearchEnabled] = React.useState(false);
   const [deliveryEnabled, setDeliveryEnabled] = React.useState(false);
   const [recoveryEnabled, setRecoveryEnabled] = React.useState(false);
 
@@ -150,6 +151,7 @@ export function AdminSettings() {
     setWaiterPrinterEnabled(!!s?.waiterPrinterEnabled);
     setRecoveryPrinterEnabled(!!s?.recoveryPrinterEnabled);
     setSalesDashboardEnabled(s?.salesDashboardEnabled !== false); // default true
+    setSkuSearchEnabled(!!s?.skuSearchEnabled);
     setDeliveryEnabled(!!s?.deliveryEnabled);
     setRecoveryEnabled(!!s?.recoveryEnabled);
     setLogoPath(s.receiptLogoPath);
@@ -238,6 +240,7 @@ export function AdminSettings() {
         waiterPrinterEnabled,
         recoveryPrinterEnabled,
         salesDashboardEnabled,
+        skuSearchEnabled,
         deliveryEnabled,
         recoveryEnabled,
         receiptLogoPath: logoPath,
@@ -453,6 +456,13 @@ export function AdminSettings() {
                 <div className="text-xs text-muted-foreground">If disabled, POS will hide product images for faster performance.</div>
               </div>
               <Switch checked={posShowItemImages} onCheckedChange={setPosShowItemImages} />
+            </div>
+            <div className="flex items-center justify-between gap-3 rounded-md border p-3">
+              <div>
+                <div className="text-sm font-medium">Enable SKU / Barcode search</div>
+                <div className="text-xs text-muted-foreground">Show SKU on POS items and allow searching by SKU/barcode.</div>
+              </div>
+              <Switch checked={skuSearchEnabled} onCheckedChange={setSkuSearchEnabled} />
             </div>
             <div className="flex items-center justify-between gap-3 rounded-md border p-3">
               <div>
