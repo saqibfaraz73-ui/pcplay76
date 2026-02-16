@@ -748,7 +748,7 @@ export default function PosAdvanceBooking() {
                         </>
                       )}
                       <Button size="sm" variant="ghost" className="gap-1" onClick={() => void reprintAdvance(o)}><Printer className="h-3 w-3" /> Print</Button>
-                      <Button size="sm" variant="ghost" className="gap-1" onClick={async () => { try { await printAdvanceKot(o); toast({ title: "KOT printed" }); } catch (e: any) { toast({ title: "KOT failed", description: e?.message, variant: "destructive" }); } }}><FileText className="h-3 w-3" /> KOT</Button>
+                      
                       <Button size="sm" variant="ghost" className="gap-1" onClick={() => void shareAdvancePdf(o)}><Share2 className="h-3 w-3" /> Share PDF</Button>
                     </div>
                   </CardContent>
@@ -843,7 +843,7 @@ export default function PosAdvanceBooking() {
                         </>
                       )}
                       <Button size="sm" variant="ghost" className="gap-1" onClick={() => void reprintBooking(o)}><Printer className="h-3 w-3" /> Print</Button>
-                      <Button size="sm" variant="ghost" className="gap-1" onClick={async () => { try { await printBookingKot(o); toast({ title: "KOT printed" }); } catch (e: any) { toast({ title: "KOT failed", description: e?.message, variant: "destructive" }); } }}><FileText className="h-3 w-3" /> KOT</Button>
+                      
                       <Button size="sm" variant="ghost" className="gap-1" onClick={() => void shareBookingPdf(o)}><Share2 className="h-3 w-3" /> Share PDF</Button>
                     </div>
                   </CardContent>
@@ -959,7 +959,7 @@ export default function PosAdvanceBooking() {
           </div>
           <DialogFooter className="flex flex-wrap gap-2">
             <Button variant="outline" onClick={() => setAdvDlg(false)}>Cancel</Button>
-            <Button variant="outline" className="gap-1" onClick={() => void saveAndKotAdvance()}><FileText className="h-4 w-4" /> KOT</Button>
+            
             <Button variant="outline" className="gap-1" onClick={() => void saveAndPrintAdvance()}><Printer className="h-4 w-4" /> Print</Button>
             <Button onClick={() => void saveAdvance()}>Save</Button>
           </DialogFooter>
@@ -1086,7 +1086,7 @@ export default function PosAdvanceBooking() {
           </div>
           <DialogFooter className="flex flex-wrap gap-2">
             <Button variant="outline" onClick={() => setBookDlg(false)}>Cancel</Button>
-            <Button variant="outline" className="gap-1" onClick={async () => { const order = await buildBookingOrder(); if (!order) return; setBookDlg(false); void refresh(); try { await printBookingKot(order); toast({ title: `Booking #${order.receiptNo} saved & KOT printed` }); } catch (e: any) { toast({ title: "Saved but KOT failed", description: e?.message, variant: "destructive" }); } }}><FileText className="h-4 w-4" /> KOT</Button>
+            
             <Button variant="outline" className="gap-1" onClick={() => void saveAndPrintBooking()}><Printer className="h-4 w-4" /> Print</Button>
             <Button onClick={() => void saveBooking()}>Save</Button>
           </DialogFooter>
