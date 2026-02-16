@@ -113,8 +113,8 @@ export async function btSend(text: string) {
 
   // Bluetooth has limited buffer size — send data in chunks to avoid
   // the printer stalling mid-print (especially with large logo images).
-  const CHUNK_SIZE = 512; // bytes per chunk
-  const CHUNK_DELAY = 50; // ms between chunks
+  const CHUNK_SIZE = 256; // bytes per chunk (smaller for reliable BT transfer)
+  const CHUNK_DELAY = 80; // ms between chunks (allow printer buffer to drain)
 
   if (text.length <= CHUNK_SIZE) {
     const data = base64FromRawBytes(text);
