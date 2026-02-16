@@ -469,7 +469,7 @@ export function AdminProducts() {
                     <ScanBarcode className="h-4 w-4" />
                   </Button>
                 </div>
-                <div ref={skuScannerRef} className={skuScanning ? "mt-2 rounded-md overflow-hidden" : "hidden"} />
+                <div ref={skuScannerRef} className={skuScanning ? "mt-2 rounded-md overflow-hidden [&_img]:!hidden" : "hidden"} />
               </div>
 
               <div className="space-y-2">

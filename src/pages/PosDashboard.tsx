@@ -222,7 +222,7 @@ export default function PosDashboard() {
       });
     };
 
-    const timer = setTimeout(attemptStart, 300);
+    const timer = setTimeout(attemptStart, 50);
     return () => { cancelled = true; clearTimeout(timer); };
   }, [posScanning, stopPosScanner]);
 
@@ -882,7 +882,11 @@ export default function PosDashboard() {
                   {scanCount > 0 ? `${scanCount} item${scanCount > 1 ? "s" : ""} scanned` : ""}
                 </span>
               </div>
-              <div ref={posScannerRef} className="flex-1 w-full" />
+              <div ref={posScannerRef} className="flex-1 w-full [&_img]:!hidden [&_video]:!object-cover" />
+              {/* Loading indicator while camera initializes */}
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-[-1]">
+                <span className="text-white/60 text-sm animate-pulse">Starting camera…</span>
+              </div>
               {/* Scan guide overlay */}
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                 <div className="w-72 h-36 border-2 border-white/70 rounded-lg" />
