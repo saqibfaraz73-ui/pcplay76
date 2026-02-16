@@ -4,7 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { db } from "@/db/appDb";
-import type { RecoveryCustomer, RecoveryPayment, StaffAccount, Settings } from "@/db/schema";
+import type { RecoveryCustomer, RecoveryPayment, StaffAccount, Settings, BillingFrequency } from "@/db/schema";
+import { BILLING_FREQUENCIES } from "@/db/schema";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/auth/AuthProvider";
 import {
@@ -81,6 +82,7 @@ export function RecoverySection() {
   const [formBill, setFormBill] = React.useState<number>(0);
   const [formBalance, setFormBalance] = React.useState<number>(0);
   const [formAgentId, setFormAgentId] = React.useState<string>("__none");
+  const [formFrequency, setFormFrequency] = React.useState<BillingFrequency>("monthly");
 
   // History view
   const [historyId, setHistoryId] = React.useState<string | null>(null);
@@ -98,6 +100,29 @@ export function RecoverySection() {
 
   const load = React.useCallback(async () => {
     const c = await db.recoveryCustomers.toArray();
+    // Auto-accumulate balances based on billing frequency
+    const now = Date.now();
+    for (const cust of c) {
+      const freq = cust.billingFrequency ?? "monthly";
+      const intervalMs = freq === "daily" ? 24 * 60 * 60 * 1000
+        : freq === "weekly" ? 7 * 24 * 60 * 60 * 1000
+        : 30 * 24 * 60 * 60 * 1000; // monthly ~30 days
+      const lastBilling = cust.lastBillingAt ?? cust.createdAt;
+      const elapsed = now - lastBilling;
+      const cycles = Math.floor(elapsed / intervalMs);
+      if (cycles > 0 && cust.monthlyBill > 0) {
+        const addAmount = cycles * cust.monthlyBill;
+        const newBalance = cust.balance + addAmount;
+        const newLastBilling = lastBilling + cycles * intervalMs;
+        await db.recoveryCustomers.update(cust.id, { balance: newBalance, lastBillingAt: newLastBilling });
+        cust.balance = newBalance;
+        cust.lastBillingAt = newLastBilling;
+      } else if (!cust.lastBillingAt) {
+        // Initialize lastBillingAt for existing customers
+        await db.recoveryCustomers.update(cust.id, { lastBillingAt: cust.createdAt });
+        cust.lastBillingAt = cust.createdAt;
+      }
+    }
     const p = await db.recoveryPayments.toArray();
     const staff = await db.staffAccounts.where("role").equals("recovery").toArray();
     const s = await db.settings.get("app");
@@ -146,7 +171,7 @@ export function RecoverySection() {
 
   const resetForm = () => {
     setFormName(""); setFormContact(""); setFormAddress(""); setFormPkg(""); setFormBill(0); setFormBalance(0);
-    setFormAgentId("__none"); setEditId(null); setShowAdd(false);
+    setFormAgentId("__none"); setFormFrequency("monthly"); setEditId(null); setShowAdd(false);
   };
 
   const saveCustomer = async () => {
@@ -157,17 +182,20 @@ export function RecoverySection() {
       await db.recoveryCustomers.update(editId, {
         name: formName.trim(), contact: formContact.trim() || undefined, address: formAddress.trim() || undefined,
         pkg: formPkg.trim() || undefined, monthlyBill: formBill, balance: formBalance,
+        billingFrequency: formFrequency,
         agentId: realAgentId || undefined, agentName: assignedAgent?.name || undefined,
       });
     } else {
       // For recovery agents adding customers, auto-assign to themselves
       const effectiveAgentId = isRecovery && myAgentId ? myAgentId : realAgentId;
       const effectiveAgentName = isRecovery ? agentName : assignedAgent?.name;
+      const now = Date.now();
       await db.recoveryCustomers.add({
         id: uid("rcust"), name: formName.trim(), contact: formContact.trim() || undefined, address: formAddress.trim() || undefined,
-        pkg: formPkg.trim() || undefined, monthlyBill: formBill, balance: formBalance,
+        pkg: formPkg.trim() || undefined, monthlyBill: formBill, balance: formBalance + formBill,
+        billingFrequency: formFrequency, lastBillingAt: now,
         agentId: effectiveAgentId || undefined, agentName: effectiveAgentName || undefined,
-        createdAt: Date.now(),
+        createdAt: now,
       });
     }
     toast({ title: editId ? "Customer updated" : "Customer added" });
@@ -178,7 +206,7 @@ export function RecoverySection() {
   const editCustomer = (c: RecoveryCustomer) => {
     setEditId(c.id); setFormName(c.name); setFormContact(c.contact ?? ""); setFormAddress(c.address ?? "");
     setFormPkg(c.pkg ?? ""); setFormBill(c.monthlyBill); setFormBalance(c.balance);
-    setFormAgentId(c.agentId ?? "__none"); setShowAdd(true);
+    setFormAgentId(c.agentId ?? "__none"); setFormFrequency(c.billingFrequency ?? "monthly"); setShowAdd(true);
   };
 
   const deleteCustomer = async (id: string) => {
@@ -234,16 +262,22 @@ export function RecoverySection() {
       for (const r of rows) {
         const name = String(r["Name"] || r["name"] || "").trim();
         if (!name) continue;
+        const freq = String(r["Frequency"] || r["frequency"] || "monthly").trim().toLowerCase();
+        const billingFrequency: BillingFrequency = (freq === "daily" || freq === "weekly" || freq === "monthly") ? freq : "monthly";
+        const bill = Number(r["Monthly Bill"] || r["Bill"] || r["monthlyBill"] || r["monthly_bill"] || 0);
+        const now = Date.now();
         await db.recoveryCustomers.add({
           id: uid("rcust"), name,
           contact: String(r["Contact"] || r["contact"] || r["Phone"] || r["phone"] || "").trim() || undefined,
           address: String(r["Address"] || r["address"] || "").trim() || undefined,
           pkg: String(r["Pkg"] || r["pkg"] || r["Package"] || r["package"] || "").trim() || undefined,
-          monthlyBill: Number(r["Monthly Bill"] || r["monthlyBill"] || r["monthly_bill"] || 0),
-          balance: Number(r["Balance"] || r["balance"] || 0),
+          monthlyBill: bill,
+          billingFrequency,
+          balance: Number(r["Balance"] || r["balance"] || 0) + bill,
+          lastBillingAt: now,
           agentId: importAgentId || undefined,
           agentName: importAgentName || undefined,
-          createdAt: Date.now(),
+          createdAt: now,
         });
         count++;
       }
@@ -261,7 +295,8 @@ export function RecoverySection() {
       const lastPay = payments.filter(p => p.customerId === c.id && p.status === "paid").sort((a, b) => b.createdAt - a.createdAt)[0];
       return {
         Name: c.name, Contact: c.contact ?? "", Address: c.address ?? "", Pkg: c.pkg ?? "",
-        "Monthly Bill": c.monthlyBill, Balance: c.balance,
+        Frequency: c.billingFrequency ?? "monthly",
+        "Bill Amount": c.monthlyBill, Balance: c.balance,
         Agent: c.agentName ?? "",
         "Last Payment": lastPay ? format(lastPay.createdAt, "dd/MM/yyyy") : "Never",
       };
@@ -591,7 +626,20 @@ export function RecoverySection() {
               <Input value={formPkg} onChange={e => setFormPkg(e.target.value)} placeholder="e.g. Basic Plan" />
             </div>
             <div className="space-y-1">
-              <Label>Monthly Bill</Label>
+              <Label>Billing Frequency</Label>
+              <Select value={formFrequency} onValueChange={(v) => setFormFrequency(v as BillingFrequency)}>
+                <SelectTrigger className="h-9">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {BILLING_FREQUENCIES.map(f => (
+                    <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label>Bill Amount</Label>
               <Input type="number" inputMode="numeric" value={formBill || ""} onChange={e => setFormBill(Number(e.target.value) || 0)} />
             </div>
             <div className="space-y-1">
@@ -696,7 +744,7 @@ export function RecoverySection() {
                       {c.agentName && <span>👤 {c.agentName}</span>}
                     </div>
                     <div className="text-xs mt-1">
-                      Bill: <span className="font-semibold">{c.monthlyBill}</span>
+                      Bill: <span className="font-semibold">{c.monthlyBill}</span><span className="text-muted-foreground">/{(c.billingFrequency ?? "monthly").slice(0, 1)}</span>
                       {" | "}Balance: <span className={c.balance > 0 ? "text-red-500 font-semibold" : "text-green-600 font-semibold"}>{c.balance}</span>
                       {monthStatus && (
                         <span className={`ml-2 ${monthStatus.status === "paid" ? "text-green-600" : "text-red-500"}`}>

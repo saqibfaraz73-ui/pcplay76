@@ -397,6 +397,14 @@ export type CounterId = "receipt" | "arrival" | "exportSale" | "advanceOrder" | 
 
 // ─── Recovery (bill collection) ────────────────────
 
+export type BillingFrequency = "daily" | "weekly" | "monthly";
+
+export const BILLING_FREQUENCIES: { value: BillingFrequency; label: string }[] = [
+  { value: "daily", label: "Daily" },
+  { value: "weekly", label: "Weekly" },
+  { value: "monthly", label: "Monthly" },
+];
+
 export type RecoveryCustomer = {
   id: string;
   agentId?: string; // staff account id of assigned recovery agent
@@ -405,7 +413,9 @@ export type RecoveryCustomer = {
   contact?: string;
   address?: string;
   pkg?: string; // package name
-  monthlyBill: number; // monthly bill amount
+  monthlyBill: number; // bill amount per cycle (daily/weekly/monthly)
+  billingFrequency?: BillingFrequency; // billing cycle; default "monthly"
+  lastBillingAt?: number; // timestamp of last auto-billing
   balance: number; // outstanding balance
   createdAt: number;
 };
