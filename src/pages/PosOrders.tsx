@@ -13,6 +13,7 @@ import { ReceiptDialog } from "@/components/ReceiptDialog";
 import { formatIntMoney, fmtDateTime } from "@/features/pos/format";
 import { cancelOrder } from "@/features/pos/pos-db";
 import { printAdvanceReceipt, printBookingReceipt } from "@/features/pos/advance-receipt";
+import { printReceiptFromOrder } from "@/features/pos/receipt-print";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/auth/AuthProvider";
 import { isSameLocalDay } from "@/features/pos/time";
@@ -230,6 +231,19 @@ export default function PosOrders() {
         await printAdvanceReceipt(o.advanceOrder);
       } else if (o.source === "booking" && o.bookingOrder) {
         await printBookingReceipt(o.bookingOrder);
+      } else if (o.order) {
+        // Regular or table order — reprint receipt
+        const custName = o.order.creditCustomerId
+          ? customersById[o.order.creditCustomerId]?.name
+          : undefined;
+        const dpName = o.order.deliveryPersonId
+          ? deliveryPersonsById[o.order.deliveryPersonId]?.name
+          : undefined;
+        await printReceiptFromOrder(o.order, {
+          creditCustomerName: custName,
+          deliveryPersonName: dpName,
+          section: o.source === "table" ? "tables" : "sales",
+        });
       }
       toast({ title: "Reprinted" });
     } catch (e: any) {
@@ -302,7 +316,7 @@ export default function PosOrders() {
                           triggerLabel="Open"
                         />
                       )}
-                      {(o.source === "advance" || o.source === "booking") && (
+                      {o.status === "completed" && (
                         <Button variant="ghost" size="sm" onClick={() => void handleReprint(o)}>
                           <Printer className="h-3.5 w-3.5" />
                         </Button>

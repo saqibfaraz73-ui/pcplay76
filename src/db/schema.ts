@@ -258,6 +258,7 @@ export type Settings = {
   printerName?: string;
   printerAddress?: string; // Bluetooth MAC address for classic SPP printers
   subPrinterMode?: "own" | "main"; // "own" = sub prints locally, "main" = send to main device's printer
+  subKotOnly?: boolean; // if true, sub app can only print KOT; receipt printing skipped, sale saved for main to print
   // Dual-printer support: configure both BT and USB independently
   btPrinterAddress?: string; // Bluetooth MAC address
   btPrinterName?: string; // Bluetooth printer friendly name

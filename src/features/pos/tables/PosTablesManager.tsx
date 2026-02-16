@@ -450,6 +450,17 @@ export function PosTablesManager() {
 
   const completeCheckout = async (paymentMethod: "cash" | "credit", shouldPrint: boolean) => {
     if (!currentTableOrder) return;
+
+    // If sub app with KOT-only mode, force no receipt printing
+    let actualShouldPrint = shouldPrint;
+    try {
+      const { getSyncConfig } = await import("@/features/sync/sync-utils");
+      const config = getSyncConfig();
+      if (config.role === "sub" && settings?.subKotOnly) {
+        actualShouldPrint = false;
+      }
+    } catch {}
+
     
     if (paymentMethod === "credit" && !creditCustomerId && !newCustomerName.trim()) {
       toast({ title: "Select or enter customer name", variant: "destructive" });
@@ -508,7 +519,7 @@ export function PosTablesManager() {
       // Inventory already deducted when items were added to table (saveOrder)
       await incrementSaleCount("table");
 
-      if (shouldPrint) {
+      if (actualShouldPrint) {
         try {
           const receiptOrder = {
             id: currentTableOrder.id,
