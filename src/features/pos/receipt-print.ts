@@ -29,20 +29,9 @@ function escapeHtml(s: string) {
   });
 }
 
-// Calculate how many feed lines to add based on receipt size to fill the paper
-function getFeedLinesForSize(settings: Settings, contentLines: number): number {
-  const lineHeightInch = 0.125;
-  const sizeMap: Record<string, number> = {
-    "2x2": 2,
-    "2x3": 3,
-    "2x4": 4,
-    "2x5": 5,
-  };
-  const targetHeight = sizeMap[settings.receiptSize ?? "2x3"] ?? 3;
-  const contentHeight = contentLines * lineHeightInch;
-  const remainingInches = Math.max(0, targetHeight - contentHeight);
-  const feedLines = Math.floor(remainingInches / lineHeightInch);
-  return Math.max(3, feedLines);
+// Minimal feed before cut — no extra paper waste
+function getFeedLinesForSize(_settings: Settings, _contentLines: number): number {
+  return 2;
 }
 
 /* ---------- Classic ESC/POS receipt (for Print button) ---------- */
@@ -93,21 +82,31 @@ async function buildEscPosReceipt(
     }
   }
 
+  const center = (s: string) => {
+    const trimmed = s.slice(0, width);
+    const pad = Math.max(0, Math.floor((width - trimmed.length) / 2));
+    return " ".repeat(pad) + trimmed;
+  };
+
   const headerLines = [
-    line(title),
-    settings.showAddress && settings.address ? line(settings.address) : null,
-    settings.showPhone && settings.phone ? line(settings.phone) : null,
-    line(`Receipt: ${order.receiptNo}`),
-    line(`Date: ${when}`),
-    line(`Cashier: ${order.cashier}`),
-    line(`Payment: ${payLabel}`),
+    center(title),
+    settings.showAddress && settings.address ? center(settings.address) : null,
+    settings.showPhone && settings.phone ? center(settings.phone) : null,
+    center(`Bill #: ${order.receiptNo}`),
+    center(`Date: ${when}`),
+    center(`Prepared By: ${order.cashier}`),
+    center(`Payment: ${payLabel}`),
     ...deliveryLines,
   ].filter(Boolean) as string[];
 
+  // Column header: Item / Qty / Total
+  const colHeader = "Item".padEnd(width - 14) + "Qty".padStart(5) + "Total".padStart(9);
+
   const itemLines = order.lines.flatMap((l) => {
-    const left = `${l.name}`;
-    const right = `${l.qty} x ${money(l.unitPrice)}`;
-    const lines = [line(left), line(right.padStart(width))];
+    const nameCol = l.name.slice(0, width - 14).padEnd(width - 14);
+    const qtyCol = String(l.qty).padStart(5);
+    const totalCol = money(l.subtotal).padStart(9);
+    const lines = [nameCol + qtyCol + totalCol];
     if (settings.showExpiryOnReceipt && l.expiryDate) {
       const expStr = format(new Date(l.expiryDate), "dd/MM/yy");
       lines.push(line(`  Exp: ${expStr}`));
@@ -117,17 +116,19 @@ async function buildEscPosReceipt(
 
   const totals = [
     hr,
-    line(`Subtotal`.padEnd(width - money(order.subtotal).length) + money(order.subtotal)),
-    line(`Discount`.padEnd(width - money(order.discountTotal).length) + money(order.discountTotal)),
+    line(`Subtotal:`.padEnd(width - money(order.subtotal).length) + money(order.subtotal)),
+    ...(order.discountTotal > 0
+      ? [line(`Discount:`.padEnd(width - money(order.discountTotal).length) + money(order.discountTotal))]
+      : []),
     ...(order.taxAmount > 0
-      ? [line((settings.taxLabel || "Tax").padEnd(width - money(order.taxAmount).length) + money(order.taxAmount))]
+      ? [line((settings.taxLabel || "Tax") + ":").padEnd(width - money(order.taxAmount).length) + money(order.taxAmount)]
       : []),
     ...(order.serviceChargeAmount > 0
-      ? [line((settings.serviceChargeLabel || "Service").padEnd(width - money(order.serviceChargeAmount).length) + money(order.serviceChargeAmount))]
+      ? [line((settings.serviceChargeLabel || "Service") + ":").padEnd(width - money(order.serviceChargeAmount).length) + money(order.serviceChargeAmount)]
       : []),
-    line(`Total`.padEnd(width - money(order.total).length) + money(order.total)),
+    line(`Grand Total:`.padEnd(width - money(order.total).length) + money(order.total)),
     hr,
-    line("Thank you!"),
+    center("Thank you, come again!"),
   ];
 
   const totalContentLines = headerLines.length + 1 + itemLines.length + totals.length + (logoCommands ? 4 : 0);
@@ -138,6 +139,8 @@ async function buildEscPosReceipt(
     "\x1b3\x14",   // tight line spacing (20/180 inch ≈ 2.8mm)
     logoCommands,
     headerLines.join("\n"),
+    "",
+    colHeader,
     hr,
     itemLines.join("\n"),
     totals.join("\n"),
