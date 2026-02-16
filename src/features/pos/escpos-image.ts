@@ -9,7 +9,7 @@ function getMaxDots(paperSize: "58" | "80"): number {
 async function loadImageAsCanvas(
   imagePath: string,
   maxWidth: number,
-  maxHeight: number = 150
+  maxHeight: number = 80
 ): Promise<HTMLCanvasElement> {
   return new Promise(async (resolve, reject) => {
     try {
@@ -114,8 +114,11 @@ export async function generateLogoEscPos(
   imagePath: string,
   paperSize: "58" | "80"
 ): Promise<string> {
-  const maxDots = getMaxDots(paperSize);
-  const canvas = await loadImageAsCanvas(imagePath, maxDots);
+  // Force a fixed small logo size regardless of input image dimensions
+  const dots = getMaxDots(paperSize);
+  const LOGO_WIDTH = Math.min(dots, 200); // 200 dots wide max
+  const LOGO_HEIGHT = 80; // fixed height cap
+  const canvas = await loadImageAsCanvas(imagePath, LOGO_WIDTH, LOGO_HEIGHT);
 
   // Center alignment
   let commands = "\x1b\x61\x01"; // ESC a 1 = center
