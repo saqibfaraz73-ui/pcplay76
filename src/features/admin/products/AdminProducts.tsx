@@ -289,7 +289,7 @@ export function AdminProducts() {
     html5QrRef.current = qr;
     qr.start(
       { facingMode: "environment" },
-      { fps: 10, qrbox: { width: 250, height: 100 } },
+      { fps: 10, qrbox: { width: 250, height: 100 }, videoConstraints: { facingMode: "environment", advanced: [{ focusMode: "continuous" } as any] } },
       (decodedText) => {
         setItemSku(decodedText);
         stopSkuScanner();

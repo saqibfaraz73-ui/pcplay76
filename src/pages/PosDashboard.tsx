@@ -154,7 +154,7 @@ export default function PosDashboard() {
     posQrRef.current = qr;
     qr.start(
       { facingMode: "environment" },
-      { fps: 10, qrbox: { width: 250, height: 100 } },
+      { fps: 10, qrbox: { width: 250, height: 100 }, videoConstraints: { facingMode: "environment",  advanced: [{ focusMode: "continuous" } as any] } },
       (decodedText) => {
         setItemQuery(decodedText);
         stopPosScanner();
