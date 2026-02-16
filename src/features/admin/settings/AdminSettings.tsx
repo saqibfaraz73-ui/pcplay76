@@ -80,6 +80,8 @@ export function AdminSettings() {
   const [waiterMainAppEnabled, setWaiterMainAppEnabled] = React.useState(false);
   const [waiterRestrictToOwnTables, setWaiterRestrictToOwnTables] = React.useState(false);
   const [supervisorPrinterEnabled, setSupervisorPrinterEnabled] = React.useState(false);
+  const [waiterPrinterEnabled, setWaiterPrinterEnabled] = React.useState(false);
+  const [recoveryPrinterEnabled, setRecoveryPrinterEnabled] = React.useState(false);
   const [salesDashboardEnabled, setSalesDashboardEnabled] = React.useState(true);
   const [deliveryEnabled, setDeliveryEnabled] = React.useState(false);
   const [recoveryEnabled, setRecoveryEnabled] = React.useState(false);
@@ -145,6 +147,8 @@ export function AdminSettings() {
     setWaiterMainAppEnabled(!!s?.waiterMainAppEnabled);
     setWaiterRestrictToOwnTables(!!s?.waiterRestrictToOwnTables);
     setSupervisorPrinterEnabled(!!s?.supervisorPrinterEnabled);
+    setWaiterPrinterEnabled(!!s?.waiterPrinterEnabled);
+    setRecoveryPrinterEnabled(!!s?.recoveryPrinterEnabled);
     setSalesDashboardEnabled(s?.salesDashboardEnabled !== false); // default true
     setDeliveryEnabled(!!s?.deliveryEnabled);
     setRecoveryEnabled(!!s?.recoveryEnabled);
@@ -231,6 +235,8 @@ export function AdminSettings() {
         waiterMainAppEnabled,
         waiterRestrictToOwnTables,
         supervisorPrinterEnabled,
+        waiterPrinterEnabled,
+        recoveryPrinterEnabled,
         salesDashboardEnabled,
         deliveryEnabled,
         recoveryEnabled,
@@ -719,6 +725,20 @@ export function AdminSettings() {
               <div className="text-xs text-muted-foreground">If enabled, supervisors can configure printer settings.</div>
             </div>
             <Switch checked={supervisorPrinterEnabled} onCheckedChange={setSupervisorPrinterEnabled} />
+          </div>
+          <div className="flex items-center justify-between gap-3 rounded-md border p-3">
+            <div>
+              <div className="text-sm font-medium">Allow waiter to access Printer Settings</div>
+              <div className="text-xs text-muted-foreground">If enabled, waiters can configure printer settings.</div>
+            </div>
+            <Switch checked={waiterPrinterEnabled} onCheckedChange={setWaiterPrinterEnabled} />
+          </div>
+          <div className="flex items-center justify-between gap-3 rounded-md border p-3">
+            <div>
+              <div className="text-sm font-medium">Allow recovery agent to access Printer Settings</div>
+              <div className="text-xs text-muted-foreground">If enabled, recovery agents can configure printer settings.</div>
+            </div>
+            <Switch checked={recoveryPrinterEnabled} onCheckedChange={setRecoveryPrinterEnabled} />
           </div>
           <div className="flex items-center justify-between gap-3 rounded-md border p-3">
             <div>

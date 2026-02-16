@@ -313,6 +313,8 @@ export type Settings = {
   waiterMainAppEnabled?: boolean; // if true, waiters can set device as Main in sync
   waiterRestrictToOwnTables?: boolean; // if true, waiters can only take orders on their assigned tables
   supervisorPrinterEnabled?: boolean; // if true, supervisors can access printer settings
+  waiterPrinterEnabled?: boolean; // if true, waiters can access printer settings
+  recoveryPrinterEnabled?: boolean; // if true, recovery agents can access printer settings
   salesDashboardEnabled?: boolean; // if true, sales dashboard is shown (default true)
   updatedAt: number;
 };

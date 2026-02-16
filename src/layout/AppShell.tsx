@@ -44,6 +44,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [syncEnabled, setSyncEnabled] = React.useState(false);
   const [cashierReportsEnabled, setCashierReportsEnabled] = React.useState(false);
   const [supervisorPrinterEnabled, setSupervisorPrinterEnabled] = React.useState(false);
+  const [waiterPrinterEnabled, setWaiterPrinterEnabled] = React.useState(false);
+  const [recoveryPrinterEnabled, setRecoveryPrinterEnabled] = React.useState(false);
   const [salesDashboardEnabled, setSalesDashboardEnabled] = React.useState(true);
   const [deliveryEnabled, setDeliveryEnabled] = React.useState(false);
   const [recoveryEnabled, setRecoveryEnabled] = React.useState(false);
@@ -56,6 +58,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     setSyncEnabled(!!s?.syncEnabled);
     setCashierReportsEnabled(!!s?.cashierReportsEnabled);
     setSupervisorPrinterEnabled(!!s?.supervisorPrinterEnabled);
+    setWaiterPrinterEnabled(!!s?.waiterPrinterEnabled);
+    setRecoveryPrinterEnabled(!!s?.recoveryPrinterEnabled);
     setSalesDashboardEnabled(s?.salesDashboardEnabled !== false);
     setDeliveryEnabled(!!s?.deliveryEnabled);
     setRecoveryEnabled(!!s?.recoveryEnabled);
@@ -204,7 +208,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                           )}
 
                           {/* Printer link for cashier/supervisor (when enabled) */}
-                          {(isCashier || (isSupervisor && supervisorPrinterEnabled)) && (
+                          {(isCashier || (isSupervisor && supervisorPrinterEnabled) || (isWaiter && waiterPrinterEnabled) || (isRecoveryAgent && recoveryPrinterEnabled)) && (
                             <Link
                               to="/admin/printer"
                               className={cn(
@@ -332,7 +336,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                       Reports
                     </Link>
                   )}
-                  {(isCashier || (isSupervisor && supervisorPrinterEnabled)) && (
+                  {(isCashier || (isSupervisor && supervisorPrinterEnabled) || (isWaiter && waiterPrinterEnabled) || (isRecoveryAgent && recoveryPrinterEnabled)) && (
                     <Link
                       to="/admin/printer"
                       className={cn(
