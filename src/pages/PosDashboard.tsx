@@ -154,32 +154,42 @@ export default function PosDashboard() {
   // Start scanner after the div becomes visible
   React.useEffect(() => {
     if (!posScanning || !posScannerRef.current || posQrRef.current) return;
-    const scannerId = "pos-scanner-region";
-    posScannerRef.current.id = scannerId;
-    const qr = new Html5Qrcode(scannerId);
-    posQrRef.current = qr;
-    qr.start(
-      { facingMode: "environment" },
-      { fps: 10, qrbox: { width: 250, height: 100 }, videoConstraints: { facingMode: "environment",  advanced: [{ focusMode: "continuous" } as any] } },
-      (decodedText) => {
-        // Guard: only handle the first successful scan
-        if (scanHandledRef.current) return;
-        scanHandledRef.current = true;
-        playScanBeep();
+    let cancelled = false;
+    // Small delay to ensure DOM is fully rendered before camera init
+    const timer = setTimeout(() => {
+      if (cancelled || !posScannerRef.current) return;
+      const scannerId = "pos-scanner-region";
+      posScannerRef.current.id = scannerId;
+      // Clear any leftover DOM from previous attempts
+      posScannerRef.current.innerHTML = "";
+      const qr = new Html5Qrcode(scannerId);
+      posQrRef.current = qr;
+      qr.start(
+        { facingMode: "environment" },
+        { fps: 10, qrbox: { width: 250, height: 100 }, videoConstraints: { facingMode: "environment", advanced: [{ focusMode: "continuous" } as any] } },
+        (decodedText) => {
+          if (scanHandledRef.current) return;
+          scanHandledRef.current = true;
+          playScanBeep();
+          stopPosScanner();
+          const scanned = decodedText.trim().toLowerCase();
+          const currentItems = itemsRef.current;
+          const matchedItem = currentItems.find((i) => i.sku?.toLowerCase() === scanned);
+          if (matchedItem) {
+            addToCart(matchedItem);
+            toast({ title: "Item scanned", description: matchedItem.name });
+          } else {
+            setItemQuery(decodedText);
+            toast({ title: "SKU not found", description: `No item with SKU "${decodedText}". Showing search results.`, variant: "destructive" });
+          }
+        },
+        () => {},
+      ).catch(() => {
+        toast({ title: "Camera error", description: "Could not start camera. Please try again.", variant: "destructive" });
         stopPosScanner();
-        const scanned = decodedText.trim().toLowerCase();
-        const currentItems = itemsRef.current;
-        const matchedItem = currentItems.find((i) => i.sku?.toLowerCase() === scanned);
-        if (matchedItem) {
-          addToCart(matchedItem);
-          toast({ title: "Item scanned", description: matchedItem.name });
-        } else {
-          setItemQuery(decodedText);
-          toast({ title: "SKU not found", description: `No item with SKU "${decodedText}". Showing search results.`, variant: "destructive" });
-        }
-      },
-      () => {},
-    ).catch(() => setPosScanning(false));
+      });
+    }, 150);
+    return () => { cancelled = true; clearTimeout(timer); };
   }, [posScanning, stopPosScanner]);
 
   // Guard against rapid double-clicks on save/print buttons
