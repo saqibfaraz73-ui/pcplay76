@@ -626,7 +626,7 @@ export function RecoverySection() {
               <Input value={formPkg} onChange={e => setFormPkg(e.target.value)} placeholder="e.g. Basic Plan" />
             </div>
             <div className="space-y-1">
-              <Label>Billing Frequency</Label>
+              <Label>Billing Period</Label>
               <Select value={formFrequency} onValueChange={(v) => setFormFrequency(v as BillingFrequency)}>
                 <SelectTrigger className="h-9">
                   <SelectValue />
