@@ -158,8 +158,17 @@ export default function PosDashboard() {
       { fps: 10, qrbox: { width: 250, height: 100 }, videoConstraints: { facingMode: "environment",  advanced: [{ focusMode: "continuous" } as any] } },
       (decodedText) => {
         playScanBeep();
-        setItemQuery(decodedText);
         stopPosScanner();
+        // Auto-add item if exact SKU match found
+        const scanned = decodedText.trim().toLowerCase();
+        const matchedItem = items.find((i) => i.sku?.toLowerCase() === scanned);
+        if (matchedItem) {
+          addToCart(matchedItem);
+          toast({ title: "Item scanned", description: matchedItem.name });
+        } else {
+          setItemQuery(decodedText);
+          toast({ title: "SKU not found", description: `No item with SKU "${decodedText}". Showing search results.`, variant: "destructive" });
+        }
       },
       () => {},
     ).catch(() => setPosScanning(false));
