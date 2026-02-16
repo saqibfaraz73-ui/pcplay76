@@ -27,6 +27,9 @@ interface BluetoothSerialPlugin {
 // Register the plugin - will use native implementation when available
 const BluetoothSerial = registerPlugin<BluetoothSerialPlugin>("BluetoothSerial");
 
+// Track current connected address to avoid unnecessary reconnections
+let currentConnectedAddress: string | null = null;
+
 export function isNativeAndroid() {
   return Capacitor.isNativePlatform() && Capacitor.getPlatform() === "android";
 }
@@ -94,11 +97,28 @@ export async function btGetPairedDevices(): Promise<PairedBluetoothDevice[]> {
 export async function btConnect(address: string) {
   if (!isNativeAndroid()) throw new Error("Bluetooth printing requires the Android app build.");
   await btInitialize();
+
+  // If already connected to the same address, skip reconnection
+  if (currentConnectedAddress === address) {
+    try {
+      const status = await BluetoothSerial.isConnected();
+      if (status?.success || status?.connected) {
+        return; // Already connected
+      }
+    } catch {
+      // Fall through to reconnect
+    }
+  }
+
   await BluetoothSerial.connect({ address });
+  currentConnectedAddress = address;
+  // Stabilization delay after fresh connect
+  await new Promise((r) => setTimeout(r, 200));
 }
 
 export async function btDisconnect() {
   if (!isNativeAndroid()) throw new Error("Bluetooth printing requires the Android app build.");
+  currentConnectedAddress = null;
   await BluetoothSerial.disconnect();
 }
 
