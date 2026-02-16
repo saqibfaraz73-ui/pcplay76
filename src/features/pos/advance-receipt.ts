@@ -72,7 +72,7 @@ function buildAdvanceEscPos(order: AdvanceOrder, settings: Settings): string {
   const totalContentLines = headerLines.length + itemLines.length + footerLines.length;
   const feedCount = getFeedLinesForSize(settings, totalContentLines);
 
-  return ["\x1b@", headerLines.join("\n"), itemLines.join("\n"), footerLines.join("\n"), "\n".repeat(feedCount), "\x1dV\x41\x03"].join("\n");
+  return "\x1b@\x1b3\x14" + headerLines.join("\n") + "\n" + itemLines.join("\n") + "\n" + footerLines.join("\n") + "\n".repeat(feedCount) + "\x1dV\x41\x03";
 }
 
 /* ─── Advance Order KOT ─── */
@@ -89,8 +89,7 @@ function buildAdvanceKot(order: AdvanceOrder, settings: Settings): string {
   const timeStr = fmtTime12(now.toTimeString().slice(0, 5));
 
   const nameW = WIDTH - 16;
-  const out: string[] = ["\x1b@", "\x1b3\x18"];
-  out.push(CENTER_ON);
+  const out: string[] = ["\x1b@\x1b3\x18" + CENTER_ON];
   out.push("KITCHEN ORDER");
   out.push(hr);
   out.push(`Adv #: ${order.receiptNo}`);
@@ -163,7 +162,7 @@ function buildBookingEscPos(order: BookingOrder, settings: Settings): string {
   const totalContentLines = headerLines.length + footerLines.length;
   const feedCount = getFeedLinesForSize(settings, totalContentLines);
 
-  return ["\x1b@", headerLines.join("\n"), footerLines.join("\n"), "\n".repeat(feedCount), "\x1dV\x41\x03"].join("\n");
+  return "\x1b@\x1b3\x14" + headerLines.join("\n") + "\n" + footerLines.join("\n") + "\n".repeat(feedCount) + "\x1dV\x41\x03";
 }
 
 /* ─── Generic send helper ─── */
@@ -228,8 +227,7 @@ export function buildBookingKot(order: BookingOrder, settings: Settings): string
   const now = new Date();
   const timeStr = fmtTime12(now.toTimeString().slice(0, 5));
 
-  const out: string[] = ["\x1b@", "\x1b3\x18"];
-  out.push(CENTER_ON);
+  const out: string[] = ["\x1b@\x1b3\x18" + CENTER_ON];
   out.push("KITCHEN ORDER");
   out.push(hr);
   out.push(`Bkg #: ${order.receiptNo}`);

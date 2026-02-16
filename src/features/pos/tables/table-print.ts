@@ -121,12 +121,8 @@ function buildKotEscPos(tableNumber: string, waiterName: string, items: KotItem[
 
   const out: string[] = [];
   
-  // Initialize printer
-  out.push("\x1b@");         // init
-  out.push("\x1b3\x14");     // tight line spacing (20/180 inch)
-  
-  // Header - hardware centered
-  out.push(CENTER_ON);
+  // Init + line spacing + center as single entry to avoid blank lines at top
+  out.push("\x1b@\x1b3\x14" + CENTER_ON);
   out.push("KITCHEN ORDER");
   out.push(hr);
   out.push(`Table: ${tableNumber}`);

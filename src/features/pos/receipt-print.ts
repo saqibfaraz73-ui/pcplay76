@@ -138,21 +138,17 @@ async function buildEscPosReceipt(
   const totalContentLines = headerLines.length + 1 + itemLines.length + totals.length + (logoCommands ? 4 : 0);
   const feedCount = getFeedLinesForSize(settings, totalContentLines);
 
-  const parts: string[] = [
-    "\x1b@",
-    "\x1b3\x14",   // tight line spacing (20/180 inch ≈ 2.8mm)
-  ];
-  if (logoCommands) parts.push(logoCommands);
-  parts.push(
-    headerLines.join("\n"),
-    colHeader,
-    hr,
-    itemLines.join("\n"),
-    totals.join("\n"),
-  );
-  if (feedCount > 0) parts.push("\n".repeat(feedCount));
-  parts.push("\x1dV\x41\x03");
-  return parts.join("\n");
+  // Init commands joined without newlines to avoid blank lines at top
+  let receipt = "\x1b@" + "\x1b3\x14";
+  if (logoCommands) receipt += logoCommands;
+  receipt += headerLines.join("\n") + "\n";
+  receipt += colHeader + "\n";
+  receipt += hr + "\n";
+  receipt += itemLines.join("\n") + "\n";
+  receipt += totals.join("\n");
+  if (feedCount > 0) receipt += "\n".repeat(feedCount);
+  receipt += "\n\x1dV\x41\x03";
+  return receipt;
 }
 
 /* ---------- Centered KOT receipt (for KOT button) ---------- */
@@ -174,10 +170,8 @@ async function buildKotReceipt(order: Order, settings: Settings): Promise<string
 
   const out: string[] = [];
 
-  out.push("\x1b@");       // init
-  out.push("\x1b3\x14");   // tight line spacing (20/180 inch)
-
-  out.push(CENTER_ON);
+  // Init commands as single entry to avoid blank lines at top
+  out.push("\x1b@\x1b3\x14" + CENTER_ON);
   out.push("KITCHEN ORDER");
   out.push(hr);
   out.push(`Bill #: ${order.receiptNo}`);
