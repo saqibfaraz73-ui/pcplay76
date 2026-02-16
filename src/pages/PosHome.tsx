@@ -147,17 +147,17 @@ export default function PosHome() {
       });
       actions.push({
         to: "/pos/advance-booking",
-        label: "Advance Booking",
+        label: "Booking",
         icon: CalendarCheck,
         color: "bg-indigo-500/10 text-indigo-600 border-indigo-200",
-        description: "Manage bookings",
+        description: "Appointments",
       });
       actions.push({
         to: "/recovery",
         label: "Recovery",
         icon: Shield,
         color: "bg-amber-500/10 text-amber-600 border-amber-200",
-        description: "Data recovery",
+        description: "Payments recovery",
       });
       actions.push({
         to: "/admin/sync",
@@ -239,7 +239,7 @@ export default function PosHome() {
   const todayStr = fmtDate(Date.now());
 
   return (
-    <div className="space-y-6 pb-8">
+    <div className="space-y-6 pb-20 pt-2 px-1 overflow-y-auto">
       {/* Welcome header */}
       <div className="flex items-center gap-4">
         <img
