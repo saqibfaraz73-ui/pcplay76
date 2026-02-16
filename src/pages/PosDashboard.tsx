@@ -132,18 +132,19 @@ export default function PosDashboard() {
   const stopPosScanner = React.useCallback(() => {
     const qr = posQrRef.current;
     posQrRef.current = null;
-    setPosScanning(false);
     if (qr) {
       (async () => {
         try {
-          if (qr.isScanning) await qr.stop();
-        } catch {}
-        try { qr.clear(); } catch {}
+          const state = await qr.getState();
+          if (state === 2 || state === 3) await qr.stop();
+        } catch { /* ignore */ }
+        try { qr.clear(); } catch { /* ignore */ }
       })();
     }
     if (posScannerRef.current) {
       posScannerRef.current.innerHTML = "";
     }
+    setPosScanning(false);
   }, []);
 
   const startPosScanner = React.useCallback(() => {
@@ -155,18 +156,31 @@ export default function PosDashboard() {
   React.useEffect(() => {
     if (!posScanning || !posScannerRef.current || posQrRef.current) return;
     let cancelled = false;
-    // Small delay to ensure DOM is fully rendered before camera init
-    const timer = setTimeout(() => {
+    let retryCount = 0;
+    const maxRetries = 2;
+
+    const attemptStart = () => {
       if (cancelled || !posScannerRef.current) return;
       const scannerId = "pos-scanner-region";
       posScannerRef.current.id = scannerId;
-      // Clear any leftover DOM from previous attempts
       posScannerRef.current.innerHTML = "";
+
       const qr = new Html5Qrcode(scannerId);
       posQrRef.current = qr;
       qr.start(
         { facingMode: "environment" },
-        { fps: 10, qrbox: { width: 250, height: 100 }, videoConstraints: { facingMode: "environment", advanced: [{ focusMode: "continuous" } as any] } },
+        {
+          fps: 15,
+          qrbox: { width: 280, height: 120 },
+          aspectRatio: 2.5,
+          formatsToSupport: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15] as any,
+          videoConstraints: {
+            facingMode: "environment",
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+            advanced: [{ focusMode: "continuous" } as any],
+          },
+        } as any,
         (decodedText) => {
           if (scanHandledRef.current) return;
           scanHandledRef.current = true;
@@ -184,11 +198,22 @@ export default function PosDashboard() {
           }
         },
         () => {},
-      ).catch(() => {
-        toast({ title: "Camera error", description: "Could not start camera. Please try again.", variant: "destructive" });
-        stopPosScanner();
+      ).catch((err) => {
+        console.warn("[Scanner] Start failed:", err);
+        posQrRef.current = null;
+        if (!cancelled && retryCount < maxRetries) {
+          retryCount++;
+          if (posScannerRef.current) posScannerRef.current.innerHTML = "";
+          setTimeout(attemptStart, 400 * retryCount);
+        } else {
+          toast({ title: "Camera error", description: "Could not start camera. Please try again.", variant: "destructive" });
+          stopPosScanner();
+        }
       });
-    }, 150);
+    };
+
+    // Longer delay to ensure DOM is fully painted before camera init
+    const timer = setTimeout(attemptStart, 300);
     return () => { cancelled = true; clearTimeout(timer); };
   }, [posScanning, stopPosScanner]);
 
