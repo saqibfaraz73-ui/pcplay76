@@ -1,8 +1,8 @@
 // Global currency symbol – loaded from settings at app start
-let _currencySymbol = "Rs";
+let _currencySymbol = "";
 
 export function setCurrencySymbol(s: string) {
-  _currencySymbol = s || "Rs";
+  _currencySymbol = s ?? "";
 }
 
 export function getCurrencySymbol(): string {
@@ -11,7 +11,7 @@ export function getCurrencySymbol(): string {
 
 export function formatIntMoney(value: number): string {
   const n = Number.isFinite(value) ? Math.round(value) : 0;
-  return `${_currencySymbol} ${n}`;
+  return _currencySymbol ? `${_currencySymbol} ${n}` : `${n}`;
 }
 
 export function parseNonDecimalInt(input: string): number {
