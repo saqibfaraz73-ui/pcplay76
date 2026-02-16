@@ -1062,7 +1062,19 @@ export default function PosDashboard() {
                         <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => setQty(l.itemId, l.qty - 1)}>
                           -
                         </Button>
-                        <div className="w-5 text-center text-xs">{l.qty}</div>
+                        <button
+                          type="button"
+                          className="w-8 text-center text-xs font-semibold border rounded px-1 py-0.5 bg-muted hover:bg-accent"
+                          onClick={() => {
+                            const input = prompt("Enter quantity:", String(l.qty));
+                            if (input !== null) {
+                              const n = parseInt(input, 10);
+                              if (!isNaN(n) && n > 0) setQty(l.itemId, n);
+                            }
+                          }}
+                        >
+                          {l.qty}
+                        </button>
                         <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => setQty(l.itemId, l.qty + 1)}>
                           +
                         </Button>
