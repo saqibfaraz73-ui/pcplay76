@@ -1205,14 +1205,6 @@ export default function PosDashboard() {
             Print
           </Button>
           <Button 
-            className="flex-1 bg-yellow-500 hover:bg-yellow-600 text-black"
-            disabled={cart.length === 0 || !isWorkPeriodActive || saving}
-            onClick={onSaveAndPrintKot}
-          >
-            <ClipboardList className="h-4 w-4 mr-1" />
-            KOT
-          </Button>
-          <Button 
             className="flex-1 bg-orange-500 hover:bg-orange-600 text-white"
             disabled={cart.length === 0 || !isWorkPeriodActive || saving}
             onClick={onSaveOnly}
