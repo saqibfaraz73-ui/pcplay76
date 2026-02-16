@@ -8,7 +8,7 @@ import { format } from "date-fns";
 import { getSyncConfig } from "@/features/sync/sync-utils";
 import { sendPrintJob } from "@/features/sync/sync-client";
 import { isDuplicatePrint } from "@/features/pos/print-dedup";
-import { sendToSectionPrinter, type PrintSection } from "@/features/pos/printer-routing";
+import { sendToSectionPrinter, getPrinterForSection, type PrintSection } from "@/features/pos/printer-routing";
 
 function escapeHtml(s: string) {
   return s.replace(/[&<>"']/g, (c) => {
@@ -43,6 +43,7 @@ async function buildEscPosReceipt(
     creditCustomerName?: string;
     deliveryPersonName?: string;
     deliveryCustomerName?: string;
+    forUsb?: boolean;
   }
 ): Promise<string> {
   const width = settings.paperSize === "80" ? 48 : 32;
@@ -86,8 +87,10 @@ async function buildEscPosReceipt(
   const CENTER_ON = "\x1ba\x01";  // ESC a 1 = center alignment
   const LEFT_ON = "\x1ba\x00";    // ESC a 0 = left alignment
 
+  const isUsb = opts?.forUsb === true;
+
   const headerLines = [
-    CENTER_ON,
+    ...(isUsb ? [] : [CENTER_ON]),
     title,
     settings.showAddress && settings.address ? settings.address : null,
     settings.showPhone && settings.phone ? settings.phone : null,
@@ -96,7 +99,7 @@ async function buildEscPosReceipt(
     `Prepared By: ${order.cashier}`,
     `Payment: ${payLabel}`,
     ...deliveryLines.map(l => l.trim()),
-    LEFT_ON,
+    ...(isUsb ? [] : [LEFT_ON]),
   ].filter(Boolean) as string[];
 
   // Column header: Item / Qty / Total
@@ -140,6 +143,7 @@ async function buildEscPosReceipt(
 
   // Init commands joined without newlines to avoid blank lines at top
   let receipt = "\x1b@" + "\x1b3\x14";
+  if (isUsb) receipt += "\n"; // single line space for USB top margin
   if (logoCommands) receipt += logoCommands;
   receipt += headerLines.join("\n") + "\n";
   receipt += colHeader + "\n";
@@ -283,7 +287,9 @@ export async function printReceiptFromOrder(
       throw new Error("Settings not loaded. Please configure printer in Admin > Printer.");
     }
 
-    const text = await buildEscPosReceipt(order, settings, opts);
+    const section: PrintSection = opts?.section ?? "sales";
+    const isUsb = getPrinterForSection(settings, section) === "usb";
+    const text = await buildEscPosReceipt(order, settings, { ...opts, forUsb: isUsb });
 
     if (viaMain) {
       await sendPrintToMain(text, opts?.section ?? "sales");
@@ -292,7 +298,7 @@ export async function printReceiptFromOrder(
 
     if (isDuplicatePrint(text)) return;
 
-    const section: PrintSection = opts?.section ?? "sales";
+
     try {
       await sendToSectionPrinter(settings, section, text);
     } catch (printErr: any) {
@@ -301,7 +307,7 @@ export async function printReceiptFromOrder(
       if (settings.showLogo && settings.receiptLogoPath) {
         console.warn("Retrying print without logo...");
         const noLogoSettings = { ...settings, showLogo: false };
-        const retryText = await buildEscPosReceipt(order, noLogoSettings, opts);
+        const retryText = await buildEscPosReceipt(order, noLogoSettings, { ...opts, forUsb: isUsb });
         try {
           await sendToSectionPrinter(noLogoSettings, section, retryText);
           return;
