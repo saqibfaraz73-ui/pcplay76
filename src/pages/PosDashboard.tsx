@@ -775,14 +775,14 @@ export default function PosDashboard() {
           </div>
 
           {/* Search - searches ALL categories */}
-          <div className="w-full space-y-2">
-            <div className="flex gap-2">
+          <div className="w-full space-y-2 min-w-0">
+            <div className="flex gap-2 min-w-0">
               <Input
                 value={itemQuery}
                 onChange={(e) => setItemQuery(e.target.value)}
                 placeholder={skuSearchEnabled ? "Search by name or SKU…" : "Search all items…"}
                 aria-label="Search items"
-                className="w-full"
+                className="min-w-0 flex-1"
               />
               {skuSearchEnabled && (
                 <Button
@@ -796,7 +796,7 @@ export default function PosDashboard() {
                 </Button>
               )}
             </div>
-            <div ref={posScannerRef} className={posScanning ? "rounded-md overflow-hidden" : "hidden"} />
+            <div ref={posScannerRef} className={posScanning ? "rounded-md overflow-hidden max-w-full aspect-[5/2]" : "hidden"} />
           </div>
 
           {/* Categories */}
