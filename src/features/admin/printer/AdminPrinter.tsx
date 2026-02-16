@@ -89,6 +89,7 @@ export function AdminPrinter() {
   const [paperSize, setPaperSize] = React.useState<"58" | "80">("58");
   const [previewOpen, setPreviewOpen] = React.useState(false);
   const [subPrinterMode, setSubPrinterMode] = React.useState<"own" | "main">("own");
+  const [subKotOnly, setSubKotOnly] = React.useState(false);
 
   const [paired, setPaired] = React.useState<PairedBluetoothDevice[]>([]);
   const [btBusy, setBtBusy] = React.useState(false);
@@ -113,6 +114,7 @@ export function AdminPrinter() {
     setReceiptSize(s.receiptSize ?? "2x3");
     setPaperSize(s.paperSize ?? "58");
     setSubPrinterMode(s.subPrinterMode ?? "own");
+    setSubKotOnly(s.subKotOnly ?? false);
   }, []);
 
   React.useEffect(() => {
@@ -146,6 +148,7 @@ export function AdminPrinter() {
         receiptSize,
         paperSize,
         subPrinterMode,
+        subKotOnly,
         updatedAt: Date.now(),
       };
       await db.settings.put(next);
@@ -482,6 +485,17 @@ export function AdminPrinter() {
             />
             <Label htmlFor="subPrinterMode" className="text-sm">
               Sub device: use Main device's printer (instead of own)
+            </Label>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <Switch
+              id="subKotOnly"
+              checked={subKotOnly}
+              onCheckedChange={(v) => setSubKotOnly(v)}
+            />
+            <Label htmlFor="subKotOnly" className="text-sm">
+              Sub app: KOT only mode (waiter prints KOT, saves sale — admin/cashier prints receipt from Recent Orders on main app)
             </Label>
           </div>
 
