@@ -125,7 +125,7 @@ function buildKotEscPos(tableNumber: string, waiterName: string, items: KotItem[
   
   // Initialize printer
   out.push("\x1b@");         // init
-  out.push("\x1b3\x18");     // tight line spacing
+  out.push("\x1b3\x14");     // tight line spacing (20/180 inch)
   
   // Header - centered
   out.push(center("KITCHEN ORDER"));

@@ -135,6 +135,7 @@ async function buildEscPosReceipt(
 
   return [
     "\x1b@",
+    "\x1b3\x14",   // tight line spacing (20/180 inch ≈ 2.8mm)
     logoCommands,
     headerLines.join("\n"),
     hr,
@@ -168,7 +169,7 @@ async function buildKotReceipt(order: Order, settings: Settings): Promise<string
   const out: string[] = [];
 
   out.push("\x1b@");       // init
-  out.push("\x1b3\x18");   // tight line spacing
+  out.push("\x1b3\x14");   // tight line spacing (20/180 inch)
 
   out.push(center("KITCHEN ORDER"));
   out.push(hr);
