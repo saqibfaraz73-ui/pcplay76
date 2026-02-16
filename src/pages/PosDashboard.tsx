@@ -1,5 +1,6 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
+import { Html5Qrcode } from "html5-qrcode";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -19,7 +20,7 @@ import { ReceiptDialog } from "@/components/ReceiptDialog";
 import { printReceiptFromOrder, printKotFromOrder } from "@/features/pos/receipt-print";
 import { useWorkPeriod } from "@/features/pos/WorkPeriodProvider";
 import { saveDeliveryCustomer } from "@/features/admin/delivery/delivery-customers";
-import { Play, Square, Printer, Save, Truck, ClipboardList, UtensilsCrossed, X, Share2 } from "lucide-react";
+import { Play, Square, Printer, Save, Truck, ClipboardList, UtensilsCrossed, X, Share2, ScanBarcode } from "lucide-react";
 import { format } from "date-fns";
 import { UpgradeDialog } from "@/features/licensing/UpgradeDialog";
 import { Link } from "react-router-dom";
@@ -118,6 +119,44 @@ export default function PosDashboard() {
   // Editable tax/service amounts
   const [editTaxAmount, setEditTaxAmount] = React.useState<number | null>(null);
   const [editServiceAmount, setEditServiceAmount] = React.useState<number | null>(null);
+
+  // Barcode scanner for POS search
+  const [posScanning, setPosScanning] = React.useState(false);
+  const posScannerRef = React.useRef<HTMLDivElement>(null);
+  const posQrRef = React.useRef<Html5Qrcode | null>(null);
+
+  const stopPosScanner = React.useCallback(() => {
+    if (posQrRef.current) {
+      const qr = posQrRef.current;
+      posQrRef.current = null;
+      try {
+        if (qr.isScanning) {
+          qr.stop().then(() => { try { qr.clear(); } catch {} }).catch(() => {});
+        } else {
+          try { qr.clear(); } catch {}
+        }
+      } catch {}
+    }
+    setPosScanning(false);
+  }, []);
+
+  const startPosScanner = React.useCallback(() => {
+    if (!posScannerRef.current) return;
+    const scannerId = "pos-scanner-region";
+    posScannerRef.current.id = scannerId;
+    const qr = new Html5Qrcode(scannerId);
+    posQrRef.current = qr;
+    setPosScanning(true);
+    qr.start(
+      { facingMode: "environment" },
+      { fps: 10, qrbox: { width: 250, height: 100 } },
+      (decodedText) => {
+        setItemQuery(decodedText);
+        stopPosScanner();
+      },
+      () => {},
+    ).catch(() => setPosScanning(false));
+  }, [stopPosScanner]);
 
   // Guard against rapid double-clicks on save/print buttons
   const [saving, setSaving] = React.useState(false);
@@ -736,14 +775,28 @@ export default function PosDashboard() {
           </div>
 
           {/* Search - searches ALL categories */}
-          <div className="w-full">
-            <Input
-              value={itemQuery}
-              onChange={(e) => setItemQuery(e.target.value)}
-              placeholder={skuSearchEnabled ? "Search by name or SKU…" : "Search all items…"}
-              aria-label="Search items"
-              className="w-full"
-            />
+          <div className="w-full space-y-2">
+            <div className="flex gap-2">
+              <Input
+                value={itemQuery}
+                onChange={(e) => setItemQuery(e.target.value)}
+                placeholder={skuSearchEnabled ? "Search by name or SKU…" : "Search all items…"}
+                aria-label="Search items"
+                className="w-full"
+              />
+              {skuSearchEnabled && (
+                <Button
+                  variant={posScanning ? "destructive" : "outline"}
+                  size="icon"
+                  className="shrink-0"
+                  onClick={() => (posScanning ? stopPosScanner() : startPosScanner())}
+                  title="Scan barcode"
+                >
+                  <ScanBarcode className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+            <div ref={posScannerRef} className={posScanning ? "rounded-md overflow-hidden" : "hidden"} />
           </div>
 
           {/* Categories */}
