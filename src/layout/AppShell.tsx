@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/auth/AuthProvider";
-import { Menu, Printer, BarChart3, Settings, ShoppingCart, ClipboardList, Users, DollarSign, Truck, UtensilsCrossed, CalendarCheck, Wifi, Shield } from "lucide-react";
+import { Menu, Printer, BarChart3, Settings, ShoppingCart, ClipboardList, Users, DollarSign, Truck, UtensilsCrossed, CalendarCheck, Wifi, Shield, Home } from "lucide-react";
 import { useAndroidBackExitConfirm } from "@/hooks/useAndroidBackExitConfirm";
 import appLogo from "@/assets/app-logo.jpg";
 import { db } from "@/db/appDb";
@@ -22,6 +22,7 @@ import { BackupReminder } from "@/features/admin/backup/BackupReminder";
 import { SyncStatusIndicator } from "@/features/sync/SyncStatusIndicator";
 
 const navItems = [
+  { to: "/home", label: "Home", icon: Home },
   { to: "/pos", label: "Sales", icon: ShoppingCart },
   { to: "/admin", label: "Admin", icon: ClipboardList, adminOnly: true },
 ];
