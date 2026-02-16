@@ -127,18 +127,21 @@ export default function PosDashboard() {
   const posQrRef = React.useRef<Html5Qrcode | null>(null);
 
   const stopPosScanner = React.useCallback(() => {
-    if (posQrRef.current) {
-      const qr = posQrRef.current;
-      posQrRef.current = null;
-      try {
-        if (qr.isScanning) {
-          qr.stop().then(() => { try { qr.clear(); } catch {} }).catch(() => {});
-        } else {
-          try { qr.clear(); } catch {}
-        }
-      } catch {}
-    }
+    const qr = posQrRef.current;
+    posQrRef.current = null;
     setPosScanning(false);
+    if (qr) {
+      (async () => {
+        try {
+          if (qr.isScanning) await qr.stop();
+        } catch {}
+        try { qr.clear(); } catch {}
+      })();
+    }
+    // Clear stale DOM so next scan can re-use the div
+    if (posScannerRef.current) {
+      posScannerRef.current.innerHTML = "";
+    }
   }, []);
 
   const startPosScanner = React.useCallback(() => {
