@@ -126,6 +126,7 @@ export default function PosDashboard() {
   const posScannerRef = React.useRef<HTMLDivElement>(null);
   const posQrRef = React.useRef<Html5Qrcode | null>(null);
   const itemsRef = React.useRef(items);
+  const scanHandledRef = React.useRef(false);
   React.useEffect(() => { itemsRef.current = items; }, [items]);
 
   const stopPosScanner = React.useCallback(() => {
@@ -140,14 +141,13 @@ export default function PosDashboard() {
         try { qr.clear(); } catch {}
       })();
     }
-    // Clear stale DOM so next scan can re-use the div
     if (posScannerRef.current) {
       posScannerRef.current.innerHTML = "";
     }
   }, []);
 
   const startPosScanner = React.useCallback(() => {
-    // Just show the div; actual scanner start happens in useEffect below
+    scanHandledRef.current = false;
     setPosScanning(true);
   }, []);
 
@@ -162,9 +162,11 @@ export default function PosDashboard() {
       { facingMode: "environment" },
       { fps: 10, qrbox: { width: 250, height: 100 }, videoConstraints: { facingMode: "environment",  advanced: [{ focusMode: "continuous" } as any] } },
       (decodedText) => {
+        // Guard: only handle the first successful scan
+        if (scanHandledRef.current) return;
+        scanHandledRef.current = true;
         playScanBeep();
         stopPosScanner();
-        // Auto-add item if exact SKU match found
         const scanned = decodedText.trim().toLowerCase();
         const currentItems = itemsRef.current;
         const matchedItem = currentItems.find((i) => i.sku?.toLowerCase() === scanned);
