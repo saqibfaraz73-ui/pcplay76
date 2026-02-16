@@ -1,5 +1,6 @@
 import React from "react";
 import { Html5Qrcode } from "html5-qrcode";
+import { playScanBeep } from "@/features/pos/scan-beep";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -291,6 +292,7 @@ export function AdminProducts() {
       { facingMode: "environment" },
       { fps: 10, qrbox: { width: 250, height: 100 }, videoConstraints: { facingMode: "environment", advanced: [{ focusMode: "continuous" } as any] } },
       (decodedText) => {
+        playScanBeep();
         setItemSku(decodedText);
         stopSkuScanner();
       },
