@@ -1,5 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { HelpCircle, Mail, Phone, MessageCircle, BookOpen, Shield, Clock } from "lucide-react";
+import { HelpCircle, Mail, MessageCircle, BookOpen, Shield, Clock, AlertTriangle, RefreshCw, Database } from "lucide-react";
 
 export default function HelpPage() {
   return (
@@ -20,42 +20,82 @@ export default function HelpPage() {
           <CardTitle className="text-base">Contact Us</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          <a href="mailto:support@sangipos.com" className="flex items-center gap-3 rounded-lg border p-3 transition-colors hover:bg-accent">
+          <p className="text-xs text-muted-foreground">
+            If you experience any issues, bugs, or need assistance with the app, please don't hesitate to reach out. Our support team is available to help you resolve any problems.
+          </p>
+
+          <a href="mailto:sangiaipos@gmail.com" className="flex items-center gap-3 rounded-lg border p-3 transition-colors hover:bg-accent">
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary/10">
               <Mail className="h-4 w-4 text-primary" />
             </div>
             <div className="min-w-0">
               <h3 className="text-sm font-semibold">Email Support</h3>
-              <p className="text-xs text-muted-foreground">support@sangipos.com</p>
+              <p className="text-xs text-muted-foreground">sangiaipos@gmail.com</p>
+              <p className="text-xs text-muted-foreground">For detailed issues, feedback, or feature requests</p>
             </div>
           </a>
 
-          <a href="https://wa.me/923001234567" target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 rounded-lg border p-3 transition-colors hover:bg-accent">
+          <a href="https://wa.me/923041593340" target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 rounded-lg border p-3 transition-colors hover:bg-accent">
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-green-500/10">
               <MessageCircle className="h-4 w-4 text-green-600" />
             </div>
             <div className="min-w-0">
-              <h3 className="text-sm font-semibold">WhatsApp</h3>
-              <p className="text-xs text-muted-foreground">+92 300 1234567</p>
+              <h3 className="text-sm font-semibold">WhatsApp Support</h3>
+              <p className="text-xs text-muted-foreground">+92 304 1593340</p>
+              <p className="text-xs text-muted-foreground">For quick help and real-time assistance</p>
             </div>
           </a>
+        </CardContent>
+      </Card>
 
-          <a href="tel:+923001234567" className="flex items-center gap-3 rounded-lg border p-3 transition-colors hover:bg-accent">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary/10">
-              <Phone className="h-4 w-4 text-primary" />
+      {/* Troubleshooting */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">Troubleshooting</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex gap-3 rounded-lg border p-3">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-destructive/10">
+              <AlertTriangle className="h-4 w-4 text-destructive" />
             </div>
             <div className="min-w-0">
-              <h3 className="text-sm font-semibold">Phone</h3>
-              <p className="text-xs text-muted-foreground">+92 300 1234567</p>
+              <h3 className="text-sm font-semibold">App Not Responding</h3>
+              <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
+                If the app freezes or stops responding, try closing and reopening it. If the issue persists, clear the app cache from your device settings or reinstall the app. Your data will remain safe if you have a backup.
+              </p>
             </div>
-          </a>
+          </div>
+
+          <div className="flex gap-3 rounded-lg border p-3">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary/10">
+              <RefreshCw className="h-4 w-4 text-primary" />
+            </div>
+            <div className="min-w-0">
+              <h3 className="text-sm font-semibold">Printer Not Connecting</h3>
+              <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
+                Ensure Bluetooth is enabled and the printer is turned on. Go to Admin &gt; Printer to re-pair the device. Make sure no other app is connected to the printer at the same time.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex gap-3 rounded-lg border p-3">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary/10">
+              <Database className="h-4 w-4 text-primary" />
+            </div>
+            <div className="min-w-0">
+              <h3 className="text-sm font-semibold">Data Loss Prevention</h3>
+              <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
+                Always keep regular backups of your data from Admin &gt; Settings &gt; Backup &amp; Restore. We strongly recommend backing up before updating the app or clearing storage.
+              </p>
+            </div>
+          </div>
         </CardContent>
       </Card>
 
       {/* Help Topics */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base">Common Help Topics</CardTitle>
+          <CardTitle className="text-base">Getting Started</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="flex gap-3 rounded-lg border p-3">
@@ -63,7 +103,7 @@ export default function HelpPage() {
               <BookOpen className="h-4 w-4 text-primary" />
             </div>
             <div className="min-w-0">
-              <h3 className="text-sm font-semibold">Getting Started</h3>
+              <h3 className="text-sm font-semibold">Initial Setup</h3>
               <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
                 After logging in, go to Admin &gt; Settings to set up your restaurant name, add categories, and create menu items. Then start taking orders from the Sales dashboard.
               </p>
@@ -75,9 +115,9 @@ export default function HelpPage() {
               <Shield className="h-4 w-4 text-primary" />
             </div>
             <div className="min-w-0">
-              <h3 className="text-sm font-semibold">Data Backup</h3>
+              <h3 className="text-sm font-semibold">Staff Accounts</h3>
               <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
-                Regularly back up your data from Admin &gt; Settings &gt; Backup &amp; Restore. This saves all your orders, menu items, customers, and settings to a file you can restore later.
+                Create separate accounts for cashiers, waiters, supervisors, and recovery agents from Admin &gt; Settings &gt; Staff Accounts. Each role has specific permissions tailored to their tasks.
               </p>
             </div>
           </div>
@@ -89,10 +129,28 @@ export default function HelpPage() {
             <div className="min-w-0">
               <h3 className="text-sm font-semibold">Work Periods</h3>
               <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
-                Start a work period at the beginning of each shift. All sales, expenses, and orders will be tracked under that period. End the work period when the shift is over to view the summary.
+                Start a work period at the beginning of each shift. All sales, expenses, and orders are tracked under that period. End the work period when the shift is over to view the summary.
               </p>
             </div>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Policies */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">Privacy & Data</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2 text-xs text-muted-foreground leading-relaxed">
+          <p>
+            SANGI POS is a fully offline application. All your business data including orders, customers, inventory, and financial records are stored locally on your device and are never uploaded to any external server.
+          </p>
+          <p>
+            We do not collect, transmit, or share any personal or business data. Your information stays completely under your control. We recommend regular backups to protect against accidental data loss.
+          </p>
+          <p>
+            For our full privacy policy, please visit the Privacy Policy page accessible from the login screen.
+          </p>
         </CardContent>
       </Card>
 
