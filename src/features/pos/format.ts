@@ -1,8 +1,17 @@
+// Global currency symbol – loaded from settings at app start
+let _currencySymbol = "Rs";
+
+export function setCurrencySymbol(s: string) {
+  _currencySymbol = s || "Rs";
+}
+
+export function getCurrencySymbol(): string {
+  return _currencySymbol;
+}
+
 export function formatIntMoney(value: number): string {
-  // Spec: show only numbers (no currency symbol) and no decimals.
-  // We still keep calculations as numbers; UI formats as whole numbers.
   const n = Number.isFinite(value) ? Math.round(value) : 0;
-  return `${n}`;
+  return `${_currencySymbol} ${n}`;
 }
 
 export function parseNonDecimalInt(input: string): number {

@@ -2,6 +2,8 @@ import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
 import { ensureSangiFolders } from "@/features/files/sangi-folders";
+import { setCurrencySymbol } from "@/features/pos/format";
+import { db } from "@/db/appDb";
 
 if (typeof window !== "undefined") {
   window.addEventListener("unhandledrejection", (event) => {
@@ -14,5 +16,10 @@ if (typeof window !== "undefined") {
 }
 
 ensureSangiFolders().catch(() => {});
+
+// Load currency symbol early so formatIntMoney works everywhere
+db.settings.get("app").then((s) => {
+  if (s?.currencySymbol) setCurrencySymbol(s.currencySymbol);
+}).catch(() => {});
 
 createRoot(document.getElementById("root")!).render(<App />);

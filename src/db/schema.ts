@@ -318,6 +318,7 @@ export type Settings = {
   recoveryPrinterEnabled?: boolean; // if true, recovery agents can access printer settings
   salesDashboardEnabled?: boolean; // if true, sales dashboard is shown (default true)
   skuSearchEnabled?: boolean; // if true, show SKU on POS items and allow search by SKU
+  currencySymbol?: string; // e.g. "Rs", "$", "€", "£", "₹"
   updatedAt: number;
 };
 
