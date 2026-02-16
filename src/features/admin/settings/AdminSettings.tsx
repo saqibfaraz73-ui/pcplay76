@@ -84,6 +84,7 @@ export function AdminSettings() {
   const [recoveryPrinterEnabled, setRecoveryPrinterEnabled] = React.useState(false);
   const [salesDashboardEnabled, setSalesDashboardEnabled] = React.useState(true);
   const [skuSearchEnabled, setSkuSearchEnabled] = React.useState(false);
+  const [currencySymbol, setCurrencySymbolState] = React.useState("Rs");
   const [deliveryEnabled, setDeliveryEnabled] = React.useState(false);
   const [recoveryEnabled, setRecoveryEnabled] = React.useState(false);
 
@@ -152,6 +153,7 @@ export function AdminSettings() {
     setRecoveryPrinterEnabled(!!s?.recoveryPrinterEnabled);
     setSalesDashboardEnabled(s?.salesDashboardEnabled !== false); // default true
     setSkuSearchEnabled(!!s?.skuSearchEnabled);
+    setCurrencySymbolState(s?.currencySymbol || "Rs");
     setDeliveryEnabled(!!s?.deliveryEnabled);
     setRecoveryEnabled(!!s?.recoveryEnabled);
     setLogoPath(s.receiptLogoPath);
@@ -241,6 +243,7 @@ export function AdminSettings() {
         recoveryPrinterEnabled,
         salesDashboardEnabled,
         skuSearchEnabled,
+        currencySymbol: currencySymbol.trim() || "Rs",
         deliveryEnabled,
         recoveryEnabled,
         receiptLogoPath: logoPath,
@@ -403,6 +406,31 @@ export function AdminSettings() {
             <div className="space-y-2">
               <Label htmlFor="restaurantName">Business Name</Label>
               <Input id="restaurantName" value={restaurantName} onChange={(e) => setRestaurantName(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="currencySymbol">Currency Symbol</Label>
+              <select
+                id="currencySymbol"
+                value={currencySymbol}
+                onChange={(e) => setCurrencySymbolState(e.target.value)}
+                className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+              >
+                <option value="Rs">Rs — Pakistani Rupee</option>
+                <option value="₹">₹ — Indian Rupee</option>
+                <option value="$">$ — US Dollar</option>
+                <option value="€">€ — Euro</option>
+                <option value="£">£ — British Pound</option>
+                <option value="¥">¥ — Japanese Yen / Chinese Yuan</option>
+                <option value="د.إ">د.إ — UAE Dirham</option>
+                <option value="﷼">﷼ — Saudi Riyal</option>
+                <option value="৳">৳ — Bangladeshi Taka</option>
+                <option value="RM">RM — Malaysian Ringgit</option>
+                <option value="₺">₺ — Turkish Lira</option>
+                <option value="R">R — South African Rand</option>
+                <option value="A$">A$ — Australian Dollar</option>
+                <option value="C$">C$ — Canadian Dollar</option>
+                <option value="Fr">Fr — Swiss Franc</option>
+              </select>
             </div>
           </div>
 

@@ -13,7 +13,7 @@ import { ensureSeedData } from "@/db/seed";
 import { useAuth } from "@/auth/AuthProvider";
 import { cn } from "@/lib/utils";
 import { createOrder } from "@/features/pos/pos-db";
-import { formatIntMoney, parseNonDecimalInt, fmtTime12 } from "@/features/pos/format";
+import { formatIntMoney, parseNonDecimalInt, fmtTime12, setCurrencySymbol } from "@/features/pos/format";
 import { useToast } from "@/hooks/use-toast";
 import { ItemImageThumb } from "@/features/pos/ItemImageThumb";
 import { ReceiptDialog } from "@/components/ReceiptDialog";
@@ -167,6 +167,7 @@ export default function PosDashboard() {
     const s = await db.settings.get("app");
     setPosSettings(s ?? null);
     setShowItemImages(s?.posShowItemImages ?? true);
+    setCurrencySymbol(s?.currencySymbol || "Rs");
   }, []);
 
   const canCreateCustomers = session?.role === "admin";
