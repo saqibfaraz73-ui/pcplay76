@@ -25,6 +25,7 @@ export type MenuItem = {
   id: string;
   categoryId: string;
   name: string;
+  sku?: string; // optional SKU / barcode
   price: number;
   buyingPrice?: number; // optional cost/buying price (integers)
   imagePath?: string; // file reference (never store the image itself)

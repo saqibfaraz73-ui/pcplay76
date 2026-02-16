@@ -1,4 +1,5 @@
 import React from "react";
+import { Html5Qrcode } from "html5-qrcode";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -24,7 +25,7 @@ import { useToast } from "@/hooks/use-toast";
 import { parseNonDecimalInt, formatIntMoney } from "@/features/pos/format";
 import { makeId } from "@/features/admin/id";
 import { ItemImagePicker } from "@/features/admin/products/ItemImagePicker";
-import { CalendarIcon, Download, Upload } from "lucide-react";
+import { CalendarIcon, Download, Upload, ScanBarcode } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { exportMenuItemsToExcel, importMenuItemsFromCSV, downloadExcel } from "./menu-import-export";
@@ -62,6 +63,10 @@ export function AdminProducts() {
   const [itemIdDraft, setItemIdDraft] = React.useState<string>("");
   const [itemExpiryDate, setItemExpiryDate] = React.useState<Date | undefined>(undefined);
   const [itemVariations, setItemVariations] = React.useState<ItemVariation[]>([]);
+  const [itemSku, setItemSku] = React.useState("");
+  const [skuScanning, setSkuScanning] = React.useState(false);
+  const skuScannerRef = React.useRef<HTMLDivElement>(null);
+  const html5QrRef = React.useRef<Html5Qrcode | null>(null);
   const importInputRef = React.useRef<HTMLInputElement>(null);
 
   const refresh = React.useCallback(async () => {
@@ -105,6 +110,7 @@ export function AdminProducts() {
     setItemInitialStock(0);
     setItemExpiryDate(undefined);
     setItemVariations([]);
+    setItemSku("");
     setItemCategoryId(categories[0]?.id ?? "");
     setOpen(true);
   };
@@ -121,7 +127,7 @@ export function AdminProducts() {
     setItemStockUnit(item.stockUnit ?? "pcs");
     setItemExpiryDate(item.expiryDate ? new Date(item.expiryDate) : undefined);
     setItemVariations(item.variations ?? []);
-    // Load current stock for editing
+    setItemSku(item.sku ?? "");
     const inv = await db.inventory.get(item.id);
     setItemInitialStock(inv?.quantity ?? 0);
     setOpen(true);
@@ -156,6 +162,7 @@ export function AdminProducts() {
           id,
           categoryId: itemCategoryId,
           name,
+          sku: itemSku.trim() || undefined,
           price: Math.round(itemPrice),
           buyingPrice: itemBuyingPrice > 0 ? Math.round(itemBuyingPrice) : undefined,
           imagePath: itemImagePath ? itemImagePath : undefined,
@@ -251,6 +258,39 @@ export function AdminProducts() {
     }
   };
 
+  const stopSkuScanner = React.useCallback(() => {
+    if (html5QrRef.current) {
+      html5QrRef.current.stop().catch(() => {});
+      html5QrRef.current.clear();
+      html5QrRef.current = null;
+    }
+    setSkuScanning(false);
+  }, []);
+
+  const startSkuScanner = React.useCallback(() => {
+    if (!skuScannerRef.current) return;
+    const scannerId = "sku-scanner-region";
+    // ensure container has the id
+    skuScannerRef.current.id = scannerId;
+    const qr = new Html5Qrcode(scannerId);
+    html5QrRef.current = qr;
+    setSkuScanning(true);
+    qr.start(
+      { facingMode: "environment" },
+      { fps: 10, qrbox: { width: 250, height: 100 } },
+      (decodedText) => {
+        setItemSku(decodedText);
+        stopSkuScanner();
+      },
+      () => {},
+    ).catch(() => setSkuScanning(false));
+  }, [stopSkuScanner]);
+
+  // Stop scanner when dialog closes
+  React.useEffect(() => {
+    if (!open) stopSkuScanner();
+  }, [open, stopSkuScanner]);
+
   return (
     <div className="grid gap-4 lg:grid-cols-2">
       <Card>
@@ -327,6 +367,7 @@ export function AdminProducts() {
                     <div className="truncate text-sm font-medium">{i.name}</div>
                     <div className="text-xs text-muted-foreground">
                       {cat} • Sell {formatIntMoney(i.price)}
+                      {i.sku ? <> • SKU: {i.sku}</> : null}
                       {typeof i.buyingPrice === "number" && i.buyingPrice > 0 ? (
                         <> • Buy {formatIntMoney(i.buyingPrice)}</>
                       ) : null}
@@ -392,6 +433,29 @@ export function AdminProducts() {
               <div className="space-y-2">
                 <Label htmlFor="itemName">Item name</Label>
                 <Input id="itemName" value={itemName} onChange={(e) => setItemName(e.target.value)} />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="itemSku">SKU / Barcode (optional)</Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="itemSku"
+                    value={itemSku}
+                    onChange={(e) => setItemSku(e.target.value)}
+                    placeholder="Enter or scan"
+                    className="flex-1"
+                  />
+                  <Button
+                    type="button"
+                    variant={skuScanning ? "destructive" : "outline"}
+                    size="icon"
+                    onClick={() => (skuScanning ? stopSkuScanner() : startSkuScanner())}
+                    title="Scan barcode"
+                  >
+                    <ScanBarcode className="h-4 w-4" />
+                  </Button>
+                </div>
+                <div ref={skuScannerRef} className={skuScanning ? "mt-2 rounded-md overflow-hidden" : "hidden"} />
               </div>
 
               <div className="space-y-2">
