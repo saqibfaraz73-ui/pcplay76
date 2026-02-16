@@ -111,7 +111,24 @@ export async function btSend(text: string) {
     throw new Error("Printer disconnected. Please reconnect in Admin > Printer.");
   }
 
-  // Native plugin expects base64-encoded raw bytes (NOT UTF-8)
-  const data = base64FromRawBytes(text);
-  await BluetoothSerial.write({ data });
+  // Bluetooth has limited buffer size — send data in chunks to avoid
+  // the printer stalling mid-print (especially with large logo images).
+  const CHUNK_SIZE = 512; // bytes per chunk
+  const CHUNK_DELAY = 50; // ms between chunks
+
+  if (text.length <= CHUNK_SIZE) {
+    const data = base64FromRawBytes(text);
+    await BluetoothSerial.write({ data });
+    return;
+  }
+
+  for (let offset = 0; offset < text.length; offset += CHUNK_SIZE) {
+    const chunk = text.slice(offset, offset + CHUNK_SIZE);
+    const data = base64FromRawBytes(chunk);
+    await BluetoothSerial.write({ data });
+    // Small delay to let the printer's buffer drain
+    if (offset + CHUNK_SIZE < text.length) {
+      await new Promise((r) => setTimeout(r, CHUNK_DELAY));
+    }
+  }
 }
