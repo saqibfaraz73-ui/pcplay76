@@ -9,7 +9,7 @@ function getMaxDots(paperSize: "58" | "80"): number {
 async function loadImageAsCanvas(
   imagePath: string,
   maxWidth: number,
-  maxHeight: number = 200
+  maxHeight: number = 150
 ): Promise<HTMLCanvasElement> {
   return new Promise(async (resolve, reject) => {
     try {
