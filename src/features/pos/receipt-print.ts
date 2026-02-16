@@ -281,13 +281,14 @@ export async function printReceiptFromOrder(
 
     const text = await buildEscPosReceipt(order, settings, opts);
 
-    // Dedup: prevent duplicate local prints from rapid taps
-    if (isDuplicatePrint(text)) return;
-
     if (viaMain) {
+      // sendPrintToMain has its own dedup guard
       await sendPrintToMain(text, opts?.section ?? "sales");
       return;
     }
+
+    // Dedup: prevent duplicate local prints from rapid taps
+    if (isDuplicatePrint(text)) return;
 
     // Use section-based printer routing
     const section: PrintSection = opts?.section ?? "sales";
