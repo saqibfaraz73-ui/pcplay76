@@ -341,7 +341,7 @@ export default function PosExpenses() {
                     key={preset}
                     type="button"
                     onClick={() => {
-                      if (preset === "Labour/Wages") {
+                      if (preset === "Staff/Wages") {
                         setAddOpen(false);
                         setShowLabour(true);
                         return;

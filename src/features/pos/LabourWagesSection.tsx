@@ -98,7 +98,7 @@ export default function LabourWagesSection({ workPeriodId, onBack }: Props) {
           wagePeriod: formWagePeriod,
           wageAmount: formWageAmount,
         });
-        toast({ title: "Labour updated" });
+        toast({ title: "Staff updated" });
       } else {
         const labour: Labour = {
           id: makeId("lab"),
@@ -112,7 +112,7 @@ export default function LabourWagesSection({ workPeriodId, onBack }: Props) {
           createdAt: Date.now(),
         };
         await db.labours.put(labour);
-        toast({ title: "Labour added" });
+        toast({ title: "Staff added" });
       }
       setLabourDialogOpen(false);
       await refresh();
@@ -147,7 +147,7 @@ export default function LabourWagesSection({ workPeriodId, onBack }: Props) {
       if (txType === "wage" || txType === "advance") {
         const expense = {
           id: makeId("exp"),
-          name: `Labour/Wages - ${txLabour.name}`,
+          name: `Staff/Wages - ${txLabour.name}`,
           amount: txAmount,
           note: txType === "advance" ? `Advance to ${txLabour.name}` : `Wage payment to ${txLabour.name}`,
           workPeriodId,
@@ -190,7 +190,7 @@ export default function LabourWagesSection({ workPeriodId, onBack }: Props) {
         updates.shortBalance = Math.max(0, txLabour.shortBalance - txAmount);
         const expense = {
           id: makeId("exp"),
-          name: `Labour/Wages - ${txLabour.name}`,
+          name: `Staff/Wages - ${txLabour.name}`,
           amount: txAmount,
           note: `Short salary payment to ${txLabour.name}`,
           workPeriodId,
@@ -255,7 +255,7 @@ export default function LabourWagesSection({ workPeriodId, onBack }: Props) {
     if (!deleteTarget) return;
     await db.labourTransactions.where("labourId").equals(deleteTarget.id).delete();
     await db.labours.delete(deleteTarget.id);
-    toast({ title: "Labour deleted" });
+    toast({ title: "Staff deleted" });
     setDeleteTarget(null);
     if (selectedLabour?.id === deleteTarget.id) setSelectedLabour(null);
     await refresh();
@@ -441,7 +441,7 @@ export default function LabourWagesSection({ workPeriodId, onBack }: Props) {
         <Dialog open={labourDialogOpen} onOpenChange={setLabourDialogOpen}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>{editingLabour ? "Edit Labour" : "Add Labour"}</DialogTitle>
+              <DialogTitle>{editingLabour ? "Edit Staff" : "Add Staff"}</DialogTitle>
             </DialogHeader>
             <div className="space-y-3">
               <div className="space-y-1">
@@ -529,7 +529,7 @@ export default function LabourWagesSection({ workPeriodId, onBack }: Props) {
         <AlertDialog open={!!deleteTarget} onOpenChange={(v) => !v && setDeleteTarget(null)}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Delete Labour?</AlertDialogTitle>
+              <AlertDialogTitle>Delete Staff?</AlertDialogTitle>
               <AlertDialogDescription>
                 Delete "{deleteTarget?.name}" and all their transactions? This cannot be undone.
               </AlertDialogDescription>
@@ -551,16 +551,16 @@ export default function LabourWagesSection({ workPeriodId, onBack }: Props) {
         <Button variant="ghost" size="icon" onClick={onBack}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
-        <h2 className="text-lg font-semibold flex-1">Labour / Wages</h2>
+        <h2 className="text-lg font-semibold flex-1">Staff / Wages</h2>
         <Button size="sm" onClick={openAddLabour}>
-          <Plus className="h-4 w-4 mr-1" /> Add Labour
+          <Plus className="h-4 w-4 mr-1" /> Add Staff
         </Button>
       </div>
 
       {labours.length === 0 ? (
         <Card>
           <CardContent className="p-6 text-center text-sm text-muted-foreground">
-            No labour/workers added yet. Tap "Add Labour" to get started.
+            No staff/workers added yet. Tap "Add Staff" to get started.
           </CardContent>
         </Card>
       ) : (
