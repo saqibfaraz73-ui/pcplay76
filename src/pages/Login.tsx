@@ -118,9 +118,7 @@ export default function Login() {
         toast({ title: "Login failed", description: "Wrong credentials." });
         return;
       }
-      const from = (location.state as any)?.from as string | undefined;
-      const safeFrom = from && from !== "/login" && from !== "/" ? from : undefined;
-      navigate(safeFrom ?? "/home", { replace: true });
+      navigate("/home", { replace: true });
     } finally {
       setLoading(false);
     }
