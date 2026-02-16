@@ -162,14 +162,31 @@ export default function LabourWagesSection({ workPeriodId, onBack }: Props) {
       // Update balances
       const updates: Partial<Labour> = {};
       if (txType === "advance") {
-        updates.advanceBalance = txLabour.advanceBalance + txAmount;
+        // If there's short balance, offset against it first
+        const shortBal = txLabour.shortBalance;
+        if (shortBal > 0) {
+          const offset = Math.min(txAmount, shortBal);
+          const remainder = txAmount - offset;
+          updates.shortBalance = shortBal - offset;
+          updates.advanceBalance = txLabour.advanceBalance + remainder;
+        } else {
+          updates.advanceBalance = txLabour.advanceBalance + txAmount;
+        }
       } else if (txType === "short") {
-        updates.shortBalance = txLabour.shortBalance + txAmount;
+        // If there's advance balance, offset against it first
+        const advBal = txLabour.advanceBalance;
+        if (advBal > 0) {
+          const offset = Math.min(txAmount, advBal);
+          const remainder = txAmount - offset;
+          updates.advanceBalance = advBal - offset;
+          updates.shortBalance = txLabour.shortBalance + remainder;
+        } else {
+          updates.shortBalance = txLabour.shortBalance + txAmount;
+        }
       } else if (txType === "deduct_advance") {
         updates.advanceBalance = Math.max(0, txLabour.advanceBalance - txAmount);
       } else if (txType === "deduct_short") {
         updates.shortBalance = Math.max(0, txLabour.shortBalance - txAmount);
-        // Paying short = expense
         const expense = {
           id: makeId("exp"),
           name: `Labour/Wages - ${txLabour.name}`,
@@ -182,7 +199,7 @@ export default function LabourWagesSection({ workPeriodId, onBack }: Props) {
         tx.expenseId = expense.id;
         await db.labourTransactions.update(tx.id, { expenseId: expense.id });
       } else if (txType === "wage") {
-        // Normal wage paid - no balance change unless there's advance to deduct
+        // Normal wage paid
       }
 
       if (Object.keys(updates).length > 0) {
