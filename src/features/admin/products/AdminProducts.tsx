@@ -276,13 +276,17 @@ export function AdminProducts() {
   }, []);
 
   const startSkuScanner = React.useCallback(() => {
-    if (!skuScannerRef.current) return;
+    // Just show the div; actual scanner start happens in useEffect below
+    setSkuScanning(true);
+  }, []);
+
+  // Start scanner after the div becomes visible
+  React.useEffect(() => {
+    if (!skuScanning || !skuScannerRef.current || html5QrRef.current) return;
     const scannerId = "sku-scanner-region";
-    // ensure container has the id
     skuScannerRef.current.id = scannerId;
     const qr = new Html5Qrcode(scannerId);
     html5QrRef.current = qr;
-    setSkuScanning(true);
     qr.start(
       { facingMode: "environment" },
       { fps: 10, qrbox: { width: 250, height: 100 } },
@@ -292,7 +296,7 @@ export function AdminProducts() {
       },
       () => {},
     ).catch(() => setSkuScanning(false));
-  }, [stopSkuScanner]);
+  }, [skuScanning, stopSkuScanner]);
 
   // Stop scanner when dialog closes
   React.useEffect(() => {
@@ -406,7 +410,7 @@ export function AdminProducts() {
 
       {/* Edit dialog */}
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent>
+        <DialogContent className="max-h-[85vh] flex flex-col">
           <DialogHeader>
             <DialogTitle>
               {mode.type === "category"
@@ -431,7 +435,7 @@ export function AdminProducts() {
           ) : null}
 
           {mode.type === "item" ? (
-            <div className="grid gap-3">
+            <div className="grid gap-3 overflow-y-auto flex-1 pr-1">
               <ItemImagePicker
                 itemId={itemIdDraft}
                 imagePath={itemImagePath || undefined}

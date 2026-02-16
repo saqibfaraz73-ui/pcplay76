@@ -141,12 +141,17 @@ export default function PosDashboard() {
   }, []);
 
   const startPosScanner = React.useCallback(() => {
-    if (!posScannerRef.current) return;
+    // Just show the div; actual scanner start happens in useEffect below
+    setPosScanning(true);
+  }, []);
+
+  // Start scanner after the div becomes visible
+  React.useEffect(() => {
+    if (!posScanning || !posScannerRef.current || posQrRef.current) return;
     const scannerId = "pos-scanner-region";
     posScannerRef.current.id = scannerId;
     const qr = new Html5Qrcode(scannerId);
     posQrRef.current = qr;
-    setPosScanning(true);
     qr.start(
       { facingMode: "environment" },
       { fps: 10, qrbox: { width: 250, height: 100 } },
@@ -156,7 +161,7 @@ export default function PosDashboard() {
       },
       () => {},
     ).catch(() => setPosScanning(false));
-  }, [stopPosScanner]);
+  }, [posScanning, stopPosScanner]);
 
   // Guard against rapid double-clicks on save/print buttons
   const [saving, setSaving] = React.useState(false);
