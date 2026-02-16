@@ -124,7 +124,7 @@ export async function generateLogoEscPos(
   let commands = "\x1b\x61\x01"; // ESC a 1 = center
   commands += canvasToEscPosRaster(canvas);
   commands += "\x1b\x61\x00"; // ESC a 0 = left align
-  commands += "\n"; // spacing after logo
+  // No trailing newline — caller controls spacing
 
   return commands;
 }
