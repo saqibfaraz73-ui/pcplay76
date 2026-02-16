@@ -129,6 +129,7 @@ export default function PosDashboard() {
   const itemsRef = React.useRef(items);
   const lastScannedRef = React.useRef<string>("");
   const lastScanTimeRef = React.useRef(0);
+  const addToCartRef = React.useRef<(item: MenuItem) => void>(() => {});
   React.useEffect(() => { itemsRef.current = items; }, [items]);
 
   const stopPosScanner = React.useCallback(() => {
@@ -189,7 +190,7 @@ export default function PosDashboard() {
         (decodedText) => {
           const now = Date.now();
           const scanned = decodedText.trim().toLowerCase();
-          // Debounce: ignore same code within 1.5s
+          // Debounce: ignore same code within 1.5s, but ALLOW re-scan after that
           if (scanned === lastScannedRef.current && now - lastScanTimeRef.current < 1500) return;
           lastScannedRef.current = scanned;
           lastScanTimeRef.current = now;
@@ -198,7 +199,8 @@ export default function PosDashboard() {
           const currentItems = itemsRef.current;
           const matchedItem = currentItems.find((i) => i.sku?.toLowerCase() === scanned);
           if (matchedItem) {
-            addToCart(matchedItem);
+            // Use ref to always call latest addToCart (avoids stale closure)
+            addToCartRef.current(matchedItem);
             setScanCount((c) => c + 1);
             toast({ title: "✓ Scanned", description: matchedItem.name });
           } else {
@@ -393,6 +395,9 @@ export default function PosDashboard() {
       return next;
     });
   };
+
+  // Keep addToCartRef always pointing to latest addToCart
+  React.useEffect(() => { addToCartRef.current = addToCart; });
 
   const setQty = (itemId: string, qty: number) => {
     setCart((prev) =>
