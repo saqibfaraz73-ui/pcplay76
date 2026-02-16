@@ -24,6 +24,7 @@ import {
   CreditCard,
   Banknote,
   Shield,
+  Wifi,
 } from "lucide-react";
 import appLogo from "@/assets/app-logo.jpg";
 
@@ -42,7 +43,7 @@ export default function PosHome() {
   const { session } = useAuth();
   const { isWorkPeriodActive } = useWorkPeriod();
   const [stats, setStats] = React.useState<TodayStats | null>(null);
-  const [settings, setSettings] = React.useState<{ tableManagementEnabled?: boolean; advanceBookingEnabled?: boolean; deliveryEnabled?: boolean; recoveryEnabled?: boolean; businessName?: string } | null>(null);
+  const [settings, setSettings] = React.useState<{ tableManagementEnabled?: boolean; advanceBookingEnabled?: boolean; deliveryEnabled?: boolean; recoveryEnabled?: boolean; syncEnabled?: boolean; businessName?: string } | null>(null);
 
   React.useEffect(() => {
     loadStats();
@@ -127,17 +128,16 @@ export default function PosHome() {
       });
     }
 
-    if (settings?.tableManagementEnabled || isWaiter) {
-      actions.push({
-        to: "/pos/tables",
-        label: "Tables",
-        icon: UtensilsCrossed,
-        color: "bg-pink-500/10 text-pink-600 border-pink-200",
-        description: "Table management",
-      });
-    }
+    // Always show these on home page
+    actions.push({
+      to: "/pos/tables",
+      label: "Tables",
+      icon: UtensilsCrossed,
+      color: "bg-pink-500/10 text-pink-600 border-pink-200",
+      description: "Table management",
+    });
 
-    if (settings?.deliveryEnabled && !isWaiter) {
+    if (!isWaiter) {
       actions.push({
         to: "/pos/party-lodge",
         label: "Party Lodge",
@@ -145,9 +145,6 @@ export default function PosHome() {
         color: "bg-teal-500/10 text-teal-600 border-teal-200",
         description: "Party orders",
       });
-    }
-
-    if (settings?.advanceBookingEnabled && !isWaiter) {
       actions.push({
         to: "/pos/advance-booking",
         label: "Advance Booking",
@@ -155,15 +152,19 @@ export default function PosHome() {
         color: "bg-indigo-500/10 text-indigo-600 border-indigo-200",
         description: "Manage bookings",
       });
-    }
-
-    if (settings?.recoveryEnabled && !isWaiter) {
       actions.push({
         to: "/recovery",
         label: "Recovery",
         icon: Shield,
         color: "bg-amber-500/10 text-amber-600 border-amber-200",
         description: "Data recovery",
+      });
+      actions.push({
+        to: "/admin/sync",
+        label: "Sync",
+        icon: Wifi,
+        color: "bg-sky-500/10 text-sky-600 border-sky-200",
+        description: "Device sync",
       });
     }
 
@@ -365,23 +366,6 @@ export default function PosHome() {
         </div>
       )}
 
-      {/* Empty state for no orders today */}
-      {!isWaiter && stats && stats.totalOrders === 0 && (
-        <Card className="border-dashed border-2">
-          <CardContent className="flex flex-col items-center justify-center py-10 text-center">
-            <div className="rounded-full bg-muted p-4 mb-4">
-              <ShoppingCart className="h-8 w-8 text-muted-foreground" />
-            </div>
-            <h3 className="font-semibold text-foreground mb-1">No sales yet today</h3>
-            <p className="text-sm text-muted-foreground mb-4">
-              Start your first sale to see today's stats here
-            </p>
-            <Link to="/pos">
-              <Button>Start Selling</Button>
-            </Link>
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 }
