@@ -36,7 +36,13 @@ export function AdminInventory() {
     const invById = Object.fromEntries(inv.map((r) => [r.itemId, r] as const)) as Record<string, InventoryRow>;
     const next: Row[] = items
       .filter((i) => i.trackInventory)
-      .map((i) => ({ item: i, stock: invById[i.id]?.quantity ?? 0 }));
+      .map((i) => ({ item: i, stock: invById[i.id]?.quantity ?? 0 }))
+      .sort((a, b) => {
+        // Items with expiry dates come first, sorted by nearest expiry
+        const aExp = a.item.expiryDate ?? Infinity;
+        const bExp = b.item.expiryDate ?? Infinity;
+        return aExp - bExp;
+      });
     setRows(next);
   }, []);
 
