@@ -7,7 +7,7 @@ import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
 import SuperLogin from "./pages/SuperLogin";
-
+import PosHome from "./pages/PosHome";
 import PosDashboard from "./pages/PosDashboard";
 import PosOrders from "./pages/PosOrders";
 import PosExpenses from "./pages/PosExpenses";
@@ -46,7 +46,14 @@ const App = () => (
                 <Route path="/login" element={<Login />} />
                 <Route path="/super-admin" element={<SuperLogin />} />
 
-
+                <Route
+                  path="/home"
+                  element={
+                    <ProtectedRoute allow={["cashier", "admin", "waiter", "supervisor"]}>
+                      <PosHome />
+                    </ProtectedRoute>
+                  }
+                />
                 <Route
                   path="/pos"
                   element={
