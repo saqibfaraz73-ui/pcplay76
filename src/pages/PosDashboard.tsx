@@ -122,9 +122,11 @@ export default function PosDashboard() {
   const [editServiceAmount, setEditServiceAmount] = React.useState<number | null>(null);
 
   // Barcode scanner for POS search
-  const [posScanning, setPosScanning] = React.useState(false);
+   const [posScanning, setPosScanning] = React.useState(false);
   const posScannerRef = React.useRef<HTMLDivElement>(null);
   const posQrRef = React.useRef<Html5Qrcode | null>(null);
+  const itemsRef = React.useRef(items);
+  React.useEffect(() => { itemsRef.current = items; }, [items]);
 
   const stopPosScanner = React.useCallback(() => {
     const qr = posQrRef.current;
@@ -164,7 +166,8 @@ export default function PosDashboard() {
         stopPosScanner();
         // Auto-add item if exact SKU match found
         const scanned = decodedText.trim().toLowerCase();
-        const matchedItem = items.find((i) => i.sku?.toLowerCase() === scanned);
+        const currentItems = itemsRef.current;
+        const matchedItem = currentItems.find((i) => i.sku?.toLowerCase() === scanned);
         if (matchedItem) {
           addToCart(matchedItem);
           toast({ title: "Item scanned", description: matchedItem.name });
