@@ -434,6 +434,41 @@ export type RecoveryPayment = {
   createdAt: number;
 };
 
+// ─── Labour / Wages ────────────────────
+
+export type WagePeriod = "daily" | "weekly" | "monthly";
+
+export const WAGE_PERIODS: { value: WagePeriod; label: string }[] = [
+  { value: "daily", label: "Daily" },
+  { value: "weekly", label: "Weekly" },
+  { value: "monthly", label: "Monthly" },
+];
+
+export type Labour = {
+  id: string;
+  name: string;
+  contact?: string;
+  address?: string;
+  wagePeriod: WagePeriod;
+  wageAmount: number; // base wage per period
+  advanceBalance: number; // total advance given (positive = worker owes)
+  shortBalance: number; // total short/unpaid wages (positive = employer owes)
+  createdAt: number;
+};
+
+export type LabourTransactionType = "wage" | "advance" | "short" | "deduct_advance" | "deduct_short";
+
+export type LabourTransaction = {
+  id: string;
+  labourId: string;
+  type: LabourTransactionType;
+  amount: number;
+  note?: string;
+  expenseId?: string; // linked expense record
+  workPeriodId?: string;
+  createdAt: number;
+};
+
 export type Counter = {
   id: CounterId;
   next: number;
