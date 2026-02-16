@@ -8,7 +8,8 @@ function getMaxDots(paperSize: "58" | "80"): number {
 
 async function loadImageAsCanvas(
   imagePath: string,
-  maxWidth: number
+  maxWidth: number,
+  maxHeight: number = 200
 ): Promise<HTMLCanvasElement> {
   return new Promise(async (resolve, reject) => {
     try {
@@ -22,10 +23,21 @@ async function loadImageAsCanvas(
       const img = new Image();
       img.crossOrigin = "anonymous";
       img.onload = () => {
-        // Scale to printer width while maintaining aspect ratio
-        const scale = Math.min(1, maxWidth / img.width);
-        const w = Math.floor(img.width * scale);
-        const h = Math.floor(img.height * scale);
+        // Scale to printer width while maintaining aspect ratio, also cap height
+        let scale = Math.min(1, maxWidth / img.width);
+        let w = Math.floor(img.width * scale);
+        let h = Math.floor(img.height * scale);
+
+        // Cap height to keep Bluetooth payload manageable
+        if (h > maxHeight) {
+          const hScale = maxHeight / h;
+          w = Math.floor(w * hScale);
+          h = maxHeight;
+        }
+
+        // Ensure width is multiple of 8 (required for ESC/POS raster)
+        w = Math.floor(w / 8) * 8;
+        if (w < 8) w = 8;
 
         const canvas = document.createElement("canvas");
         canvas.width = w;

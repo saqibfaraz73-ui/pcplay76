@@ -124,8 +124,8 @@ export async function btSend(text: string) {
   }
 
   // Chunked sending for large payloads (logo images etc.)
-  const CHUNK_SIZE = 256;
-  const CHUNK_DELAY = 80;
+  const CHUNK_SIZE = 192;
+  const CHUNK_DELAY = 120;
 
   for (let offset = 0; offset < text.length; offset += CHUNK_SIZE) {
     const chunk = text.slice(offset, offset + CHUNK_SIZE);
