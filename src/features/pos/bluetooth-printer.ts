@@ -125,22 +125,26 @@ export async function btSend(text: string) {
 
   // Chunked sending for large payloads (logo images etc.)
   // Use smaller chunks and longer delays to prevent buffer overflow on slow printers
-  const CHUNK_SIZE = 128;
-  const CHUNK_DELAY = 180;
+  const CHUNK_SIZE = 96;
+  const CHUNK_DELAY = 250;
+  const MAX_RETRIES = 3;
 
   for (let offset = 0; offset < text.length; offset += CHUNK_SIZE) {
     const chunk = text.slice(offset, offset + CHUNK_SIZE);
     const data = base64FromRawBytes(chunk);
-    try {
-      await BluetoothSerial.write({ data });
-    } catch (writeErr) {
-      // Retry once after a longer pause — printer may have been busy
-      await new Promise((r) => setTimeout(r, 500));
+    let written = false;
+    for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
       try {
         await BluetoothSerial.write({ data });
+        written = true;
+        break;
       } catch {
-        throw new Error("Printer write failed during logo print. Try reconnecting the printer.");
+        // Wait progressively longer before retrying
+        await new Promise((r) => setTimeout(r, 300 * (attempt + 1)));
       }
+    }
+    if (!written) {
+      throw new Error("Printer write failed during logo print. Try reconnecting the printer.");
     }
     if (offset + CHUNK_SIZE < text.length) {
       await new Promise((r) => setTimeout(r, CHUNK_DELAY));

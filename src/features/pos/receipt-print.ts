@@ -288,20 +288,29 @@ export async function printReceiptFromOrder(
     const text = await buildEscPosReceipt(order, settings, opts);
 
     if (viaMain) {
-      // sendPrintToMain has its own dedup guard
       await sendPrintToMain(text, opts?.section ?? "sales");
       return;
     }
 
-    // Dedup: prevent duplicate local prints from rapid taps
     if (isDuplicatePrint(text)) return;
 
-    // Use section-based printer routing
     const section: PrintSection = opts?.section ?? "sales";
     try {
       await sendToSectionPrinter(settings, section, text);
     } catch (printErr: any) {
       console.error("Print error:", printErr);
+      // If logo was included and print failed, retry without logo
+      if (settings.showLogo && settings.receiptLogoPath) {
+        console.warn("Retrying print without logo...");
+        const noLogoSettings = { ...settings, showLogo: false };
+        const retryText = await buildEscPosReceipt(order, noLogoSettings, opts);
+        try {
+          await sendToSectionPrinter(noLogoSettings, section, retryText);
+          return;
+        } catch (retryErr: any) {
+          throw new Error(retryErr?.message || "Printing failed. Check printer connection.");
+        }
+      }
       throw new Error(printErr?.message || "Printing failed. Check printer connection.");
     }
     return;
