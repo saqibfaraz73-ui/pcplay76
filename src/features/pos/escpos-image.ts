@@ -116,8 +116,8 @@ export async function generateLogoEscPos(
 ): Promise<string> {
   // Force a fixed small logo size regardless of input image dimensions
   const dots = getMaxDots(paperSize);
-  const LOGO_WIDTH = Math.min(dots, 300);
-  const LOGO_HEIGHT = 120;
+  const LOGO_WIDTH = Math.min(dots, 240);
+  const LOGO_HEIGHT = 80;
   const canvas = await loadImageAsCanvas(imagePath, LOGO_WIDTH, LOGO_HEIGHT);
 
   // Center alignment
