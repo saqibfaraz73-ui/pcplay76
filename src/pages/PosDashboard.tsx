@@ -873,18 +873,27 @@ export default function PosDashboard() {
           {/* Fullscreen barcode scanner overlay */}
           {posScanning && (
             <div className="fixed inset-0 z-50 flex flex-col bg-black">
+              {/* Top bar with back button */}
+              <div className="absolute top-0 left-0 right-0 z-10 flex items-center px-4 py-3 bg-black/70">
+                <Button variant="ghost" size="sm" className="text-white" onClick={stopPosScanner}>
+                  ← Back
+                </Button>
+                <span className="ml-auto text-white text-sm">
+                  {scanCount > 0 ? `${scanCount} item${scanCount > 1 ? "s" : ""} scanned` : ""}
+                </span>
+              </div>
               <div ref={posScannerRef} className="flex-1 w-full" />
               {/* Scan guide overlay */}
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                 <div className="w-72 h-36 border-2 border-white/70 rounded-lg" />
               </div>
-              {/* Bottom bar */}
-              <div className="absolute bottom-0 left-0 right-0 flex items-center justify-between px-4 py-5 bg-black/70">
+              {/* Bottom bar — above Android nav buttons */}
+              <div className="flex items-center justify-between px-4 py-4 pb-16 bg-black/70">
                 <div className="text-white text-sm">
-                  {scanCount > 0 ? `${scanCount} item${scanCount > 1 ? "s" : ""} scanned` : "Point camera at barcode"}
+                  Point camera at barcode
                 </div>
                 <Button variant="secondary" size="sm" onClick={stopPosScanner}>
-                  Done
+                  Done ({scanCount})
                 </Button>
               </div>
             </div>
