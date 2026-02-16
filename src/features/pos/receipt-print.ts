@@ -87,10 +87,8 @@ async function buildEscPosReceipt(
   const CENTER_ON = "\x1ba\x01";  // ESC a 1 = center alignment
   const LEFT_ON = "\x1ba\x00";    // ESC a 0 = left alignment
 
-  const isUsb = opts?.forUsb === true;
-
   const headerLines = [
-    ...(isUsb ? [] : [CENTER_ON]),
+    CENTER_ON,
     title,
     settings.showAddress && settings.address ? settings.address : null,
     settings.showPhone && settings.phone ? settings.phone : null,
@@ -99,7 +97,7 @@ async function buildEscPosReceipt(
     `Prepared By: ${order.cashier}`,
     `Payment: ${payLabel}`,
     ...deliveryLines.map(l => l.trim()),
-    ...(isUsb ? [] : [LEFT_ON]),
+    LEFT_ON,
   ].filter(Boolean) as string[];
 
   // Column header: Item / Qty / Total
@@ -143,7 +141,6 @@ async function buildEscPosReceipt(
 
   // Init commands joined without newlines to avoid blank lines at top
   let receipt = "\x1b@" + "\x1b3\x14";
-  if (isUsb) receipt += "\n"; // single line space for USB top margin
   if (logoCommands) receipt += logoCommands;
   receipt += headerLines.join("\n") + "\n";
   receipt += colHeader + "\n";
