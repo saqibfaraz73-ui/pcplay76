@@ -6,12 +6,13 @@ import type { MenuItem, Category, Settings } from "@/db/schema";
 import { makeId } from "@/features/admin/id";
 import { formatIntMoney } from "@/features/pos/format";
 import { barcodeToDataUrl } from "@/features/labels/barcode-generator";
-import { generateLabelPdf } from "@/features/labels/label-pdf";
+import { generateLabelPdf, generateLabelPdfBlob } from "@/features/labels/label-pdf";
 import { jsPDF } from "jspdf";
 import { printLabelsEscPos } from "@/features/labels/label-escpos";
-import { downloadLabelsZpl } from "@/features/labels/label-zpl";
-import { downloadLabelsTspl } from "@/features/labels/label-tspl";
+import { generateLabelsZpl } from "@/features/labels/label-zpl";
+import { generateLabelsTspl } from "@/features/labels/label-tspl";
 import { isNativeAndroid } from "@/features/pos/bluetooth-printer";
+import { sharePdfBlob, shareTextFile } from "@/features/pos/share-utils";
 import * as XLSX from "xlsx";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -363,9 +364,9 @@ export default function ProductLabelsPage() {
       return;
     }
     try {
-      generateLabelPdf(buildLabels());
+      const blob = generateLabelPdfBlob(buildLabels());
+      await sharePdfBlob(blob, "product-labels");
       await incrementSaleCount("labelPrint");
-      toast({ title: "PDF Downloaded", description: `${labelItems.length} label(s) saved.` });
     } catch (e: any) {
       toast({ title: "PDF Error", description: e.message, variant: "destructive" });
     }
@@ -645,15 +646,31 @@ export default function ProductLabelsPage() {
                 <Printer className="h-4 w-4" /> Print Labels
               </Button>
               <Button onClick={handlePdfDownload} variant="secondary" className="gap-2">
-                <Download className="h-4 w-4" /> Download A4 PDF
+                <Download className="h-4 w-4" /> Share A4 PDF
               </Button>
             </div>
             <div className="flex flex-wrap gap-3">
-              <Button onClick={() => downloadLabelsZpl(buildLabels())} variant="outline" className="gap-2">
-                <Download className="h-4 w-4" /> Download ZPL (Zebra)
+              <Button onClick={async () => {
+                if (labelItems.length === 0) return;
+                const check = await canMakeSale("labelPrint");
+                if (!check.allowed) { setUpgradeMsg(check.message); setUpgradeOpen(true); return; }
+                const labels = buildLabels();
+                const zpl = generateLabelsZpl(labels);
+                await shareTextFile(zpl, `labels-${labels.length}.zpl`);
+                await incrementSaleCount("labelPrint");
+              }} variant="outline" className="gap-2">
+                <Download className="h-4 w-4" /> ZPL (Zebra)
               </Button>
-              <Button onClick={() => downloadLabelsTspl(buildLabels())} variant="outline" className="gap-2">
-                <Download className="h-4 w-4" /> Download TSPL (TSC/Xprinter)
+              <Button onClick={async () => {
+                if (labelItems.length === 0) return;
+                const check = await canMakeSale("labelPrint");
+                if (!check.allowed) { setUpgradeMsg(check.message); setUpgradeOpen(true); return; }
+                const labels = buildLabels();
+                const tspl = generateLabelsTspl(labels);
+                await shareTextFile(tspl, `labels-${labels.length}.prn`);
+                await incrementSaleCount("labelPrint");
+              }} variant="outline" className="gap-2">
+                <Download className="h-4 w-4" /> TSPL (TSC/Xprinter)
               </Button>
               {isNativeAndroid() && (
                 <Button onClick={handleThermalPrint} disabled={printing} variant="outline" className="gap-2">

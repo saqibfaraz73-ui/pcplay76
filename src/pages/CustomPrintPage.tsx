@@ -10,14 +10,28 @@ import { FileText, Upload, Printer, Share2, Plus, Trash2, Eye, ImageIcon } from 
 import { toast } from "sonner";
 import jsPDF from "jspdf";
 import { isNativeAndroid, btConnect, btSend } from "@/features/pos/bluetooth-printer";
+import { usbSend } from "@/features/pos/usb-printer";
 import { db } from "@/db/appDb";
 import { canMakeSale, incrementSaleCount } from "@/features/licensing/licensing-db";
 import { UpgradeDialog } from "@/features/licensing/UpgradeDialog";
+import { sharePdfBlob, shareFileBlob } from "@/features/pos/share-utils";
 
 interface ReceiptLine {
   id: string;
   label: string;
   value: string;
+}
+
+/** Convert a blob URL or object URL to a base64 data URL */
+async function blobUrlToBase64(url: string): Promise<string> {
+  const res = await fetch(url);
+  const blob = await res.blob();
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
 }
 
 export default function CustomPrintPage() {
@@ -32,7 +46,7 @@ export default function CustomPrintPage() {
     { id: crypto.randomUUID(), label: "Item", value: "" },
   ]);
 
-  // Logo state
+  // Logo state – store base64 data URL for PDF compatibility
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
 
@@ -61,11 +75,20 @@ export default function CustomPrintPage() {
     setLines((prev) => prev.map((l) => (l.id === id ? { ...l, [field]: val } : l)));
   };
 
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    // Convert to base64 data URL so it works in PDF and preview
+    const reader = new FileReader();
+    reader.onloadend = () => setLogoUrl(reader.result as string);
+    reader.readAsDataURL(file);
+  };
+
   const buildReceiptPdf = async (): Promise<jsPDF> => {
     const doc = new jsPDF({ unit: "mm", format: [80, 150] });
     let y = 8;
 
-    // Logo
+    // Logo – logoUrl is already base64 data URL
     if (logoUrl) {
       try {
         doc.addImage(logoUrl, "JPEG", 25, y, 30, 15);
@@ -121,7 +144,6 @@ export default function CustomPrintPage() {
       y += splitNote.length * 3;
     }
 
-
     return doc;
   };
 
@@ -141,7 +163,6 @@ export default function CustomPrintPage() {
     };
 
     const out: string[] = [];
-    // ESC @ init + line spacing
     out.push("\x1b@\x1b3\x14");
     out.push(CENTER_ON);
 
@@ -166,7 +187,6 @@ export default function CustomPrintPage() {
 
     if (note) {
       out.push(hr);
-      // Word-wrap note to WIDTH
       const words = note.split(" ");
       let cur = "";
       for (const w of words) {
@@ -181,8 +201,6 @@ export default function CustomPrintPage() {
     }
 
     out.push(hr);
-
-    // Feed + partial cut
     out.push("");
     out.push("");
     out.push("\x1dV\x41\x03");
@@ -197,15 +215,30 @@ export default function CustomPrintPage() {
       if (isNativeAndroid()) {
         const settings = await db.settings.get("app");
         const btAddress = settings?.btPrinterAddress || settings?.printerAddress;
-        if (!btAddress) {
-          toast.error("No Bluetooth printer configured. Go to Admin > Printer to set up.");
+        const usbDevice = settings?.usbDeviceName;
+        const escpos = buildEscPosCustomReceipt();
+
+        // Try USB first if configured, then Bluetooth
+        if (usbDevice) {
+          try {
+            await usbSend(escpos);
+            toast.success("Receipt sent to USB printer");
+            await incrementSaleCount("customPrint");
+            return;
+          } catch {
+            // Fall through to Bluetooth
+          }
+        }
+
+        if (btAddress) {
+          await btConnect(btAddress);
+          await btSend(escpos);
+          toast.success("Receipt sent to Bluetooth printer");
+          await incrementSaleCount("customPrint");
           return;
         }
-        await btConnect(btAddress);
-        const escpos = buildEscPosCustomReceipt();
-        await btSend(escpos);
-        toast.success("Receipt sent to printer");
-        await incrementSaleCount("customPrint");
+
+        toast.error("No printer configured. Go to Admin > Printer to set up.");
         return;
       }
 
@@ -231,20 +264,7 @@ export default function CustomPrintPage() {
       if (!check.allowed) { setUpgradeMsg(check.message); setUpgradeOpen(true); return; }
       const doc = await buildReceiptPdf();
       const blob = doc.output("blob");
-      const file = new File([blob], `${title || "receipt"}.pdf`, { type: "application/pdf" });
-
-      if (navigator.share && navigator.canShare?.({ files: [file] })) {
-        await navigator.share({ title: title || "Receipt", files: [file] });
-      } else {
-        // Fallback: download
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `${title || "receipt"}.pdf`;
-        a.click();
-        URL.revokeObjectURL(url);
-        toast.success("Receipt downloaded");
-      }
+      await sharePdfBlob(blob, title || "receipt");
       await incrementSaleCount("customPrint");
     } catch {
       toast.error("Share failed");
@@ -266,11 +286,15 @@ export default function CustomPrintPage() {
       toast.error("File too large (max 10 MB)");
       return;
     }
-    const url = URL.createObjectURL(file);
-    setUploadedFileUrl(url);
-    setUploadedFileName(file.name);
-    setUploadedFileType(isPdf ? "pdf" : "image");
-    toast.success(`Uploaded: ${file.name}`);
+    // Store as base64 data URL to avoid blob URL issues
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setUploadedFileUrl(reader.result as string);
+      setUploadedFileName(file.name);
+      setUploadedFileType(isPdf ? "pdf" : "image");
+      toast.success(`Uploaded: ${file.name}`);
+    };
+    reader.readAsDataURL(file);
   };
 
   const printUploadedFile = async () => {
@@ -278,14 +302,63 @@ export default function CustomPrintPage() {
     const check = await canMakeSale("customPrint");
     if (!check.allowed) { setUpgradeMsg(check.message); setUpgradeOpen(true); return; }
     await incrementSaleCount("customPrint");
+
+    // Use hidden iframe instead of window.open to avoid stuck screen
     if (uploadedFileType === "image") {
-      const w = window.open("", "_blank");
-      if (!w) return;
-      w.document.write(`<!DOCTYPE html><html><head><title>Print</title><style>@media print{body{margin:0}} body{display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0;}</style></head><body><img src="${uploadedFileUrl}" style="max-width:100%;max-height:100vh;" onload="window.print()"/></body></html>`);
-      w.document.close();
+      const iframe = document.createElement("iframe");
+      iframe.style.position = "fixed";
+      iframe.style.left = "-9999px";
+      iframe.style.width = "800px";
+      iframe.style.height = "600px";
+      iframe.style.border = "none";
+      document.body.appendChild(iframe);
+
+      const doc = iframe.contentDocument || iframe.contentWindow?.document;
+      if (!doc) {
+        toast.error("Could not create print frame");
+        document.body.removeChild(iframe);
+        return;
+      }
+      doc.open();
+      doc.write(`<!DOCTYPE html><html><head><title>Print</title><style>@media print{body{margin:0}} body{display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0;}</style></head><body><img src="${uploadedFileUrl}" style="max-width:100%;max-height:100vh;" /></body></html>`);
+      doc.close();
+
+      setTimeout(() => {
+        try {
+          iframe.contentWindow?.focus();
+          iframe.contentWindow?.print();
+        } catch {
+          toast.error("Could not open print dialog");
+        }
+        setTimeout(() => {
+          try { document.body.removeChild(iframe); } catch {}
+        }, 60000);
+      }, 500);
     } else {
-      const w = window.open(uploadedFileUrl, "_blank");
-      if (w) w.addEventListener("load", () => w.print());
+      // PDF: convert data URL to blob for printing
+      const res = await fetch(uploadedFileUrl);
+      const blob = await res.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const iframe = document.createElement("iframe");
+      iframe.style.position = "fixed";
+      iframe.style.left = "-9999px";
+      iframe.style.width = "800px";
+      iframe.style.height = "600px";
+      iframe.src = blobUrl;
+      document.body.appendChild(iframe);
+
+      iframe.addEventListener("load", () => {
+        try {
+          iframe.contentWindow?.focus();
+          iframe.contentWindow?.print();
+        } catch {
+          toast.error("Could not open print dialog");
+        }
+        setTimeout(() => {
+          try { document.body.removeChild(iframe); } catch {}
+          URL.revokeObjectURL(blobUrl);
+        }, 60000);
+      });
     }
   };
 
@@ -294,17 +367,7 @@ export default function CustomPrintPage() {
     try {
       const res = await fetch(uploadedFileUrl);
       const blob = await res.blob();
-      const file = new File([blob], uploadedFileName || "file", { type: blob.type });
-
-      if (navigator.share && navigator.canShare?.({ files: [file] })) {
-        await navigator.share({ title: uploadedFileName, files: [file] });
-      } else {
-        const a = document.createElement("a");
-        a.href = uploadedFileUrl;
-        a.download = uploadedFileName || "file";
-        a.click();
-        toast.success("File downloaded");
-      }
+      await shareFileBlob(blob, uploadedFileName || "file");
     } catch {
       toast.error("Share failed");
     }
@@ -355,12 +418,7 @@ export default function CustomPrintPage() {
                       type="file"
                       accept="image/*"
                       className="hidden"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (!file) return;
-                        const url = URL.createObjectURL(file);
-                        setLogoUrl(url);
-                      }}
+                      onChange={handleLogoUpload}
                     />
                   </div>
                 </div>
