@@ -311,13 +311,13 @@ export default function CustomPrintPage() {
                 <div>
                   <Label className="text-xs">Logo (optional)</Label>
                   <div className="flex items-center gap-2">
-                    {logoUrl ? (
-                      <img src={logoUrl} alt="Logo" className="h-12 w-12 rounded border object-contain" />
-                    ) : (
-                      <div className="h-12 w-12 rounded border flex items-center justify-center text-muted-foreground">
+                    <div className="h-12 w-12 rounded border flex items-center justify-center text-muted-foreground cursor-pointer hover:border-primary/50 transition-colors" onClick={() => logoInputRef.current?.click()}>
+                      {logoUrl ? (
+                        <img src={logoUrl} alt="Logo" className="h-full w-full rounded object-contain" />
+                      ) : (
                         <ImageIcon className="h-5 w-5" />
-                      </div>
-                    )}
+                      )}
+                    </div>
                     <Button variant="outline" size="sm" onClick={() => logoInputRef.current?.click()}>
                       {logoUrl ? "Change" : "Upload"}
                     </Button>
