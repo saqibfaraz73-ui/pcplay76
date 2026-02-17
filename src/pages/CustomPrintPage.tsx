@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import jsPDF from "jspdf";
 import { isNativeAndroid, btConnect, btSend } from "@/features/pos/bluetooth-printer";
 import { db } from "@/db/appDb";
+import { canMakeSale, incrementSaleCount } from "@/features/licensing/licensing-db";
 
 interface ReceiptLine {
   id: string;
@@ -188,7 +189,8 @@ export default function CustomPrintPage() {
 
   const printReceipt = async () => {
     try {
-      // Try Bluetooth ESC/POS on native Android
+      const check = await canMakeSale("customPrint");
+      if (!check.allowed) { toast.error(check.message); return; }
       if (isNativeAndroid()) {
         const settings = await db.settings.get("app");
         const btAddress = settings?.btPrinterAddress || settings?.printerAddress;
@@ -200,6 +202,7 @@ export default function CustomPrintPage() {
         const escpos = buildEscPosCustomReceipt();
         await btSend(escpos);
         toast.success("Receipt sent to printer");
+        await incrementSaleCount("customPrint");
         return;
       }
 
@@ -212,6 +215,7 @@ export default function CustomPrintPage() {
         w.addEventListener("load", () => {
           w.print();
         });
+        await incrementSaleCount("customPrint");
       }
     } catch (err: any) {
       toast.error(err?.message || "Failed to print receipt");
@@ -220,6 +224,8 @@ export default function CustomPrintPage() {
 
   const shareReceipt = async () => {
     try {
+      const check = await canMakeSale("customPrint");
+      if (!check.allowed) { toast.error(check.message); return; }
       const doc = await buildReceiptPdf();
       const blob = doc.output("blob");
       const file = new File([blob], `${title || "receipt"}.pdf`, { type: "application/pdf" });
@@ -236,6 +242,7 @@ export default function CustomPrintPage() {
         URL.revokeObjectURL(url);
         toast.success("Receipt downloaded");
       }
+      await incrementSaleCount("customPrint");
     } catch {
       toast.error("Share failed");
     }
@@ -263,8 +270,11 @@ export default function CustomPrintPage() {
     toast.success(`Uploaded: ${file.name}`);
   };
 
-  const printUploadedFile = () => {
+  const printUploadedFile = async () => {
     if (!uploadedFileUrl) return;
+    const check = await canMakeSale("customPrint");
+    if (!check.allowed) { toast.error(check.message); return; }
+    await incrementSaleCount("customPrint");
     if (uploadedFileType === "image") {
       const w = window.open("", "_blank");
       if (!w) return;

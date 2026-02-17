@@ -1,5 +1,6 @@
 import React from "react";
 import { db } from "@/db/appDb";
+import { canMakeSale, incrementSaleCount } from "@/features/licensing/licensing-db";
 import type { MenuItem, Category, Settings } from "@/db/schema";
 import { makeId } from "@/features/admin/id";
 import { formatIntMoney } from "@/features/pos/format";
@@ -285,9 +286,14 @@ export default function ProductLabelsPage() {
 
   const totalLabels = labelItems.reduce((s, l) => s + (l.qty || 1), 0);
 
-  const handlePrintLabels = () => {
+  const handlePrintLabels = async () => {
     if (labelItems.length === 0) {
       toast({ title: "No items", description: "Add items to print labels.", variant: "destructive" });
+      return;
+    }
+    const check = await canMakeSale("labelPrint");
+    if (!check.allowed) {
+      toast({ title: "Limit reached", description: check.message, variant: "destructive" });
       return;
     }
     const labels = buildLabels();
@@ -335,6 +341,7 @@ export default function ProductLabelsPage() {
       try {
         iframe.contentWindow?.focus();
         iframe.contentWindow?.print();
+        incrementSaleCount("labelPrint");
       } catch {
         toast({ title: "Print error", description: "Could not open print dialog.", variant: "destructive" });
       }
@@ -342,13 +349,19 @@ export default function ProductLabelsPage() {
     }, 500);
   };
 
-  const handlePdfDownload = () => {
+  const handlePdfDownload = async () => {
     if (labelItems.length === 0) {
       toast({ title: "No items", description: "Add items to generate labels.", variant: "destructive" });
       return;
     }
+    const check = await canMakeSale("labelPrint");
+    if (!check.allowed) {
+      toast({ title: "Limit reached", description: check.message, variant: "destructive" });
+      return;
+    }
     try {
       generateLabelPdf(buildLabels());
+      await incrementSaleCount("labelPrint");
       toast({ title: "PDF Downloaded", description: `${labelItems.length} label(s) saved.` });
     } catch (e: any) {
       toast({ title: "PDF Error", description: e.message, variant: "destructive" });
@@ -360,6 +373,11 @@ export default function ProductLabelsPage() {
       toast({ title: "No items", description: "Add items to print labels.", variant: "destructive" });
       return;
     }
+    const check = await canMakeSale("labelPrint");
+    if (!check.allowed) {
+      toast({ title: "Limit reached", description: check.message, variant: "destructive" });
+      return;
+    }
     if (!settings) {
       toast({ title: "No settings", description: "Configure printer in Admin > Printer first.", variant: "destructive" });
       return;
@@ -367,6 +385,7 @@ export default function ProductLabelsPage() {
     setPrinting(true);
     try {
       await printLabelsEscPos(buildLabels(), settings);
+      await incrementSaleCount("labelPrint");
       toast({ title: "Printed", description: `${labelItems.length} label(s) sent to printer.` });
     } catch (e: any) {
       toast({ title: "Print Error", description: e.message, variant: "destructive" });
