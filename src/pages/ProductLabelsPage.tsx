@@ -26,7 +26,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/hooks/use-toast";
 import {
   Printer, Download, Search, Tags, CheckSquare, Square,
-  Upload, Plus, Trash2, Pencil, Save,
+  Upload, Plus, Trash2, Pencil, Save, Share2,
 } from "lucide-react";
 
 /* ── Label item type used across all tabs ── */
@@ -715,7 +715,7 @@ export default function ProductLabelsPage() {
                 <Printer className="h-4 w-4" /> Print Labels
               </Button>
               <Button onClick={handlePdfDownload} variant="secondary" className="gap-2">
-                <Download className="h-4 w-4" /> Share A4 PDF
+                <Share2 className="h-4 w-4" /> Share A4 PDF
               </Button>
             </div>
             <div className="flex flex-wrap gap-3">
@@ -728,7 +728,7 @@ export default function ProductLabelsPage() {
                 await shareTextFile(zpl, `labels-${labels.length}.zpl`);
                 await incrementSaleCount("labelPrint", totalLabels); refreshUsage();
               }} variant="outline" className="gap-2">
-                <Download className="h-4 w-4" /> ZPL File
+                <Share2 className="h-4 w-4" /> Share ZPL
               </Button>
               <Button onClick={async () => {
                 if (labelItems.length === 0) return;
@@ -739,7 +739,7 @@ export default function ProductLabelsPage() {
                 await shareTextFile(tspl, `labels-${labels.length}.prn`);
                 await incrementSaleCount("labelPrint", totalLabels); refreshUsage();
               }} variant="outline" className="gap-2">
-                <Download className="h-4 w-4" /> TSPL File
+                <Share2 className="h-4 w-4" /> Share TSPL
               </Button>
             </div>
             <div className="space-y-2">
