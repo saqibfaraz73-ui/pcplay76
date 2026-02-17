@@ -294,9 +294,15 @@ export default function ProductLabelsPage() {
       return;
     }
     printWindow.document.write(`<!DOCTYPE html><html><head><title>Product Labels</title>
-      <style>body{margin:20px;font-family:sans-serif;}
-      .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;}
-      @media print{body{margin:10px;}.grid{gap:8px;}}</style></head>
+      <style>
+        html,body{margin:0;padding:10px;font-family:sans-serif;height:auto !important;overflow:visible !important;}
+        .grid{display:inline-grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;width:100%;}
+        @media print{
+          html,body{margin:0;padding:5mm;height:auto !important;}
+          .grid{gap:8px;}
+          @page{size:auto;margin:5mm;}
+        }
+      </style></head>
       <body><div class="grid">${labelHtml}</div>
       <script>window.onload=function(){window.print();window.onafterprint=function(){window.close();}}<\/script>
       </body></html>`);
