@@ -9,6 +9,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FileText, Upload, Printer, Share2, Plus, Trash2, Eye } from "lucide-react";
 import { toast } from "sonner";
 import jsPDF from "jspdf";
+import { isNativeAndroid, btConnect, btSend } from "@/features/pos/bluetooth-printer";
+import { db } from "@/db/appDb";
 
 interface ReceiptLine {
   id: string;
@@ -97,8 +99,84 @@ export default function CustomPrintPage() {
     setShowPreview(true);
   };
 
-  const printReceipt = () => {
+  const buildEscPosCustomReceipt = (): string => {
+    const WIDTH = 32; // 58mm = 32 chars
+    const hr = "-".repeat(WIDTH);
+    const CENTER_ON = "\x1ba\x01";
+    const LEFT_ON = "\x1ba\x00";
+
+    const lr = (l: string, r: string) => {
+      const sp = WIDTH - l.length - r.length;
+      return l + " ".repeat(Math.max(1, sp)) + r;
+    };
+
+    const out: string[] = [];
+    // ESC @ init + line spacing
+    out.push("\x1b@\x1b3\x14");
+    out.push(CENTER_ON);
+
+    if (businessName) out.push(businessName.slice(0, WIDTH));
+    out.push(title.slice(0, WIDTH));
+    out.push(hr);
+
+    out.push(LEFT_ON);
+
+    for (const line of lines) {
+      if (!line.label && !line.value) continue;
+      if (line.value) {
+        out.push(lr(line.label.slice(0, WIDTH - line.value.length - 1), line.value));
+      } else {
+        out.push(line.label.slice(0, WIDTH));
+      }
+    }
+
+    if (note) {
+      out.push(hr);
+      // Word-wrap note to WIDTH
+      const words = note.split(" ");
+      let cur = "";
+      for (const w of words) {
+        if (cur.length + w.length + 1 > WIDTH) {
+          out.push(cur);
+          cur = w;
+        } else {
+          cur = cur ? cur + " " + w : w;
+        }
+      }
+      if (cur) out.push(cur);
+    }
+
+    out.push(hr);
+    out.push(CENTER_ON);
+    out.push(new Date().toLocaleString());
+    out.push(LEFT_ON);
+
+    // Feed + partial cut
+    out.push("");
+    out.push("");
+    out.push("\x1dV\x41\x03");
+
+    return out.join("\n");
+  };
+
+  const printReceipt = async () => {
     try {
+      // Try Bluetooth ESC/POS on native Android
+      if (isNativeAndroid()) {
+        const settings = await db.settings.get("app");
+        const btAddress = settings?.btPrinterAddress || settings?.printerAddress;
+        if (!btAddress) {
+          toast.error("No Bluetooth printer configured. Go to Admin > Printer to set up.");
+          return;
+        }
+        await btConnect(btAddress);
+        const escpos = buildEscPosCustomReceipt();
+        await btSend(escpos);
+        toast.success("Receipt sent to printer");
+        return;
+      }
+
+      // Browser fallback: open print dialog
       const doc = buildReceiptPdf();
       const blob = doc.output("blob");
       const url = URL.createObjectURL(blob);
@@ -108,8 +186,8 @@ export default function CustomPrintPage() {
           w.print();
         });
       }
-    } catch {
-      toast.error("Failed to print receipt");
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to print receipt");
     }
   };
 
