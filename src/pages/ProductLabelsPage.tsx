@@ -281,74 +281,54 @@ export default function ProductLabelsPage() {
       return;
     }
     const labels = buildLabels();
+    const labelHtml = labels.map((l) => {
+      const barcodeUrl = barcodeToDataUrl(l.sku, { width: 200, height: 50 });
+      return `<div style="border:1px solid #ccc;border-radius:6px;padding:10px;text-align:center;break-inside:avoid;width:170px;">
+        <div style="font-weight:bold;font-size:11px;margin-bottom:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${l.name}</div>
+        ${l.price !== "Rs 0" ? `<div style="font-size:10px;color:#666;margin-bottom:3px;">${l.price}</div>` : ""}
+        <img src="${barcodeUrl}" style="width:100%;height:auto;" />
+        <div style="font-size:8px;color:#999;margin-top:2px;">${l.sku}</div>
+      </div>`;
+    }).join("");
 
-    // Calculate grid: 3 columns, each label ~65mm wide x 40mm tall
-    const colCount = 3;
-    const labelW = 60;
-    const labelH = 38;
-    const gap = 5;
-    const margin = 10;
-    const rows = Math.ceil(labels.length / colCount);
-    const pageW = margin * 2 + colCount * labelW + (colCount - 1) * gap;
-    const pageH = margin * 2 + rows * labelH + (rows - 1) * gap;
+    // Build HTML content and print via hidden iframe
+    const htmlContent = `<!DOCTYPE html><html><head><title>Labels</title>
+      <style>
+        *{margin:0;padding:0;box-sizing:border-box;}
+        body{font-family:sans-serif;padding:8px;}
+        .grid{display:flex;flex-wrap:wrap;gap:8px;}
+        @page{size:auto;margin:5mm;}
+      </style></head>
+      <body><div class="grid">${labelHtml}</div></body></html>`;
 
-    const pdf = new jsPDF({ unit: "mm", format: [pageW, pageH] });
-
-    labels.forEach((l, i) => {
-      const col = i % colCount;
-      const row = Math.floor(i / colCount);
-      const x = margin + col * (labelW + gap);
-      const y = margin + row * (labelH + gap);
-
-      // Border
-      pdf.setDrawColor(200);
-      pdf.roundedRect(x, y, labelW, labelH, 2, 2, "S");
-
-      // Name
-      pdf.setFontSize(9);
-      pdf.setFont("helvetica", "bold");
-      const nameText = l.name.length > 20 ? l.name.slice(0, 20) + "…" : l.name;
-      pdf.text(nameText, x + labelW / 2, y + 7, { align: "center" });
-
-      // Price
-      if (l.price !== "Rs 0") {
-        pdf.setFontSize(7);
-        pdf.setFont("helvetica", "normal");
-        pdf.text(l.price, x + labelW / 2, y + 12, { align: "center" });
-      }
-
-      // Barcode image
-      try {
-        const barcodeUrl = barcodeToDataUrl(l.sku, { width: 200, height: 50 });
-        pdf.addImage(barcodeUrl, "PNG", x + 5, y + 14, labelW - 10, 14);
-      } catch {}
-
-      // SKU text
-      pdf.setFontSize(6);
-      pdf.setFont("helvetica", "normal");
-      pdf.text(l.sku, x + labelW / 2, y + 34, { align: "center" });
-    });
-
-    // Use hidden iframe to trigger print without popup blockers
-    const pdfDataUri = pdf.output("datauristring");
     const iframe = document.createElement("iframe");
     iframe.style.position = "fixed";
-    iframe.style.right = "0";
-    iframe.style.bottom = "0";
-    iframe.style.width = "0";
-    iframe.style.height = "0";
+    iframe.style.left = "-9999px";
+    iframe.style.width = "800px";
+    iframe.style.height = "600px";
     iframe.style.border = "none";
-    iframe.src = pdfDataUri;
     document.body.appendChild(iframe);
-    iframe.onload = () => {
+
+    const doc = iframe.contentDocument || iframe.contentWindow?.document;
+    if (!doc) {
+      toast({ title: "Print error", description: "Could not create print frame.", variant: "destructive" });
+      document.body.removeChild(iframe);
+      return;
+    }
+    doc.open();
+    doc.write(htmlContent);
+    doc.close();
+
+    // Wait for images to load then print
+    setTimeout(() => {
       try {
+        iframe.contentWindow?.focus();
         iframe.contentWindow?.print();
       } catch {
-        // Fallback: download instead
-        pdf.save(`labels-${labels.length}.pdf`);
+        toast({ title: "Print error", description: "Could not open print dialog.", variant: "destructive" });
       }
       setTimeout(() => document.body.removeChild(iframe), 60000);
-    };
+    }, 500);
   };
 
   const handlePdfDownload = () => {
