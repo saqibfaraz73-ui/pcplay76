@@ -1,6 +1,7 @@
 import React from "react";
 import { db } from "@/db/appDb";
 import { canMakeSale, incrementSaleCount } from "@/features/licensing/licensing-db";
+import { UpgradeDialog } from "@/features/licensing/UpgradeDialog";
 import type { MenuItem, Category, Settings } from "@/db/schema";
 import { makeId } from "@/features/admin/id";
 import { formatIntMoney } from "@/features/pos/format";
@@ -71,6 +72,8 @@ export default function ProductLabelsPage() {
 
   // Printing
   const [printing, setPrinting] = React.useState(false);
+  const [upgradeOpen, setUpgradeOpen] = React.useState(false);
+  const [upgradeMsg, setUpgradeMsg] = React.useState("");
 
   React.useEffect(() => {
     (async () => {
@@ -293,7 +296,7 @@ export default function ProductLabelsPage() {
     }
     const check = await canMakeSale("labelPrint");
     if (!check.allowed) {
-      toast({ title: "Limit reached", description: check.message, variant: "destructive" });
+      setUpgradeMsg(check.message); setUpgradeOpen(true);
       return;
     }
     const labels = buildLabels();
@@ -356,7 +359,7 @@ export default function ProductLabelsPage() {
     }
     const check = await canMakeSale("labelPrint");
     if (!check.allowed) {
-      toast({ title: "Limit reached", description: check.message, variant: "destructive" });
+      setUpgradeMsg(check.message); setUpgradeOpen(true);
       return;
     }
     try {
@@ -375,7 +378,7 @@ export default function ProductLabelsPage() {
     }
     const check = await canMakeSale("labelPrint");
     if (!check.allowed) {
-      toast({ title: "Limit reached", description: check.message, variant: "destructive" });
+      setUpgradeMsg(check.message); setUpgradeOpen(true);
       return;
     }
     if (!settings) {
@@ -397,6 +400,7 @@ export default function ProductLabelsPage() {
   const isInList = (id: string) => labelItems.some((l) => l.id === id);
 
   return (
+    <>
     <div className="space-y-4">
       <header>
         <h1 className="text-2xl font-semibold flex items-center gap-2">
@@ -668,5 +672,7 @@ export default function ProductLabelsPage() {
         </Card>
       )}
     </div>
+    <UpgradeDialog open={upgradeOpen} onOpenChange={setUpgradeOpen} message={upgradeMsg} />
+    </>
   );
 }
