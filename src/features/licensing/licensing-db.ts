@@ -154,7 +154,7 @@ const moduleLimit: Partial<Record<SalesModule, number>> = {
   labelPrint: PRINT_LIMIT,
 };
 
-export async function canMakeSale(module: SalesModule): Promise<{ allowed: boolean; message: string }> {
+export async function canMakeSale(module: SalesModule, count: number = 1): Promise<{ allowed: boolean; message: string; remaining?: number }> {
   const lic = await getLicense();
   if (lic.isPremium) return { allowed: true, message: "" };
 
@@ -172,23 +172,25 @@ export async function canMakeSale(module: SalesModule): Promise<{ allowed: boole
     }
   }
 
-  if (moduleCount >= limit) {
+  const remaining = limit - moduleCount;
+  if (moduleCount + count > limit) {
     return {
       allowed: false,
-      message: lic.upgradeMessage || `You have reached the free limit of ${limit} entries for this module. Please upgrade to Premium to continue.`,
+      remaining: Math.max(0, remaining),
+      message: lic.upgradeMessage || `You have used ${moduleCount}/${limit} free barcodes. ${remaining > 0 ? `Only ${remaining} remaining.` : "Limit reached."} Please upgrade to Premium to continue.`,
     };
   }
-  return { allowed: true, message: "" };
+  return { allowed: true, message: "", remaining };
 }
 
 /**
  * Increment sale count WITHOUT calling getLicense() (which does filesystem I/O).
  * This is safe to call inside a Dexie transaction because it only touches IndexedDB.
  */
-export async function incrementSaleCount(module: SalesModule): Promise<void> {
+export async function incrementSaleCount(module: SalesModule, count: number = 1): Promise<void> {
   const rec = await (db as any).license.get("license") as LicenseRecord | undefined;
   if (!rec || rec.isPremium) return;
   const key = moduleKey[module];
-  await (db as any).license.put({ ...rec, [key]: ((rec[key] as number) ?? 0) + 1 });
+  await (db as any).license.put({ ...rec, [key]: ((rec[key] as number) ?? 0) + count });
 }
 

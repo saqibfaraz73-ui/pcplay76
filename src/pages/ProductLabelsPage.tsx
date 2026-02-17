@@ -305,7 +305,7 @@ export default function ProductLabelsPage() {
       toast({ title: "No items", description: "Add items to print labels.", variant: "destructive" });
       return;
     }
-    const check = await canMakeSale("labelPrint");
+    const check = await canMakeSale("labelPrint", totalLabels);
     if (!check.allowed) {
       setUpgradeMsg(check.message); setUpgradeOpen(true);
       return;
@@ -317,7 +317,7 @@ export default function ProductLabelsPage() {
       try {
         const blob = generateLabelPdfBlob(labels);
         await sharePdfBlob(blob, "print-labels");
-        await incrementSaleCount("labelPrint"); refreshUsage();
+        await incrementSaleCount("labelPrint", totalLabels); refreshUsage();
       } catch (e: any) {
         toast({ title: "Print Error", description: e.message, variant: "destructive" });
       }
@@ -368,7 +368,7 @@ export default function ProductLabelsPage() {
       try {
         iframe.contentWindow?.focus();
         iframe.contentWindow?.print();
-        incrementSaleCount("labelPrint").then(() => refreshUsage()).catch(() => {});
+        incrementSaleCount("labelPrint", totalLabels).then(() => refreshUsage()).catch(() => {});
       } catch {
         toast({ title: "Print error", description: "Could not open print dialog.", variant: "destructive" });
       }
@@ -381,7 +381,7 @@ export default function ProductLabelsPage() {
       toast({ title: "No items", description: "Add items to generate labels.", variant: "destructive" });
       return;
     }
-    const check = await canMakeSale("labelPrint");
+    const check = await canMakeSale("labelPrint", totalLabels);
     if (!check.allowed) {
       setUpgradeMsg(check.message); setUpgradeOpen(true);
       return;
@@ -389,7 +389,7 @@ export default function ProductLabelsPage() {
     try {
       const blob = generateLabelPdfBlob(buildLabels());
       await sharePdfBlob(blob, "product-labels");
-      await incrementSaleCount("labelPrint"); refreshUsage();
+      await incrementSaleCount("labelPrint", totalLabels); refreshUsage();
     } catch (e: any) {
       toast({ title: "PDF Error", description: e.message, variant: "destructive" });
     }
@@ -400,7 +400,7 @@ export default function ProductLabelsPage() {
       toast({ title: "No items", description: "Add items to print labels.", variant: "destructive" });
       return;
     }
-    const check = await canMakeSale("labelPrint");
+    const check = await canMakeSale("labelPrint", totalLabels);
     if (!check.allowed) {
       setUpgradeMsg(check.message); setUpgradeOpen(true);
       return;
@@ -412,7 +412,7 @@ export default function ProductLabelsPage() {
     setPrinting(true);
     try {
       await printLabelsEscPos(buildLabels(), settings);
-      await incrementSaleCount("labelPrint"); refreshUsage();
+      await incrementSaleCount("labelPrint", totalLabels); refreshUsage();
       toast({ title: "Printed", description: `${labelItems.length} label(s) sent to printer.` });
     } catch (e: any) {
       toast({ title: "Print Error", description: e.message, variant: "destructive" });
@@ -441,14 +441,14 @@ export default function ProductLabelsPage() {
       toast({ title: "No items", description: "Add items to print labels.", variant: "destructive" });
       return;
     }
-    const check = await canMakeSale("labelPrint");
+    const check = await canMakeSale("labelPrint", totalLabels);
     if (!check.allowed) { setUpgradeMsg(check.message); setUpgradeOpen(true); return; }
     setPrinting(true);
     try {
       const labels = buildLabels();
       const raw = format === "zpl" ? generateLabelsZpl(labels) : generateLabelsTspl(labels);
       await sendRawToPrinter(raw, via);
-      await incrementSaleCount("labelPrint"); refreshUsage();
+      await incrementSaleCount("labelPrint", totalLabels); refreshUsage();
       toast({ title: "Printed", description: `${labels.length} ${format.toUpperCase()} label(s) sent via ${via}.` });
     } catch (e: any) {
       toast({ title: "Print Error", description: e.message, variant: "destructive" });
@@ -721,23 +721,23 @@ export default function ProductLabelsPage() {
             <div className="flex flex-wrap gap-3">
               <Button onClick={async () => {
                 if (labelItems.length === 0) return;
-                const check = await canMakeSale("labelPrint");
+                const check = await canMakeSale("labelPrint", totalLabels);
                 if (!check.allowed) { setUpgradeMsg(check.message); setUpgradeOpen(true); return; }
                 const labels = buildLabels();
                 const zpl = generateLabelsZpl(labels);
                 await shareTextFile(zpl, `labels-${labels.length}.zpl`);
-                await incrementSaleCount("labelPrint"); refreshUsage();
+                await incrementSaleCount("labelPrint", totalLabels); refreshUsage();
               }} variant="outline" className="gap-2">
                 <Download className="h-4 w-4" /> ZPL File
               </Button>
               <Button onClick={async () => {
                 if (labelItems.length === 0) return;
-                const check = await canMakeSale("labelPrint");
+                const check = await canMakeSale("labelPrint", totalLabels);
                 if (!check.allowed) { setUpgradeMsg(check.message); setUpgradeOpen(true); return; }
                 const labels = buildLabels();
                 const tspl = generateLabelsTspl(labels);
                 await shareTextFile(tspl, `labels-${labels.length}.prn`);
-                await incrementSaleCount("labelPrint"); refreshUsage();
+                await incrementSaleCount("labelPrint", totalLabels); refreshUsage();
               }} variant="outline" className="gap-2">
                 <Download className="h-4 w-4" /> TSPL File
               </Button>
