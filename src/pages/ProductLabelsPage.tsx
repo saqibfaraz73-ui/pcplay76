@@ -7,6 +7,8 @@ import { barcodeToDataUrl } from "@/features/labels/barcode-generator";
 import { generateLabelPdf } from "@/features/labels/label-pdf";
 import { jsPDF } from "jspdf";
 import { printLabelsEscPos } from "@/features/labels/label-escpos";
+import { downloadLabelsZpl } from "@/features/labels/label-zpl";
+import { downloadLabelsTspl } from "@/features/labels/label-tspl";
 import { isNativeAndroid } from "@/features/pos/bluetooth-printer";
 import * as XLSX from "xlsx";
 import { Button } from "@/components/ui/button";
@@ -586,24 +588,44 @@ export default function ProductLabelsPage() {
 
       {/* ── Actions ── */}
       {labelItems.length > 0 && (
-      <div className="flex flex-wrap gap-3">
-          <Button onClick={handlePdfDownload} className="gap-2">
-            <Download className="h-4 w-4" /> Download PDF
-          </Button>
-          <Button onClick={handlePrintLabels} variant="secondary" className="gap-2">
-            <Printer className="h-4 w-4" /> Print Labels
-          </Button>
-          {isNativeAndroid() && (
-            <Button onClick={handleThermalPrint} disabled={printing} variant="outline" className="gap-2">
-              <Printer className="h-4 w-4" /> {printing ? "Printing…" : "Print on Thermal"}
-            </Button>
-          )}
-          {labelItems.some((l) => !l.fromDb) && (
-            <Button onClick={saveToProducts} disabled={saving} variant="outline" className="gap-2">
-              <Save className="h-4 w-4" /> {saving ? "Saving…" : "Save New Items to Products"}
-            </Button>
-          )}
-        </div>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Print / Download</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Choose the format that matches your printer type.
+            </p>
+            <div className="flex flex-wrap gap-3">
+              <Button onClick={handlePdfDownload} className="gap-2">
+                <Download className="h-4 w-4" /> A4 PDF (Office Printer)
+              </Button>
+              <Button onClick={handlePrintLabels} variant="secondary" className="gap-2">
+                <Printer className="h-4 w-4" /> Print Labels (Browser)
+              </Button>
+            </div>
+            <div className="flex flex-wrap gap-3">
+              <Button onClick={() => downloadLabelsZpl(buildLabels())} variant="outline" className="gap-2">
+                <Download className="h-4 w-4" /> Download ZPL (Zebra)
+              </Button>
+              <Button onClick={() => downloadLabelsTspl(buildLabels())} variant="outline" className="gap-2">
+                <Download className="h-4 w-4" /> Download TSPL (TSC/Xprinter)
+              </Button>
+              {isNativeAndroid() && (
+                <Button onClick={handleThermalPrint} disabled={printing} variant="outline" className="gap-2">
+                  <Printer className="h-4 w-4" /> {printing ? "Printing…" : "ESC/POS Thermal"}
+                </Button>
+              )}
+            </div>
+            {labelItems.some((l) => !l.fromDb) && (
+              <div className="pt-2 border-t">
+                <Button onClick={saveToProducts} disabled={saving} variant="outline" className="gap-2">
+                  <Save className="h-4 w-4" /> {saving ? "Saving…" : "Save New Items to Products"}
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       )}
     </div>
   );
