@@ -63,6 +63,11 @@ export default function CustomPrintPage() {
       y += 6;
     }
 
+    doc.setFontSize(7);
+    doc.setFont("helvetica", "normal");
+    doc.text(new Date().toLocaleString(), 40, y, { align: "center" });
+    y += 4;
+
     if (title) {
       doc.setFontSize(10);
       doc.setFont("helvetica", "bold");
@@ -99,9 +104,6 @@ export default function CustomPrintPage() {
       y += splitNote.length * 3;
     }
 
-    y += 4;
-    doc.setFontSize(7);
-    doc.text(new Date().toLocaleString(), 40, y, { align: "center" });
 
     return doc;
   };
@@ -127,6 +129,7 @@ export default function CustomPrintPage() {
     out.push(CENTER_ON);
 
     if (businessName) out.push(businessName.slice(0, WIDTH));
+    out.push(new Date().toLocaleString().slice(0, WIDTH));
     if (title) out.push(title.slice(0, WIDTH));
     if (billNo) out.push(`Bill #: ${billNo}`.slice(0, WIDTH));
     if (preparedBy) out.push(`Prepared By: ${preparedBy}`.slice(0, WIDTH));
@@ -161,9 +164,6 @@ export default function CustomPrintPage() {
     }
 
     out.push(hr);
-    out.push(CENTER_ON);
-    out.push(new Date().toLocaleString());
-    out.push(LEFT_ON);
 
     // Feed + partial cut
     out.push("");
@@ -361,6 +361,7 @@ export default function CustomPrintPage() {
                     {businessName && (
                       <div className="text-center font-bold text-sm">{businessName}</div>
                     )}
+                    <div className="text-center text-[10px]">{new Date().toLocaleString()}</div>
                     {title && <div className="text-center font-bold">{title}</div>}
                     {billNo && <div className="text-center text-[10px]">Bill #: {billNo}</div>}
                     {preparedBy && <div className="text-center text-[10px]">Prepared By: {preparedBy}</div>}
@@ -380,9 +381,6 @@ export default function CustomPrintPage() {
                         <div className="text-[10px] whitespace-pre-wrap">{note}</div>
                       </>
                     )}
-                    <div className="text-center text-[10px] pt-2 text-gray-500">
-                      {new Date().toLocaleString()}
-                    </div>
                   </div>
                 ) : (
                   <div className="flex flex-col items-center justify-center h-[300px] text-muted-foreground text-sm border rounded-md">
