@@ -305,7 +305,7 @@ export default function ProductLabelsPage() {
       <style>
         *{margin:0;padding:0;box-sizing:border-box;}
         html,body{font-family:sans-serif;height:auto !important;overflow:visible;}
-        .label{page-break-after:always;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:10px;height:100vh;}
+        .label{page-break-after:always;display:flex;flex-direction:column;align-items:center;text-align:center;padding:8px 10px;}
         .label:last-child{page-break-after:auto;}
         @page{size:auto;margin:5mm;}
         @media print{html,body{height:auto !important;}}
