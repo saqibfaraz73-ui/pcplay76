@@ -301,6 +301,20 @@ export default function ProductLabelsPage() {
       return;
     }
     const labels = buildLabels();
+
+    // On native Android, share as PDF since iframe.print() doesn't work in WebView
+    if (isNativeAndroid()) {
+      try {
+        const blob = generateLabelPdfBlob(labels);
+        await sharePdfBlob(blob, "print-labels");
+        await incrementSaleCount("labelPrint");
+      } catch (e: any) {
+        toast({ title: "Print Error", description: e.message, variant: "destructive" });
+      }
+      return;
+    }
+
+    // Browser: use iframe print
     const labelHtml = labels.map((l) => {
       const barcodeUrl = barcodeToDataUrl(l.sku, { width: 200, height: 50 });
       return `<div class="label">
@@ -340,7 +354,6 @@ export default function ProductLabelsPage() {
     doc.write(htmlContent);
     doc.close();
 
-    // Wait for images to load then print
     setTimeout(() => {
       try {
         iframe.contentWindow?.focus();
