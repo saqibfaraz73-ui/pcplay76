@@ -26,21 +26,24 @@ async function blobToBase64(blob: Blob): Promise<string> {
 /** Native share via Capacitor Filesystem + Share plugins */
 async function nativeShareFile(blob: Blob, fileName: string): Promise<void> {
   const base64 = await blobToBase64(blob);
-  // Write to cache directory
+  const path = `Sangi Pos/Shared/${fileName}`;
+  // Write to Documents directory (Cache URIs are not shareable on some Android versions)
   await Filesystem.writeFile({
-    path: fileName,
+    path,
     data: base64,
-    directory: Directory.Cache,
+    directory: Directory.Documents,
+    recursive: true,
   });
   // Get the native URI
   const uriResult = await Filesystem.getUri({
-    directory: Directory.Cache,
-    path: fileName,
+    directory: Directory.Documents,
+    path,
   });
   // Open native share sheet
   await Share.share({
     title: fileName,
     url: uriResult.uri,
+    dialogTitle: fileName,
   });
 }
 
