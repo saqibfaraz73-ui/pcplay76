@@ -521,12 +521,15 @@ export default function ProductLabelsPage() {
 
       {/* ── Actions ── */}
       {labelItems.length > 0 && (
-        <div className="flex flex-wrap gap-3">
+      <div className="flex flex-wrap gap-3">
           <Button onClick={handlePdfDownload} className="gap-2">
             <Download className="h-4 w-4" /> Download PDF
           </Button>
+          <Button onClick={() => { handlePdfDownload(); setTimeout(() => window.print(), 500); }} variant="secondary" className="gap-2">
+            <Printer className="h-4 w-4" /> Print Labels
+          </Button>
           {isNativeAndroid() && (
-            <Button onClick={handleThermalPrint} disabled={printing} variant="secondary" className="gap-2">
+            <Button onClick={handleThermalPrint} disabled={printing} variant="outline" className="gap-2">
               <Printer className="h-4 w-4" /> {printing ? "Printing…" : "Print on Thermal"}
             </Button>
           )}
