@@ -12,6 +12,7 @@ import jsPDF from "jspdf";
 import { isNativeAndroid, btConnect, btSend } from "@/features/pos/bluetooth-printer";
 import { db } from "@/db/appDb";
 import { canMakeSale, incrementSaleCount } from "@/features/licensing/licensing-db";
+import { UpgradeDialog } from "@/features/licensing/UpgradeDialog";
 
 interface ReceiptLine {
   id: string;
@@ -43,6 +44,8 @@ export default function CustomPrintPage() {
 
   // Preview state
   const [showPreview, setShowPreview] = useState(false);
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const [upgradeMsg, setUpgradeMsg] = useState("");
 
   /* ---------- Custom receipt helpers ---------- */
 
@@ -190,7 +193,7 @@ export default function CustomPrintPage() {
   const printReceipt = async () => {
     try {
       const check = await canMakeSale("customPrint");
-      if (!check.allowed) { toast.error(check.message); return; }
+      if (!check.allowed) { setUpgradeMsg(check.message); setUpgradeOpen(true); return; }
       if (isNativeAndroid()) {
         const settings = await db.settings.get("app");
         const btAddress = settings?.btPrinterAddress || settings?.printerAddress;
@@ -225,7 +228,7 @@ export default function CustomPrintPage() {
   const shareReceipt = async () => {
     try {
       const check = await canMakeSale("customPrint");
-      if (!check.allowed) { toast.error(check.message); return; }
+      if (!check.allowed) { setUpgradeMsg(check.message); setUpgradeOpen(true); return; }
       const doc = await buildReceiptPdf();
       const blob = doc.output("blob");
       const file = new File([blob], `${title || "receipt"}.pdf`, { type: "application/pdf" });
@@ -273,7 +276,7 @@ export default function CustomPrintPage() {
   const printUploadedFile = async () => {
     if (!uploadedFileUrl) return;
     const check = await canMakeSale("customPrint");
-    if (!check.allowed) { toast.error(check.message); return; }
+    if (!check.allowed) { setUpgradeMsg(check.message); setUpgradeOpen(true); return; }
     await incrementSaleCount("customPrint");
     if (uploadedFileType === "image") {
       const w = window.open("", "_blank");
@@ -506,6 +509,7 @@ export default function CustomPrintPage() {
           </Card>
         </TabsContent>
       </Tabs>
+      <UpgradeDialog open={upgradeOpen} onOpenChange={setUpgradeOpen} message={upgradeMsg} />
     </div>
   );
 }
