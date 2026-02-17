@@ -510,7 +510,7 @@ export default function ProductLabelsPage() {
         <Card>
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-base">Label Queue ({labelItems.length} items, {totalLabels} labels)</CardTitle>
+              <CardTitle className="text-base">Label Queue ({labelItems.length} items, {totalLabels} labels to print)</CardTitle>
               <Button variant="ghost" size="sm" onClick={clearAll} className="text-destructive">
                 <Trash2 className="h-3.5 w-3.5 mr-1" /> Clear All
               </Button>
@@ -551,6 +551,7 @@ export default function ProductLabelsPage() {
                     <Badge variant="outline" className="text-xs shrink-0">New</Badge>
                   )}
                   <div className="flex items-center gap-1 shrink-0">
+                    <span className="text-[10px] text-muted-foreground mr-1 hidden sm:inline">Labels:</span>
                     <Button size="icon" variant="outline" className="h-7 w-7" onClick={() => updateQty(item.id, (item.qty || 1) - 1)}>
                       <span className="text-sm font-bold">−</span>
                     </Button>
