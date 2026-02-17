@@ -26,23 +26,13 @@ import {
 } from "@/features/pos/usb-printer";
 
 const RECEIPT_SIZES: { value: ReceiptSize; label: string }[] = [
-  { value: "1x1", label: '1×1 inch' },
-  { value: "2x1", label: '2×1 inch' },
-  { value: "3x1", label: '3×1 inch' },
   { value: "2x2", label: '2×2 inch' },
   { value: "2x3", label: '2×3 inch' },
-  { value: "2x4", label: '2×4 inch' },
-  { value: "2x5", label: '2×5 inch' },
 ];
 
 const RECEIPT_HEIGHT_MAP: Record<ReceiptSize, number> = {
-  "1x1": 96,
-  "2x1": 96,
-  "3x1": 96,
   "2x2": 192,
   "2x3": 288,
-  "2x4": 384,
-  "2x5": 480,
 };
 
 function receiptPreviewText(args: { paperSize: "58" | "80" }) {
