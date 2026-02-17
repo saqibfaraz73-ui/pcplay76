@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/auth/AuthProvider";
-import { Menu, Printer, BarChart3, Settings, ShoppingCart, ClipboardList, Users, DollarSign, Truck, UtensilsCrossed, CalendarCheck, Wifi, Shield, Home, Info, HelpCircle } from "lucide-react";
+import { Menu, Printer, BarChart3, Settings, ShoppingCart, ClipboardList, Users, DollarSign, Truck, UtensilsCrossed, CalendarCheck, Wifi, Shield, Home, Info, HelpCircle, Tags } from "lucide-react";
 import { useAndroidBackExitConfirm } from "@/hooks/useAndroidBackExitConfirm";
 import appLogo from "@/assets/app-logo.jpg";
 import { db } from "@/db/appDb";
@@ -28,6 +28,7 @@ const navItems = [
 
 const adminSubNav = [
   { to: "/admin/reports", label: "Reports", icon: BarChart3 },
+  { to: "/admin/labels", label: "Labels", icon: Tags },
   { to: "/admin/delivery", label: "Delivery", icon: Truck },
   { to: "/admin/sync", label: "Sync", icon: Wifi },
   { to: "/admin/printer", label: "Printer", icon: Printer },
