@@ -34,9 +34,10 @@ export default function CustomPrintPage() {
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
 
-  // Uploaded PDF state
-  const [uploadedPdfUrl, setUploadedPdfUrl] = useState<string | null>(null);
+  // Uploaded file state
+  const [uploadedFileUrl, setUploadedFileUrl] = useState<string | null>(null);
   const [uploadedFileName, setUploadedFileName] = useState("");
+  const [uploadedFileType, setUploadedFileType] = useState<"pdf" | "image" | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Preview state
@@ -245,8 +246,10 @@ export default function CustomPrintPage() {
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.type !== "application/pdf") {
-      toast.error("Please upload a PDF file");
+    const isImage = file.type.startsWith("image/");
+    const isPdf = file.type === "application/pdf";
+    if (!isImage && !isPdf) {
+      toast.error("Please upload an image or PDF file");
       return;
     }
     if (file.size > 10 * 1024 * 1024) {
@@ -254,32 +257,40 @@ export default function CustomPrintPage() {
       return;
     }
     const url = URL.createObjectURL(file);
-    setUploadedPdfUrl(url);
+    setUploadedFileUrl(url);
     setUploadedFileName(file.name);
+    setUploadedFileType(isPdf ? "pdf" : "image");
     toast.success(`Uploaded: ${file.name}`);
   };
 
-  const printUploadedPdf = () => {
-    if (!uploadedPdfUrl) return;
-    const w = window.open(uploadedPdfUrl, "_blank");
-    if (w) w.addEventListener("load", () => w.print());
+  const printUploadedFile = () => {
+    if (!uploadedFileUrl) return;
+    if (uploadedFileType === "image") {
+      const w = window.open("", "_blank");
+      if (!w) return;
+      w.document.write(`<!DOCTYPE html><html><head><title>Print</title><style>@media print{body{margin:0}} body{display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0;}</style></head><body><img src="${uploadedFileUrl}" style="max-width:100%;max-height:100vh;" onload="window.print()"/></body></html>`);
+      w.document.close();
+    } else {
+      const w = window.open(uploadedFileUrl, "_blank");
+      if (w) w.addEventListener("load", () => w.print());
+    }
   };
 
-  const shareUploadedPdf = async () => {
-    if (!uploadedPdfUrl) return;
+  const shareUploadedFile = async () => {
+    if (!uploadedFileUrl) return;
     try {
-      const res = await fetch(uploadedPdfUrl);
+      const res = await fetch(uploadedFileUrl);
       const blob = await res.blob();
-      const file = new File([blob], uploadedFileName || "receipt.pdf", { type: "application/pdf" });
+      const file = new File([blob], uploadedFileName || "file", { type: blob.type });
 
       if (navigator.share && navigator.canShare?.({ files: [file] })) {
         await navigator.share({ title: uploadedFileName, files: [file] });
       } else {
         const a = document.createElement("a");
-        a.href = uploadedPdfUrl;
-        a.download = uploadedFileName || "receipt.pdf";
+        a.href = uploadedFileUrl;
+        a.download = uploadedFileName || "file";
         a.click();
-        toast.success("PDF downloaded");
+        toast.success("File downloaded");
       }
     } catch {
       toast.error("Share failed");
@@ -296,7 +307,7 @@ export default function CustomPrintPage() {
       <Tabs defaultValue="create">
         <TabsList className="flex w-full flex-wrap justify-start gap-1">
           <TabsTrigger value="create"><FileText className="h-4 w-4 mr-1" />Create Receipt</TabsTrigger>
-          <TabsTrigger value="upload"><Upload className="h-4 w-4 mr-1" />Upload PDF</TabsTrigger>
+          <TabsTrigger value="upload"><Upload className="h-4 w-4 mr-1" />Upload File</TabsTrigger>
         </TabsList>
 
         {/* ---- CREATE TAB ---- */}
@@ -446,7 +457,7 @@ export default function CustomPrintPage() {
         <TabsContent value="upload">
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-base">Upload a PDF Receipt</CardTitle>
+              <CardTitle className="text-base">Upload Image or PDF</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div
@@ -454,22 +465,28 @@ export default function CustomPrintPage() {
                 onClick={() => fileInputRef.current?.click()}
               >
                 <Upload className="h-10 w-10 mx-auto mb-2 text-muted-foreground" />
-                <p className="text-sm text-muted-foreground">Click to upload a PDF file (max 10 MB)</p>
+                <p className="text-sm text-muted-foreground">Click to upload an image or PDF file (max 10 MB)</p>
                 {uploadedFileName && <p className="mt-2 text-sm font-medium text-foreground">{uploadedFileName}</p>}
-                <input ref={fileInputRef} type="file" accept="application/pdf" className="hidden" onChange={handleFileUpload} />
+                <input ref={fileInputRef} type="file" accept="image/*,application/pdf" className="hidden" onChange={handleFileUpload} />
               </div>
 
-              {uploadedPdfUrl && (
+              {uploadedFileUrl && (
                 <>
-                  <div className="border rounded-md p-6 text-center space-y-2">
-                    <FileText className="h-12 w-12 mx-auto text-muted-foreground" />
-                    <p className="font-medium text-sm">{uploadedFileName}</p>
-                    <p className="text-xs text-muted-foreground">PDF uploaded and ready to print or share</p>
+                  <div className="border rounded-md p-4 text-center space-y-2">
+                    {uploadedFileType === "image" ? (
+                      <img src={uploadedFileUrl} alt={uploadedFileName} className="max-h-[400px] mx-auto rounded object-contain" />
+                    ) : (
+                      <>
+                        <FileText className="h-12 w-12 mx-auto text-muted-foreground" />
+                        <p className="font-medium text-sm">{uploadedFileName}</p>
+                        <p className="text-xs text-muted-foreground">PDF uploaded and ready to print or share</p>
+                      </>
+                    )}
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    <Button variant="default" onClick={printUploadedPdf}><Printer className="h-4 w-4 mr-1" /> Print</Button>
-                    <Button variant="secondary" onClick={shareUploadedPdf}><Share2 className="h-4 w-4 mr-1" /> Share / Download</Button>
-                    <Button variant="outline" onClick={() => { setUploadedPdfUrl(null); setUploadedFileName(""); }}>
+                    <Button variant="default" onClick={printUploadedFile}><Printer className="h-4 w-4 mr-1" /> Print</Button>
+                    <Button variant="secondary" onClick={shareUploadedFile}><Share2 className="h-4 w-4 mr-1" /> Share / Download</Button>
+                    <Button variant="outline" onClick={() => { setUploadedFileUrl(null); setUploadedFileName(""); setUploadedFileType(null); }}>
                       <Trash2 className="h-4 w-4 mr-1" /> Remove
                     </Button>
                   </div>
