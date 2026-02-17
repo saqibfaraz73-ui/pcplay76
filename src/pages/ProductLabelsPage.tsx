@@ -360,7 +360,7 @@ export default function ProductLabelsPage() {
       try {
         iframe.contentWindow?.focus();
         iframe.contentWindow?.print();
-        incrementSaleCount("labelPrint");
+        incrementSaleCount("labelPrint").catch(() => {});
       } catch {
         toast({ title: "Print error", description: "Could not open print dialog.", variant: "destructive" });
       }
