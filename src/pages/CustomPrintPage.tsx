@@ -22,6 +22,9 @@ export default function CustomPrintPage() {
   // Custom receipt builder state
   const [title, setTitle] = useState("Custom Receipt");
   const [businessName, setBusinessName] = useState("");
+  const [billNo, setBillNo] = useState("");
+  const [preparedBy, setPreparedBy] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState("");
   const [note, setNote] = useState("");
   const [lines, setLines] = useState<ReceiptLine[]>([
     { id: crypto.randomUUID(), label: "Item", value: "" },
@@ -64,6 +67,12 @@ export default function CustomPrintPage() {
     doc.setFont("helvetica", "bold");
     doc.text(title, 40, y, { align: "center" });
     y += 5;
+
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "normal");
+    if (billNo) { doc.text(`Bill #: ${billNo}`, 40, y, { align: "center" }); y += 4; }
+    if (preparedBy) { doc.text(`Prepared By: ${preparedBy}`, 40, y, { align: "center" }); y += 4; }
+    if (paymentMethod) { doc.text(`Payment: ${paymentMethod}`, 40, y, { align: "center" }); y += 4; }
 
     doc.setLineWidth(0.3);
     doc.line(4, y, 76, y);
@@ -117,6 +126,9 @@ export default function CustomPrintPage() {
 
     if (businessName) out.push(businessName.slice(0, WIDTH));
     out.push(title.slice(0, WIDTH));
+    if (billNo) out.push(`Bill #: ${billNo}`.slice(0, WIDTH));
+    if (preparedBy) out.push(`Prepared By: ${preparedBy}`.slice(0, WIDTH));
+    if (paymentMethod) out.push(`Payment: ${paymentMethod}`.slice(0, WIDTH));
     out.push(hr);
 
     out.push(LEFT_ON);
@@ -290,6 +302,18 @@ export default function CustomPrintPage() {
                   <Label className="text-xs">Receipt Title</Label>
                   <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Invoice, Bill, Receipt" />
                 </div>
+                <div>
+                  <Label className="text-xs">Bill No (optional)</Label>
+                  <Input value={billNo} onChange={(e) => setBillNo(e.target.value)} placeholder="e.g. 001" />
+                </div>
+                <div>
+                  <Label className="text-xs">Prepared By (optional)</Label>
+                  <Input value={preparedBy} onChange={(e) => setPreparedBy(e.target.value)} placeholder="e.g. John" />
+                </div>
+                <div>
+                  <Label className="text-xs">Payment Method (optional)</Label>
+                  <Input value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)} placeholder="e.g. Cash, Card, Credit" />
+                </div>
 
                 <Separator />
 
@@ -336,6 +360,9 @@ export default function CustomPrintPage() {
                       <div className="text-center font-bold text-sm">{businessName}</div>
                     )}
                     <div className="text-center font-bold">{title}</div>
+                    {billNo && <div className="text-center text-[10px]">Bill #: {billNo}</div>}
+                    {preparedBy && <div className="text-center text-[10px]">Prepared By: {preparedBy}</div>}
+                    {paymentMethod && <div className="text-center text-[10px]">Payment: {paymentMethod}</div>}
                     <Separator className="my-1 bg-black/30" />
                     {lines.map((line) =>
                       line.label || line.value ? (
