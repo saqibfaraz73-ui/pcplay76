@@ -381,7 +381,7 @@ export default function ProductLabelsPage() {
     <div className="space-y-4">
       <header>
         <h1 className="text-2xl font-semibold flex items-center gap-2">
-          <Tags className="h-6 w-6" /> Product Labels
+          <Tags className="h-6 w-6" /> Print Barcodes
         </h1>
         <p className="text-sm text-muted-foreground">
           Select products, upload a file, or add manually — SKUs & barcodes are auto-generated.
