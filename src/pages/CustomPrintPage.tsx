@@ -20,7 +20,7 @@ interface ReceiptLine {
 
 export default function CustomPrintPage() {
   // Custom receipt builder state
-  const [title, setTitle] = useState("Custom Receipt");
+  const [title, setTitle] = useState("");
   const [businessName, setBusinessName] = useState("");
   const [billNo, setBillNo] = useState("");
   const [preparedBy, setPreparedBy] = useState("");
@@ -63,10 +63,12 @@ export default function CustomPrintPage() {
       y += 6;
     }
 
-    doc.setFontSize(10);
-    doc.setFont("helvetica", "bold");
-    doc.text(title, 40, y, { align: "center" });
-    y += 5;
+    if (title) {
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "bold");
+      doc.text(title, 40, y, { align: "center" });
+      y += 5;
+    }
 
     doc.setFontSize(8);
     doc.setFont("helvetica", "normal");
@@ -125,7 +127,7 @@ export default function CustomPrintPage() {
     out.push(CENTER_ON);
 
     if (businessName) out.push(businessName.slice(0, WIDTH));
-    out.push(title.slice(0, WIDTH));
+    if (title) out.push(title.slice(0, WIDTH));
     if (billNo) out.push(`Bill #: ${billNo}`.slice(0, WIDTH));
     if (preparedBy) out.push(`Prepared By: ${preparedBy}`.slice(0, WIDTH));
     if (paymentMethod) out.push(`Payment: ${paymentMethod}`.slice(0, WIDTH));
@@ -295,11 +297,11 @@ export default function CustomPrintPage() {
               </CardHeader>
               <CardContent className="space-y-3">
                 <div>
-                  <Label className="text-xs">Business Name</Label>
+                  <Label className="text-xs">Business Name (optional)</Label>
                   <Input value={businessName} onChange={(e) => setBusinessName(e.target.value)} placeholder="Your business name" />
                 </div>
                 <div>
-                  <Label className="text-xs">Receipt Title</Label>
+                  <Label className="text-xs">Receipt Title (optional)</Label>
                   <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Invoice, Bill, Receipt" />
                 </div>
                 <div>
@@ -359,7 +361,7 @@ export default function CustomPrintPage() {
                     {businessName && (
                       <div className="text-center font-bold text-sm">{businessName}</div>
                     )}
-                    <div className="text-center font-bold">{title}</div>
+                    {title && <div className="text-center font-bold">{title}</div>}
                     {billNo && <div className="text-center text-[10px]">Bill #: {billNo}</div>}
                     {preparedBy && <div className="text-center text-[10px]">Prepared By: {preparedBy}</div>}
                     {paymentMethod && <div className="text-center text-[10px]">Payment: {paymentMethod}</div>}
