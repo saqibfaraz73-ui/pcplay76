@@ -1,6 +1,6 @@
 import React from "react";
 import { db } from "@/db/appDb";
-import { canMakeSale, incrementSaleCount } from "@/features/licensing/licensing-db";
+import { canMakeSale, incrementSaleCount, getLicense } from "@/features/licensing/licensing-db";
 import { UpgradeDialog } from "@/features/licensing/UpgradeDialog";
 import type { MenuItem, Category, Settings } from "@/db/schema";
 import { makeId } from "@/features/admin/id";
@@ -73,10 +73,17 @@ export default function ProductLabelsPage() {
   // Upload
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
-  // Printing
+  // Licensing
   const [printing, setPrinting] = React.useState(false);
   const [upgradeOpen, setUpgradeOpen] = React.useState(false);
   const [upgradeMsg, setUpgradeMsg] = React.useState("");
+  const [usageInfo, setUsageInfo] = React.useState<{ count: number; limit: number; premium: boolean } | null>(null);
+
+  const refreshUsage = React.useCallback(async () => {
+    const lic = await getLicense();
+    console.log("[LabelLicense]", { isPremium: lic.isPremium, labelPrintCount: lic.labelPrintCount, deviceId: lic.deviceId, licensedDeviceId: lic.licensedDeviceId });
+    setUsageInfo({ count: lic.labelPrintCount ?? 0, limit: 10, premium: lic.isPremium });
+  }, []);
 
   React.useEffect(() => {
     (async () => {
@@ -88,6 +95,7 @@ export default function ProductLabelsPage() {
       setCategories(cats);
       setAllItems(items);
       setSettings(s ?? null);
+      refreshUsage();
     })();
   }, []);
 
@@ -309,7 +317,7 @@ export default function ProductLabelsPage() {
       try {
         const blob = generateLabelPdfBlob(labels);
         await sharePdfBlob(blob, "print-labels");
-        await incrementSaleCount("labelPrint");
+        await incrementSaleCount("labelPrint"); refreshUsage();
       } catch (e: any) {
         toast({ title: "Print Error", description: e.message, variant: "destructive" });
       }
@@ -360,7 +368,7 @@ export default function ProductLabelsPage() {
       try {
         iframe.contentWindow?.focus();
         iframe.contentWindow?.print();
-        incrementSaleCount("labelPrint").catch(() => {});
+        incrementSaleCount("labelPrint").then(() => refreshUsage()).catch(() => {});
       } catch {
         toast({ title: "Print error", description: "Could not open print dialog.", variant: "destructive" });
       }
@@ -381,7 +389,7 @@ export default function ProductLabelsPage() {
     try {
       const blob = generateLabelPdfBlob(buildLabels());
       await sharePdfBlob(blob, "product-labels");
-      await incrementSaleCount("labelPrint");
+      await incrementSaleCount("labelPrint"); refreshUsage();
     } catch (e: any) {
       toast({ title: "PDF Error", description: e.message, variant: "destructive" });
     }
@@ -404,7 +412,7 @@ export default function ProductLabelsPage() {
     setPrinting(true);
     try {
       await printLabelsEscPos(buildLabels(), settings);
-      await incrementSaleCount("labelPrint");
+      await incrementSaleCount("labelPrint"); refreshUsage();
       toast({ title: "Printed", description: `${labelItems.length} label(s) sent to printer.` });
     } catch (e: any) {
       toast({ title: "Print Error", description: e.message, variant: "destructive" });
@@ -440,7 +448,7 @@ export default function ProductLabelsPage() {
       const labels = buildLabels();
       const raw = format === "zpl" ? generateLabelsZpl(labels) : generateLabelsTspl(labels);
       await sendRawToPrinter(raw, via);
-      await incrementSaleCount("labelPrint");
+      await incrementSaleCount("labelPrint"); refreshUsage();
       toast({ title: "Printed", description: `${labels.length} ${format.toUpperCase()} label(s) sent via ${via}.` });
     } catch (e: any) {
       toast({ title: "Print Error", description: e.message, variant: "destructive" });
@@ -686,7 +694,17 @@ export default function ProductLabelsPage() {
       {labelItems.length > 0 && (
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-base">Print / Download</CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base">Print / Download</CardTitle>
+              {usageInfo && !usageInfo.premium && (
+                <Badge variant={usageInfo.count >= usageInfo.limit ? "destructive" : "secondary"} className="text-xs">
+                  {usageInfo.count}/{usageInfo.limit} free uses
+                </Badge>
+              )}
+              {usageInfo?.premium && (
+                <Badge variant="default" className="text-xs">Premium ✓</Badge>
+              )}
+            </div>
           </CardHeader>
           <CardContent className="space-y-3">
             <p className="text-sm text-muted-foreground">
@@ -708,7 +726,7 @@ export default function ProductLabelsPage() {
                 const labels = buildLabels();
                 const zpl = generateLabelsZpl(labels);
                 await shareTextFile(zpl, `labels-${labels.length}.zpl`);
-                await incrementSaleCount("labelPrint");
+                await incrementSaleCount("labelPrint"); refreshUsage();
               }} variant="outline" className="gap-2">
                 <Download className="h-4 w-4" /> ZPL File
               </Button>
@@ -719,7 +737,7 @@ export default function ProductLabelsPage() {
                 const labels = buildLabels();
                 const tspl = generateLabelsTspl(labels);
                 await shareTextFile(tspl, `labels-${labels.length}.prn`);
-                await incrementSaleCount("labelPrint");
+                await incrementSaleCount("labelPrint"); refreshUsage();
               }} variant="outline" className="gap-2">
                 <Download className="h-4 w-4" /> TSPL File
               </Button>
