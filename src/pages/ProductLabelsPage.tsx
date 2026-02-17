@@ -5,6 +5,7 @@ import { makeId } from "@/features/admin/id";
 import { formatIntMoney } from "@/features/pos/format";
 import { barcodeToDataUrl } from "@/features/labels/barcode-generator";
 import { generateLabelPdf } from "@/features/labels/label-pdf";
+import { jsPDF } from "jspdf";
 import { printLabelsEscPos } from "@/features/labels/label-escpos";
 import { isNativeAndroid } from "@/features/pos/bluetooth-printer";
 import * as XLSX from "xlsx";
@@ -278,35 +279,62 @@ export default function ProductLabelsPage() {
       return;
     }
     const labels = buildLabels();
-    const labelHtml = labels.map((l) => {
-      const barcodeUrl = barcodeToDataUrl(l.sku, { width: 200, height: 50 });
-      return `<div style="border:1px solid #ccc;border-radius:8px;padding:12px;text-align:center;break-inside:avoid;width:180px;">
-        <div style="font-weight:bold;font-size:12px;margin-bottom:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${l.name}</div>
-        ${l.price !== "Rs 0" ? `<div style="font-size:11px;color:#666;margin-bottom:4px;">${l.price}</div>` : ""}
-        <img src="${barcodeUrl}" style="width:100%;height:auto;" />
-        <div style="font-size:9px;color:#999;margin-top:2px;">${l.sku}</div>
-      </div>`;
-    }).join("");
 
-    const printWindow = window.open("", "_blank");
+    // Calculate grid: 3 columns, each label ~65mm wide x 40mm tall
+    const colCount = 3;
+    const labelW = 60;
+    const labelH = 38;
+    const gap = 5;
+    const margin = 10;
+    const rows = Math.ceil(labels.length / colCount);
+    const pageW = margin * 2 + colCount * labelW + (colCount - 1) * gap;
+    const pageH = margin * 2 + rows * labelH + (rows - 1) * gap;
+
+    const pdf = new jsPDF({ unit: "mm", format: [pageW, pageH] });
+
+    labels.forEach((l, i) => {
+      const col = i % colCount;
+      const row = Math.floor(i / colCount);
+      const x = margin + col * (labelW + gap);
+      const y = margin + row * (labelH + gap);
+
+      // Border
+      pdf.setDrawColor(200);
+      pdf.roundedRect(x, y, labelW, labelH, 2, 2, "S");
+
+      // Name
+      pdf.setFontSize(9);
+      pdf.setFont("helvetica", "bold");
+      const nameText = l.name.length > 20 ? l.name.slice(0, 20) + "…" : l.name;
+      pdf.text(nameText, x + labelW / 2, y + 7, { align: "center" });
+
+      // Price
+      if (l.price !== "Rs 0") {
+        pdf.setFontSize(7);
+        pdf.setFont("helvetica", "normal");
+        pdf.text(l.price, x + labelW / 2, y + 12, { align: "center" });
+      }
+
+      // Barcode image
+      try {
+        const barcodeUrl = barcodeToDataUrl(l.sku, { width: 200, height: 50 });
+        pdf.addImage(barcodeUrl, "PNG", x + 5, y + 14, labelW - 10, 14);
+      } catch {}
+
+      // SKU text
+      pdf.setFontSize(6);
+      pdf.setFont("helvetica", "normal");
+      pdf.text(l.sku, x + labelW / 2, y + 34, { align: "center" });
+    });
+
+    // Open PDF in new tab for printing
+    const pdfBlob = pdf.output("blob");
+    const url = URL.createObjectURL(pdfBlob);
+    const printWindow = window.open(url, "_blank");
     if (!printWindow) {
       toast({ title: "Popup blocked", description: "Allow popups to print labels.", variant: "destructive" });
-      return;
+      URL.revokeObjectURL(url);
     }
-    printWindow.document.write(`<!DOCTYPE html><html><head><title>Product Labels</title>
-      <style>
-        html,body{margin:0;padding:10px;font-family:sans-serif;height:auto !important;overflow:visible !important;}
-        .grid{display:inline-grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;width:100%;}
-        @media print{
-          html,body{margin:0;padding:5mm;height:auto !important;}
-          .grid{gap:8px;}
-          @page{size:auto;margin:5mm;}
-        }
-      </style></head>
-      <body><div class="grid">${labelHtml}</div>
-      <script>window.onload=function(){window.print();window.onafterprint=function(){window.close();}}<\/script>
-      </body></html>`);
-    printWindow.document.close();
   };
 
   const handlePdfDownload = () => {
