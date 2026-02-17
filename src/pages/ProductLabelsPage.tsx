@@ -399,23 +399,48 @@ export default function ProductLabelsPage() {
         {/* ── Tab: From Menu ── */}
         <TabsContent value="menu" className="space-y-3">
           <div className="flex flex-wrap gap-3">
-            <div className="flex-1 min-w-[200px]">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input placeholder="Search by name or SKU…" value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
-              </div>
-            </div>
             <Select value={filterCat} onValueChange={setFilterCat}>
               <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder="All Categories" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="bg-background border z-50">
                 <SelectItem value="all">All Categories</SelectItem>
                 {categories.map((c) => (
                   <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
+          </div>
+
+          {/* Product dropdown selector */}
+          <div className="flex gap-2 items-end">
+            <div className="flex-1">
+              <label className="text-xs text-muted-foreground mb-1 block">Select Product</label>
+              <Select
+                value=""
+                onValueChange={(val) => {
+                  const item = allItems.find((i) => i.id === val);
+                  if (item) addFromMenu(item);
+                }}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Choose a product to add…" />
+                </SelectTrigger>
+                <SelectContent className="bg-background border z-50 max-h-[300px]">
+                  {menuFiltered.map((item) => {
+                    const added = isInList(item.id);
+                    return (
+                      <SelectItem key={item.id} value={item.id} disabled={added}>
+                        {item.name} — {formatIntMoney(item.price)} {added ? "(added)" : ""}
+                      </SelectItem>
+                    );
+                  })}
+                  {menuFiltered.length === 0 && (
+                    <SelectItem value="__none" disabled>No products found</SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           <div className="flex flex-wrap gap-2">
@@ -427,27 +452,6 @@ export default function ProductLabelsPage() {
                 + {c.name}
               </Button>
             ))}
-          </div>
-
-          <div className="grid gap-1.5 max-h-[300px] overflow-y-auto pr-1">
-            {menuFiltered.map((item) => {
-              const added = isInList(item.id);
-              return (
-                <div key={item.id} className="flex items-center gap-3 rounded-lg border p-2.5">
-                  <div className="flex-1 min-w-0">
-                    <div className="font-medium text-sm truncate">{item.name}</div>
-                    <div className="text-xs text-muted-foreground">{item.sku ? `SKU: ${item.sku}` : "No SKU (will be generated)"}</div>
-                  </div>
-                  <Badge variant="secondary" className="text-xs shrink-0">{formatIntMoney(item.price)}</Badge>
-                  <Button size="sm" variant={added ? "secondary" : "default"} disabled={added} onClick={() => addFromMenu(item)}>
-                    {added ? "Added" : "Add"}
-                  </Button>
-                </div>
-              );
-            })}
-            {menuFiltered.length === 0 && (
-              <p className="text-sm text-muted-foreground py-6 text-center">No products found.</p>
-            )}
           </div>
         </TabsContent>
 
