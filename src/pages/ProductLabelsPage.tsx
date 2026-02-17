@@ -754,6 +754,7 @@ export default function ProductLabelsPage() {
           </CardContent>
         </Card>
       )}
+      <div className="pb-24" />
     </div>
     <UpgradeDialog open={upgradeOpen} onOpenChange={setUpgradeOpen} message={upgradeMsg} />
     </>
