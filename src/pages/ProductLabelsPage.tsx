@@ -329,14 +329,26 @@ export default function ProductLabelsPage() {
       pdf.text(l.sku, x + labelW / 2, y + 34, { align: "center" });
     });
 
-    // Open PDF in new tab for printing
-    const pdfBlob = pdf.output("blob");
-    const url = URL.createObjectURL(pdfBlob);
-    const printWindow = window.open(url, "_blank");
-    if (!printWindow) {
-      toast({ title: "Popup blocked", description: "Allow popups to print labels.", variant: "destructive" });
-      URL.revokeObjectURL(url);
-    }
+    // Use hidden iframe to trigger print without popup blockers
+    const pdfDataUri = pdf.output("datauristring");
+    const iframe = document.createElement("iframe");
+    iframe.style.position = "fixed";
+    iframe.style.right = "0";
+    iframe.style.bottom = "0";
+    iframe.style.width = "0";
+    iframe.style.height = "0";
+    iframe.style.border = "none";
+    iframe.src = pdfDataUri;
+    document.body.appendChild(iframe);
+    iframe.onload = () => {
+      try {
+        iframe.contentWindow?.print();
+      } catch {
+        // Fallback: download instead
+        pdf.save(`labels-${labels.length}.pdf`);
+      }
+      setTimeout(() => document.body.removeChild(iframe), 60000);
+    };
   };
 
   const handlePdfDownload = () => {
