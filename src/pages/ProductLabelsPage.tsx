@@ -711,9 +711,6 @@ export default function ProductLabelsPage() {
               Choose the format that matches your printer type.
             </p>
             <div className="flex flex-wrap gap-3">
-              <Button onClick={handlePrintLabels} className="gap-2">
-                <Printer className="h-4 w-4" /> Print Labels
-              </Button>
               <Button onClick={handlePdfDownload} variant="secondary" className="gap-2">
                 <Share2 className="h-4 w-4" /> Share A4 PDF
               </Button>
