@@ -12,10 +12,20 @@ interface LabelData {
 
 /** Generate a PDF with barcode labels, 3 columns layout on A4 */
 export function generateLabelPdf(labels: LabelData[]): void {
+  const doc = buildLabelDoc(labels);
+  doc.save("product-labels.pdf");
+}
+
+/** Generate a PDF blob (for sharing via native share API) */
+export function generateLabelPdfBlob(labels: LabelData[]): Blob {
+  const doc = buildLabelDoc(labels);
+  return doc.output("blob");
+}
+
+function buildLabelDoc(labels: LabelData[]): jsPDF {
   const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
   const pageW = doc.internal.pageSize.getWidth();
 
-  // Label grid: 3 columns, dynamic rows
   const cols = 3;
   const labelW = 60;
   const labelH = 35;
@@ -34,24 +44,20 @@ export function generateLabelPdf(labels: LabelData[]): void {
         const x = marginX + col * (labelW + marginX);
         const y = marginY + row * (labelH + gapY);
 
-        // Border
         doc.setDrawColor(200);
         doc.rect(x, y, labelW, labelH);
 
-        // Product name
         doc.setFontSize(8);
         doc.setFont("helvetica", "bold");
         const name = label.name.length > 22 ? label.name.slice(0, 22) + "…" : label.name;
         doc.text(name, x + labelW / 2, y + 5, { align: "center" });
 
-        // Price
         if (label.price) {
           doc.setFontSize(7);
           doc.setFont("helvetica", "normal");
           doc.text(label.price, x + labelW / 2, y + 9, { align: "center" });
         }
 
-        // Barcode image
         try {
           const dataUrl = barcodeToDataUrl(label.sku, { width: 200, height: 40 });
           const barcodeY = label.price ? y + 11 : y + 8;
@@ -64,5 +70,5 @@ export function generateLabelPdf(labels: LabelData[]): void {
     }
   }
 
-  doc.save("product-labels.pdf");
+  return doc;
 }
