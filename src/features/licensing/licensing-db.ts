@@ -20,12 +20,15 @@ export type LicenseRecord = {
   tableSalesCount: number;
   partyLodgeCount: number;
   expensesCount: number;
+  customPrintCount: number;
+  labelPrintCount: number;
 };
 
 const MODULE_LIMIT = 10;
 const TOTAL_LIMIT = 40;
 const LODGE_LIMIT = 5;
 const EXPENSE_LIMIT = 5;
+const PRINT_LIMIT = 10;
 
 /**
  * Generate a deterministic device ID from stable hardware/browser properties.
@@ -83,6 +86,8 @@ export async function getLicense(): Promise<LicenseRecord> {
       tableSalesCount: 0,
       partyLodgeCount: 0,
       expensesCount: 0,
+      customPrintCount: 0,
+      labelPrintCount: 0,
     };
     await (db as any).license.put(rec);
   }
@@ -129,7 +134,7 @@ export async function updateLicense(partial: Partial<Omit<LicenseRecord, "id">>)
   await (db as any).license.put({ ...current, ...partial });
 }
 
-export type SalesModule = "cash" | "credit" | "delivery" | "table" | "partyLodge" | "expenses";
+export type SalesModule = "cash" | "credit" | "delivery" | "table" | "partyLodge" | "expenses" | "customPrint" | "labelPrint";
 
 const moduleKey: Record<SalesModule, keyof LicenseRecord> = {
   cash: "cashSalesCount",
@@ -138,11 +143,15 @@ const moduleKey: Record<SalesModule, keyof LicenseRecord> = {
   table: "tableSalesCount",
   partyLodge: "partyLodgeCount",
   expenses: "expensesCount",
+  customPrint: "customPrintCount",
+  labelPrint: "labelPrintCount",
 };
 
 const moduleLimit: Partial<Record<SalesModule, number>> = {
   partyLodge: LODGE_LIMIT,
   expenses: EXPENSE_LIMIT,
+  customPrint: PRINT_LIMIT,
+  labelPrint: PRINT_LIMIT,
 };
 
 export async function canMakeSale(module: SalesModule): Promise<{ allowed: boolean; message: string }> {
@@ -153,7 +162,7 @@ export async function canMakeSale(module: SalesModule): Promise<{ allowed: boole
   const limit = moduleLimit[module] ?? MODULE_LIMIT;
 
   // For sales modules, also check total limit
-  if (module !== "partyLodge" && module !== "expenses") {
+  if (module !== "partyLodge" && module !== "expenses" && module !== "customPrint" && module !== "labelPrint") {
     const total = lic.cashSalesCount + lic.creditSalesCount + lic.deliverySalesCount + lic.tableSalesCount;
     if (total >= TOTAL_LIMIT) {
       return {
