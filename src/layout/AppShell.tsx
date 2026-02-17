@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/auth/AuthProvider";
-import { Menu, Printer, BarChart3, Settings, ShoppingCart, ClipboardList, Users, DollarSign, Truck, UtensilsCrossed, CalendarCheck, Wifi, Shield, Home, Info, HelpCircle, Tags } from "lucide-react";
+import { Menu, Printer, BarChart3, Settings, ShoppingCart, ClipboardList, Users, DollarSign, Truck, UtensilsCrossed, CalendarCheck, Wifi, Shield, Home, Info, HelpCircle, Tags, FileText } from "lucide-react";
 import { useAndroidBackExitConfirm } from "@/hooks/useAndroidBackExitConfirm";
 import appLogo from "@/assets/app-logo.jpg";
 import { db } from "@/db/appDb";
@@ -239,8 +239,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                           ) : null}
 
                           <div className="mt-3 mb-1 px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                            Info
+                            More
                           </div>
+                          <Link to="/custom-print" className={cn("flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors", isActive("/custom-print") ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground")}>
+                            <FileText className="h-4 w-4" /> Custom Print
+                          </Link>
                           <Link to="/about" className={cn("flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors", isActive("/about") ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground")}>
                             <Info className="h-4 w-4" /> About App
                           </Link>
@@ -331,6 +334,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                         </Link>
                       ))
                     : null}
+                  <Link to="/custom-print" className={cn("rounded-md px-3 py-2 text-sm transition-colors", isActive("/custom-print") ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground")}>
+                    Custom Print
+                  </Link>
                   <Link to="/about" className={cn("rounded-md px-3 py-2 text-sm transition-colors", isActive("/about") ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground")}>
                     About
                   </Link>

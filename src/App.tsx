@@ -26,6 +26,7 @@ import AboutApp from "./pages/AboutApp";
 import HelpPage from "./pages/HelpPage";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import ProductLabelsPage from "./pages/ProductLabelsPage";
+import CustomPrintPage from "./pages/CustomPrintPage";
 import { AuthProvider } from "@/auth/AuthProvider";
 import { ProtectedRoute } from "@/auth/ProtectedRoute";
 import { AppShell } from "@/layout/AppShell";
@@ -175,6 +176,15 @@ const App = () => (
                   element={
                     <ProtectedRoute allow={["admin", "cashier"]}>
                       <ProductLabelsPage />
+                    </ProtectedRoute>
+                  }
+                />
+
+                <Route
+                  path="/custom-print"
+                  element={
+                    <ProtectedRoute allow={["admin", "cashier"]}>
+                      <CustomPrintPage />
                     </ProtectedRoute>
                   }
                 />
