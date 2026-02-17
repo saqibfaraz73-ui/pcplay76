@@ -63,6 +63,11 @@ const features = [
     description: "Configure receipt printing via Bluetooth or USB thermal printers. Set paper size (58mm/80mm), customize receipt layout with logo, address, and phone. Supports dual-printer routing for sales and kitchen orders.",
   },
   {
+    icon: Tags,
+    title: "Print Barcodes",
+    description: "Generate and print barcode labels for products. Select items from your menu, enter manually, or import from Excel/CSV/PDF files. Supports multiple output formats including A4 PDF, ZPL (Zebra), TSPL (TSC/Xprinter), and direct ESC/POS thermal printing with per-item quantity controls.",
+  },
+  {
     icon: Package,
     title: "Inventory & Expiry Tracking",
     description: "Track stock levels for items with inventory enabled. Adjust quantities (set/add/remove) with audit logs. Items with expiry dates are highlighted — expired items in red, expiring soon in yellow — sorted by nearest expiry.",
