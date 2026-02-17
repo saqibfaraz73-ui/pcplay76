@@ -724,9 +724,8 @@ export default function ProductLabelsPage() {
                 <Download className="h-4 w-4" /> TSPL File
               </Button>
             </div>
-            {isNativeAndroid() && (
-              <div className="space-y-2">
-                <p className="text-xs text-muted-foreground font-medium">Direct Print (sends to configured printer):</p>
+            <div className="space-y-2">
+              <p className="text-xs text-muted-foreground font-medium">Direct Print (sends to configured printer):</p>
                 <div className="flex flex-wrap gap-3">
                   <Button onClick={() => handleDirectPrint("zpl", "bluetooth")} disabled={printing} variant="outline" className="gap-2">
                     <Printer className="h-4 w-4" /> ZPL via Bluetooth
@@ -744,8 +743,7 @@ export default function ProductLabelsPage() {
                     <Printer className="h-4 w-4" /> {printing ? "Printing…" : "ESC/POS Thermal"}
                   </Button>
                 </div>
-              </div>
-            )}
+            </div>
             {labelItems.some((l) => !l.fromDb) && (
               <div className="pt-2 border-t">
                 <Button onClick={saveToProducts} disabled={saving} variant="outline" className="gap-2">
