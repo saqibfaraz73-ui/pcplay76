@@ -27,13 +27,8 @@ type Props = {
 
 // 1pt = 1/72 inch, so 2 inches = 144pt
 const RECEIPT_SIZE_PT: Record<ReceiptSize, [number, number]> = {
-  "1x1": [72, 72],
-  "2x1": [144, 72],
-  "3x1": [216, 72],
   "2x2": [144, 144],
   "2x3": [144, 216],
-  "2x4": [144, 288],
-  "2x5": [144, 360],
 };
 
 function buildReceiptPdf(order: Order, opts?: { creditCustomerName?: string; deliveryPersonName?: string; receiptSize?: ReceiptSize; settings?: Settings | null }) {
