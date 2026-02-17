@@ -293,24 +293,24 @@ export default function ProductLabelsPage() {
     const labels = buildLabels();
     const labelHtml = labels.map((l) => {
       const barcodeUrl = barcodeToDataUrl(l.sku, { width: 200, height: 50 });
-      return `<div style="border:1px solid #ccc;border-radius:6px;padding:10px;text-align:center;break-inside:avoid;width:170px;">
-        <div style="font-weight:bold;font-size:11px;margin-bottom:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${l.name}</div>
-        ${l.price !== "Rs 0" ? `<div style="font-size:10px;color:#666;margin-bottom:3px;">${l.price}</div>` : ""}
-        <img src="${barcodeUrl}" style="width:100%;height:auto;" />
-        <div style="font-size:8px;color:#999;margin-top:2px;">${l.sku}</div>
+      return `<div class="label">
+        <div style="font-weight:bold;font-size:14px;margin-bottom:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${l.name}</div>
+        ${l.price !== "Rs 0" ? `<div style="font-size:12px;color:#666;margin-bottom:4px;">${l.price}</div>` : ""}
+        <img src="${barcodeUrl}" style="width:200px;height:auto;" />
+        <div style="font-size:10px;color:#999;margin-top:3px;">${l.sku}</div>
       </div>`;
     }).join("");
 
-    // Build HTML content and print via hidden iframe
     const htmlContent = `<!DOCTYPE html><html><head><title>Labels</title>
       <style>
         *{margin:0;padding:0;box-sizing:border-box;}
-        html,body{font-family:sans-serif;padding:8px;height:auto !important;overflow:visible;}
-        .grid{display:flex;flex-wrap:wrap;gap:8px;}
+        html,body{font-family:sans-serif;height:auto !important;overflow:visible;}
+        .label{page-break-after:always;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:10px;height:100vh;}
+        .label:last-child{page-break-after:auto;}
         @page{size:auto;margin:5mm;}
-        @media print{html,body{height:auto !important;} .grid{page-break-after:avoid;} .grid::after{content:'';display:block;height:0;clear:both;}}
+        @media print{html,body{height:auto !important;}}
       </style></head>
-      <body><div class="grid">${labelHtml}</div></body></html>`;
+      <body>${labelHtml}</body></html>`;
 
     const iframe = document.createElement("iframe");
     iframe.style.position = "fixed";
