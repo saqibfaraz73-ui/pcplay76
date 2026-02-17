@@ -612,9 +612,6 @@ export default function ProductLabelsPage() {
               <Button onClick={handlePdfDownload} className="gap-2">
                 <Download className="h-4 w-4" /> A4 PDF (Office Printer)
               </Button>
-              <Button onClick={handlePrintLabels} variant="secondary" className="gap-2">
-                <Printer className="h-4 w-4" /> Print Labels (Browser)
-              </Button>
             </div>
             <div className="flex flex-wrap gap-3">
               <Button onClick={() => downloadLabelsZpl(buildLabels())} variant="outline" className="gap-2">
