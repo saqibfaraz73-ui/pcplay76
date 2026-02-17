@@ -151,7 +151,65 @@ export default function CustomPrintPage() {
     setShowPreview(true);
   };
 
-  const buildEscPosCustomReceipt = (): string => {
+  /** Convert a base64 data URL image to ESC/POS raster commands */
+  const buildLogoEscPos = async (dataUrl: string): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        const MAX_W = 240;
+        const MAX_H = 80;
+        let scale = Math.min(1, MAX_W / img.width);
+        let w = Math.floor(img.width * scale);
+        let h = Math.floor(img.height * scale);
+        if (h > MAX_H) {
+          const hs = MAX_H / h;
+          w = Math.floor(w * hs);
+          h = MAX_H;
+        }
+        w = Math.floor(w / 8) * 8;
+        if (w < 8) w = 8;
+
+        const canvas = document.createElement("canvas");
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext("2d")!;
+        ctx.fillStyle = "white";
+        ctx.fillRect(0, 0, w, h);
+        ctx.drawImage(img, 0, 0, w, h);
+
+        const imgData = ctx.getImageData(0, 0, w, h);
+        const pixels = imgData.data;
+        const bytesPerRow = Math.ceil(w / 8);
+        const bitmap = new Uint8Array(bytesPerRow * h);
+
+        for (let row = 0; row < h; row++) {
+          for (let col = 0; col < w; col++) {
+            const idx = (row * w + col) * 4;
+            const lum = 0.299 * pixels[idx] + 0.587 * pixels[idx + 1] + 0.114 * pixels[idx + 2];
+            if (pixels[idx + 3] > 128 && lum < 128) {
+              bitmap[row * bytesPerRow + Math.floor(col / 8)] |= 1 << (7 - (col % 8));
+            }
+          }
+        }
+
+        const xL = bytesPerRow & 0xff;
+        const xH = (bytesPerRow >> 8) & 0xff;
+        const yL = h & 0xff;
+        const yH = (h >> 8) & 0xff;
+        let result = "\x1b\x61\x01"; // center
+        result += String.fromCharCode(0x1d, 0x76, 0x30, 0x00, xL, xH, yL, yH);
+        for (let i = 0; i < bitmap.length; i++) {
+          result += String.fromCharCode(bitmap[i]);
+        }
+        result += "\x1b\x61\x00"; // left
+        resolve(result);
+      };
+      img.onerror = () => reject(new Error("Failed to load logo"));
+      img.src = dataUrl;
+    });
+  };
+
+  const buildEscPosCustomReceipt = async (): Promise<string> => {
     const WIDTH = 32; // 58mm = 32 chars
     const hr = "-".repeat(WIDTH);
     const CENTER_ON = "\x1ba\x01";
@@ -164,6 +222,15 @@ export default function CustomPrintPage() {
 
     const out: string[] = [];
     out.push("\x1b@\x1b3\x14");
+
+    // Print logo as raster image if available
+    if (logoUrl) {
+      try {
+        const logoCmd = await buildLogoEscPos(logoUrl);
+        out.push(logoCmd);
+      } catch { /* skip logo */ }
+    }
+
     out.push(CENTER_ON);
 
     if (businessName) out.push(businessName.slice(0, WIDTH));
@@ -216,7 +283,7 @@ export default function CustomPrintPage() {
         const settings = await db.settings.get("app");
         const btAddress = settings?.btPrinterAddress || settings?.printerAddress;
         const usbDevice = settings?.usbDeviceName;
-        const escpos = buildEscPosCustomReceipt();
+        const escpos = await buildEscPosCustomReceipt();
 
         // Try USB first if configured, then Bluetooth
         if (usbDevice) {
@@ -303,7 +370,19 @@ export default function CustomPrintPage() {
     if (!check.allowed) { setUpgradeMsg(check.message); setUpgradeOpen(true); return; }
     await incrementSaleCount("customPrint");
 
-    // Use hidden iframe instead of window.open to avoid stuck screen
+    // On native Android, use share (print dialog doesn't work in WebView)
+    if (isNativeAndroid()) {
+      try {
+        const res = await fetch(uploadedFileUrl);
+        const blob = await res.blob();
+        await shareFileBlob(blob, uploadedFileName || "file");
+      } catch {
+        toast.error("Could not share file");
+      }
+      return;
+    }
+
+    // Browser fallback: hidden iframe print
     if (uploadedFileType === "image") {
       const iframe = document.createElement("iframe");
       iframe.style.position = "fixed";
@@ -335,7 +414,6 @@ export default function CustomPrintPage() {
         }, 60000);
       }, 500);
     } else {
-      // PDF: convert data URL to blob for printing
       const res = await fetch(uploadedFileUrl);
       const blob = await res.blob();
       const blobUrl = URL.createObjectURL(blob);
