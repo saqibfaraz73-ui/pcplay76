@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileText, Upload, Printer, Share2, Plus, Trash2, Eye } from "lucide-react";
+import { FileText, Upload, Printer, Share2, Plus, Trash2, Eye, ImageIcon } from "lucide-react";
 import { toast } from "sonner";
 import jsPDF from "jspdf";
 import { isNativeAndroid, btConnect, btSend } from "@/features/pos/bluetooth-printer";
@@ -30,6 +30,10 @@ export default function CustomPrintPage() {
     { id: crypto.randomUUID(), label: "Item", value: "" },
   ]);
 
+  // Logo state
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const logoInputRef = useRef<HTMLInputElement>(null);
+
   // Uploaded PDF state
   const [uploadedPdfUrl, setUploadedPdfUrl] = useState<string | null>(null);
   const [uploadedFileName, setUploadedFileName] = useState("");
@@ -52,9 +56,17 @@ export default function CustomPrintPage() {
     setLines((prev) => prev.map((l) => (l.id === id ? { ...l, [field]: val } : l)));
   };
 
-  const buildReceiptPdf = (): jsPDF => {
+  const buildReceiptPdf = async (): Promise<jsPDF> => {
     const doc = new jsPDF({ unit: "mm", format: [80, 150] });
     let y = 8;
+
+    // Logo
+    if (logoUrl) {
+      try {
+        doc.addImage(logoUrl, "JPEG", 25, y, 30, 15);
+        y += 18;
+      } catch { /* skip logo on error */ }
+    }
 
     doc.setFontSize(12);
     doc.setFont("helvetica", "bold");
@@ -191,7 +203,7 @@ export default function CustomPrintPage() {
       }
 
       // Browser fallback: open print dialog
-      const doc = buildReceiptPdf();
+      const doc = await buildReceiptPdf();
       const blob = doc.output("blob");
       const url = URL.createObjectURL(blob);
       const w = window.open(url, "_blank");
@@ -207,7 +219,7 @@ export default function CustomPrintPage() {
 
   const shareReceipt = async () => {
     try {
-      const doc = buildReceiptPdf();
+      const doc = await buildReceiptPdf();
       const blob = doc.output("blob");
       const file = new File([blob], `${title || "receipt"}.pdf`, { type: "application/pdf" });
 
@@ -297,6 +309,38 @@ export default function CustomPrintPage() {
               </CardHeader>
               <CardContent className="space-y-3">
                 <div>
+                  <Label className="text-xs">Logo (optional)</Label>
+                  <div className="flex items-center gap-2">
+                    {logoUrl ? (
+                      <img src={logoUrl} alt="Logo" className="h-12 w-12 rounded border object-contain" />
+                    ) : (
+                      <div className="h-12 w-12 rounded border flex items-center justify-center text-muted-foreground">
+                        <ImageIcon className="h-5 w-5" />
+                      </div>
+                    )}
+                    <Button variant="outline" size="sm" onClick={() => logoInputRef.current?.click()}>
+                      {logoUrl ? "Change" : "Upload"}
+                    </Button>
+                    {logoUrl && (
+                      <Button variant="ghost" size="sm" onClick={() => setLogoUrl(null)}>
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    )}
+                    <input
+                      ref={logoInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        const url = URL.createObjectURL(file);
+                        setLogoUrl(url);
+                      }}
+                    />
+                  </div>
+                </div>
+                <div>
                   <Label className="text-xs">Business Name (optional)</Label>
                   <Input value={businessName} onChange={(e) => setBusinessName(e.target.value)} placeholder="Your business name" />
                 </div>
@@ -358,6 +402,11 @@ export default function CustomPrintPage() {
               <CardContent>
                 {showPreview ? (
                   <div className="border rounded-md p-4 bg-white text-black min-h-[300px] font-mono text-xs space-y-1">
+                    {logoUrl && (
+                      <div className="text-center mb-1">
+                        <img src={logoUrl} alt="Logo" className="h-10 mx-auto object-contain" />
+                      </div>
+                    )}
                     {businessName && (
                       <div className="text-center font-bold text-sm">{businessName}</div>
                     )}
