@@ -272,6 +272,37 @@ export default function ProductLabelsPage() {
       price: formatIntMoney(i.price),
     }));
 
+  const handlePrintLabels = () => {
+    if (labelItems.length === 0) {
+      toast({ title: "No items", description: "Add items to print labels.", variant: "destructive" });
+      return;
+    }
+    const labels = buildLabels();
+    const labelHtml = labels.map((l) => {
+      const barcodeUrl = barcodeToDataUrl(l.sku, { width: 200, height: 50 });
+      return `<div style="border:1px solid #ccc;border-radius:8px;padding:12px;text-align:center;break-inside:avoid;width:180px;">
+        <div style="font-weight:bold;font-size:12px;margin-bottom:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${l.name}</div>
+        ${l.price !== "Rs 0" ? `<div style="font-size:11px;color:#666;margin-bottom:4px;">${l.price}</div>` : ""}
+        <img src="${barcodeUrl}" style="width:100%;height:auto;" />
+        <div style="font-size:9px;color:#999;margin-top:2px;">${l.sku}</div>
+      </div>`;
+    }).join("");
+
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) {
+      toast({ title: "Popup blocked", description: "Allow popups to print labels.", variant: "destructive" });
+      return;
+    }
+    printWindow.document.write(`<!DOCTYPE html><html><head><title>Product Labels</title>
+      <style>body{margin:20px;font-family:sans-serif;}
+      .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;}
+      @media print{body{margin:10px;}.grid{gap:8px;}}</style></head>
+      <body><div class="grid">${labelHtml}</div>
+      <script>window.onload=function(){window.print();window.onafterprint=function(){window.close();}}<\/script>
+      </body></html>`);
+    printWindow.document.close();
+  };
+
   const handlePdfDownload = () => {
     if (labelItems.length === 0) {
       toast({ title: "No items", description: "Add items to generate labels.", variant: "destructive" });
@@ -525,7 +556,7 @@ export default function ProductLabelsPage() {
           <Button onClick={handlePdfDownload} className="gap-2">
             <Download className="h-4 w-4" /> Download PDF
           </Button>
-          <Button onClick={() => { handlePdfDownload(); setTimeout(() => window.print(), 500); }} variant="secondary" className="gap-2">
+          <Button onClick={handlePrintLabels} variant="secondary" className="gap-2">
             <Printer className="h-4 w-4" /> Print Labels
           </Button>
           {isNativeAndroid() && (
