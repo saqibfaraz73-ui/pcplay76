@@ -295,9 +295,10 @@ export default function ProductLabelsPage() {
     const htmlContent = `<!DOCTYPE html><html><head><title>Labels</title>
       <style>
         *{margin:0;padding:0;box-sizing:border-box;}
-        body{font-family:sans-serif;padding:8px;}
+        html,body{font-family:sans-serif;padding:8px;height:auto !important;overflow:visible;}
         .grid{display:flex;flex-wrap:wrap;gap:8px;}
         @page{size:auto;margin:5mm;}
+        @media print{html,body{height:auto !important;} .grid{page-break-after:avoid;} .grid::after{content:'';display:block;height:0;clear:both;}}
       </style></head>
       <body><div class="grid">${labelHtml}</div></body></html>`;
 
