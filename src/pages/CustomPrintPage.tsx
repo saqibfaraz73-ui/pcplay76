@@ -31,7 +31,7 @@ export default function CustomPrintPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Preview state
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [showPreview, setShowPreview] = useState(false);
 
   /* ---------- Custom receipt helpers ---------- */
 
@@ -94,14 +94,7 @@ export default function CustomPrintPage() {
   };
 
   const previewReceipt = () => {
-    try {
-      const doc = buildReceiptPdf();
-      const blob = doc.output("blob");
-      const url = URL.createObjectURL(blob);
-      setPreviewUrl(url);
-    } catch {
-      toast.error("Failed to generate preview");
-    }
+    setShowPreview(true);
   };
 
   const printReceipt = () => {
@@ -259,10 +252,33 @@ export default function CustomPrintPage() {
                 <CardTitle className="text-base">Preview</CardTitle>
               </CardHeader>
               <CardContent>
-                {previewUrl ? (
-                  <iframe src={previewUrl} className="w-full h-[400px] border rounded-md" title="Receipt preview" />
+                {showPreview ? (
+                  <div className="border rounded-md p-4 bg-white text-black min-h-[300px] font-mono text-xs space-y-1">
+                    {businessName && (
+                      <div className="text-center font-bold text-sm">{businessName}</div>
+                    )}
+                    <div className="text-center font-bold">{title}</div>
+                    <Separator className="my-1 bg-black/30" />
+                    {lines.map((line) =>
+                      line.label || line.value ? (
+                        <div key={line.id} className="flex justify-between">
+                          <span>{line.label}</span>
+                          <span>{line.value}</span>
+                        </div>
+                      ) : null
+                    )}
+                    {note && (
+                      <>
+                        <Separator className="my-1 bg-black/30" />
+                        <div className="text-[10px] whitespace-pre-wrap">{note}</div>
+                      </>
+                    )}
+                    <div className="text-center text-[10px] pt-2 text-gray-500">
+                      {new Date().toLocaleString()}
+                    </div>
+                  </div>
                 ) : (
-                  <div className="flex flex-col items-center justify-center h-[400px] text-muted-foreground text-sm border rounded-md">
+                  <div className="flex flex-col items-center justify-center h-[300px] text-muted-foreground text-sm border rounded-md">
                     <FileText className="h-10 w-10 mb-2 opacity-40" />
                     Click "Preview" to see your receipt
                   </div>
@@ -291,7 +307,11 @@ export default function CustomPrintPage() {
 
               {uploadedPdfUrl && (
                 <>
-                  <iframe src={uploadedPdfUrl} className="w-full h-[400px] border rounded-md" title="Uploaded PDF preview" />
+                  <div className="border rounded-md p-6 text-center space-y-2">
+                    <FileText className="h-12 w-12 mx-auto text-muted-foreground" />
+                    <p className="font-medium text-sm">{uploadedFileName}</p>
+                    <p className="text-xs text-muted-foreground">PDF uploaded and ready to print or share</p>
+                  </div>
                   <div className="flex flex-wrap gap-2">
                     <Button variant="default" onClick={printUploadedPdf}><Printer className="h-4 w-4 mr-1" /> Print</Button>
                     <Button variant="secondary" onClick={shareUploadedPdf}><Share2 className="h-4 w-4 mr-1" /> Share / Download</Button>
