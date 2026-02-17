@@ -1,101 +1,293 @@
 import React from "react";
 import { db } from "@/db/appDb";
 import type { MenuItem, Category, Settings } from "@/db/schema";
+import { makeId } from "@/features/admin/id";
 import { formatIntMoney } from "@/features/pos/format";
 import { barcodeToDataUrl } from "@/features/labels/barcode-generator";
 import { generateLabelPdf } from "@/features/labels/label-pdf";
 import { printLabelsEscPos } from "@/features/labels/label-escpos";
 import { isNativeAndroid } from "@/features/pos/bluetooth-printer";
+import * as XLSX from "xlsx";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/hooks/use-toast";
-import { Printer, Download, Search, Tags, CheckSquare, Square } from "lucide-react";
+import {
+  Printer, Download, Search, Tags, CheckSquare, Square,
+  Upload, Plus, Trash2, Pencil, Save,
+} from "lucide-react";
+
+/* ── Label item type used across all tabs ── */
+type LabelItem = {
+  id: string;
+  name: string;
+  sku: string;
+  price: number;
+  fromDb?: boolean; // true = existing product
+};
+
+/* ── SKU generator ── */
+function generateSku(name: string): string {
+  const prefix = name
+    .replace(/[^a-zA-Z0-9 ]/g, "")
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 3)
+    .map((w) => w.slice(0, 3).toUpperCase())
+    .join("");
+  const rand = String(Math.floor(1000 + Math.random() * 9000));
+  return (prefix || "ITM") + "-" + rand;
+}
 
 export default function ProductLabelsPage() {
   const [categories, setCategories] = React.useState<Category[]>([]);
-  const [items, setItems] = React.useState<MenuItem[]>([]);
+  const [allItems, setAllItems] = React.useState<MenuItem[]>([]);
   const [settings, setSettings] = React.useState<Settings | null>(null);
-  const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
+
+  // Label items from all sources
+  const [labelItems, setLabelItems] = React.useState<LabelItem[]>([]);
+  const [editingId, setEditingId] = React.useState<string | null>(null);
+  const [editSku, setEditSku] = React.useState("");
+
+  // Menu selection
   const [filterCat, setFilterCat] = React.useState("all");
   const [search, setSearch] = React.useState("");
+
+  // Manual entry
+  const [manualName, setManualName] = React.useState("");
+  const [manualPrice, setManualPrice] = React.useState("");
+
+  // Upload
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  // Printing
   const [printing, setPrinting] = React.useState(false);
 
   React.useEffect(() => {
     (async () => {
-      const [cats, allItems, s] = await Promise.all([
+      const [cats, items, s] = await Promise.all([
         db.categories.toArray(),
         db.items.toArray(),
         db.settings.get("app"),
       ]);
       setCategories(cats);
-      // Only show items with SKU
-      setItems(allItems.filter((i) => i.sku && i.sku.trim().length > 0));
+      setAllItems(items);
       setSettings(s ?? null);
     })();
   }, []);
 
-  const filtered = React.useMemo(() => {
-    let list = items;
+  /* ── Menu tab: filtered items ── */
+  const menuFiltered = React.useMemo(() => {
+    let list = allItems;
     if (filterCat !== "all") list = list.filter((i) => i.categoryId === filterCat);
     if (search.trim()) {
       const q = search.toLowerCase();
       list = list.filter((i) => i.name.toLowerCase().includes(q) || (i.sku ?? "").toLowerCase().includes(q));
     }
     return list;
-  }, [items, filterCat, search]);
+  }, [allItems, filterCat, search]);
 
-  const toggleItem = (id: string) => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
-      return next;
-    });
+  const addFromMenu = (item: MenuItem) => {
+    if (labelItems.some((l) => l.id === item.id)) return;
+    const sku = item.sku && item.sku.trim() ? item.sku : generateSku(item.name);
+    setLabelItems((prev) => [...prev, { id: item.id, name: item.name, sku, price: item.price, fromDb: true }]);
   };
 
-  const selectAll = () => {
-    setSelectedIds(new Set(filtered.map((i) => i.id)));
+  const addAllVisible = () => {
+    const newItems: LabelItem[] = [];
+    for (const item of menuFiltered) {
+      if (labelItems.some((l) => l.id === item.id)) continue;
+      const sku = item.sku && item.sku.trim() ? item.sku : generateSku(item.name);
+      newItems.push({ id: item.id, name: item.name, sku, price: item.price, fromDb: true });
+    }
+    setLabelItems((prev) => [...prev, ...newItems]);
   };
 
-  const deselectAll = () => setSelectedIds(new Set());
-
-  const selectCategory = (catId: string) => {
-    const catItems = items.filter((i) => i.categoryId === catId);
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      catItems.forEach((i) => next.add(i.id));
-      return next;
-    });
+  const addCategoryItems = (catId: string) => {
+    const catItems = allItems.filter((i) => i.categoryId === catId);
+    const newItems: LabelItem[] = [];
+    for (const item of catItems) {
+      if (labelItems.some((l) => l.id === item.id)) continue;
+      const sku = item.sku && item.sku.trim() ? item.sku : generateSku(item.name);
+      newItems.push({ id: item.id, name: item.name, sku, price: item.price, fromDb: true });
+    }
+    setLabelItems((prev) => [...prev, ...newItems]);
   };
 
-  const selectedItems = items.filter((i) => selectedIds.has(i.id));
+  /* ── Manual entry ── */
+  const addManualItem = () => {
+    const name = manualName.trim();
+    if (!name) return;
+    const price = parseInt(manualPrice || "0", 10) || 0;
+    const sku = generateSku(name);
+    setLabelItems((prev) => [...prev, { id: makeId("lbl"), name, sku, price, fromDb: false }]);
+    setManualName("");
+    setManualPrice("");
+  };
 
+  /* ── File upload (Excel / CSV / PDF text extraction) ── */
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = "";
+
+    const ext = file.name.split(".").pop()?.toLowerCase();
+
+    try {
+      if (ext === "xlsx" || ext === "xls" || ext === "csv") {
+        const buffer = await file.arrayBuffer();
+        const wb = XLSX.read(buffer, { type: "array" });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const rows: string[][] = XLSX.utils.sheet_to_json(ws, { header: 1 });
+
+        // Skip header row, look for columns: Name, Price, SKU (flexible)
+        if (rows.length < 2) {
+          toast({ title: "Empty file", description: "No data rows found.", variant: "destructive" });
+          return;
+        }
+
+        const header = rows[0].map((h) => String(h ?? "").toLowerCase().trim());
+        const nameCol = header.findIndex((h) => h.includes("name") || h.includes("item") || h.includes("product"));
+        const priceCol = header.findIndex((h) => h.includes("price") || h.includes("selling"));
+        const skuCol = header.findIndex((h) => h.includes("sku") || h.includes("barcode") || h.includes("code"));
+
+        if (nameCol === -1) {
+          toast({ title: "Missing column", description: "Could not find a 'Name' or 'Item' column in the file.", variant: "destructive" });
+          return;
+        }
+
+        const newItems: LabelItem[] = [];
+        for (let i = 1; i < rows.length; i++) {
+          const row = rows[i];
+          const name = String(row[nameCol] ?? "").trim();
+          if (!name) continue;
+          const price = priceCol >= 0 ? (parseInt(String(row[priceCol] ?? "0"), 10) || 0) : 0;
+          const existingSku = skuCol >= 0 ? String(row[skuCol] ?? "").trim() : "";
+          const sku = existingSku || generateSku(name);
+          newItems.push({ id: makeId("lbl"), name, sku, price, fromDb: false });
+        }
+
+        setLabelItems((prev) => [...prev, ...newItems]);
+        toast({ title: "Imported", description: `${newItems.length} item(s) loaded from ${file.name}` });
+      } else if (ext === "pdf") {
+        // Basic PDF text extraction — read as text (works for text-based PDFs)
+        const text = await file.text();
+        // Try to extract lines that look like product names
+        const lines = text
+          .split(/\r?\n/)
+          .map((l) => l.trim())
+          .filter((l) => l.length > 2 && l.length < 100 && !/^[\d\s.,%$]+$/.test(l));
+
+        if (lines.length === 0) {
+          toast({ title: "No items found", description: "Could not extract product names from this PDF. Try Excel format instead.", variant: "destructive" });
+          return;
+        }
+
+        const newItems: LabelItem[] = lines.slice(0, 200).map((name) => ({
+          id: makeId("lbl"),
+          name,
+          sku: generateSku(name),
+          price: 0,
+          fromDb: false,
+        }));
+
+        setLabelItems((prev) => [...prev, ...newItems]);
+        toast({ title: "Imported from PDF", description: `${newItems.length} item(s) extracted. Review and edit as needed.` });
+      } else {
+        toast({ title: "Unsupported format", description: "Please upload .xlsx, .csv, or .pdf files.", variant: "destructive" });
+      }
+    } catch (err: any) {
+      toast({ title: "Upload error", description: err.message, variant: "destructive" });
+    }
+  };
+
+  /* ── Edit / remove items ── */
+  const removeItem = (id: string) => setLabelItems((prev) => prev.filter((l) => l.id !== id));
+  const clearAll = () => setLabelItems([]);
+
+  const startEditSku = (item: LabelItem) => {
+    setEditingId(item.id);
+    setEditSku(item.sku);
+  };
+
+  const saveSku = () => {
+    if (!editingId || !editSku.trim()) return;
+    setLabelItems((prev) =>
+      prev.map((l) => (l.id === editingId ? { ...l, sku: editSku.trim() } : l))
+    );
+    setEditingId(null);
+    setEditSku("");
+  };
+
+  /* ── Save to products ── */
+  const [saving, setSaving] = React.useState(false);
+  const saveToProducts = async () => {
+    const unsaved = labelItems.filter((l) => !l.fromDb);
+    if (unsaved.length === 0) {
+      toast({ title: "Nothing to save", description: "All items are already in the product catalog." });
+      return;
+    }
+    setSaving(true);
+    try {
+      // Get or create a default category
+      let defaultCat = (await db.categories.toArray())[0];
+      if (!defaultCat) {
+        defaultCat = { id: makeId("cat"), name: "General", createdAt: Date.now() };
+        await db.categories.put(defaultCat);
+      }
+      const now = Date.now();
+      for (const item of unsaved) {
+        const newItem: MenuItem = {
+          id: makeId("item"),
+          categoryId: defaultCat.id,
+          name: item.name,
+          sku: item.sku,
+          price: item.price,
+          trackInventory: false,
+          createdAt: now,
+        };
+        await db.items.put(newItem);
+      }
+      // Mark as saved
+      setLabelItems((prev) =>
+        prev.map((l) => (unsaved.some((u) => u.id === l.id) ? { ...l, fromDb: true } : l))
+      );
+      toast({ title: "Saved", description: `${unsaved.length} item(s) added to product catalog.` });
+    } catch (err: any) {
+      toast({ title: "Save error", description: err.message, variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  /* ── Print / Download ── */
   const buildLabels = () =>
-    selectedItems.map((i) => ({
+    labelItems.map((i) => ({
       name: i.name,
-      sku: i.sku!,
+      sku: i.sku,
       price: formatIntMoney(i.price),
     }));
 
   const handlePdfDownload = () => {
-    if (selectedItems.length === 0) {
-      toast({ title: "No items selected", description: "Select products to generate labels.", variant: "destructive" });
+    if (labelItems.length === 0) {
+      toast({ title: "No items", description: "Add items to generate labels.", variant: "destructive" });
       return;
     }
     try {
       generateLabelPdf(buildLabels());
-      toast({ title: "PDF Downloaded", description: `${selectedItems.length} label(s) saved.` });
+      toast({ title: "PDF Downloaded", description: `${labelItems.length} label(s) saved.` });
     } catch (e: any) {
       toast({ title: "PDF Error", description: e.message, variant: "destructive" });
     }
   };
 
   const handleThermalPrint = async () => {
-    if (selectedItems.length === 0) {
-      toast({ title: "No items selected", description: "Select products to print labels.", variant: "destructive" });
+    if (labelItems.length === 0) {
+      toast({ title: "No items", description: "Add items to print labels.", variant: "destructive" });
       return;
     }
     if (!settings) {
@@ -105,13 +297,15 @@ export default function ProductLabelsPage() {
     setPrinting(true);
     try {
       await printLabelsEscPos(buildLabels(), settings);
-      toast({ title: "Printed", description: `${selectedItems.length} label(s) sent to printer.` });
+      toast({ title: "Printed", description: `${labelItems.length} label(s) sent to printer.` });
     } catch (e: any) {
       toast({ title: "Print Error", description: e.message, variant: "destructive" });
     } finally {
       setPrinting(false);
     }
   };
+
+  const isInList = (id: string) => labelItems.some((l) => l.id === id);
 
   return (
     <div className="space-y-4">
@@ -120,23 +314,25 @@ export default function ProductLabelsPage() {
           <Tags className="h-6 w-6" /> Product Labels
         </h1>
         <p className="text-sm text-muted-foreground">
-          Generate scannable barcode labels for your products. Only items with a SKU are shown.
+          Select products, upload a file, or add manually — SKUs & barcodes are auto-generated.
         </p>
       </header>
 
-      {/* Filters */}
-      <Card>
-        <CardContent className="pt-4 space-y-3">
+      {/* ── Source tabs ── */}
+      <Tabs defaultValue="menu" className="w-full">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="menu">From Menu</TabsTrigger>
+          <TabsTrigger value="upload">Upload File</TabsTrigger>
+          <TabsTrigger value="manual">Manual Entry</TabsTrigger>
+        </TabsList>
+
+        {/* ── Tab: From Menu ── */}
+        <TabsContent value="menu" className="space-y-3">
           <div className="flex flex-wrap gap-3">
             <div className="flex-1 min-w-[200px]">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search by name or SKU…"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="pl-9"
-                />
+                <Input placeholder="Search by name or SKU…" value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
               </div>
             </div>
             <Select value={filterCat} onValueChange={setFilterCat}>
@@ -153,86 +349,169 @@ export default function ProductLabelsPage() {
           </div>
 
           <div className="flex flex-wrap gap-2">
-            <Button variant="outline" size="sm" onClick={selectAll}>
-              <CheckSquare className="h-3.5 w-3.5 mr-1" /> Select All Visible
-            </Button>
-            <Button variant="outline" size="sm" onClick={deselectAll}>
-              <Square className="h-3.5 w-3.5 mr-1" /> Deselect All
+            <Button variant="outline" size="sm" onClick={addAllVisible}>
+              <CheckSquare className="h-3.5 w-3.5 mr-1" /> Add All Visible
             </Button>
             {categories.map((c) => (
-              <Button key={c.id} variant="ghost" size="sm" onClick={() => selectCategory(c.id)}>
+              <Button key={c.id} variant="ghost" size="sm" onClick={() => addCategoryItems(c.id)}>
                 + {c.name}
               </Button>
             ))}
           </div>
 
-          <div className="text-sm text-muted-foreground">
-            {selectedIds.size} of {items.length} product(s) selected
+          <div className="grid gap-1.5 max-h-[300px] overflow-y-auto pr-1">
+            {menuFiltered.map((item) => {
+              const added = isInList(item.id);
+              return (
+                <div key={item.id} className="flex items-center gap-3 rounded-lg border p-2.5">
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium text-sm truncate">{item.name}</div>
+                    <div className="text-xs text-muted-foreground">{item.sku ? `SKU: ${item.sku}` : "No SKU (will be generated)"}</div>
+                  </div>
+                  <Badge variant="secondary" className="text-xs shrink-0">{formatIntMoney(item.price)}</Badge>
+                  <Button size="sm" variant={added ? "secondary" : "default"} disabled={added} onClick={() => addFromMenu(item)}>
+                    {added ? "Added" : "Add"}
+                  </Button>
+                </div>
+              );
+            })}
+            {menuFiltered.length === 0 && (
+              <p className="text-sm text-muted-foreground py-6 text-center">No products found.</p>
+            )}
           </div>
-        </CardContent>
-      </Card>
+        </TabsContent>
 
-      {/* Product list */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base">Products with SKU</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {filtered.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-8 text-center">
-              {items.length === 0
-                ? "No products have a SKU. Add SKU codes in Admin > Products."
-                : "No matching products found."}
-            </p>
-          ) : (
-            <div className="grid gap-2 max-h-[400px] overflow-y-auto pr-1">
-              {filtered.map((item) => {
-                const checked = selectedIds.has(item.id);
-                return (
-                  <label
-                    key={item.id}
-                    className={`flex items-center gap-3 rounded-lg border p-3 cursor-pointer transition-colors ${
-                      checked ? "bg-accent border-accent-foreground/20" : "hover:bg-muted/50"
-                    }`}
-                  >
-                    <Checkbox checked={checked} onCheckedChange={() => toggleItem(item.id)} />
-                    <div className="flex-1 min-w-0">
-                      <div className="font-medium text-sm truncate">{item.name}</div>
-                      <div className="text-xs text-muted-foreground">SKU: {item.sku}</div>
-                    </div>
-                    <Badge variant="secondary" className="text-xs shrink-0">
-                      {formatIntMoney(item.price)}
-                    </Badge>
-                  </label>
-                );
-              })}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+        {/* ── Tab: Upload File ── */}
+        <TabsContent value="upload" className="space-y-3">
+          <Card>
+            <CardContent className="pt-4 space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Upload an <strong>Excel (.xlsx, .csv)</strong> or <strong>PDF</strong> file with product names.
+                The file should have columns like: <code>Name</code>, <code>Price</code>, <code>SKU</code> (optional).
+                SKUs will be auto-generated for items without one.
+              </p>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".xlsx,.xls,.csv,.pdf"
+                className="hidden"
+                onChange={handleFileUpload}
+              />
+              <Button onClick={() => fileInputRef.current?.click()} className="gap-2">
+                <Upload className="h-4 w-4" /> Choose File
+              </Button>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-      {/* Preview */}
-      {selectedItems.length > 0 && (
+        {/* ── Tab: Manual Entry ── */}
+        <TabsContent value="manual" className="space-y-3">
+          <Card>
+            <CardContent className="pt-4 space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Type a product name and optional price. A unique SKU barcode will be generated automatically.
+              </p>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Product name"
+                  value={manualName}
+                  onChange={(e) => setManualName(e.target.value)}
+                  className="flex-1"
+                  onKeyDown={(e) => e.key === "Enter" && addManualItem()}
+                />
+                <Input
+                  placeholder="Price"
+                  value={manualPrice}
+                  onChange={(e) => setManualPrice(e.target.value.replace(/\D/g, ""))}
+                  className="w-24"
+                  onKeyDown={(e) => e.key === "Enter" && addManualItem()}
+                />
+                <Button onClick={addManualItem} disabled={!manualName.trim()}>
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+
+      {/* ── Selected items list ── */}
+      {labelItems.length > 0 && (
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-base">Label Preview</CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base">Label Queue ({labelItems.length})</CardTitle>
+              <Button variant="ghost" size="sm" onClick={clearAll} className="text-destructive">
+                <Trash2 className="h-3.5 w-3.5 mr-1" /> Clear All
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-2 max-h-[300px] overflow-y-auto pr-1">
+              {labelItems.map((item) => (
+                <div key={item.id} className="flex items-center gap-2 rounded-lg border p-2.5">
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium text-sm truncate">{item.name}</div>
+                    {editingId === item.id ? (
+                      <div className="flex items-center gap-1 mt-1">
+                        <Input
+                          value={editSku}
+                          onChange={(e) => setEditSku(e.target.value)}
+                          className="h-7 text-xs w-40"
+                          onKeyDown={(e) => e.key === "Enter" && saveSku()}
+                          autoFocus
+                        />
+                        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={saveSku}>
+                          <Save className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1">
+                        <span className="text-xs text-muted-foreground">SKU: {item.sku}</span>
+                        <Button size="icon" variant="ghost" className="h-5 w-5" onClick={() => startEditSku(item)}>
+                          <Pencil className="h-2.5 w-2.5" />
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                  {item.price > 0 && (
+                    <Badge variant="secondary" className="text-xs shrink-0">{formatIntMoney(item.price)}</Badge>
+                  )}
+                  {!item.fromDb && (
+                    <Badge variant="outline" className="text-xs shrink-0">New</Badge>
+                  )}
+                  <Button size="icon" variant="ghost" className="h-7 w-7 shrink-0" onClick={() => removeItem(item.id)}>
+                    <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ── Barcode Preview ── */}
+      {labelItems.length > 0 && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Barcode Preview</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-              {selectedItems.slice(0, 12).map((item) => (
+              {labelItems.slice(0, 12).map((item) => (
                 <div key={item.id} className="border rounded-lg p-2 text-center space-y-1">
                   <div className="text-xs font-bold truncate">{item.name}</div>
-                  <div className="text-xs text-muted-foreground">{formatIntMoney(item.price)}</div>
+                  {item.price > 0 && <div className="text-xs text-muted-foreground">{formatIntMoney(item.price)}</div>}
                   <img
-                    src={barcodeToDataUrl(item.sku!, { width: 200, height: 50 })}
+                    src={barcodeToDataUrl(item.sku, { width: 200, height: 50 })}
                     alt={`Barcode ${item.sku}`}
                     className="w-full h-auto"
                   />
                 </div>
               ))}
-              {selectedItems.length > 12 && (
+              {labelItems.length > 12 && (
                 <div className="border rounded-lg p-2 flex items-center justify-center text-sm text-muted-foreground">
-                  +{selectedItems.length - 12} more
+                  +{labelItems.length - 12} more
                 </div>
               )}
             </div>
@@ -240,22 +519,24 @@ export default function ProductLabelsPage() {
         </Card>
       )}
 
-      {/* Actions */}
-      <div className="flex flex-wrap gap-3">
-        <Button onClick={handlePdfDownload} disabled={selectedIds.size === 0} className="gap-2">
-          <Download className="h-4 w-4" /> Download PDF
-        </Button>
-        {isNativeAndroid() && (
-          <Button
-            onClick={handleThermalPrint}
-            disabled={selectedIds.size === 0 || printing}
-            variant="secondary"
-            className="gap-2"
-          >
-            <Printer className="h-4 w-4" /> {printing ? "Printing…" : "Print on Thermal"}
+      {/* ── Actions ── */}
+      {labelItems.length > 0 && (
+        <div className="flex flex-wrap gap-3">
+          <Button onClick={handlePdfDownload} className="gap-2">
+            <Download className="h-4 w-4" /> Download PDF
           </Button>
-        )}
-      </div>
+          {isNativeAndroid() && (
+            <Button onClick={handleThermalPrint} disabled={printing} variant="secondary" className="gap-2">
+              <Printer className="h-4 w-4" /> {printing ? "Printing…" : "Print on Thermal"}
+            </Button>
+          )}
+          {labelItems.some((l) => !l.fromDb) && (
+            <Button onClick={saveToProducts} disabled={saving} variant="outline" className="gap-2">
+              <Save className="h-4 w-4" /> {saving ? "Saving…" : "Save New Items to Products"}
+            </Button>
+          )}
+        </div>
+      )}
     </div>
   );
 }
