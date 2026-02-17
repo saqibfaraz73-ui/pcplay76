@@ -11,8 +11,10 @@ import { jsPDF } from "jspdf";
 import { printLabelsEscPos } from "@/features/labels/label-escpos";
 import { generateLabelsZpl } from "@/features/labels/label-zpl";
 import { generateLabelsTspl } from "@/features/labels/label-tspl";
-import { isNativeAndroid } from "@/features/pos/bluetooth-printer";
+import { isNativeAndroid, btConnect, btSend } from "@/features/pos/bluetooth-printer";
+import { usbSend } from "@/features/pos/usb-printer";
 import { sharePdfBlob, shareTextFile } from "@/features/pos/share-utils";
+import { getBtAddress, getUsbDevice } from "@/features/pos/printer-routing";
 import * as XLSX from "xlsx";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -411,6 +413,42 @@ export default function ProductLabelsPage() {
     }
   };
 
+  /** Send raw commands (ZPL/TSPL) directly to configured BT or USB printer */
+  const sendRawToPrinter = async (raw: string, via: "bluetooth" | "usb") => {
+    if (!settings) throw new Error("Settings not loaded. Configure printer first.");
+    if (via === "usb") {
+      const device = getUsbDevice(settings);
+      if (!device) throw new Error("USB printer not configured. Go to Admin > Printer to set up.");
+      await usbSend(raw);
+    } else {
+      const addr = getBtAddress(settings);
+      if (!addr) throw new Error("Bluetooth printer not configured. Go to Admin > Printer to set up.");
+      await btConnect(addr);
+      await btSend(raw);
+    }
+  };
+
+  const handleDirectPrint = async (format: "zpl" | "tspl", via: "bluetooth" | "usb") => {
+    if (labelItems.length === 0) {
+      toast({ title: "No items", description: "Add items to print labels.", variant: "destructive" });
+      return;
+    }
+    const check = await canMakeSale("labelPrint");
+    if (!check.allowed) { setUpgradeMsg(check.message); setUpgradeOpen(true); return; }
+    setPrinting(true);
+    try {
+      const labels = buildLabels();
+      const raw = format === "zpl" ? generateLabelsZpl(labels) : generateLabelsTspl(labels);
+      await sendRawToPrinter(raw, via);
+      await incrementSaleCount("labelPrint");
+      toast({ title: "Printed", description: `${labels.length} ${format.toUpperCase()} label(s) sent via ${via}.` });
+    } catch (e: any) {
+      toast({ title: "Print Error", description: e.message, variant: "destructive" });
+    } finally {
+      setPrinting(false);
+    }
+  };
+
   const isInList = (id: string) => labelItems.some((l) => l.id === id);
 
   return (
@@ -672,7 +710,7 @@ export default function ProductLabelsPage() {
                 await shareTextFile(zpl, `labels-${labels.length}.zpl`);
                 await incrementSaleCount("labelPrint");
               }} variant="outline" className="gap-2">
-                <Download className="h-4 w-4" /> ZPL (Zebra)
+                <Download className="h-4 w-4" /> ZPL File
               </Button>
               <Button onClick={async () => {
                 if (labelItems.length === 0) return;
@@ -683,14 +721,31 @@ export default function ProductLabelsPage() {
                 await shareTextFile(tspl, `labels-${labels.length}.prn`);
                 await incrementSaleCount("labelPrint");
               }} variant="outline" className="gap-2">
-                <Download className="h-4 w-4" /> TSPL (TSC/Xprinter)
+                <Download className="h-4 w-4" /> TSPL File
               </Button>
-              {isNativeAndroid() && (
-                <Button onClick={handleThermalPrint} disabled={printing} variant="outline" className="gap-2">
-                  <Printer className="h-4 w-4" /> {printing ? "Printing…" : "ESC/POS Thermal"}
-                </Button>
-              )}
             </div>
+            {isNativeAndroid() && (
+              <div className="space-y-2">
+                <p className="text-xs text-muted-foreground font-medium">Direct Print (sends to configured printer):</p>
+                <div className="flex flex-wrap gap-3">
+                  <Button onClick={() => handleDirectPrint("zpl", "bluetooth")} disabled={printing} variant="outline" className="gap-2">
+                    <Printer className="h-4 w-4" /> ZPL via Bluetooth
+                  </Button>
+                  <Button onClick={() => handleDirectPrint("zpl", "usb")} disabled={printing} variant="outline" className="gap-2">
+                    <Printer className="h-4 w-4" /> ZPL via USB
+                  </Button>
+                  <Button onClick={() => handleDirectPrint("tspl", "bluetooth")} disabled={printing} variant="outline" className="gap-2">
+                    <Printer className="h-4 w-4" /> TSPL via Bluetooth
+                  </Button>
+                  <Button onClick={() => handleDirectPrint("tspl", "usb")} disabled={printing} variant="outline" className="gap-2">
+                    <Printer className="h-4 w-4" /> TSPL via USB
+                  </Button>
+                  <Button onClick={handleThermalPrint} disabled={printing} variant="outline" className="gap-2">
+                    <Printer className="h-4 w-4" /> {printing ? "Printing…" : "ESC/POS Thermal"}
+                  </Button>
+                </div>
+              </div>
+            )}
             {labelItems.some((l) => !l.fromDb) && (
               <div className="pt-2 border-t">
                 <Button onClick={saveToProducts} disabled={saving} variant="outline" className="gap-2">
