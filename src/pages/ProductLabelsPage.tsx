@@ -30,6 +30,7 @@ type LabelItem = {
   name: string;
   sku: string;
   price: number;
+  qty: number;
   fromDb?: boolean; // true = existing product
 };
 
@@ -97,7 +98,7 @@ export default function ProductLabelsPage() {
   const addFromMenu = (item: MenuItem) => {
     if (labelItems.some((l) => l.id === item.id)) return;
     const sku = item.sku && item.sku.trim() ? item.sku : generateSku(item.name);
-    setLabelItems((prev) => [...prev, { id: item.id, name: item.name, sku, price: item.price, fromDb: true }]);
+    setLabelItems((prev) => [...prev, { id: item.id, name: item.name, sku, price: item.price, qty: 1, fromDb: true }]);
   };
 
   const addAllVisible = () => {
@@ -105,7 +106,7 @@ export default function ProductLabelsPage() {
     for (const item of menuFiltered) {
       if (labelItems.some((l) => l.id === item.id)) continue;
       const sku = item.sku && item.sku.trim() ? item.sku : generateSku(item.name);
-      newItems.push({ id: item.id, name: item.name, sku, price: item.price, fromDb: true });
+      newItems.push({ id: item.id, name: item.name, sku, price: item.price, qty: 1, fromDb: true });
     }
     setLabelItems((prev) => [...prev, ...newItems]);
   };
@@ -116,7 +117,7 @@ export default function ProductLabelsPage() {
     for (const item of catItems) {
       if (labelItems.some((l) => l.id === item.id)) continue;
       const sku = item.sku && item.sku.trim() ? item.sku : generateSku(item.name);
-      newItems.push({ id: item.id, name: item.name, sku, price: item.price, fromDb: true });
+      newItems.push({ id: item.id, name: item.name, sku, price: item.price, qty: 1, fromDb: true });
     }
     setLabelItems((prev) => [...prev, ...newItems]);
   };
@@ -127,7 +128,7 @@ export default function ProductLabelsPage() {
     if (!name) return;
     const price = parseInt(manualPrice || "0", 10) || 0;
     const sku = generateSku(name);
-    setLabelItems((prev) => [...prev, { id: makeId("lbl"), name, sku, price, fromDb: false }]);
+    setLabelItems((prev) => [...prev, { id: makeId("lbl"), name, sku, price, qty: 1, fromDb: false }]);
     setManualName("");
     setManualPrice("");
   };
@@ -171,7 +172,7 @@ export default function ProductLabelsPage() {
           const price = priceCol >= 0 ? (parseInt(String(row[priceCol] ?? "0"), 10) || 0) : 0;
           const existingSku = skuCol >= 0 ? String(row[skuCol] ?? "").trim() : "";
           const sku = existingSku || generateSku(name);
-          newItems.push({ id: makeId("lbl"), name, sku, price, fromDb: false });
+          newItems.push({ id: makeId("lbl"), name, sku, price, qty: 1, fromDb: false });
         }
 
         setLabelItems((prev) => [...prev, ...newItems]);
@@ -195,6 +196,7 @@ export default function ProductLabelsPage() {
           name,
           sku: generateSku(name),
           price: 0,
+          qty: 1,
           fromDb: false,
         }));
 
@@ -268,12 +270,20 @@ export default function ProductLabelsPage() {
   };
 
   /* ── Print / Download ── */
-  const buildLabels = () =>
-    labelItems.map((i) => ({
-      name: i.name,
-      sku: i.sku,
-      price: formatIntMoney(i.price),
-    }));
+  const buildLabels = () => {
+    const result: { name: string; sku: string; price: string }[] = [];
+    for (const i of labelItems) {
+      const label = { name: i.name, sku: i.sku, price: formatIntMoney(i.price) };
+      for (let q = 0; q < (i.qty || 1); q++) result.push(label);
+    }
+    return result;
+  };
+
+  const updateQty = (id: string, qty: number) => {
+    setLabelItems((prev) => prev.map((l) => l.id === id ? { ...l, qty: Math.max(1, qty) } : l));
+  };
+
+  const totalLabels = labelItems.reduce((s, l) => s + (l.qty || 1), 0);
 
   const handlePrintLabels = () => {
     if (labelItems.length === 0) {
@@ -500,7 +510,7 @@ export default function ProductLabelsPage() {
         <Card>
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-base">Label Queue ({labelItems.length})</CardTitle>
+              <CardTitle className="text-base">Label Queue ({labelItems.length} items, {totalLabels} labels)</CardTitle>
               <Button variant="ghost" size="sm" onClick={clearAll} className="text-destructive">
                 <Trash2 className="h-3.5 w-3.5 mr-1" /> Clear All
               </Button>
@@ -540,6 +550,19 @@ export default function ProductLabelsPage() {
                   {!item.fromDb && (
                     <Badge variant="outline" className="text-xs shrink-0">New</Badge>
                   )}
+                  <div className="flex items-center gap-1 shrink-0">
+                    <Button size="icon" variant="outline" className="h-7 w-7" onClick={() => updateQty(item.id, (item.qty || 1) - 1)}>
+                      <span className="text-sm font-bold">−</span>
+                    </Button>
+                    <Input
+                      value={item.qty || 1}
+                      onChange={(e) => updateQty(item.id, parseInt(e.target.value) || 1)}
+                      className="h-7 w-12 text-center text-xs px-1"
+                    />
+                    <Button size="icon" variant="outline" className="h-7 w-7" onClick={() => updateQty(item.id, (item.qty || 1) + 1)}>
+                      <span className="text-sm font-bold">+</span>
+                    </Button>
+                  </div>
                   <Button size="icon" variant="ghost" className="h-7 w-7 shrink-0" onClick={() => removeItem(item.id)}>
                     <Trash2 className="h-3.5 w-3.5 text-destructive" />
                   </Button>
