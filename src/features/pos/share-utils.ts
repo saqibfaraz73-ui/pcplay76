@@ -69,18 +69,25 @@ export async function shareFileBlob(blob: Blob, fileName: string): Promise<void>
 
 /** Web Share API with download fallback */
 async function webShareFile(file: File, title: string): Promise<void> {
+  // Try sharing with file directly (works on Android Chrome, Samsung Browser, etc.)
   if (navigator.share) {
     try {
-      const canShare = navigator.canShare?.({ files: [file] });
-      if (canShare) {
-        await navigator.share({ title, files: [file] });
-        return;
-      }
+      await navigator.share({ title, files: [file] });
+      return;
     } catch (err: any) {
-      if (err?.name === "AbortError") return;
+      if (err?.name === "AbortError") return; // user dismissed — don't download
+      // File sharing not supported, try without file
+      try {
+        const url = URL.createObjectURL(file);
+        await navigator.share({ title, url });
+        URL.revokeObjectURL(url);
+        return;
+      } catch (err2: any) {
+        if (err2?.name === "AbortError") return;
+      }
     }
   }
-  // Fallback: trigger download
+  // Last resort: trigger download
   const url = URL.createObjectURL(file);
   const a = document.createElement("a");
   a.href = url;
