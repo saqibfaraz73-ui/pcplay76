@@ -1,57 +1,56 @@
 /**
  * Shared utility for sharing files using native Capacitor Share or Web Share API.
- * On Android native: writes file to cache, then opens native share sheet.
+ * On Android native: uses writePdfFile/shareFile from sangi-folders (same as Reports).
  * On web: uses Web Share API or fallback download.
  */
 import { toast } from "sonner";
 import { Capacitor } from "@capacitor/core";
+import { writePdfFile, shareFile } from "@/features/files/sangi-folders";
 import { Filesystem, Directory } from "@capacitor/filesystem";
 import { Share } from "@capacitor/share";
 
-/** Convert a Blob to base64 string (without the data URL prefix) */
-async function blobToBase64(blob: Blob): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      const result = reader.result as string;
-      // Remove "data:...;base64," prefix
-      const base64 = result.split(",")[1] || result;
-      resolve(base64);
-    };
-    reader.onerror = reject;
-    reader.readAsDataURL(blob);
-  });
+function uint8ToBase64(bytes: Uint8Array): string {
+  let binary = "";
+  for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+  return btoa(binary);
 }
 
-/** Native share via Capacitor Filesystem + Share plugins */
+/** Convert a Blob to Uint8Array */
+async function blobToUint8(blob: Blob): Promise<Uint8Array> {
+  const buffer = await blob.arrayBuffer();
+  return new Uint8Array(buffer);
+}
+
+/** Convert a Blob to base64 string (without the data URL prefix) */
+async function blobToBase64(blob: Blob): Promise<string> {
+  const bytes = await blobToUint8(blob);
+  return uint8ToBase64(bytes);
+}
+
+/** Native share via Capacitor Filesystem + Share plugins — same method as Reports */
 async function nativeShareFile(blob: Blob, fileName: string): Promise<void> {
   const base64 = await blobToBase64(blob);
   const path = `Sangi Pos/Shared/${fileName}`;
-  // Write to Documents directory (Cache URIs are not shareable on some Android versions)
   await Filesystem.writeFile({
     path,
     data: base64,
     directory: Directory.Documents,
     recursive: true,
   });
-  // Get the native URI
   const uriResult = await Filesystem.getUri({
     directory: Directory.Documents,
     path,
   });
-  // Open native share sheet
-  await Share.share({
-    title: fileName,
-    url: uriResult.uri,
-    dialogTitle: fileName,
-  });
+  await Share.share({ title: fileName, url: uriResult.uri, dialogTitle: fileName });
 }
 
-/** Share a PDF blob using native share or fallback */
+/** Share a PDF blob using native share or fallback — same as Reports */
 export async function sharePdfBlob(blob: Blob, name: string): Promise<void> {
   const fileName = `${name}.pdf`;
   if (Capacitor.isNativePlatform()) {
-    await nativeShareFile(blob, fileName);
+    const pdfBytes = await blobToUint8(blob);
+    const { uri } = await writePdfFile({ folder: "Sales Report", fileName, pdfBytes });
+    await shareFile({ title: fileName, uri });
     return;
   }
   const file = new File([blob], fileName, { type: "application/pdf" });
