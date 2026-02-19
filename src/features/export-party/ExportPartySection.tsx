@@ -21,7 +21,7 @@ import { Plus, Trash2, Share2, CreditCard, Banknote, PackagePlus, Upload, Downlo
 import { printEntryReceipt, shareEntryReceipt, getNextEntryNo, type EntryReceiptData } from "@/features/pos/entry-receipt";
 import { importExportSalesFromExcel, importSalesForCustomer, downloadImportTemplate, downloadPartyImportTemplate } from "@/features/party-import/party-import";
 import { canMakeSale, incrementSaleCount } from "@/features/licensing/licensing-db";
-import { UpgradeDialog } from "@/features/licensing/UpgradeDialog";
+import { AdRewardDialog } from "@/features/licensing/AdRewardDialog";
 import * as XLSX from "xlsx";
 import { downloadExcel } from "@/features/admin/products/menu-import-export";
 
@@ -71,8 +71,8 @@ export function ExportPartySection() {
   const [cancelTarget, setCancelTarget] = React.useState<{ id: string; total: number; customerId: string; discount?: number; advance?: number } | null>(null);
   const [cancelReason, setCancelReason] = React.useState("");
 
-  const [upgradeOpen, setUpgradeOpen] = React.useState(false);
-  const [upgradeMsg, setUpgradeMsg] = React.useState("");
+  const [adOpen, setAdOpen] = React.useState(false);
+  const [adMsg, setAdMsg] = React.useState("");
 
   // Customer form
   const [cName, setCName] = React.useState("");
@@ -163,7 +163,7 @@ export function ExportPartySection() {
 
       if (!isEdit) {
         const check = await canMakeSale("partyLodge");
-        if (!check.allowed) { setUpgradeMsg(check.message); setUpgradeOpen(true); return; }
+        if (!check.allowed) { setAdMsg(check.message); setAdOpen(true); return; }
       }
 
       const now = Date.now();
@@ -1491,7 +1491,7 @@ export function ExportPartySection() {
         </AlertDialogContent>
       </AlertDialog>
 
-      <UpgradeDialog open={upgradeOpen} onOpenChange={setUpgradeOpen} message={upgradeMsg} />
+      <AdRewardDialog open={adOpen} onOpenChange={setAdOpen} module="partyLodge" message={adMsg} onRewarded={() => {}} />
     </div>
   );
 }

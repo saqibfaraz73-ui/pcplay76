@@ -31,7 +31,7 @@ import { importArrivalsFromExcel, importArrivalsForSupplier, downloadImportTempl
 import { canMakeSale, incrementSaleCount } from "@/features/licensing/licensing-db";
 import * as XLSX from "xlsx";
 import { downloadExcel } from "@/features/admin/products/menu-import-export";
-import { UpgradeDialog } from "@/features/licensing/UpgradeDialog";
+import { AdRewardDialog } from "@/features/licensing/AdRewardDialog";
 import { ExportPartySection } from "@/features/export-party/ExportPartySection";
 
 type SupplierMode = { open: false } | { open: true; supplier?: Supplier };
@@ -61,9 +61,10 @@ export default function PosPartyLodge() {
   const [cancelTarget, setCancelTarget] = React.useState<{ type: "arrival"; id: string; total: number; supplierId: string } | null>(null);
   const [cancelReason, setCancelReason] = React.useState("");
 
-  // Upgrade dialog
-  const [upgradeOpen, setUpgradeOpen] = React.useState(false);
-  const [upgradeMsg, setUpgradeMsg] = React.useState("");
+  // Ad reward dialog
+  const [adOpen, setAdOpen] = React.useState(false);
+  const [adMsg, setAdMsg] = React.useState("");
+  const [pendingPartySave, setPendingPartySave] = React.useState(false);
 
   // Arrival form - multi-item
   type ArrivalItem = {
@@ -178,8 +179,9 @@ export default function PosPartyLodge() {
       if (!isEdit) {
         const check = await canMakeSale("partyLodge");
         if (!check.allowed) {
-          setUpgradeMsg(check.message);
-          setUpgradeOpen(true);
+          setAdMsg(check.message);
+          setPendingPartySave(true);
+          setAdOpen(true);
           return;
         }
       }
@@ -1548,7 +1550,13 @@ export default function PosPartyLodge() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      <UpgradeDialog open={upgradeOpen} onOpenChange={setUpgradeOpen} message={upgradeMsg} />
+      <AdRewardDialog
+        open={adOpen}
+        onOpenChange={(v) => { setAdOpen(v); if (!v) setPendingPartySave(false); }}
+        module="partyLodge"
+        message={adMsg}
+        onRewarded={() => { if (pendingPartySave) { setPendingPartySave(false); } }}
+      />
 
       {/* Export Party Section */}
       <div className="border-t pt-6 mt-6">
