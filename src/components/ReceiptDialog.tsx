@@ -7,11 +7,11 @@ import { printReceiptFromOrder } from "@/features/pos/receipt-print";
 import { useToast } from "@/hooks/use-toast";
 import { Printer, Share2 } from "lucide-react";
 
-import { Capacitor } from "@capacitor/core";
 import jsPDF from "jspdf";
-import { writePdfFileAndShare } from "@/features/files/sangi-folders";
+import { sharePdfBytes } from "@/features/pos/share-utils";
 import { db } from "@/db/appDb";
 import { format } from "date-fns";
+
 
 type Props = {
   order: Order;
@@ -155,18 +155,9 @@ export function ReceiptDialog({
       const settings = await db.settings.get("app");
       const receiptSize = settings?.receiptSize ?? "2x3";
       const doc = buildReceiptPdf(order, { creditCustomerName: customerName, deliveryPersonName, receiptSize, settings: settings ?? null });
-      const bytes = doc.output("arraybuffer");
+      const bytes = new Uint8Array(doc.output("arraybuffer"));
       const fileName = `receipt_${order.receiptNo}_${Date.now()}.pdf`;
-
-      await writePdfFileAndShare({
-        folder: "Sales Report",
-        fileName,
-        pdfBytes: new Uint8Array(bytes),
-        shareTitle: `Receipt #${order.receiptNo}`,
-      });
-      if (!Capacitor.isNativePlatform()) {
-        toast({ title: "Receipt PDF downloaded" });
-      }
+      await sharePdfBytes(bytes, fileName, `Receipt #${order.receiptNo}`);
     } catch (e: any) {
       toast({ title: "Could not share", description: e?.message ?? String(e), variant: "destructive" });
     }
