@@ -12,10 +12,9 @@ import { Filesystem, Directory } from "@capacitor/filesystem";
 import { Capacitor } from "@capacitor/core";
 import { AdminTablesWaiters } from "@/features/admin/tables/AdminTablesWaiters";
 import { Trash2, Plus } from "lucide-react";
-import { getLicense, updateLicense } from "@/features/licensing/licensing-db";
+import { getLicense } from "@/features/licensing/licensing-db";
 
 import { DataCleanup } from "@/features/admin/settings/DataCleanup";
-import { decodeLicenseBase64 } from "@/features/licensing/license-file";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -103,12 +102,8 @@ export function AdminSettings() {
   const [newStaffPin, setNewStaffPin] = React.useState("");
   const [deleteStaffId, setDeleteStaffId] = React.useState<string | null>(null);
 
-  // Logo
   const [logoPath, setLogoPath] = React.useState<string | undefined>();
-  const [deviceId, setDeviceId] = React.useState("");
   const [isPremium, setIsPremium] = React.useState(false);
-  const [licenseText, setLicenseText] = React.useState("");
-  const [showLicenseImport, setShowLicenseImport] = React.useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const load = React.useCallback(async () => {
@@ -170,9 +165,7 @@ export function AdminSettings() {
     const staff = await db.staffAccounts.toArray();
     setStaffAccounts(staff);
 
-    // Load device ID
     const lic = await getLicense();
-    setDeviceId(lic.deviceId);
     setIsPremium(lic.isPremium);
   }, []);
 
@@ -324,78 +317,6 @@ export function AdminSettings() {
 
   return (
     <div className="space-y-4">
-      {/* Device ID & License */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Device ID</CardTitle>
-          <CardDescription>
-            {isPremium ? "This device is activated (Premium)." : "Share this ID with support for activation."}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div
-            className="rounded-md border bg-muted/50 px-4 py-3 font-mono text-sm tracking-wider select-all cursor-pointer"
-            onClick={() => {
-              navigator.clipboard?.writeText(deviceId);
-              toast({ title: "Device ID copied" });
-            }}
-          >
-            {deviceId || "Loading..."}
-            <p className="text-xs text-muted-foreground mt-1 font-sans">Tap to copy</p>
-          </div>
-
-          {isPremium && (
-            <div className="flex items-center gap-2 text-sm text-green-600 font-medium">
-              <div className="h-2.5 w-2.5 rounded-full bg-green-500" />
-              Premium Active
-            </div>
-          )}
-
-          {!isPremium && (
-            <div className="border-t pt-3 space-y-3">
-              <input
-                type="file"
-                accept=".sangi"
-                className="hidden"
-                ref={(el) => { (window as any).__licFileInput = el; }}
-                onChange={async (e) => {
-                  const file = e.target.files?.[0];
-                  if (!file) return;
-                  try {
-                    const text = await file.text();
-                    const decoded = decodeLicenseBase64(text);
-                    if (!decoded) {
-                      toast({ title: "Invalid license file", description: "The file is invalid or corrupted.", variant: "destructive" });
-                      return;
-                    }
-                    if (decoded.deviceId !== deviceId) {
-                      toast({ title: "License mismatch", description: "This license file is for a different device.", variant: "destructive" });
-                      return;
-                    }
-                    await updateLicense({ isPremium: true, licensedDeviceId: decoded.deviceId });
-                    setIsPremium(true);
-                    toast({ title: "🎉 Premium Activated!", description: "Your device is now premium." });
-                  } catch {
-                    toast({ title: "Could not read file", variant: "destructive" });
-                  }
-                  e.target.value = "";
-                }}
-              />
-              <Button
-                variant="outline"
-                className="w-full"
-                onClick={() => (window as any).__licFileInput?.click()}
-              >
-                📄 Import License File
-              </Button>
-              <p className="text-xs text-muted-foreground">
-                Select the <code className="bg-muted px-1 rounded">license.sangi</code> file received from support.
-              </p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
       <Card>
         <CardHeader>
           <CardTitle>Business & Receipt Settings</CardTitle>
