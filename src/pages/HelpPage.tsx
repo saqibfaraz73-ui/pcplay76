@@ -1,5 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { HelpCircle, Mail, MessageCircle, BookOpen, Shield, Clock, AlertTriangle, RefreshCw, Database } from "lucide-react";
+import { HelpCircle, Mail, BookOpen, Shield, Clock, AlertTriangle, RefreshCw, Database } from "lucide-react";
 
 export default function HelpPage() {
   return (
@@ -35,16 +35,6 @@ export default function HelpPage() {
             </div>
           </a>
 
-          <a href="https://wa.me/923041593340" target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 rounded-lg border p-3 transition-colors hover:bg-accent">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-green-500/10">
-              <MessageCircle className="h-4 w-4 text-green-600" />
-            </div>
-            <div className="min-w-0">
-              <h3 className="text-sm font-semibold">WhatsApp Support</h3>
-              <p className="text-xs text-muted-foreground">+92 304 1593340</p>
-              <p className="text-xs text-muted-foreground">For quick help and real-time assistance</p>
-            </div>
-          </a>
         </CardContent>
       </Card>
 
