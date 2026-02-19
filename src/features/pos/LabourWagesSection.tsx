@@ -22,6 +22,7 @@ import { useToast } from "@/hooks/use-toast";
 import { makeId } from "@/features/admin/id";
 import { formatIntMoney, parseNonDecimalInt } from "@/features/pos/format";
 import { Plus, Trash2, ArrowLeft, Wallet, ArrowDownCircle, ArrowUpCircle, MinusCircle, PlusCircle, Share2, Clock, Calendar, CheckCircle2, XCircle, Clock3, ChevronLeft, ChevronRight, Factory, Package } from "lucide-react";
+import { sharePdfBytes } from "@/features/pos/share-utils";
 import { jsPDF } from "jspdf";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, subMonths, addMonths, isAfter } from "date-fns";
 
@@ -82,7 +83,15 @@ export default function LabourWagesSection({ workPeriodId, onBack }: Props) {
   const [prodNote, setProdNote] = React.useState("");
   const [menuItems, setMenuItems] = React.useState<MenuItem[]>([]);
   const [menuSearchQuery, setMenuSearchQuery] = React.useState("");
-  const [showMenuPicker, setShowMenuPicker] = React.useState<number | null>(null); // index of line being picked
+  const [showMenuPicker, setShowMenuPicker] = React.useState<number | null>(null);
+
+  // Transaction date range filter
+  const toDateStr = (ts: number) => {
+    const d = new Date(ts);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  };
+  const [txFilterFrom, setTxFilterFrom] = React.useState(toDateStr(Date.now()));
+  const [txFilterTo, setTxFilterTo] = React.useState(toDateStr(Date.now()));
 
   const refresh = React.useCallback(async () => {
     const all = await db.labours.orderBy("createdAt").reverse().toArray();
@@ -473,9 +482,20 @@ export default function LabourWagesSection({ workPeriodId, onBack }: Props) {
     }
   };
 
-  const labourTxs = selectedLabour
-    ? transactions.filter((t) => t.labourId === selectedLabour.id)
-    : [];
+  const labourTxs = React.useMemo(() => {
+    if (!selectedLabour) return [];
+    const all = transactions.filter((t) => t.labourId === selectedLabour.id);
+    const [fy, fm, fd] = txFilterFrom.split("-").map(Number);
+    const [ty, tm, td] = txFilterTo.split("-").map(Number);
+    const fromTs = new Date(fy, fm - 1, fd, 0, 0, 0, 0).getTime();
+    const toTs = new Date(ty, tm - 1, td, 23, 59, 59, 999).getTime();
+    return all.filter((t) => t.createdAt >= fromTs && t.createdAt <= toTs);
+  }, [selectedLabour, transactions, txFilterFrom, txFilterTo]);
+
+  const labourTxsTotal = labourTxs.reduce((sum, t) => {
+    if (t.type === "wage" || t.type === "advance" || t.type === "deduct_short") return sum + t.amount;
+    return sum;
+  }, 0);
 
   const wagePeriodLabel = (p: WagePeriod) => WAGE_PERIODS.find((w) => w.value === p)?.label || p;
   const txTypeLabel = (t: LabourTransactionType) => {
@@ -495,9 +515,8 @@ export default function LabourWagesSection({ workPeriodId, onBack }: Props) {
   };
 
   const shareLabourPdf = async (labour: Labour) => {
-    const txs = transactions.filter((t) => t.labourId === labour.id);
-    if (txs.length === 0) {
-      toast({ title: "No transactions to share" });
+    if (labourTxs.length === 0) {
+      toast({ title: "No transactions in this date range" });
       return;
     }
     const doc = new jsPDF({ unit: "mm", format: "a4" });
@@ -517,6 +536,8 @@ export default function LabourWagesSection({ workPeriodId, onBack }: Props) {
       doc.text(`Position: ${labour.position}`, pw / 2, y, { align: "center" });
       y += 5;
     }
+    doc.text(`Period: ${txFilterFrom} → ${txFilterTo}`, pw / 2, y, { align: "center" });
+    y += 5;
     doc.text(`Wage: ${formatIntMoney(labour.wageAmount)} (${wagePeriodLabel(labour.wagePeriod)})`, pw / 2, y, { align: "center" });
     y += 5;
     if (labour.hourlyRate) {
@@ -524,6 +545,8 @@ export default function LabourWagesSection({ workPeriodId, onBack }: Props) {
       y += 5;
     }
     doc.text(`Advance Balance: ${formatIntMoney(labour.advanceBalance)}  |  Short Balance: ${formatIntMoney(labour.shortBalance)}`, pw / 2, y, { align: "center" });
+    y += 5;
+    doc.text(`Total Paid (in range): ${formatIntMoney(labourTxsTotal)}  |  Transactions: ${labourTxs.length}`, pw / 2, y, { align: "center" });
     y += 8;
 
     doc.setFontSize(8);
@@ -538,7 +561,7 @@ export default function LabourWagesSection({ workPeriodId, onBack }: Props) {
     y += 4;
 
     doc.setFont("helvetica", "normal");
-    for (const tx of txs) {
+    for (const tx of labourTxs) {
       checkPage(6);
       const d = new Date(tx.createdAt);
       doc.text(`${d.toLocaleDateString()} ${d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`, lm, y);
@@ -548,16 +571,9 @@ export default function LabourWagesSection({ workPeriodId, onBack }: Props) {
       y += 5;
     }
 
-    const blob = doc.output("blob");
-    const file = new File([blob], `${labour.name}-wage-log.pdf`, { type: "application/pdf" });
-    if (navigator.canShare?.({ files: [file] })) {
-      await navigator.share({ files: [file], title: `${labour.name} Wage Log` });
-    } else {
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url; a.download = file.name; a.click();
-      URL.revokeObjectURL(url);
-    }
+    const bytes = doc.output("arraybuffer");
+    const fileName = `${labour.name}-wage-log-${txFilterFrom}-${txFilterTo}.pdf`;
+    await sharePdfBytes(new Uint8Array(bytes), fileName, `${labour.name} Wage Log`);
   };
 
   // Attendance summary for current month
@@ -832,14 +848,30 @@ export default function LabourWagesSection({ workPeriodId, onBack }: Props) {
               )}
             </div>
 
-            {/* Transaction history */}
+            {/* Transaction history with date filter */}
             <Card>
               <CardHeader className="py-3">
                 <CardTitle className="text-base">Transaction History</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-2">
+              <CardContent className="space-y-3">
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <Label htmlFor="txFrom" className="text-xs">From</Label>
+                    <Input id="txFrom" type="date" value={txFilterFrom} onChange={(e) => setTxFilterFrom(e.target.value)} className="h-8 text-sm" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="txTo" className="text-xs">To</Label>
+                    <Input id="txTo" type="date" value={txFilterTo} onChange={(e) => setTxFilterTo(e.target.value)} className="h-8 text-sm" />
+                  </div>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-muted-foreground">{labourTxs.length} transactions • Total paid: {formatIntMoney(labourTxsTotal)}</span>
+                  <Button variant="outline" size="sm" onClick={() => void shareLabourPdf(fresh)} disabled={labourTxs.length === 0} className="gap-1">
+                    <Share2 className="h-3.5 w-3.5" /> Share PDF
+                  </Button>
+                </div>
                 {labourTxs.length === 0 ? (
-                  <div className="text-sm text-muted-foreground">No transactions yet.</div>
+                  <div className="text-sm text-muted-foreground">No transactions in this date range.</div>
                 ) : (
                   labourTxs.map((tx) => (
                     <div key={tx.id} className="flex items-center justify-between rounded-md border p-2">
