@@ -85,7 +85,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     // Only fire when the top-level section changes (e.g. /pos → /admin)
     const prevSection = prev.split("/")[1];
     const currSection = curr.split("/")[1];
-    if (prevSection !== currSection && currSection) {
+    // Never show ads on auth/public pages
+    const noAdPages = ["login", "super-admin", "privacy-policy", "about", "help", ""];
+    if (
+      prevSection !== currSection &&
+      currSection &&
+      !noAdPages.includes(currSection) &&
+      !noAdPages.includes(prevSection)
+    ) {
       getLicense().then((lic) => {
         if (!lic.isPremium) void showInterstitialAd();
       }).catch(() => {});
