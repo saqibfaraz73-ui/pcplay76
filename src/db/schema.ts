@@ -477,6 +477,18 @@ export type LabourTransaction = {
   createdAt: number;
 };
 
+// Daily attendance record for a labourer
+export type AttendanceStatus = "present" | "absent" | "half";
+
+export type LabourAttendance = {
+  id: string; // labourId_YYYY-MM-DD (compound key for uniqueness)
+  labourId: string;
+  date: string; // YYYY-MM-DD
+  status: AttendanceStatus;
+  note?: string;
+  createdAt: number;
+};
+
 export type Counter = {
   id: CounterId;
   next: number;
