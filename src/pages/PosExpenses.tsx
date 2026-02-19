@@ -24,8 +24,7 @@ import { useWorkPeriod } from "@/features/pos/WorkPeriodProvider";
 import { useAuth } from "@/auth/AuthProvider";
 import { makeId } from "@/features/admin/id";
 import { formatIntMoney, parseNonDecimalInt, fmtDate, fmtDateTime } from "@/features/pos/format";
-import { writePdfFile, shareFile } from "@/features/files/sangi-folders";
-import { Capacitor } from "@capacitor/core";
+import { sharePdfBytes } from "@/features/pos/share-utils";
 import { Plus, Trash2, Share2 } from "lucide-react";
 import { canMakeSale, incrementSaleCount, type SalesModule } from "@/features/licensing/licensing-db";
 import { AdRewardDialog } from "@/features/licensing/AdRewardDialog";
@@ -169,13 +168,7 @@ export default function PosExpenses() {
       const bytes = doc.output("arraybuffer");
       const fileName = `expenses_${filterFrom}_${filterTo}.pdf`;
 
-      if (Capacitor.isNativePlatform()) {
-        const saved = await writePdfFile({ folder: "Sales Report", fileName, pdfBytes: new Uint8Array(bytes) });
-        await shareFile({ title: "Expenses Report", uri: saved.uri });
-      } else {
-        doc.save(fileName);
-        toast({ title: "Expenses PDF downloaded" });
-      }
+      await sharePdfBytes(new Uint8Array(bytes), fileName, "Expenses Report");
     } catch (e: any) {
       toast({ title: "PDF failed", description: e?.message ?? String(e), variant: "destructive" });
     }

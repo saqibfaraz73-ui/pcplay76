@@ -15,7 +15,7 @@ import { STOCK_UNITS } from "@/db/schema";
 import { useToast } from "@/hooks/use-toast";
 import { makeId } from "@/features/admin/id";
 import { formatIntMoney, parseNonDecimalInt, fmtDate, fmtDateTime } from "@/features/pos/format";
-import { writePdfFile, shareFile } from "@/features/files/sangi-folders";
+import { sharePdfBytes } from "@/features/pos/share-utils";
 import { Capacitor } from "@capacitor/core";
 import { Plus, Trash2, Share2, CreditCard, Banknote, PackagePlus, Upload, Download, Printer, XCircle, FileSpreadsheet } from "lucide-react";
 import { printEntryReceipt, shareEntryReceipt, getNextEntryNo, type EntryReceiptData } from "@/features/pos/entry-receipt";
@@ -802,13 +802,7 @@ export function ExportPartySection() {
       const bytes = doc.output("arraybuffer");
       const safeName = cust.name.replace(/[^a-zA-Z0-9]/g, "_").slice(0, 30);
       const fileName = `sales_${safeName}_${filterFrom}_${filterTo}.pdf`;
-      if (Capacitor.isNativePlatform()) {
-        const saved = await writePdfFile({ folder: "Sales Report", fileName, pdfBytes: new Uint8Array(bytes) });
-        await shareFile({ title: `Sales: ${cust.name}`, uri: saved.uri });
-      } else {
-        doc.save(fileName);
-        toast({ title: `${cust.name} Sales PDF downloaded` });
-      }
+      await sharePdfBytes(new Uint8Array(bytes), fileName, `Sales: ${cust.name}`);
     } catch (e: any) {
       toast({ title: "PDF failed", description: e?.message ?? String(e), variant: "destructive" });
     }
@@ -846,13 +840,7 @@ export function ExportPartySection() {
       const bytes = doc.output("arraybuffer");
       const safeName = cust.name.replace(/[^a-zA-Z0-9]/g, "_").slice(0, 30);
       const fileName = `export_${safeName}_${filterFrom}_${filterTo}.pdf`;
-      if (Capacitor.isNativePlatform()) {
-        const saved = await writePdfFile({ folder: "Sales Report", fileName, pdfBytes: new Uint8Array(bytes) });
-        await shareFile({ title: `Export Party: ${cust.name}`, uri: saved.uri });
-      } else {
-        doc.save(fileName);
-        toast({ title: `${cust.name} PDF downloaded` });
-      }
+      await sharePdfBytes(new Uint8Array(bytes), fileName, `Export Party: ${cust.name}`);
     } catch (e: any) {
       toast({ title: "PDF failed", description: e?.message ?? String(e), variant: "destructive" });
     }
@@ -976,13 +964,7 @@ export function ExportPartySection() {
       const bytes = doc.output("arraybuffer");
       const label = type === "full" ? "export_party" : type === "sales" ? "export_sales" : "export_payments";
       const fileName = `${label}_${filterFrom}_${filterTo}.pdf`;
-      if (Capacitor.isNativePlatform()) {
-        const saved = await writePdfFile({ folder: "Sales Report", fileName, pdfBytes: new Uint8Array(bytes) });
-        await shareFile({ title: `Export ${type} Report`, uri: saved.uri });
-      } else {
-        doc.save(fileName);
-        toast({ title: `${type} PDF downloaded` });
-      }
+      await sharePdfBytes(new Uint8Array(bytes), fileName, `Export ${type} Report`);
     } catch (e: any) {
       toast({ title: "PDF failed", description: e?.message ?? String(e), variant: "destructive" });
     }

@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { db } from "@/db/appDb";
 import type { InventoryAdjustment, MenuItem, Settings } from "@/db/schema";
-import { shareFile, writePdfFile } from "@/features/files/sangi-folders";
+import { sharePdfBytes } from "@/features/pos/share-utils";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
@@ -96,7 +96,7 @@ export function AdminInventoryAdjustments() {
   const [itemId, setItemId] = React.useState<string>("");
   const [from, setFrom] = React.useState<Date>(() => startOfDay(new Date()));
   const [to, setTo] = React.useState<Date>(() => endOfDay(new Date()));
-  const [lastUri, setLastUri] = React.useState<string | null>(null);
+  
 
   const refresh = React.useCallback(async () => {
     const [s, its, adjs] = await Promise.all([
@@ -135,9 +135,8 @@ export function AdminInventoryAdjustments() {
       });
       const bytes = doc.output("arraybuffer");
       const fileName = `inventory_adjustments_${format(from, "yyyy-MM-dd")}_${format(to, "yyyy-MM-dd")}.pdf`;
-      const saved = await writePdfFile({ folder: "Sales Report", fileName, pdfBytes: new Uint8Array(bytes) });
-      setLastUri(saved.uri);
-      toast({ title: "Saved", description: fileName });
+      await sharePdfBytes(new Uint8Array(bytes), fileName, "Inventory Adjustments");
+      toast({ title: "Exported", description: fileName });
     } catch (e: any) {
       toast({ title: "Export failed", description: e?.message ?? String(e), variant: "destructive" });
     }
@@ -175,14 +174,7 @@ export function AdminInventoryAdjustments() {
           </div>
 
           <div className="flex flex-wrap gap-2">
-            <Button onClick={() => void exportPdf()}>Export PDF</Button>
-            <Button
-              variant="outline"
-              disabled={!lastUri}
-              onClick={() => lastUri && void shareFile({ title: "Inventory Adjustments", uri: lastUri })}
-            >
-              Share Last Export
-            </Button>
+            <Button onClick={() => void exportPdf()}>Export &amp; Share PDF</Button>
             <Button variant="outline" onClick={() => void refresh()}>
               Refresh
             </Button>
