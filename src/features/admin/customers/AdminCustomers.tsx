@@ -12,7 +12,7 @@ import { makeId } from "@/features/admin/id";
 import { formatIntMoney, parseNonDecimalInt } from "@/features/pos/format";
 import { CreditLodgePreview } from "@/features/admin/reports/CreditLodgePreview";
 import { buildCreditLodgePdf, buildCreditPaymentsPdf, buildCreditItemsPdf } from "@/features/admin/reports/credit-lodge-pdf";
-import { writePdfFile, shareFile } from "@/features/files/sangi-folders";
+import { sharePdfBytes } from "@/features/pos/share-utils";
 import { Share2, CreditCard, ShoppingBag } from "lucide-react";
 import { Capacitor } from "@capacitor/core";
 
@@ -370,10 +370,7 @@ export function AdminCustomers() {
                         const doc = buildCreditLodgePdf({ restaurantName: settings?.restaurantName ?? "SANGI POS", fromLabel: from, toLabel: to, customer: selectedCustomer, orders: lodgeOrders, payments: selectedPayments });
                         const bytes = doc.output("arraybuffer");
                         const fileName = `credit_lodge_${selectedCustomer.name.replace(/\s+/g, "_")}_${Date.now()}.pdf`;
-                        if (Capacitor.isNativePlatform()) {
-                          const saved = await writePdfFile({ folder: "Credit", fileName, pdfBytes: new Uint8Array(bytes) });
-                          await shareFile({ title: `Credit Lodge - ${selectedCustomer.name}`, uri: saved.uri });
-                        } else { doc.save(fileName); toast({ title: "Credit Lodge PDF downloaded" }); }
+                        await sharePdfBytes(new Uint8Array(bytes), fileName, `Credit Lodge - ${selectedCustomer.name}`);
                       } catch (e: any) { toast({ title: "Could not export PDF", description: e?.message ?? String(e), variant: "destructive" }); }
                     }}
                   >
@@ -388,10 +385,7 @@ export function AdminCustomers() {
                         const doc = buildCreditPaymentsPdf({ restaurantName: settings?.restaurantName ?? "SANGI POS", fromLabel: from, toLabel: to, customer: selectedCustomer, orders: lodgeOrders, payments: selectedPayments });
                         const bytes = doc.output("arraybuffer");
                         const fileName = `credit_payments_${selectedCustomer.name.replace(/\s+/g, "_")}_${Date.now()}.pdf`;
-                        if (Capacitor.isNativePlatform()) {
-                          const saved = await writePdfFile({ folder: "Credit", fileName, pdfBytes: new Uint8Array(bytes) });
-                          await shareFile({ title: `Payments - ${selectedCustomer.name}`, uri: saved.uri });
-                        } else { doc.save(fileName); toast({ title: "Payments PDF downloaded" }); }
+                        await sharePdfBytes(new Uint8Array(bytes), fileName, `Payments - ${selectedCustomer.name}`);
                       } catch (e: any) { toast({ title: "Could not export PDF", description: e?.message ?? String(e), variant: "destructive" }); }
                     }}
                   >
@@ -406,10 +400,7 @@ export function AdminCustomers() {
                         const doc = buildCreditItemsPdf({ restaurantName: settings?.restaurantName ?? "SANGI POS", fromLabel: from, toLabel: to, customer: selectedCustomer, orders: lodgeOrders, payments: selectedPayments });
                         const bytes = doc.output("arraybuffer");
                         const fileName = `credit_items_${selectedCustomer.name.replace(/\s+/g, "_")}_${Date.now()}.pdf`;
-                        if (Capacitor.isNativePlatform()) {
-                          const saved = await writePdfFile({ folder: "Credit", fileName, pdfBytes: new Uint8Array(bytes) });
-                          await shareFile({ title: `Items - ${selectedCustomer.name}`, uri: saved.uri });
-                        } else { doc.save(fileName); toast({ title: "Items PDF downloaded" }); }
+                        await sharePdfBytes(new Uint8Array(bytes), fileName, `Items - ${selectedCustomer.name}`);
                       } catch (e: any) { toast({ title: "Could not export PDF", description: e?.message ?? String(e), variant: "destructive" }); }
                     }}
                   >

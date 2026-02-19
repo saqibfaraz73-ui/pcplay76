@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { db } from "@/db/appDb";
 import { useToast } from "@/hooks/use-toast";
-import { ensureSangiFolders, shareFile, writeTextFile } from "@/features/files/sangi-folders";
+import { ensureSangiFolders, writeTextFile } from "@/features/files/sangi-folders";
 import { Share } from "@capacitor/share";
 import { Capacitor } from "@capacitor/core";
 import { markBackupDone } from "./BackupReminder";
@@ -223,13 +223,6 @@ export function AdminBackupRestore() {
       <CardContent className="space-y-4">
         <div className="flex flex-wrap gap-2">
           <Button onClick={() => void backup()}>Create Backup</Button>
-          <Button
-            variant="outline"
-            disabled={!lastBackupUri}
-            onClick={() => lastBackupUri && void shareFile({ title: "SANGI POS Backup", uri: lastBackupUri })}
-          >
-            Share Last Backup
-          </Button>
         </div>
 
         {/* Google Drive backup */}

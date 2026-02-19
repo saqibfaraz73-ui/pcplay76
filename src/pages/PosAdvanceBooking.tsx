@@ -22,8 +22,7 @@ import { makeId } from "@/features/admin/id";
 import { printAdvanceReceipt, printAdvanceKot, printBookingReceipt, printBookingKot } from "@/features/pos/advance-receipt";
 import { buildBookingLodgePdf } from "@/features/admin/reports/booking-lodge-pdf";
 import { buildAdvanceLodgePdf } from "@/features/admin/reports/advance-lodge-pdf";
-import { writePdfFile, shareFile } from "@/features/files/sangi-folders";
-import { Capacitor } from "@capacitor/core";
+import { sharePdfBytes } from "@/features/pos/share-utils";
 import { Plus, Trash2, X, Check, Ban, Printer, FileText, Share2, Wrench } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 
@@ -107,13 +106,7 @@ function AdvanceLodgeSection({ advanceOrders, settings }: { advanceOrders: Advan
       const bytes = doc.output("arraybuffer");
       const fileName = `advance_lodge_${lodgeFrom}_${lodgeTo}.pdf`;
 
-      if (Capacitor.isNativePlatform()) {
-        const saved = await writePdfFile({ folder: "Sales Report", fileName, pdfBytes: new Uint8Array(bytes) });
-        await shareFile({ title: "Advance Orders Lodge", uri: saved.uri });
-      } else {
-        doc.save(fileName);
-        toast({ title: "PDF downloaded" });
-      }
+      await sharePdfBytes(new Uint8Array(bytes), fileName, "Advance Orders Lodge");
     } catch (e: any) {
       toast({ title: "PDF failed", description: e?.message, variant: "destructive" });
     }
@@ -209,13 +202,7 @@ function BookingLodgeSection({ bookingOrders, settings }: { bookingOrders: Booki
       const bytes = doc.output("arraybuffer");
       const fileName = `booking_lodge_${lodgeFrom}_${lodgeTo}.pdf`;
 
-      if (Capacitor.isNativePlatform()) {
-        const saved = await writePdfFile({ folder: "Sales Report", fileName, pdfBytes: new Uint8Array(bytes) });
-        await shareFile({ title: "Booking Lodge Report", uri: saved.uri });
-      } else {
-        doc.save(fileName);
-        toast({ title: "PDF downloaded" });
-      }
+      await sharePdfBytes(new Uint8Array(bytes), fileName, "Booking Lodge Report");
     } catch (e: any) {
       toast({ title: "PDF failed", description: e?.message, variant: "destructive" });
     }
@@ -617,13 +604,7 @@ export default function PosAdvanceBooking() {
       const doc = buildAdvanceReceiptPdf(order, s);
       const bytes = doc.output("arraybuffer");
       const fileName = `advance_${order.receiptNo}_${Date.now()}.pdf`;
-      if (Capacitor.isNativePlatform()) {
-        const saved = await writePdfFile({ folder: "Sales Report", fileName, pdfBytes: new Uint8Array(bytes) });
-        await shareFile({ title: `Advance #${order.receiptNo}`, uri: saved.uri });
-      } else {
-        doc.save(fileName);
-        toast({ title: "PDF downloaded" });
-      }
+      await sharePdfBytes(new Uint8Array(bytes), fileName, `Advance #${order.receiptNo}`);
     } catch (e: any) {
       toast({ title: "Share failed", description: e?.message, variant: "destructive" });
     }
@@ -645,13 +626,7 @@ export default function PosAdvanceBooking() {
       const doc = buildBookingReceiptPdf(order, s);
       const bytes = doc.output("arraybuffer");
       const fileName = `booking_${order.receiptNo}_${Date.now()}.pdf`;
-      if (Capacitor.isNativePlatform()) {
-        const saved = await writePdfFile({ folder: "Sales Report", fileName, pdfBytes: new Uint8Array(bytes) });
-        await shareFile({ title: `Booking #${order.receiptNo}`, uri: saved.uri });
-      } else {
-        doc.save(fileName);
-        toast({ title: "PDF downloaded" });
-      }
+      await sharePdfBytes(new Uint8Array(bytes), fileName, `Booking #${order.receiptNo}`);
     } catch (e: any) {
       toast({ title: "Share failed", description: e?.message, variant: "destructive" });
     }
