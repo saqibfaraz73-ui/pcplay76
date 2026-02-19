@@ -1,4 +1,4 @@
-package app.lovable.sangi;
+package app.lovable.a89517294eb14219b1dd14af0464d470;
 
 import android.Manifest;
 import android.content.Intent;
