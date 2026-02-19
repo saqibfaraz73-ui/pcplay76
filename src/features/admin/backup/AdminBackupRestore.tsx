@@ -5,12 +5,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { db } from "@/db/appDb";
 import { useToast } from "@/hooks/use-toast";
-import { ensureSangiFolders, writeTextFile } from "@/features/files/sangi-folders";
 import { Capacitor } from "@capacitor/core";
 import { Filesystem, Directory } from "@capacitor/filesystem";
 import { Share } from "@capacitor/share";
 import { markBackupDone } from "./BackupReminder";
-import { CloudUpload } from "lucide-react";
+import { CloudUpload, Share2 } from "lucide-react";
 
 type BackupPayloadV1 = {
   version: 1;
@@ -48,57 +47,109 @@ type BackupPayloadV1 = {
   };
 };
 
+/** Write a temp cache file and share via Android share sheet — no SAF / no folder picker */
+async function shareTextViaCache(content: string, fileName: string): Promise<void> {
+  const tmpPath = `__share_tmp__/${fileName}`;
+  try {
+    const encoder = new TextEncoder();
+    const bytes = encoder.encode(content);
+    let binary = "";
+    for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+    const base64 = btoa(binary);
+    await Filesystem.writeFile({ directory: Directory.Cache, path: tmpPath, data: base64, recursive: true });
+    const { uri } = await Filesystem.getUri({ directory: Directory.Cache, path: tmpPath });
+    await Share.share({ title: fileName, url: uri, dialogTitle: "Share / Save Backup" });
+  } finally {
+    try { await Filesystem.deleteFile({ directory: Directory.Cache, path: tmpPath }); } catch { /* ignore */ }
+  }
+}
+
+/** Web fallback: trigger a browser download */
+function downloadTextFile(content: string, fileName: string): void {
+  const blob = new Blob([content], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
 export function AdminBackupRestore() {
   const { toast } = useToast();
   const [lastBackupContent, setLastBackupContent] = React.useState<{ fileName: string; content: string } | null>(null);
 
+  const buildPayload = async (): Promise<{ fileName: string; content: string }> => {
+    const payload: BackupPayloadV1 = {
+      version: 1,
+      createdAt: Date.now(),
+      data: {
+        categories: await db.categories.toArray(),
+        items: await db.items.toArray(),
+        inventory: await db.inventory.toArray(),
+        inventoryAdjustments: await db.inventoryAdjustments.toArray(),
+        customers: await db.customers.toArray(),
+        orders: await db.orders.toArray(),
+        settings: await db.settings.toArray(),
+        counters: await db.counters.toArray(),
+        expenses: await db.expenses.toArray(),
+        creditPayments: await db.creditPayments.toArray(),
+        workPeriods: await db.workPeriods.toArray(),
+        suppliers: await db.suppliers.toArray(),
+        supplierPayments: await db.supplierPayments.toArray(),
+        supplierArrivals: await db.supplierArrivals.toArray(),
+        deliveryPersons: await db.deliveryPersons.toArray(),
+        deliveryCustomers: await db.deliveryCustomers.toArray(),
+        waiters: await db.waiters.toArray(),
+        restaurantTables: await db.restaurantTables.toArray(),
+        tableOrders: await db.tableOrders.toArray(),
+        adminAccount: await db.adminAccount.toArray(),
+        staffAccounts: await db.staffAccounts.toArray(),
+        exportCustomers: await db.exportCustomers.toArray(),
+        exportSales: await db.exportSales.toArray(),
+        exportPayments: await db.exportPayments.toArray(),
+        advanceOrders: await db.advanceOrders.toArray(),
+        bookableItems: await db.bookableItems.toArray(),
+        bookingOrders: await db.bookingOrders.toArray(),
+        recoveryCustomers: await db.recoveryCustomers.toArray(),
+        recoveryPayments: await db.recoveryPayments.toArray(),
+      },
+    };
+    const fileName = `backup_${payload.createdAt}.json`;
+    const content = JSON.stringify(payload, null, 2);
+    return { fileName, content };
+  };
+
+  /** Create backup and immediately open the share sheet (cache-based — no SAF folder picker) */
   const backup = async () => {
     try {
-      await ensureSangiFolders();
-
-      const payload: BackupPayloadV1 = {
-        version: 1,
-        createdAt: Date.now(),
-        data: {
-          categories: await db.categories.toArray(),
-          items: await db.items.toArray(),
-          inventory: await db.inventory.toArray(),
-          inventoryAdjustments: await db.inventoryAdjustments.toArray(),
-          customers: await db.customers.toArray(),
-          orders: await db.orders.toArray(),
-          settings: await db.settings.toArray(),
-          counters: await db.counters.toArray(),
-          expenses: await db.expenses.toArray(),
-          creditPayments: await db.creditPayments.toArray(),
-          workPeriods: await db.workPeriods.toArray(),
-          suppliers: await db.suppliers.toArray(),
-          supplierPayments: await db.supplierPayments.toArray(),
-          supplierArrivals: await db.supplierArrivals.toArray(),
-          deliveryPersons: await db.deliveryPersons.toArray(),
-          deliveryCustomers: await db.deliveryCustomers.toArray(),
-          waiters: await db.waiters.toArray(),
-          restaurantTables: await db.restaurantTables.toArray(),
-          tableOrders: await db.tableOrders.toArray(),
-          adminAccount: await db.adminAccount.toArray(),
-          staffAccounts: await db.staffAccounts.toArray(),
-          exportCustomers: await db.exportCustomers.toArray(),
-          exportSales: await db.exportSales.toArray(),
-          exportPayments: await db.exportPayments.toArray(),
-          advanceOrders: await db.advanceOrders.toArray(),
-          bookableItems: await db.bookableItems.toArray(),
-          bookingOrders: await db.bookingOrders.toArray(),
-          recoveryCustomers: await db.recoveryCustomers.toArray(),
-          recoveryPayments: await db.recoveryPayments.toArray(),
-        },
-      };
-      const fileName = `backup_${payload.createdAt}.json`;
-      const content = JSON.stringify(payload, null, 2);
-      await writeTextFile({ folder: "Backup", fileName, contents: content });
+      const { fileName, content } = await buildPayload();
       setLastBackupContent({ fileName, content });
       markBackupDone();
-      toast({ title: "Backup created", description: `${fileName}\nPath: Sangi Pos/Backup/${fileName}` });
+      if (Capacitor.isNativePlatform()) {
+        await shareTextViaCache(content, fileName);
+      } else {
+        downloadTextFile(content, fileName);
+        toast({ title: "Backup downloaded", description: fileName });
+      }
     } catch (e: any) {
       toast({ title: "Backup failed", description: e?.message ?? String(e), variant: "destructive" });
+    }
+  };
+
+  /** Re-share the last created backup without regenerating */
+  const reshareBackup = async () => {
+    if (!lastBackupContent) return;
+    try {
+      if (Capacitor.isNativePlatform()) {
+        await shareTextViaCache(lastBackupContent.content, lastBackupContent.fileName);
+      } else {
+        downloadTextFile(lastBackupContent.content, lastBackupContent.fileName);
+      }
+    } catch (e: any) {
+      toast({ title: "Share failed", description: e?.message ?? String(e), variant: "destructive" });
     }
   };
 
@@ -119,35 +170,17 @@ export function AdminBackupRestore() {
       ],
       async () => {
         await Promise.all([
-          db.categories.clear(),
-          db.items.clear(),
-          db.inventory.clear(),
-          db.inventoryAdjustments.clear(),
-          db.customers.clear(),
-          db.creditPayments.clear(),
-          db.orders.clear(),
-          db.workPeriods.clear(),
-          db.expenses.clear(),
-          db.suppliers.clear(),
-          db.supplierPayments.clear(),
-          db.supplierArrivals.clear(),
-          db.exportCustomers.clear(),
-          db.exportSales.clear(),
-          db.exportPayments.clear(),
-          db.deliveryPersons.clear(),
-          db.deliveryCustomers.clear(),
-          db.waiters.clear(),
-          db.restaurantTables.clear(),
-          db.tableOrders.clear(),
-          db.adminAccount.clear(),
-          db.staffAccounts.clear(),
-          db.settings.clear(),
-          db.counters.clear(),
-          db.advanceOrders.clear(),
-          db.bookableItems.clear(),
-          db.bookingOrders.clear(),
-          db.recoveryCustomers.clear(),
-          db.recoveryPayments.clear(),
+          db.categories.clear(), db.items.clear(), db.inventory.clear(),
+          db.inventoryAdjustments.clear(), db.customers.clear(), db.creditPayments.clear(),
+          db.orders.clear(), db.workPeriods.clear(), db.expenses.clear(),
+          db.suppliers.clear(), db.supplierPayments.clear(), db.supplierArrivals.clear(),
+          db.exportCustomers.clear(), db.exportSales.clear(), db.exportPayments.clear(),
+          db.deliveryPersons.clear(), db.deliveryCustomers.clear(),
+          db.waiters.clear(), db.restaurantTables.clear(), db.tableOrders.clear(),
+          db.adminAccount.clear(), db.staffAccounts.clear(),
+          db.settings.clear(), db.counters.clear(),
+          db.advanceOrders.clear(), db.bookableItems.clear(), db.bookingOrders.clear(),
+          db.recoveryCustomers.clear(), db.recoveryPayments.clear(),
         ]);
         await db.categories.bulkAdd(payload.data.categories);
         await db.items.bulkAdd(payload.data.items);
@@ -194,66 +227,37 @@ export function AdminBackupRestore() {
     }
   };
 
-  const shareToGoogleDrive = async () => {
-    if (!lastBackupContent) {
-      toast({ title: "Create a backup first", variant: "destructive" });
-      return;
-    }
-    const tmpPath = `__share_tmp__/${lastBackupContent.fileName}`;
-    try {
-      const encoder = new TextEncoder();
-      const bytes = encoder.encode(lastBackupContent.content);
-      // Convert to base64 for Filesystem
-      let binary = "";
-      for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
-      const base64 = btoa(binary);
-      await Filesystem.writeFile({ directory: Directory.Cache, path: tmpPath, data: base64, recursive: true });
-      const { uri } = await Filesystem.getUri({ directory: Directory.Cache, path: tmpPath });
-      await Share.share({ title: "SANGI POS Backup", text: "SANGI POS backup file — save to Google Drive", url: uri, dialogTitle: "Save Backup to Google Drive" });
-    } catch (e: any) {
-      toast({ title: "Share failed", description: e?.message ?? String(e), variant: "destructive" });
-    } finally {
-      try { await Filesystem.deleteFile({ directory: Directory.Cache, path: tmpPath }); } catch { /* ignore */ }
-    }
-  };
-
   return (
     <Card>
       <CardHeader>
         <CardTitle>Backup & Restore</CardTitle>
         <CardDescription>
-          Backup exports all local data to a JSON file. Restore replaces all current data with the selected backup.
+          Creates a backup and opens the share sheet — save to Google Drive, WhatsApp, or any app. No storage permission needed.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex flex-wrap gap-2">
-          <Button onClick={() => void backup()}>Create Backup</Button>
+          <Button onClick={() => void backup()}>
+            <Share2 className="h-4 w-4 mr-1" />
+            Create &amp; Share Backup
+          </Button>
+          {lastBackupContent && (
+            <Button variant="outline" onClick={() => void reshareBackup()}>
+              <CloudUpload className="h-4 w-4 mr-1" />
+              Share Again
+            </Button>
+          )}
         </div>
 
-        {/* Google Drive backup */}
-        {Capacitor.isNativePlatform() ? (
-          <div className="rounded-md border p-3 space-y-2">
-            <div className="flex items-center gap-2">
-              <CloudUpload className="h-4 w-4 text-muted-foreground" />
-              <div className="text-sm font-medium">Backup to Google Drive</div>
-            </div>
-            <div className="text-xs text-muted-foreground">
-              Creates a backup and opens the Android share sheet so you can save the file to Google Drive, Gmail, or any other app.
-            </div>
-            <Button 
-              variant="outline" 
-              disabled={!lastBackupContent}
-              onClick={() => void shareToGoogleDrive()}
-            >
-              <CloudUpload className="h-4 w-4 mr-1" />
-              {lastBackupContent ? "Save to Google Drive" : "Create Backup First"}
-            </Button>
+        {lastBackupContent && (
+          <div className="rounded-md border px-3 py-2 text-xs text-muted-foreground">
+            Last backup: <span className="font-medium text-foreground">{lastBackupContent.fileName}</span>
           </div>
-        ) : null}
+        )}
 
         <div className="rounded-md border p-3">
           <div className="text-sm font-medium">Restore</div>
-          <div className="mt-1 text-xs text-muted-foreground">Choose a backup JSON file to restore (replace all data).</div>
+          <div className="mt-1 text-xs text-muted-foreground">Choose a backup JSON file to restore (replaces all data).</div>
           <div className="mt-3 space-y-2">
             <Label htmlFor="restoreFile">Backup file</Label>
             <Input
