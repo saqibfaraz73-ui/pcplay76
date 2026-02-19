@@ -72,11 +72,9 @@ export function AdRewardDialog({
     }
   };
 
-  // Prevent closing the dialog without earning (no backdrop/escape dismiss when limit hit)
+  // Allow closing — closing never resets free entries or counts.
+  // Bonus entries are ONLY granted after a fully completed rewarded ad (earned === true).
   const handleOpenChange = (val: boolean) => {
-    // Only allow closing if the user is NOT blocked (i.e. they still have entries — shouldn't happen)
-    // We block dismissal here so free users can't just close the dialog to bypass the limit.
-    if (!val) return; // block closing
     onOpenChange(val);
   };
 
@@ -158,7 +156,13 @@ export function AdRewardDialog({
             <Crown className="h-4 w-4 mr-2 text-amber-500" />
             Upgrade to Premium (No Ads)
           </Button>
-          {/* No cancel button — user must watch an ad or upgrade to proceed */}
+          <Button
+            variant="ghost"
+            className="w-full text-xs"
+            onClick={() => onOpenChange(false)}
+          >
+            Cancel
+          </Button>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
