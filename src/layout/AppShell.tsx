@@ -20,6 +20,8 @@ import appLogo from "@/assets/app-logo.jpg";
 import { db } from "@/db/appDb";
 import { BackupReminder } from "@/features/admin/backup/BackupReminder";
 import { SyncStatusIndicator } from "@/features/sync/SyncStatusIndicator";
+import { showInterstitialAd } from "@/features/licensing/admob-ads";
+import { getLicense } from "@/features/licensing/licensing-db";
 
 const navItems = [
   { to: "/home", label: "Home", icon: Home },
@@ -71,6 +73,22 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   // Also reload when route changes (e.g. navigating away from settings)
   React.useEffect(() => { loadTableSetting(); }, [location.pathname, loadTableSetting]);
+
+  // Show interstitial ad on section change (free users only)
+  const prevPathRef = React.useRef(location.pathname);
+  React.useEffect(() => {
+    const prev = prevPathRef.current;
+    const curr = location.pathname;
+    // Only fire when the top-level section changes (e.g. /pos → /admin)
+    const prevSection = prev.split("/")[1];
+    const currSection = curr.split("/")[1];
+    if (prevSection !== currSection && currSection) {
+      getLicense().then((lic) => {
+        if (!lic.isPremium) void showInterstitialAd();
+      }).catch(() => {});
+    }
+    prevPathRef.current = curr;
+  }, [location.pathname]);
 
   // Re-check when user navigates back, app regains focus, or settings change
   React.useEffect(() => {
