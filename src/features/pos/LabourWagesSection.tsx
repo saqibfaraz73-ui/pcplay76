@@ -21,7 +21,7 @@ import { WAGE_PERIODS } from "@/db/schema";
 import { useToast } from "@/hooks/use-toast";
 import { makeId } from "@/features/admin/id";
 import { formatIntMoney, parseNonDecimalInt } from "@/features/pos/format";
-import { Plus, Trash2, ArrowLeft, Wallet, ArrowDownCircle, ArrowUpCircle, MinusCircle, PlusCircle, Share2 } from "lucide-react";
+import { Plus, Trash2, ArrowLeft, Wallet, ArrowDownCircle, ArrowUpCircle, MinusCircle, PlusCircle, Share2, Clock, Calendar } from "lucide-react";
 import { jsPDF } from "jspdf";
 
 interface Props {
@@ -38,10 +38,12 @@ export default function LabourWagesSection({ workPeriodId, onBack }: Props) {
   const [labourDialogOpen, setLabourDialogOpen] = React.useState(false);
   const [editingLabour, setEditingLabour] = React.useState<Labour | null>(null);
   const [formName, setFormName] = React.useState("");
+  const [formPosition, setFormPosition] = React.useState("");
   const [formContact, setFormContact] = React.useState("");
   const [formAddress, setFormAddress] = React.useState("");
   const [formWagePeriod, setFormWagePeriod] = React.useState<WagePeriod>("daily");
   const [formWageAmount, setFormWageAmount] = React.useState(0);
+  const [formHourlyRate, setFormHourlyRate] = React.useState(0);
 
   // Transaction dialog
   const [txDialogOpen, setTxDialogOpen] = React.useState(false);
@@ -49,6 +51,16 @@ export default function LabourWagesSection({ workPeriodId, onBack }: Props) {
   const [txType, setTxType] = React.useState<LabourTransactionType>("wage");
   const [txAmount, setTxAmount] = React.useState(0);
   const [txNote, setTxNote] = React.useState("");
+
+  // Hourly calculator (for wage payment dialog)
+  const [txHoursWorked, setTxHoursWorked] = React.useState(0);
+  const [txHourlyRate, setTxHourlyRate] = React.useState(0);
+
+  // Attendance (for weekly/monthly wage payment)
+  const [txTotalDays, setTxTotalDays] = React.useState(0);
+  const [txAbsentDays, setTxAbsentDays] = React.useState(0);
+  const [txUseAttendance, setTxUseAttendance] = React.useState(false);
+  const [txManualDeduction, setTxManualDeduction] = React.useState(0);
 
   // Delete
   const [deleteTarget, setDeleteTarget] = React.useState<Labour | null>(null);
@@ -68,45 +80,53 @@ export default function LabourWagesSection({ workPeriodId, onBack }: Props) {
   const openAddLabour = () => {
     setEditingLabour(null);
     setFormName("");
+    setFormPosition("");
     setFormContact("");
     setFormAddress("");
     setFormWagePeriod("daily");
     setFormWageAmount(0);
+    setFormHourlyRate(0);
     setLabourDialogOpen(true);
   };
 
   const openEditLabour = (l: Labour) => {
     setEditingLabour(l);
     setFormName(l.name);
+    setFormPosition(l.position || "");
     setFormContact(l.contact || "");
     setFormAddress(l.address || "");
     setFormWagePeriod(l.wagePeriod);
     setFormWageAmount(l.wageAmount);
+    setFormHourlyRate(l.hourlyRate || 0);
     setLabourDialogOpen(true);
   };
 
   const saveLabour = async () => {
     try {
       if (!formName.trim()) throw new Error("Name is required");
-      if (formWageAmount <= 0) throw new Error("Wage amount must be > 0");
+      if (formWageAmount <= 0 && formHourlyRate <= 0) throw new Error("Enter wage amount or hourly rate");
 
       if (editingLabour) {
         await db.labours.update(editingLabour.id, {
           name: formName.trim(),
+          position: formPosition.trim() || undefined,
           contact: formContact.trim() || undefined,
           address: formAddress.trim() || undefined,
           wagePeriod: formWagePeriod,
           wageAmount: formWageAmount,
+          hourlyRate: formHourlyRate > 0 ? formHourlyRate : undefined,
         });
         toast({ title: "Staff updated" });
       } else {
         const labour: Labour = {
           id: makeId("lab"),
           name: formName.trim(),
+          position: formPosition.trim() || undefined,
           contact: formContact.trim() || undefined,
           address: formAddress.trim() || undefined,
           wagePeriod: formWagePeriod,
           wageAmount: formWageAmount,
+          hourlyRate: formHourlyRate > 0 ? formHourlyRate : undefined,
           advanceBalance: 0,
           shortBalance: 0,
           createdAt: Date.now(),
@@ -126,18 +146,55 @@ export default function LabourWagesSection({ workPeriodId, onBack }: Props) {
     setTxType(type);
     setTxAmount(type === "wage" ? l.wageAmount : 0);
     setTxNote("");
+    setTxHoursWorked(0);
+    setTxHourlyRate(l.hourlyRate || 0);
+    setTxTotalDays(0);
+    setTxAbsentDays(0);
+    setTxUseAttendance(false);
+    setTxManualDeduction(0);
     setTxDialogOpen(true);
   };
 
+  // Computed amounts for wage payment
+  const hourlyTotal = txHoursWorked > 0 && txHourlyRate > 0 ? txHoursWorked * txHourlyRate : 0;
+
+  const attendanceDeduction = React.useMemo(() => {
+    if (!txUseAttendance || !txLabour || txTotalDays <= 0 || txAbsentDays <= 0) return 0;
+    const baseWage = txLabour.wageAmount;
+    const perDay = baseWage / txTotalDays;
+    return Math.round(perDay * txAbsentDays);
+  }, [txUseAttendance, txLabour, txTotalDays, txAbsentDays]);
+
+  const finalWageAmount = React.useMemo(() => {
+    if (txType !== "wage") return txAmount;
+    let base = txAmount;
+    if (txUseAttendance && attendanceDeduction > 0) {
+      base = Math.max(0, base - attendanceDeduction);
+    }
+    if (txManualDeduction > 0) {
+      base = Math.max(0, base - txManualDeduction);
+    }
+    return base;
+  }, [txType, txAmount, txUseAttendance, attendanceDeduction, txManualDeduction]);
+
   const saveTx = async () => {
-    if (!txLabour || txAmount <= 0) return;
+    const amount = txType === "wage" ? finalWageAmount : txAmount;
+    if (!txLabour || amount <= 0) return;
     try {
+      const noteparts: string[] = [];
+      if (txNote.trim()) noteparts.push(txNote.trim());
+      if (txType === "wage") {
+        if (txHoursWorked > 0 && txHourlyRate > 0) noteparts.push(`${txHoursWorked}h × ${formatIntMoney(txHourlyRate)}/hr`);
+        if (txUseAttendance && txAbsentDays > 0) noteparts.push(`Absent ${txAbsentDays}/${txTotalDays} days (−${formatIntMoney(attendanceDeduction)})`);
+        if (txManualDeduction > 0) noteparts.push(`Manual deduction −${formatIntMoney(txManualDeduction)}`);
+      }
+
       const tx: LabourTransaction = {
         id: makeId("ltx"),
         labourId: txLabour.id,
         type: txType,
-        amount: txAmount,
-        note: txNote.trim() || undefined,
+        amount,
+        note: noteparts.join(" | ") || undefined,
         workPeriodId,
         createdAt: Date.now(),
       };
@@ -148,7 +205,7 @@ export default function LabourWagesSection({ workPeriodId, onBack }: Props) {
         const expense = {
           id: makeId("exp"),
           name: `Staff/Wages - ${txLabour.name}`,
-          amount: txAmount,
+          amount,
           note: txType === "advance" ? `Advance to ${txLabour.name}` : `Wage payment to ${txLabour.name}`,
           workPeriodId,
           createdAt: Date.now(),
@@ -163,35 +220,33 @@ export default function LabourWagesSection({ workPeriodId, onBack }: Props) {
       // Update balances
       const updates: Partial<Labour> = {};
       if (txType === "advance") {
-        // If there's short balance, offset against it first
         const shortBal = txLabour.shortBalance;
         if (shortBal > 0) {
-          const offset = Math.min(txAmount, shortBal);
-          const remainder = txAmount - offset;
+          const offset = Math.min(amount, shortBal);
+          const remainder = amount - offset;
           updates.shortBalance = shortBal - offset;
           updates.advanceBalance = txLabour.advanceBalance + remainder;
         } else {
-          updates.advanceBalance = txLabour.advanceBalance + txAmount;
+          updates.advanceBalance = txLabour.advanceBalance + amount;
         }
       } else if (txType === "short") {
-        // If there's advance balance, offset against it first
         const advBal = txLabour.advanceBalance;
         if (advBal > 0) {
-          const offset = Math.min(txAmount, advBal);
-          const remainder = txAmount - offset;
+          const offset = Math.min(amount, advBal);
+          const remainder = amount - offset;
           updates.advanceBalance = advBal - offset;
           updates.shortBalance = txLabour.shortBalance + remainder;
         } else {
-          updates.shortBalance = txLabour.shortBalance + txAmount;
+          updates.shortBalance = txLabour.shortBalance + amount;
         }
       } else if (txType === "deduct_advance") {
-        updates.advanceBalance = Math.max(0, txLabour.advanceBalance - txAmount);
+        updates.advanceBalance = Math.max(0, txLabour.advanceBalance - amount);
       } else if (txType === "deduct_short") {
-        updates.shortBalance = Math.max(0, txLabour.shortBalance - txAmount);
+        updates.shortBalance = Math.max(0, txLabour.shortBalance - amount);
         const expense = {
           id: makeId("exp"),
           name: `Staff/Wages - ${txLabour.name}`,
-          amount: txAmount,
+          amount,
           note: `Short salary payment to ${txLabour.name}`,
           workPeriodId,
           createdAt: Date.now(),
@@ -200,9 +255,8 @@ export default function LabourWagesSection({ workPeriodId, onBack }: Props) {
         tx.expenseId = expense.id;
         await db.labourTransactions.update(tx.id, { expenseId: expense.id });
       } else if (txType === "wage") {
-        const diff = txAmount - txLabour.wageAmount;
+        const diff = amount - txLabour.wageAmount;
         if (diff > 0) {
-          // Paid more than fixed wage — offset short first, remainder goes to advance
           const shortBal = txLabour.shortBalance;
           if (shortBal > 0) {
             const offset = Math.min(diff, shortBal);
@@ -213,7 +267,6 @@ export default function LabourWagesSection({ workPeriodId, onBack }: Props) {
             updates.advanceBalance = txLabour.advanceBalance + diff;
           }
         } else if (diff < 0) {
-          // Paid less than fixed wage — offset advance first, remainder goes to short
           const gap = Math.abs(diff);
           const advBal = txLabour.advanceBalance;
           if (advBal > 0) {
@@ -238,9 +291,8 @@ export default function LabourWagesSection({ workPeriodId, onBack }: Props) {
         deduct_advance: "Advance Deducted",
         deduct_short: "Short Paid",
       };
-      toast({ title: labels[txType], description: `${txLabour.name} — ${formatIntMoney(txAmount)}` });
+      toast({ title: labels[txType], description: `${txLabour.name} — ${formatIntMoney(amount)}` });
       setTxDialogOpen(false);
-      // Refresh selected labour
       if (selectedLabour?.id === txLabour.id) {
         const updated = await db.labours.get(txLabour.id);
         if (updated) setSelectedLabour(updated);
@@ -301,12 +353,19 @@ export default function LabourWagesSection({ workPeriodId, onBack }: Props) {
     y += 7;
     doc.setFontSize(9);
     doc.setFont("helvetica", "normal");
+    if (labour.position) {
+      doc.text(`Position: ${labour.position}`, pw / 2, y, { align: "center" });
+      y += 5;
+    }
     doc.text(`Wage: ${formatIntMoney(labour.wageAmount)} (${wagePeriodLabel(labour.wagePeriod)})`, pw / 2, y, { align: "center" });
     y += 5;
+    if (labour.hourlyRate) {
+      doc.text(`Hourly Rate: ${formatIntMoney(labour.hourlyRate)}/hr`, pw / 2, y, { align: "center" });
+      y += 5;
+    }
     doc.text(`Advance Balance: ${formatIntMoney(labour.advanceBalance)}  |  Short Balance: ${formatIntMoney(labour.shortBalance)}`, pw / 2, y, { align: "center" });
     y += 8;
 
-    // Table header
     doc.setFontSize(8);
     doc.setFont("helvetica", "bold");
     doc.text("Date", lm, y);
@@ -353,7 +412,9 @@ export default function LabourWagesSection({ workPeriodId, onBack }: Props) {
           <div className="flex-1">
             <h2 className="text-lg font-semibold">{fresh.name}</h2>
             <p className="text-xs text-muted-foreground">
+              {fresh.position && <span className="font-medium">{fresh.position} • </span>}
               {wagePeriodLabel(fresh.wagePeriod)} — {formatIntMoney(fresh.wageAmount)}
+              {fresh.hourlyRate ? ` • ${formatIntMoney(fresh.hourlyRate)}/hr` : ""}
             </p>
           </div>
           <Button variant="outline" size="sm" onClick={() => void shareLabourPdf(fresh)} className="gap-1">
@@ -428,18 +489,19 @@ export default function LabourWagesSection({ workPeriodId, onBack }: Props) {
           </CardContent>
         </Card>
 
-        {/* Shared dialogs rendered below */}
         {renderDialogs()}
       </div>
     );
   }
 
   function renderDialogs() {
+    const showAttendance = txType === "wage" && txLabour && (txLabour.wagePeriod === "weekly" || txLabour.wagePeriod === "monthly");
+
     return (
       <>
         {/* Add/Edit Labour Dialog */}
         <Dialog open={labourDialogOpen} onOpenChange={setLabourDialogOpen}>
-          <DialogContent>
+          <DialogContent className="max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>{editingLabour ? "Edit Staff" : "Add Staff"}</DialogTitle>
             </DialogHeader>
@@ -447,6 +509,10 @@ export default function LabourWagesSection({ workPeriodId, onBack }: Props) {
               <div className="space-y-1">
                 <Label>Name *</Label>
                 <Input value={formName} onChange={(e) => setFormName(e.target.value)} placeholder="Worker name" />
+              </div>
+              <div className="space-y-1">
+                <Label>Position (optional)</Label>
+                <Input value={formPosition} onChange={(e) => setFormPosition(e.target.value)} placeholder="e.g. Cashier, Cook, Guard" />
               </div>
               <div className="space-y-1">
                 <Label>Contact (optional)</Label>
@@ -468,7 +534,7 @@ export default function LabourWagesSection({ workPeriodId, onBack }: Props) {
                 </Select>
               </div>
               <div className="space-y-1">
-                <Label>Wage Amount *</Label>
+                <Label>Wage Amount {formHourlyRate > 0 ? "(optional — set 0 if hourly only)" : "*"}</Label>
                 <Input
                   inputMode="numeric"
                   value={formWageAmount === 0 ? "" : String(formWageAmount)}
@@ -476,10 +542,23 @@ export default function LabourWagesSection({ workPeriodId, onBack }: Props) {
                   placeholder="0"
                 />
               </div>
+              <div className="space-y-1">
+                <Label>Pay Per Hour (optional)</Label>
+                <Input
+                  inputMode="numeric"
+                  value={formHourlyRate === 0 ? "" : String(formHourlyRate)}
+                  onChange={(e) => setFormHourlyRate(parseNonDecimalInt(e.target.value))}
+                  placeholder="e.g. 150"
+                />
+                <p className="text-xs text-muted-foreground">If set, you can calculate wage by hours worked when paying</p>
+              </div>
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setLabourDialogOpen(false)}>Cancel</Button>
-              <Button onClick={() => void saveLabour()} disabled={!formName.trim() || formWageAmount <= 0}>
+              <Button
+                onClick={() => void saveLabour()}
+                disabled={!formName.trim() || (formWageAmount <= 0 && formHourlyRate <= 0)}
+              >
                 {editingLabour ? "Update" : "Add"}
               </Button>
             </DialogFooter>
@@ -488,7 +567,7 @@ export default function LabourWagesSection({ workPeriodId, onBack }: Props) {
 
         {/* Transaction Dialog */}
         <Dialog open={txDialogOpen} onOpenChange={setTxDialogOpen}>
-          <DialogContent>
+          <DialogContent className="max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>
                 {txType === "wage" && "Pay Wage"}
@@ -501,9 +580,61 @@ export default function LabourWagesSection({ workPeriodId, onBack }: Props) {
             <div className="space-y-3">
               {txLabour && (
                 <div className="text-sm text-muted-foreground">
-                  {txLabour.name} • Advance: {formatIntMoney(txLabour.advanceBalance)} • Short: {formatIntMoney(txLabour.shortBalance)}
+                  {txLabour.name}
+                  {txLabour.position ? ` • ${txLabour.position}` : ""}
+                  {" "}• Advance: {formatIntMoney(txLabour.advanceBalance)} • Short: {formatIntMoney(txLabour.shortBalance)}
                 </div>
               )}
+
+              {/* Hourly calculator — shown in wage payment if staff has hourly rate */}
+              {txType === "wage" && txLabour && (
+                <div className="rounded-md border p-3 space-y-3 bg-muted/30">
+                  <div className="flex items-center gap-1.5 text-sm font-medium">
+                    <Clock className="h-3.5 w-3.5" /> Hourly Calculator (optional)
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <Label className="text-xs">Rate per Hour</Label>
+                      <Input
+                        inputMode="numeric"
+                        value={txHourlyRate === 0 ? "" : String(txHourlyRate)}
+                        onChange={(e) => {
+                          const rate = parseNonDecimalInt(e.target.value);
+                          setTxHourlyRate(rate);
+                          if (rate > 0 && txHoursWorked > 0) {
+                            setTxAmount(rate * txHoursWorked);
+                          }
+                        }}
+                        placeholder="0"
+                        className="h-8 text-sm"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Hours Worked</Label>
+                      <Input
+                        inputMode="numeric"
+                        value={txHoursWorked === 0 ? "" : String(txHoursWorked)}
+                        onChange={(e) => {
+                          const hours = parseNonDecimalInt(e.target.value);
+                          setTxHoursWorked(hours);
+                          if (hours > 0 && txHourlyRate > 0) {
+                            setTxAmount(hours * txHourlyRate);
+                          }
+                        }}
+                        placeholder="0"
+                        className="h-8 text-sm"
+                      />
+                    </div>
+                  </div>
+                  {hourlyTotal > 0 && (
+                    <div className="text-xs text-muted-foreground">
+                      {txHoursWorked}h × {formatIntMoney(txHourlyRate)} = <span className="font-bold text-foreground">{formatIntMoney(hourlyTotal)}</span>
+                      <span className="ml-1 text-muted-foreground">(auto-filled above)</span>
+                    </div>
+                  )}
+                </div>
+              )}
+
               <div className="space-y-1">
                 <Label>Amount</Label>
                 <Input
@@ -513,6 +644,101 @@ export default function LabourWagesSection({ workPeriodId, onBack }: Props) {
                   placeholder="0"
                 />
               </div>
+
+              {/* Attendance tracking — shown for weekly/monthly wage payments */}
+              {showAttendance && (
+                <div className="rounded-md border p-3 space-y-3 bg-muted/30">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5 text-sm font-medium">
+                      <Calendar className="h-3.5 w-3.5" /> Attendance (optional)
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setTxUseAttendance((v) => !v)}
+                      className={`text-xs px-2 py-0.5 rounded-full border transition-colors ${
+                        txUseAttendance ? "bg-primary text-primary-foreground border-primary" : "hover:bg-accent border-border"
+                      }`}
+                    >
+                      {txUseAttendance ? "On" : "Off"}
+                    </button>
+                  </div>
+                  {txUseAttendance && (
+                    <div className="space-y-2">
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="space-y-1">
+                          <Label className="text-xs">Total Working Days</Label>
+                          <Input
+                            inputMode="numeric"
+                            value={txTotalDays === 0 ? "" : String(txTotalDays)}
+                            onChange={(e) => setTxTotalDays(parseNonDecimalInt(e.target.value))}
+                            placeholder="e.g. 30"
+                            className="h-8 text-sm"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs">Absent Days</Label>
+                          <Input
+                            inputMode="numeric"
+                            value={txAbsentDays === 0 ? "" : String(txAbsentDays)}
+                            onChange={(e) => setTxAbsentDays(Math.min(parseNonDecimalInt(e.target.value), txTotalDays || 999))}
+                            placeholder="0"
+                            className="h-8 text-sm"
+                          />
+                        </div>
+                      </div>
+                      {attendanceDeduction > 0 && (
+                        <div className="text-xs text-destructive font-medium">
+                          Absent deduction: −{formatIntMoney(attendanceDeduction)}
+                          <span className="text-muted-foreground font-normal ml-1">
+                            ({txAbsentDays} day{txAbsentDays > 1 ? "s" : ""} of {txTotalDays})
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Manual deduction for wage payments */}
+              {txType === "wage" && (
+                <div className="space-y-1">
+                  <Label>Manual Salary Deduction (optional)</Label>
+                  <Input
+                    inputMode="numeric"
+                    value={txManualDeduction === 0 ? "" : String(txManualDeduction)}
+                    onChange={(e) => setTxManualDeduction(parseNonDecimalInt(e.target.value))}
+                    placeholder="0"
+                  />
+                  <p className="text-xs text-muted-foreground">Enter any additional amount to deduct from wage</p>
+                </div>
+              )}
+
+              {/* Final amount summary */}
+              {txType === "wage" && (txUseAttendance || txManualDeduction > 0) && txAmount > 0 && (
+                <div className="rounded-md border border-primary/30 bg-primary/5 p-3 space-y-1 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Base wage</span>
+                    <span>{formatIntMoney(txAmount)}</span>
+                  </div>
+                  {txUseAttendance && attendanceDeduction > 0 && (
+                    <div className="flex justify-between text-destructive">
+                      <span>Absent deduction ({txAbsentDays}d)</span>
+                      <span>−{formatIntMoney(attendanceDeduction)}</span>
+                    </div>
+                  )}
+                  {txManualDeduction > 0 && (
+                    <div className="flex justify-between text-destructive">
+                      <span>Manual deduction</span>
+                      <span>−{formatIntMoney(txManualDeduction)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between font-bold border-t pt-1 mt-1">
+                    <span>Final Amount</span>
+                    <span className="text-primary">{formatIntMoney(finalWageAmount)}</span>
+                  </div>
+                </div>
+              )}
+
               <div className="space-y-1">
                 <Label>Note (optional)</Label>
                 <Input value={txNote} onChange={(e) => setTxNote(e.target.value)} placeholder="Optional note" />
@@ -520,7 +746,9 @@ export default function LabourWagesSection({ workPeriodId, onBack }: Props) {
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setTxDialogOpen(false)}>Cancel</Button>
-              <Button onClick={() => void saveTx()} disabled={txAmount <= 0}>Confirm</Button>
+              <Button onClick={() => void saveTx()} disabled={(txType === "wage" ? finalWageAmount : txAmount) <= 0}>
+                Confirm {txType === "wage" && finalWageAmount > 0 ? `— ${formatIntMoney(finalWageAmount)}` : ""}
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -570,8 +798,12 @@ export default function LabourWagesSection({ workPeriodId, onBack }: Props) {
               <div className="flex items-center justify-between">
                 <div className="min-w-0 flex-1">
                   <div className="font-medium text-sm">{l.name}</div>
+                  {l.position && (
+                    <div className="text-xs text-primary font-medium">{l.position}</div>
+                  )}
                   <div className="text-xs text-muted-foreground">
                     {wagePeriodLabel(l.wagePeriod)} • {formatIntMoney(l.wageAmount)}
+                    {l.hourlyRate ? ` • ${formatIntMoney(l.hourlyRate)}/hr` : ""}
                   </div>
                   {(l.contact || l.address) && (
                     <div className="text-xs text-muted-foreground mt-0.5">

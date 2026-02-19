@@ -453,10 +453,12 @@ export const WAGE_PERIODS: { value: WagePeriod; label: string }[] = [
 export type Labour = {
   id: string;
   name: string;
+  position?: string; // optional job position/role in company
   contact?: string;
   address?: string;
   wagePeriod: WagePeriod;
   wageAmount: number; // base wage per period
+  hourlyRate?: number; // optional hourly rate (alternative to fixed wage)
   advanceBalance: number; // total advance given (positive = worker owes)
   shortBalance: number; // total short/unpaid wages (positive = employer owes)
   createdAt: number;
