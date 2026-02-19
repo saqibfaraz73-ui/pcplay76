@@ -5,14 +5,14 @@
  *   ADMOB_APP_ID     → Your AdMob App ID (ca-app-pub-XXXXXXXX~XXXXXXXX)
  *   REWARDED_AD_ID   → Your Rewarded Ad Unit ID (ca-app-pub-XXXXXXXX/XXXXXXXX)
  *
- * Until you replace them the plugin uses TEST ads on real devices.
+ * Your real AdMob IDs are configured below.
  */
 
 import { Capacitor } from "@capacitor/core";
 
 // ─── REPLACE THESE WITH YOUR REAL IDs ────────────────────────────────────────
-export const ADMOB_APP_ID = "ca-app-pub-3940256099942544~3347511713"; // TODO: replace
-export const REWARDED_AD_ID = "ca-app-pub-3940256099942544/5224354917"; // TODO: replace
+export const ADMOB_APP_ID = "ca-app-pub-4619723552746870~3003839065";
+export const REWARDED_AD_ID = "ca-app-pub-4619723552746870/5875321081";
 // ─────────────────────────────────────────────────────────────────────────────
 
 let admobModule: any = null;
