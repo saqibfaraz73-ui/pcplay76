@@ -371,14 +371,44 @@ export default function CustomPrintPage() {
     if (!check.allowed) { setAdMsg(check.message); setPendingPrintAction("uploadPrint"); setAdOpen(true); return; }
     await incrementSaleCount("customPrint");
 
-    // On native Android, use share (print dialog doesn't work in WebView)
+    // On native Android, print via thermal printer (USB/Bluetooth)
     if (isNativeAndroid()) {
-      try {
-        const res = await fetch(uploadedFileUrl);
-        const blob = await res.blob();
-        await shareFileBlob(blob, uploadedFileName || "file");
-      } catch {
-        toast.error("Could not share file");
+      if (uploadedFileType === "image") {
+        try {
+          const escposData = await buildLogoEscPos(uploadedFileUrl);
+          // Add init, center, feed & cut
+          const fullCmd = "\x1b@\x1b3\x14" + escposData + "\n\n\n\x1dV\x41\x03";
+
+          const settings = await db.settings.get("app");
+          const btAddress = settings?.btPrinterAddress || settings?.printerAddress;
+          const usbDevice = settings?.usbDeviceName;
+
+          if (usbDevice) {
+            try {
+              await usbSend(fullCmd);
+              toast.success("Image sent to USB printer");
+              return;
+            } catch { /* fall through to BT */ }
+          }
+          if (btAddress) {
+            await btConnect(btAddress);
+            await btSend(fullCmd);
+            toast.success("Image sent to Bluetooth printer");
+            return;
+          }
+          toast.error("No printer configured. Go to Admin > Printer to set up.");
+        } catch (err: any) {
+          toast.error(err?.message || "Could not print image");
+        }
+      } else {
+        // PDF files can't be rasterized to ESC/POS easily — use share as fallback
+        try {
+          const res = await fetch(uploadedFileUrl);
+          const blob = await res.blob();
+          await shareFileBlob(blob, uploadedFileName || "file");
+        } catch {
+          toast.error("Could not share PDF file");
+        }
       }
       return;
     }
