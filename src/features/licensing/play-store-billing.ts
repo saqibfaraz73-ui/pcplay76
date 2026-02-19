@@ -1,37 +1,32 @@
 /**
  * Google Play Store Billing
  *
- * This file provides the premium check via Play Store.
- * Until the app is published to Play Store, it uses a local mock state.
+ * Premium status is EXCLUSIVELY determined by Google Play Store.
+ * No mock, no local override — only Play Store billing counts.
  *
  * WHEN READY TO CONNECT REAL BILLING:
- * 1. Install: npx cap add android (if not already done)
- * 2. Add your in-app product ID below (PREMIUM_PRODUCT_ID)
- * 3. Uncomment the real billing code and remove the mock
- * 4. Add the Capacitor In-App Purchases plugin:
- *    npm install @capgo/capacitor-purchases OR @revenuecat/purchases-capacitor
+ * 1. Install: npm install @revenuecat/purchases-capacitor
+ * 2. Set your RevenueCat API key and entitlement ID below
+ * 3. Uncomment the real billing block and remove the fallback
  */
 
 import { Capacitor } from "@capacitor/core";
 
-// Your Play Store subscription product ID (set this when you publish)
-export const PREMIUM_PRODUCT_ID = "sangi_pos_premium_monthly"; // TODO: set your product ID
-
-const PREMIUM_MOCK_KEY = "sangi_pos.premium_mock_state.v1";
+export const PREMIUM_PRODUCT_ID = "sangi_pos_premium_monthly";
 
 export type PremiumStatus = {
   isPremium: boolean;
-  expiresAt?: number; // timestamp or undefined
-  source: "play_store" | "mock" | "none";
+  expiresAt?: number;
+  source: "play_store" | "none";
 };
 
 /**
  * Check premium status from Play Store.
- * Currently uses local mock state. Swap with real billing SDK when live.
+ * Returns false until RevenueCat is connected.
  */
 export async function checkPlayStorePremium(): Promise<PremiumStatus> {
   if (!Capacitor.isNativePlatform()) {
-    return loadMockState();
+    return { isPremium: false, source: "none" };
   }
 
   // ── REAL BILLING (uncomment when app is on Play Store) ──────────────────
@@ -51,12 +46,11 @@ export async function checkPlayStorePremium(): Promise<PremiumStatus> {
   // }
   // ────────────────────────────────────────────────────────────────────────
 
-  // Fallback to mock while not yet published
-  return loadMockState();
+  return { isPremium: false, source: "none" };
 }
 
 /**
- * Restore / verify purchase from Play Store.
+ * Restore purchase from Play Store.
  * Returns true if a valid premium subscription was found.
  */
 export async function restorePlayStorePurchase(): Promise<boolean> {
@@ -75,31 +69,4 @@ export async function restorePlayStorePurchase(): Promise<boolean> {
   // ────────────────────────────────────────────────────────────────────────
 
   return false;
-}
-
-// ── Mock helpers (for development / before Play Store publishing) ──────────
-
-function loadMockState(): PremiumStatus {
-  try {
-    const raw = localStorage.getItem(PREMIUM_MOCK_KEY);
-    if (!raw) return { isPremium: false, source: "none" };
-    const data = JSON.parse(raw) as { isPremium: boolean; expiresAt?: number };
-    // Check expiry
-    if (data.isPremium && data.expiresAt && Date.now() > data.expiresAt) {
-      localStorage.removeItem(PREMIUM_MOCK_KEY);
-      return { isPremium: false, source: "none" };
-    }
-    return { ...data, source: "mock" };
-  } catch {
-    return { isPremium: false, source: "none" };
-  }
-}
-
-export function setMockPremium(isPremium: boolean, durationDays?: number): void {
-  const expiresAt = durationDays ? Date.now() + durationDays * 86400_000 : undefined;
-  localStorage.setItem(PREMIUM_MOCK_KEY, JSON.stringify({ isPremium, expiresAt }));
-}
-
-export function clearMockPremium(): void {
-  localStorage.removeItem(PREMIUM_MOCK_KEY);
 }
