@@ -13,6 +13,7 @@ import { Capacitor } from "@capacitor/core";
 // ─── REPLACE THESE WITH YOUR REAL IDs ────────────────────────────────────────
 export const ADMOB_APP_ID = "ca-app-pub-4619723552746870~3003839065";
 export const REWARDED_AD_ID = "ca-app-pub-4619723552746870/5875321081";
+export const INTERSTITIAL_AD_ID = "ca-app-pub-4619723552746870/8350167538";
 // ─────────────────────────────────────────────────────────────────────────────
 
 let admobModule: any = null;
@@ -103,5 +104,43 @@ export async function showRewardedAd(): Promise<boolean> {
   } catch (e) {
     console.warn("[AdMob] Rewarded ad error:", e);
     return false;
+  }
+}
+
+// ── Interstitial Ad ──────────────────────────────────────────────────────────
+
+let lastInterstitialShown = 0;
+const INTERSTITIAL_COOLDOWN_MS = 60_000; // show at most once per minute
+
+/**
+ * Show an interstitial ad on section navigation (free users only).
+ * Silently skips if: premium user, cooldown active, web/browser, or ad fails.
+ */
+export async function showInterstitialAd(): Promise<void> {
+  if (!Capacitor.isNativePlatform()) return; // skip in browser/preview
+  const now = Date.now();
+  if (now - lastInterstitialShown < INTERSTITIAL_COOLDOWN_MS) return;
+
+  try {
+    const { AdMob, InterstitialAdPluginEvents } = (await getAdMob()) ?? {};
+    if (!AdMob) return;
+
+    await initAdMob();
+
+    await AdMob.prepareInterstitial({ adId: INTERSTITIAL_AD_ID, isTesting: false });
+
+    await new Promise<void>((resolve) => {
+      let done = false;
+      const finish = () => { if (!done) { done = true; resolve(); } };
+
+      AdMob.addListener(InterstitialAdPluginEvents.Dismissed, finish).catch(() => {});
+      AdMob.addListener(InterstitialAdPluginEvents.FailedToLoad, finish).catch(() => {});
+
+      AdMob.showInterstitial().catch(finish);
+    });
+
+    lastInterstitialShown = Date.now();
+  } catch (e) {
+    console.warn("[AdMob] Interstitial error:", e);
   }
 }
