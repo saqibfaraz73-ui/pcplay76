@@ -8,6 +8,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/auth/AuthProvider";
 import { isAdminRegistered, registerAdmin, getSecurityQuestion, verifySecurityAnswer, masterReset } from "@/auth/auth";
 import appLogo from "@/assets/app-logo.jpg";
+import { getLicense } from "@/features/licensing/licensing-db";
+
 
 const SECURITY_QUESTIONS = [
   "What is your mother's maiden name?",
@@ -27,6 +29,11 @@ export default function Login() {
 
   const [screen, setScreen] = React.useState<Screen>("checking");
   const [loading, setLoading] = React.useState(false);
+  const [isPremium, setIsPremium] = React.useState(false);
+
+  React.useEffect(() => {
+    getLicense().then((lic) => setIsPremium(lic.isPremium)).catch(() => {});
+  }, []);
 
   // Login fields
   const [identifier, setIdentifier] = React.useState("");
@@ -161,7 +168,7 @@ export default function Login() {
         >
           <img src={appLogo} alt="SANGI POS logo" className="h-full w-full object-cover" loading="eager" draggable={false} />
         </div>
-        <h1 className="mt-3 text-2xl font-bold">SANGI POS</h1>
+        <h1 className="mt-3 text-2xl font-bold">{isPremium ? "SANGI POS Pro" : "SANGI POS"}</h1>
         <p className="text-sm text-muted-foreground">All-in-One Offline POS</p>
       </div>
 
