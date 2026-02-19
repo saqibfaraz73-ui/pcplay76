@@ -6,10 +6,10 @@ import { formatIntMoney, fmtDateTime } from "@/features/pos/format";
 import { printReceiptFromOrder } from "@/features/pos/receipt-print";
 import { useToast } from "@/hooks/use-toast";
 import { Printer, Share2 } from "lucide-react";
-import { Share } from "@capacitor/share";
+
 import { Capacitor } from "@capacitor/core";
 import jsPDF from "jspdf";
-import { writePdfFile, shareFile } from "@/features/files/sangi-folders";
+import { writePdfFileAndShare } from "@/features/files/sangi-folders";
 import { db } from "@/db/appDb";
 import { format } from "date-fns";
 
@@ -158,12 +158,13 @@ export function ReceiptDialog({
       const bytes = doc.output("arraybuffer");
       const fileName = `receipt_${order.receiptNo}_${Date.now()}.pdf`;
 
-      if (Capacitor.isNativePlatform()) {
-        const saved = await writePdfFile({ folder: "Sales Report", fileName, pdfBytes: new Uint8Array(bytes) });
-        await shareFile({ title: `Receipt #${order.receiptNo}`, uri: saved.uri });
-      } else {
-        // Web fallback - download PDF
-        doc.save(fileName);
+      await writePdfFileAndShare({
+        folder: "Sales Report",
+        fileName,
+        pdfBytes: new Uint8Array(bytes),
+        shareTitle: `Receipt #${order.receiptNo}`,
+      });
+      if (!Capacitor.isNativePlatform()) {
         toast({ title: "Receipt PDF downloaded" });
       }
     } catch (e: any) {

@@ -149,9 +149,71 @@ export async function writePdfFile(args: {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// shareFile  (unchanged — Share plugin works the same with both URI types)
+// shareFile  — shares via URI (works on non-SAF paths)
 // ─────────────────────────────────────────────────────────────────────────────
 
 export async function shareFile(args: { title: string; uri: string }): Promise<void> {
   await Share.share({ title: args.title, url: args.uri, dialogTitle: args.title });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// writePdfFileAndShare
+//
+// On Android SAF: saves the file to the selected folder AND shares it using
+// a temporary Capacitor Filesystem copy (since SAF tree URIs cannot be shared
+// directly via the Share plugin).
+// On Web: triggers a browser download.
+// ─────────────────────────────────────────────────────────────────────────────
+
+import { Capacitor } from "@capacitor/core";
+
+export async function writePdfFileAndShare(args: {
+  folder: SangiFolder;
+  fileName: string;
+  pdfBytes: Uint8Array;
+  shareTitle: string;
+}): Promise<void> {
+  // 1. Always save the file to the selected folder first
+  const saved = await writePdfFile({
+    folder: args.folder,
+    fileName: args.fileName,
+    pdfBytes: args.pdfBytes,
+  });
+
+  if (!Capacitor.isNativePlatform()) {
+    // Web: download via blob
+    const blob = new Blob([args.pdfBytes.buffer as ArrayBuffer], { type: "application/pdf" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = args.fileName;
+    a.click();
+    URL.revokeObjectURL(url);
+    return;
+  }
+
+  if (isSafAvailable()) {
+    // SAF: tree URIs can't be shared directly.
+    // Write a temp copy to Capacitor's cache dir and share that.
+    const tmpPath = `__share_tmp__/${args.fileName}`;
+    try {
+      await Filesystem.writeFile({
+        directory: Directory.Cache,
+        path: tmpPath,
+        data: uint8ToBase64(args.pdfBytes),
+        recursive: true,
+      });
+      const { uri: tmpUri } = await Filesystem.getUri({ directory: Directory.Cache, path: tmpPath });
+      await Share.share({ title: args.shareTitle, url: tmpUri, dialogTitle: args.shareTitle });
+    } finally {
+      // Clean up temp file silently
+      try {
+        await Filesystem.deleteFile({ directory: Directory.Cache, path: tmpPath });
+      } catch { /* ignore */ }
+    }
+    return;
+  }
+
+  // Non-SAF native (iOS / older Android): share the saved URI directly
+  await Share.share({ title: args.shareTitle, url: saved.uri, dialogTitle: args.shareTitle });
 }
