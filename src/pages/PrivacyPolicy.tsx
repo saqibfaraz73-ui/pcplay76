@@ -14,6 +14,16 @@ const PrivacyPolicy = () => {
       <h1 className="text-2xl font-bold mb-6">Privacy Policy</h1>
       <p className="text-muted-foreground mb-4">Last updated: February 19, 2026</p>
 
+      {/* Key statement banner */}
+      <div className="rounded-lg border border-primary/30 bg-primary/5 p-4 mb-6 text-sm leading-relaxed">
+        <p className="font-semibold text-primary mb-1">Our Core Commitment</p>
+        <p>
+          All permissions requested by this app and all information used within it are{" "}
+          <strong>solely for app functionality</strong>. We do not collect, share, or send any
+          data to our servers or any third party. Everything stays on your device.
+        </p>
+      </div>
+
       <div className="space-y-6 text-sm leading-relaxed">
         <section>
           <h2 className="text-lg font-semibold mb-2">1. Introduction</h2>
