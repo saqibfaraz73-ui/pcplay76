@@ -33,9 +33,14 @@ const PrivacyPolicy = () => {
             servers or any external server. We have no servers that receive your data.
           </p>
           <p className="mt-2">
-            When using the optional P2P Sync feature, data is transferred directly between your
+          When using the optional P2P Sync feature, data is transferred directly between your
             own devices over your local WiFi or hotspot network. No data passes through our
             servers at any point.
+          </p>
+          <p className="mt-2">
+            We do <strong>not</strong> collect, log, or store your IP address or any network
+            identifiers. Your device's local IP address is used only within your own local
+            network for the optional P2P sync feature and is never transmitted to us.
           </p>
         </section>
 
