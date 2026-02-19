@@ -10,7 +10,7 @@
  */
 
 import { db } from "@/db/appDb";
-import { checkPlayStorePremium, setMockPremium, clearMockPremium } from "./play-store-billing";
+import { checkPlayStorePremium } from "./play-store-billing";
 
 export type LicenseRecord = {
   id: "license";
@@ -107,25 +107,8 @@ export async function getLicense(): Promise<LicenseRecord & { isPremium: boolean
  * isPremium is intentionally excluded — only Play Store controls it.
  */
 export async function updateLicense(partial: Partial<Omit<LicenseRecord, "id">>): Promise<void> {
-  const current = await (db as any).license.get("license") as LicenseRecord | undefined ?? defaultRecord();
+  const current = (await (db as any).license.get("license")) as LicenseRecord | undefined ?? defaultRecord();
   await (db as any).license.put({ ...current, ...partial });
-}
-
-/**
- * Activate premium via Play Store mock (dev/testing only).
- * On real devices, premium is verified directly from Play Store.
- */
-export async function activatePremiumMock(): Promise<void> {
-  setMockPremium(true);
-  _isPremiumCache = true;
-}
-
-/**
- * Deactivate premium mock (dev/testing only).
- */
-export async function deactivatePremiumMock(): Promise<void> {
-  clearMockPremium();
-  _isPremiumCache = false;
 }
 
 export type SalesModule =
