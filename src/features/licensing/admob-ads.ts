@@ -14,7 +14,7 @@
 import { Capacitor } from "@capacitor/core";
 
 // ─── TOGGLE THIS BEFORE PUBLISHING ───────────────────────────────────────────
-const IS_TESTING = true; // ← set false for production release
+const IS_TESTING = false; // ← set false for production release
 // ─────────────────────────────────────────────────────────────────────────────
 
 // Production IDs (your real AdMob IDs)
