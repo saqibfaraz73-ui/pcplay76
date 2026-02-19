@@ -266,42 +266,30 @@ export async function importSalesForCustomer(file: File, customerId: string): Pr
 
 const PARTY_IMPORT_HEADERS = ["Item Name", "Quantity", "Unit", "Unit Price", "Total", "Note"];
 
-/** Generate a sample/template Excel file for download */
-export function downloadImportTemplate(type: "arrivals" | "sales") {
-  const ws = XLSX.utils.aoa_to_sheet([
-    EXPECTED_HEADERS,
-    [type === "arrivals" ? "Supplier Name" : "Buyer Name", "Rice", "50", "kg", "100", "", "sample note"],
-  ]);
+function makeExcelBlob(rows: (string | number)[][], sheetName: string): Blob {
+  const ws = XLSX.utils.aoa_to_sheet(rows);
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, type === "arrivals" ? "Arrivals" : "Sales");
+  XLSX.utils.book_append_sheet(wb, ws, sheetName);
   const buf = XLSX.write(wb, { bookType: "xlsx", type: "array" });
-  const blob = new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `${type}_import_template.xlsx`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  return new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
 }
 
-/** Generate a per-party template (no Party Name column) */
-export function downloadPartyImportTemplate(partyName: string) {
-  const ws = XLSX.utils.aoa_to_sheet([
-    PARTY_IMPORT_HEADERS,
-    ["Rice", "50", "kg", "100", "", "sample note"],
-  ]);
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, partyName.slice(0, 31));
-  const buf = XLSX.write(wb, { bookType: "xlsx", type: "array" });
-  const blob = new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `${partyName}_import_template.xlsx`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+/** Generate a sample/template Excel file — shares via native share sheet or downloads on web */
+export async function downloadImportTemplate(type: "arrivals" | "sales") {
+  const { shareFileBlob } = await import("@/features/pos/share-utils");
+  const blob = makeExcelBlob(
+    [EXPECTED_HEADERS, [type === "arrivals" ? "Supplier Name" : "Buyer Name", "Rice", "50", "kg", "100", "", "sample note"]],
+    type === "arrivals" ? "Arrivals" : "Sales"
+  );
+  await shareFileBlob(blob, `${type}_import_template.xlsx`);
+}
+
+/** Generate a per-party template (no Party Name column) — shares via native share sheet or downloads on web */
+export async function downloadPartyImportTemplate(partyName: string) {
+  const { shareFileBlob } = await import("@/features/pos/share-utils");
+  const blob = makeExcelBlob(
+    [PARTY_IMPORT_HEADERS, ["Rice", "50", "kg", "100", "", "sample note"]],
+    partyName.slice(0, 31)
+  );
+  await shareFileBlob(blob, `${partyName}_import_template.xlsx`);
 }

@@ -879,7 +879,7 @@ export function ExportPartySection() {
     }
   };
 
-  const downloadTemplate = () => {
+  const downloadTemplate = async () => {
     const headers = [["Buyer", "Type", "Item", "Qty", "Unit", "Unit Price", "Total/Amount", "Payment Type", "Note"]];
     const sample = [
       ["Ahmed Store", "Sale", "Flour", "100", "kg", "150", "15000", "", "Monthly order"],
@@ -890,11 +890,8 @@ export function ExportPartySection() {
     XLSX.utils.book_append_sheet(wb, ws, "Template");
     const buf = XLSX.write(wb, { bookType: "xlsx", type: "array" });
     const blob = new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url; a.download = "export_party_template.xlsx";
-    document.body.appendChild(a); a.click(); document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    const { shareFileBlob } = await import("@/features/pos/share-utils");
+    await shareFileBlob(blob, "export_party_template.xlsx");
   };
 
   const handleExcelImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
