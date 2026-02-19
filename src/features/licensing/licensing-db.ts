@@ -1,5 +1,8 @@
 /**
- * Licensing DB — Play Store + AdMob system
+ * Licensing DB — Google Play Store Billing + AdMob system
+ *
+ * Premium status is EXCLUSIVELY determined by Google Play Store.
+ * The local DB only stores usage counts and ad bonus credits.
  *
  * Free limits per section: 5 entries
  * After limit: watch a rewarded ad → get +3 entries
@@ -7,16 +10,11 @@
  */
 
 import { db } from "@/db/appDb";
-import { checkPlayStorePremium } from "./play-store-billing";
+import { checkPlayStorePremium, setMockPremium, clearMockPremium } from "./play-store-billing";
 
 export type LicenseRecord = {
   id: "license";
-  deviceId: string;
-  licensedDeviceId?: string;
-  activationKey?: string;
-  isPremium: boolean;
-  validUntil?: number;
-  upgradeMessage?: string;
+  // Usage counters
   cashSalesCount: number;
   creditSalesCount: number;
   deliverySalesCount: number;
@@ -25,7 +23,7 @@ export type LicenseRecord = {
   expensesCount: number;
   customPrintCount: number;
   labelPrintCount: number;
-  // Ad bonus credits per module (resets do NOT count toward the base limit)
+  // Ad bonus credits per module
   cashAdBonus: number;
   creditAdBonus: number;
   deliveryAdBonus: number;
@@ -36,45 +34,17 @@ export type LicenseRecord = {
   labelPrintAdBonus: number;
 };
 
+// Runtime-only premium state (sourced from Play Store on every getLicense call)
+let _isPremiumCache: boolean = false;
+
 /** Free entries per section before watching an ad */
 export const FREE_LIMIT = 5;
 /** Entries granted after watching a rewarded ad */
 export const AD_BONUS = 3;
 
-/** Generate a deterministic device ID from browser/hardware properties */
-function generateDeviceId(): string {
-  const nav = typeof navigator !== "undefined" ? navigator : null;
-  const scr = typeof screen !== "undefined" ? screen : null;
-  const parts = [
-    nav?.userAgent ?? "",
-    nav?.language ?? "",
-    nav?.languages?.join(",") ?? "",
-    String(scr?.width ?? 0),
-    String(scr?.height ?? 0),
-    String(scr?.colorDepth ?? 0),
-    String(new Date().getTimezoneOffset()),
-    String(nav?.hardwareConcurrency ?? 0),
-    String((nav as any)?.deviceMemory ?? 0),
-    String(nav?.maxTouchPoints ?? 0),
-    nav?.platform ?? "",
-  ];
-  const seed = parts.join("|");
-  let h1 = 5381, h2 = 52711;
-  for (let i = 0; i < seed.length; i++) {
-    const c = seed.charCodeAt(i);
-    h1 = ((h1 << 5) + h1 + c) | 0;
-    h2 = ((h2 << 5) + h2 + c) | 0;
-  }
-  const hex1 = Math.abs(h1).toString(16).toUpperCase().padStart(8, "0");
-  const hex2 = Math.abs(h2).toString(16).toUpperCase().padStart(4, "0").slice(0, 4);
-  return `SNG-${hex1}-${hex2}`;
-}
-
-function defaultRecord(deviceId: string): LicenseRecord {
+function defaultRecord(): LicenseRecord {
   return {
     id: "license",
-    deviceId,
-    isPremium: false,
     cashSalesCount: 0,
     creditSalesCount: 0,
     deliverySalesCount: 0,
@@ -94,46 +64,68 @@ function defaultRecord(deviceId: string): LicenseRecord {
   };
 }
 
-export async function getLicense(): Promise<LicenseRecord> {
+/**
+ * Get license state. isPremium is ALWAYS sourced from Play Store — never from DB.
+ */
+export async function getLicense(): Promise<LicenseRecord & { isPremium: boolean; deviceId: string }> {
   let rec = (await (db as any).license.get("license")) as LicenseRecord | undefined;
 
   if (!rec) {
-    const deviceId = generateDeviceId();
-    rec = defaultRecord(deviceId);
+    rec = defaultRecord();
     await (db as any).license.put(rec);
   }
 
-  // Ensure bonus fields exist on old records
-  const bonusFields: (keyof LicenseRecord)[] = [
+  // Ensure all bonus/count fields exist (migration for older records)
+  const allFields: (keyof LicenseRecord)[] = [
+    "cashSalesCount", "creditSalesCount", "deliverySalesCount", "tableSalesCount",
+    "partyLodgeCount", "expensesCount", "customPrintCount", "labelPrintCount",
     "cashAdBonus", "creditAdBonus", "deliveryAdBonus", "tableAdBonus",
     "partyAdBonus", "expensesAdBonus", "customPrintAdBonus", "labelPrintAdBonus",
   ];
   let needsUpdate = false;
-  for (const field of bonusFields) {
-    if (rec[field] === undefined) {
+  for (const field of allFields) {
+    if ((rec as any)[field] === undefined) {
       (rec as any)[field] = 0;
       needsUpdate = true;
     }
   }
   if (needsUpdate) await (db as any).license.put(rec);
 
-  // Check Play Store premium status
+  // ── Premium status: Play Store is the ONLY authority ──
   try {
     const status = await checkPlayStorePremium();
-    if (status.isPremium !== rec.isPremium) {
-      rec = { ...rec, isPremium: status.isPremium, validUntil: status.expiresAt };
-      await (db as any).license.put(rec);
-    }
+    _isPremiumCache = status.isPremium;
   } catch {
-    // Ignore — use cached value
+    // Keep last cached value on error
   }
 
-  return rec;
+  return { ...rec, isPremium: _isPremiumCache, deviceId: "" };
 }
 
+/**
+ * Update only usage counters and ad bonus fields.
+ * isPremium is intentionally excluded — only Play Store controls it.
+ */
 export async function updateLicense(partial: Partial<Omit<LicenseRecord, "id">>): Promise<void> {
-  const current = await getLicense();
+  const current = await (db as any).license.get("license") as LicenseRecord | undefined ?? defaultRecord();
   await (db as any).license.put({ ...current, ...partial });
+}
+
+/**
+ * Activate premium via Play Store mock (dev/testing only).
+ * On real devices, premium is verified directly from Play Store.
+ */
+export async function activatePremiumMock(): Promise<void> {
+  setMockPremium(true);
+  _isPremiumCache = true;
+}
+
+/**
+ * Deactivate premium mock (dev/testing only).
+ */
+export async function deactivatePremiumMock(): Promise<void> {
+  clearMockPremium();
+  _isPremiumCache = false;
 }
 
 export type SalesModule =
@@ -171,7 +163,7 @@ export type CanSaleResult = {
 
 /**
  * Check if an action is allowed.
- * - Premium: always allowed
+ * - Premium (Play Store): always allowed
  * - Free: up to FREE_LIMIT + adBonus entries
  * - At limit: needsAd = true
  */
@@ -221,7 +213,8 @@ export async function incrementSaleCount(
   count: number = 1
 ): Promise<void> {
   const rec = (await (db as any).license.get("license")) as LicenseRecord | undefined;
-  if (!rec || rec.isPremium) return;
+  if (!rec) return;
+  if (_isPremiumCache) return; // premium users never count
   const key = countKey[module];
   await (db as any).license.put({
     ...rec,

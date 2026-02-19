@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { getLicense, updateLicense } from "@/features/licensing/licensing-db";
+import { getLicense, activatePremiumMock, deactivatePremiumMock } from "@/features/licensing/licensing-db";
 
 /** Master PIN — only the developer knows this */
 const MASTER_PIN = "3563";
@@ -39,7 +39,7 @@ export default function SuperLogin() {
   const handleActivate = async () => {
     setLoading(true);
     try {
-      await updateLicense({ isPremium: true, licensedDeviceId: "", validUntil: undefined });
+      await activatePremiumMock();
       setIsPremium(true);
       toast({ title: "Premium activated" });
     } finally {
@@ -50,7 +50,7 @@ export default function SuperLogin() {
   const handleDeactivate = async () => {
     setLoading(true);
     try {
-      await updateLicense({ isPremium: false, licensedDeviceId: "", validUntil: undefined });
+      await deactivatePremiumMock();
       setIsPremium(false);
       toast({ title: "Premium deactivated" });
     } finally {
