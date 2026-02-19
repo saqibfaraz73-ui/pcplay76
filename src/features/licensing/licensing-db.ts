@@ -91,12 +91,17 @@ export async function getLicense(): Promise<LicenseRecord & { isPremium: boolean
   }
   if (needsUpdate) await (db as any).license.put(rec);
 
-  // ── Premium status: Play Store is the ONLY authority ──
+  // ── Premium status: Play Store OR dev override ──
   try {
     const status = await checkPlayStorePremium();
     _isPremiumCache = status.isPremium;
   } catch {
     // Keep last cached value on error
+  }
+
+  // Dev override via 7-tap About page gesture
+  if (!_isPremiumCache && (rec as any).devPremiumOverride === true) {
+    _isPremiumCache = true;
   }
 
   return { ...rec, isPremium: _isPremiumCache, deviceId: "" };
