@@ -428,7 +428,9 @@ public class SafStoragePlugin extends Plugin {
     }
 
     private void writeBytes(Uri uri, byte[] data) throws IOException {
-        try (OutputStream os = getContext().getContentResolver().openOutputStream(uri, "wt")) {
+        // Use "w" (write + truncate) — works for both text and binary files.
+        // "wt" is text-only and can silently fail or corrupt binary data on some devices.
+        try (OutputStream os = getContext().getContentResolver().openOutputStream(uri, "w")) {
             if (os == null) throw new IOException("Could not open output stream");
             os.write(data);
             os.flush();
