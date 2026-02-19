@@ -28,9 +28,10 @@ const PrivacyPolicy = () => {
         <section>
           <h2 className="text-lg font-semibold mb-2">1. Introduction</h2>
           <p>
-            Sangi POS ("we", "our", "the app") is a point-of-sale application designed for
-            restaurants, shops, and small businesses. This Privacy Policy explains how we handle
-            your information when you use our application.
+            Sangi POS ("we", "our", "the app") is an all-in-one offline point-of-sale application
+            designed for any type of business — shops, restaurants, pharmacies, salons, bakeries,
+            wholesalers, and more. This Privacy Policy explains how we handle your information when
+            you use our application.
           </p>
         </section>
 

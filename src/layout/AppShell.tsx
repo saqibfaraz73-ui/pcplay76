@@ -380,7 +380,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   <div className="text-sm font-semibold leading-tight">
                     {isPremium ? "SANGI POS Pro" : "SANGI POS"}
                   </div>
-                  <div className="text-xs text-muted-foreground leading-tight">Offline POS</div>
+                  <div className="text-xs text-muted-foreground leading-tight">All-in-One Offline POS</div>
                 </div>
                 <div className="h-9 w-9 overflow-hidden rounded-md border bg-muted">
                   <img src={appLogo} alt="SANGI POS logo" className="h-full w-full object-cover" loading="eager" />

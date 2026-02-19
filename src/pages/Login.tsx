@@ -162,7 +162,7 @@ export default function Login() {
           <img src={appLogo} alt="SANGI POS logo" className="h-full w-full object-cover" loading="eager" draggable={false} />
         </div>
         <h1 className="mt-3 text-2xl font-bold">SANGI POS</h1>
-        <p className="text-sm text-muted-foreground">Offline POS</p>
+        <p className="text-sm text-muted-foreground">All-in-One Offline POS</p>
       </div>
 
       {/* REGISTER */}

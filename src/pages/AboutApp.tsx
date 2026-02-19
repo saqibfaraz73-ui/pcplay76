@@ -9,8 +9,8 @@ const features = [
   },
   {
     icon: ShoppingCart,
-    title: "Sales Dashboard",
-    description: "Process sales quickly with a category-based menu grid. Add items to cart, apply discounts (amount or percentage), choose payment method (cash, credit, or delivery), and generate receipts. Supports barcode/SKU scanning, item variations, tax and service charge calculations.",
+    title: "Sales / Billing",
+    description: "Process sales quickly with a category-based product grid. Add items to cart, apply discounts (amount or percentage), choose payment method (cash, credit, or delivery), and generate receipts. Supports barcode/SKU scanning, item variations, tax and service charge calculations. Works for any shop, store, or service business.",
   },
   {
     icon: ClipboardList,
@@ -34,13 +34,13 @@ const features = [
   },
   {
     icon: UtensilsCrossed,
-    title: "Table Management",
-    description: "Assign orders to restaurant tables with waiter tracking. Waiters can add items to tables, and cashiers handle final checkout. Supports multiple orders per table, KOT (Kitchen Order Ticket) printing, and pending order badges.",
+    title: "Table / Counter Management",
+    description: "Assign orders to tables or counters with staff tracking. Staff can add items, and cashiers handle final checkout. Supports multiple orders per table, order ticket printing, and pending order badges. Useful for restaurants, salons, service counters, and more.",
   },
   {
     icon: CalendarCheck,
     title: "Booking / Appointments",
-    description: "Accept advance bookings and appointments with customer details. Track booking status, collect advance payments, and manage upcoming reservations. Integrated with reports for booking summaries.",
+    description: "Accept advance bookings and appointments with customer details. Track booking status, collect advance payments, and manage upcoming reservations. Suitable for any business that takes appointments or reservations.",
   },
   {
     icon: Shield,
@@ -50,7 +50,7 @@ const features = [
   {
     icon: Wifi,
     title: "Device Sync",
-    description: "Synchronize data between multiple devices on the same network. Configure main and sub devices, sync menu items, orders, inventory, and settings. Supports real-time sync with conflict resolution.",
+    description: "Synchronize data between multiple devices on the same local network. Configure main and sub devices, sync products, orders, inventory, and settings in real time.",
   },
   {
     icon: BarChart3,
@@ -60,12 +60,12 @@ const features = [
   {
     icon: Printer,
     title: "Printer Setup",
-    description: "Configure receipt printing via Bluetooth or USB thermal printers. Set paper size (58mm/80mm), customize receipt layout with logo, address, and phone. Supports dual-printer routing for sales and kitchen orders.",
+    description: "Configure receipt printing via Bluetooth or USB thermal printers. Set paper size (58mm/80mm), customize receipt layout with logo, address, and phone. Supports dual-printer routing for sales and secondary printing needs.",
   },
   {
     icon: Tags,
-    title: "Print Barcodes",
-    description: "Generate and print barcode labels for products. Select items from your menu, enter manually, or import from Excel/CSV/PDF files. Supports multiple output formats including A4 PDF, ZPL (Zebra), TSPL (TSC/Xprinter), and direct ESC/POS thermal printing with per-item quantity controls.",
+    title: "Print Barcodes / Labels",
+    description: "Generate and print barcode labels for products. Select items from your product list, enter manually, or import from Excel/CSV/PDF files. Supports A4 PDF, ZPL (Zebra), TSPL (TSC/Xprinter), and direct ESC/POS thermal printing.",
   },
   {
     icon: Package,
@@ -75,7 +75,7 @@ const features = [
   {
     icon: Settings,
     title: "Admin Settings",
-    description: "Configure restaurant name, tax/service charges, receipt style, staff accounts (cashier/waiter/supervisor/recovery), manage categories and menu items, import/export menu data, enable/disable features, and handle backup/restore.",
+    description: "Configure business name, tax/service charges, receipt style, staff accounts (cashier/staff/supervisor/recovery), manage categories and products, import/export product data, enable/disable features, and handle backup/restore.",
   },
 ];
 
@@ -88,7 +88,7 @@ export default function AboutApp() {
         </div>
         <div>
           <h1 className="text-xl font-bold">About SANGI POS</h1>
-          <p className="text-sm text-muted-foreground">Complete offline point-of-sale system</p>
+          <p className="text-sm text-muted-foreground">All-in-one offline POS for any business</p>
         </div>
       </div>
 
