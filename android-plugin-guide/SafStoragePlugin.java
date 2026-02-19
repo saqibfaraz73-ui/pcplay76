@@ -6,19 +6,20 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.UriPermission;
 import android.net.Uri;
-import android.os.ParcelFileDescriptor;
-import android.provider.DocumentsContract;
 import android.util.Base64;
 import android.util.Log;
 
 import androidx.documentfile.provider.DocumentFile;
 
+import com.getcapacitor.ActivityCallback;
+import com.getcapacitor.ActivityResult;
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -39,6 +40,10 @@ import java.nio.charset.StandardCharsets;
  *  3. Call hasFolderAccess() to check if a folder is already selected.
  *
  * ZERO storage permissions needed in AndroidManifest.xml.
+ *
+ * FIX NOTE: Uses @ActivityCallback (Capacitor 6+ pattern) instead of the deprecated
+ * handleOnActivityResult() override, which was the root cause of the folder picker result
+ * never being received and URIs never being saved.
  */
 @CapacitorPlugin(name = "SafStorage")
 public class SafStoragePlugin extends Plugin {
@@ -46,13 +51,9 @@ public class SafStoragePlugin extends Plugin {
     private static final String TAG = "SafStoragePlugin";
     private static final String PREFS_NAME = "SafStoragePrefs";
     private static final String KEY_ROOT_URI = "rootUri";
-    private static final int OPEN_FOLDER_REQUEST = 9001;
-
-    // Saved call reference for activity result callback
-    private PluginCall savedFolderPickerCall;
 
     // ─────────────────────────────────────────────────────────────────────────
-    // openFolderPicker
+    // openFolderPicker  — uses correct Capacitor 6+ @ActivityCallback pattern
     // ─────────────────────────────────────────────────────────────────────────
 
     /**
@@ -64,7 +65,6 @@ public class SafStoragePlugin extends Plugin {
      */
     @PluginMethod
     public void openFolderPicker(PluginCall call) {
-        savedFolderPickerCall = call;
         Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
         intent.addFlags(
             Intent.FLAG_GRANT_READ_URI_PERMISSION |
@@ -72,38 +72,35 @@ public class SafStoragePlugin extends Plugin {
             Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION |
             Intent.FLAG_GRANT_PREFIX_URI_PERMISSION
         );
-        getActivity().startActivityForResult(intent, OPEN_FOLDER_REQUEST);
+        // Correct Capacitor 6+ way — routes result back via @ActivityCallback below
+        startActivityForResult(call, intent, "handleFolderPickerResult");
     }
 
-    @Override
-    protected void handleOnActivityResult(int requestCode, int resultCode, Intent data) {
-        super.handleOnActivityResult(requestCode, resultCode, data);
-
-        if (requestCode != OPEN_FOLDER_REQUEST) return;
-
-        PluginCall call = savedFolderPickerCall;
-        savedFolderPickerCall = null;
+    @ActivityCallback
+    private void handleFolderPickerResult(PluginCall call, ActivityResult result) {
         if (call == null) return;
 
-        if (resultCode == Activity.RESULT_OK && data != null) {
-            Uri treeUri = data.getData();
-            if (treeUri == null) {
-                call.reject("No URI returned from picker");
-                return;
-            }
+        if (result.getResultCode() != Activity.RESULT_OK || result.getData() == null) {
+            call.reject("Folder picker was cancelled");
+            return;
+        }
 
-            // Take persistable permission so the URI survives reboots
+        Uri treeUri = result.getData().getData();
+        if (treeUri == null) {
+            call.reject("No URI returned from picker");
+            return;
+        }
+
+        try {
             int flags = Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION;
             getContext().getContentResolver().takePersistableUriPermission(treeUri, flags);
-
-            // Store in SharedPreferences
             saveRootUri(treeUri.toString());
 
             JSObject ret = new JSObject();
             ret.put("uri", treeUri.toString());
             call.resolve(ret);
-        } else {
-            call.reject("Folder picker was cancelled");
+        } catch (Exception e) {
+            call.reject("Permission error: " + e.getMessage());
         }
     }
 
@@ -124,7 +121,6 @@ public class SafStoragePlugin extends Plugin {
 
         if (storedUri != null) {
             Uri uri = Uri.parse(storedUri);
-            // Verify the permission is still active
             for (UriPermission perm : getContext().getContentResolver().getPersistedUriPermissions()) {
                 if (perm.getUri().equals(uri) && perm.isWritePermission()) {
                     hasAccess = true;
@@ -150,9 +146,6 @@ public class SafStoragePlugin extends Plugin {
      * JS usage:
      *   await SafStorage.writeTextFile({ relativePath: "Backup/backup_123.json", contents: "..." });
      *   // returns { uri: "content://..." }
-     *
-     * @param relativePath  Path relative to root, e.g. "Backup/myfile.json"
-     * @param contents      UTF-8 string content
      */
     @PluginMethod
     public void writeTextFile(PluginCall call) {
@@ -195,7 +188,6 @@ public class SafStoragePlugin extends Plugin {
      *     base64Data: "<base64 string>",
      *     mimeType: "application/pdf"
      *   });
-     *   // returns { uri: "content://..." }
      */
     @PluginMethod
     public void writeBinaryFile(PluginCall call) {
@@ -268,7 +260,6 @@ public class SafStoragePlugin extends Plugin {
      *
      * JS usage:
      *   const { uri } = await SafStorage.getFileUri({ relativePath: "Backup/backup_123.json" });
-     *   await Share.share({ url: uri });
      */
     @PluginMethod
     public void getFileUri(PluginCall call) {
@@ -342,7 +333,6 @@ public class SafStoragePlugin extends Plugin {
 
         DocumentFile file = resolveFile(rootDir, relativePath);
         if (file == null || !file.exists()) {
-            // Not found — treat as success (idempotent)
             call.resolve(new JSObject());
             return;
         }
@@ -391,7 +381,7 @@ public class SafStoragePlugin extends Plugin {
         return current;
     }
 
-    /** Resolves a file path, creating parent dirs but NOT the file itself. */
+    /** Resolves a file path without creating it. */
     private DocumentFile resolveFile(DocumentFile root, String relativePath) {
         int lastSlash = relativePath.lastIndexOf('/');
         if (lastSlash < 0) {
@@ -404,7 +394,7 @@ public class SafStoragePlugin extends Plugin {
         return dir.findFile(fileName);
     }
 
-    /** Resolves or creates a file (including parent dirs). */
+    /** Resolves or creates a file (including parent dirs). Overwrites if exists. */
     private DocumentFile resolveOrCreateFile(DocumentFile root, String relativePath, String mimeType) {
         int lastSlash = relativePath.lastIndexOf('/');
         DocumentFile dir;
@@ -420,7 +410,6 @@ public class SafStoragePlugin extends Plugin {
 
         if (dir == null) return null;
 
-        // Delete existing file so we can overwrite
         DocumentFile existing = dir.findFile(fileName);
         if (existing != null && existing.exists()) existing.delete();
 
@@ -428,8 +417,6 @@ public class SafStoragePlugin extends Plugin {
     }
 
     private void writeBytes(Uri uri, byte[] data) throws IOException {
-        // Use "w" (write + truncate) — works for both text and binary files.
-        // "wt" is text-only and can silently fail or corrupt binary data on some devices.
         try (OutputStream os = getContext().getContentResolver().openOutputStream(uri, "w")) {
             if (os == null) throw new IOException("Could not open output stream");
             os.write(data);
@@ -440,7 +427,13 @@ public class SafStoragePlugin extends Plugin {
     private byte[] readBytes(Uri uri) throws IOException {
         try (InputStream is = getContext().getContentResolver().openInputStream(uri)) {
             if (is == null) throw new IOException("Could not open input stream");
-            return is.readAllBytes(); // API 33+; use readBytes(is) helper for lower APIs
+            ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+            byte[] data = new byte[4096];
+            int nRead;
+            while ((nRead = is.read(data, 0, data.length)) != -1) {
+                buffer.write(data, 0, nRead);
+            }
+            return buffer.toByteArray();
         }
     }
 }
