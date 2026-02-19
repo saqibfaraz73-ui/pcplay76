@@ -6,8 +6,9 @@ import { Label } from "@/components/ui/label";
 import { db } from "@/db/appDb";
 import { useToast } from "@/hooks/use-toast";
 import { ensureSangiFolders, writeTextFile } from "@/features/files/sangi-folders";
-import { Share } from "@capacitor/share";
 import { Capacitor } from "@capacitor/core";
+import { Filesystem, Directory } from "@capacitor/filesystem";
+import { Share } from "@capacitor/share";
 import { markBackupDone } from "./BackupReminder";
 import { CloudUpload } from "lucide-react";
 
@@ -49,8 +50,7 @@ type BackupPayloadV1 = {
 
 export function AdminBackupRestore() {
   const { toast } = useToast();
-  const [lastBackupUri, setLastBackupUri] = React.useState<string | null>(null);
-  const [lastBackupTitle, setLastBackupTitle] = React.useState<string>("");
+  const [lastBackupContent, setLastBackupContent] = React.useState<{ fileName: string; content: string } | null>(null);
 
   const backup = async () => {
     try {
@@ -92,9 +92,9 @@ export function AdminBackupRestore() {
         },
       };
       const fileName = `backup_${payload.createdAt}.json`;
-      const { uri } = await writeTextFile({ folder: "Backup", fileName, contents: JSON.stringify(payload, null, 2) });
-      setLastBackupUri(uri);
-      setLastBackupTitle(fileName);
+      const content = JSON.stringify(payload, null, 2);
+      await writeTextFile({ folder: "Backup", fileName, contents: content });
+      setLastBackupContent({ fileName, content });
       markBackupDone();
       toast({ title: "Backup created", description: `${fileName}\nPath: Sangi Pos/Backup/${fileName}` });
     } catch (e: any) {
@@ -195,20 +195,25 @@ export function AdminBackupRestore() {
   };
 
   const shareToGoogleDrive = async () => {
-    if (!lastBackupUri) {
+    if (!lastBackupContent) {
       toast({ title: "Create a backup first", variant: "destructive" });
       return;
     }
+    const tmpPath = `__share_tmp__/${lastBackupContent.fileName}`;
     try {
-      // Android Share sheet lets user choose Google Drive, Gmail, WhatsApp, etc.
-      await Share.share({
-        title: "SANGI POS Backup",
-        text: "SANGI POS backup file — save to Google Drive",
-        url: lastBackupUri,
-        dialogTitle: "Save Backup to Google Drive",
-      });
+      const encoder = new TextEncoder();
+      const bytes = encoder.encode(lastBackupContent.content);
+      // Convert to base64 for Filesystem
+      let binary = "";
+      for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+      const base64 = btoa(binary);
+      await Filesystem.writeFile({ directory: Directory.Cache, path: tmpPath, data: base64, recursive: true });
+      const { uri } = await Filesystem.getUri({ directory: Directory.Cache, path: tmpPath });
+      await Share.share({ title: "SANGI POS Backup", text: "SANGI POS backup file — save to Google Drive", url: uri, dialogTitle: "Save Backup to Google Drive" });
     } catch (e: any) {
       toast({ title: "Share failed", description: e?.message ?? String(e), variant: "destructive" });
+    } finally {
+      try { await Filesystem.deleteFile({ directory: Directory.Cache, path: tmpPath }); } catch { /* ignore */ }
     }
   };
 
@@ -237,11 +242,11 @@ export function AdminBackupRestore() {
             </div>
             <Button 
               variant="outline" 
-              disabled={!lastBackupUri}
+              disabled={!lastBackupContent}
               onClick={() => void shareToGoogleDrive()}
             >
               <CloudUpload className="h-4 w-4 mr-1" />
-              {lastBackupUri ? "Save to Google Drive" : "Create Backup First"}
+              {lastBackupContent ? "Save to Google Drive" : "Create Backup First"}
             </Button>
           </div>
         ) : null}
