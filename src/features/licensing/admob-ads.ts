@@ -1,20 +1,35 @@
 /**
  * AdMob Rewarded Ads Integration
  *
- * Replace the placeholder IDs below with your real AdMob IDs before publishing:
- *   ADMOB_APP_ID     → Your AdMob App ID (ca-app-pub-XXXXXXXX~XXXXXXXX)
- *   REWARDED_AD_ID   → Your Rewarded Ad Unit ID (ca-app-pub-XXXXXXXX/XXXXXXXX)
+ * TEST MODE is controlled by the IS_TESTING flag below.
+ * Set IS_TESTING = false before publishing to production.
  *
- * Your real AdMob IDs are configured below.
+ * When IS_TESTING = true:
+ *   - Google's official demo ad unit IDs are used (safe, policy-compliant)
+ *   - isTesting: true is passed to every ad request
+ *   - initializeForTesting: true is passed to AdMob.initialize()
+ *   - No real ad impressions or revenue are generated
  */
 
 import { Capacitor } from "@capacitor/core";
 
-// ─── REPLACE THESE WITH YOUR REAL IDs ────────────────────────────────────────
-export const ADMOB_APP_ID = "ca-app-pub-4619723552746870~3003839065";
-export const REWARDED_AD_ID = "ca-app-pub-4619723552746870/5875321081";
-export const INTERSTITIAL_AD_ID = "ca-app-pub-4619723552746870/8350167538";
+// ─── TOGGLE THIS BEFORE PUBLISHING ───────────────────────────────────────────
+const IS_TESTING = true; // ← set false for production release
 // ─────────────────────────────────────────────────────────────────────────────
+
+// Production IDs (your real AdMob IDs)
+const PROD_APP_ID        = "ca-app-pub-4619723552746870~3003839065";
+const PROD_REWARDED_ID   = "ca-app-pub-4619723552746870/5875321081";
+const PROD_INTERSTITIAL_ID = "ca-app-pub-4619723552746870/8350167538";
+
+// Google's official demo test ad unit IDs (safe for testing)
+const TEST_APP_ID          = "ca-app-pub-3940256099942544~3347511713";
+const TEST_REWARDED_ID     = "ca-app-pub-3940256099942544/5224354917";
+const TEST_INTERSTITIAL_ID = "ca-app-pub-3940256099942544/1033173712";
+
+export const ADMOB_APP_ID       = IS_TESTING ? TEST_APP_ID          : PROD_APP_ID;
+export const REWARDED_AD_ID     = IS_TESTING ? TEST_REWARDED_ID     : PROD_REWARDED_ID;
+export const INTERSTITIAL_AD_ID = IS_TESTING ? TEST_INTERSTITIAL_ID : PROD_INTERSTITIAL_ID;
 
 let admobModule: any = null;
 
@@ -39,11 +54,11 @@ export async function initAdMob(): Promise<void> {
     if (!AdMob) return;
     await AdMob.initialize({
       requestTrackingAuthorization: false,
-      testingDevices: [], // add your device ID here while testing
-      initializeForTesting: false,
+      testingDevices: [],
+      initializeForTesting: IS_TESTING,
     });
     admobInitialized = true;
-    console.log("[AdMob] Initialized");
+    console.log(`[AdMob] Initialized (${IS_TESTING ? "TEST MODE" : "PRODUCTION"})`);
   } catch (e) {
     console.warn("[AdMob] Init failed:", e);
   }
@@ -80,7 +95,7 @@ export async function showRewardedAd(): Promise<boolean> {
 
     await AdMob.prepareRewardVideoAd({
       adId: REWARDED_AD_ID,
-      isTesting: false, // set true while testing
+      isTesting: IS_TESTING,
     });
 
     await new Promise<void>((resolve, reject) => {
@@ -127,7 +142,7 @@ export async function showInterstitialAd(): Promise<void> {
 
     await initAdMob();
 
-    await AdMob.prepareInterstitial({ adId: INTERSTITIAL_AD_ID, isTesting: false });
+    await AdMob.prepareInterstitial({ adId: INTERSTITIAL_AD_ID, isTesting: IS_TESTING });
 
     await new Promise<void>((resolve) => {
       let done = false;
