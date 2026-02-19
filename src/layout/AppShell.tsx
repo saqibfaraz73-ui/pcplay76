@@ -53,6 +53,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [deliveryEnabled, setDeliveryEnabled] = React.useState(false);
   const [recoveryEnabled, setRecoveryEnabled] = React.useState(false);
   const [pendingTableCount, setPendingTableCount] = React.useState(0);
+  const [isPremium, setIsPremium] = React.useState(false);
 
   const loadTableSetting = React.useCallback(async () => {
     const s = await db.settings.get("app");
@@ -69,6 +70,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     // Count open (pending) table orders
     const openCount = await db.tableOrders.where("status").equals("open").count();
     setPendingTableCount(openCount);
+    // Check premium status
+    getLicense().then((lic) => setIsPremium(lic.isPremium)).catch(() => {});
   }, []);
 
   // Also reload when route changes (e.g. navigating away from settings)
@@ -374,7 +377,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <div className="flex items-center gap-3">
                 <SyncStatusIndicator />
                 <div className="text-right">
-                  <div className="text-sm font-semibold leading-tight">SANGI POS</div>
+                  <div className="text-sm font-semibold leading-tight">
+                    {isPremium ? "SANGI POS Pro" : "SANGI POS"}
+                  </div>
                   <div className="text-xs text-muted-foreground leading-tight">Offline POS</div>
                 </div>
                 <div className="h-9 w-9 overflow-hidden rounded-md border bg-muted">

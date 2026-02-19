@@ -1,5 +1,3 @@
-import React from "react";
-import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ShoppingCart, ClipboardList, DollarSign, Users, Truck, UtensilsCrossed, CalendarCheck, Shield, Wifi, BarChart3, Printer, Settings, Package, Home, Info, Tags } from "lucide-react";
 
@@ -82,21 +80,6 @@ const features = [
 ];
 
 export default function AboutApp() {
-  const navigate = useNavigate();
-  const tapCount = React.useRef(0);
-  const tapTimer = React.useRef<ReturnType<typeof setTimeout>>();
-
-  const handleVersionTap = () => {
-    tapCount.current += 1;
-    clearTimeout(tapTimer.current);
-    if (tapCount.current >= 7) {
-      tapCount.current = 0;
-      navigate("/super-admin");
-      return;
-    }
-    tapTimer.current = setTimeout(() => { tapCount.current = 0; }, 2000);
-  };
-
   return (
     <div className="space-y-6 pb-20 pt-2">
       <div className="flex items-center gap-3">
@@ -131,10 +114,7 @@ export default function AboutApp() {
         </CardContent>
       </Card>
 
-      <div
-        className="text-center text-xs text-muted-foreground cursor-default select-none"
-        onClick={handleVersionTap}
-      >
+      <div className="text-center text-xs text-muted-foreground">
         SANGI POS &mdash; Offline POS System &mdash; v1.0
       </div>
     </div>
