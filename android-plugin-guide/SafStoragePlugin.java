@@ -13,12 +13,10 @@ import android.util.Log;
 
 import androidx.documentfile.provider.DocumentFile;
 
-import com.getcapacitor.ActivityResult;
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
-import com.getcapacitor.annotation.ActivityCallback;
 import com.getcapacitor.annotation.CapacitorPlugin;
 
 import java.io.IOException;
@@ -50,6 +48,9 @@ public class SafStoragePlugin extends Plugin {
     private static final String KEY_ROOT_URI = "rootUri";
     private static final int OPEN_FOLDER_REQUEST = 9001;
 
+    // Saved call reference for activity result callback
+    private PluginCall savedFolderPickerCall;
+
     // ─────────────────────────────────────────────────────────────────────────
     // openFolderPicker
     // ─────────────────────────────────────────────────────────────────────────
@@ -63,6 +64,7 @@ public class SafStoragePlugin extends Plugin {
      */
     @PluginMethod
     public void openFolderPicker(PluginCall call) {
+        savedFolderPickerCall = call;
         Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
         intent.addFlags(
             Intent.FLAG_GRANT_READ_URI_PERMISSION |
@@ -70,15 +72,21 @@ public class SafStoragePlugin extends Plugin {
             Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION |
             Intent.FLAG_GRANT_PREFIX_URI_PERMISSION
         );
-        startActivityForResult(call, intent, "handleFolderPickerResult");
+        getActivity().startActivityForResult(intent, OPEN_FOLDER_REQUEST);
     }
 
-    @ActivityCallback
-    private void handleFolderPickerResult(PluginCall call, ActivityResult result) {
+    @Override
+    protected void handleOnActivityResult(int requestCode, int resultCode, Intent data) {
+        super.handleOnActivityResult(requestCode, resultCode, data);
+
+        if (requestCode != OPEN_FOLDER_REQUEST) return;
+
+        PluginCall call = savedFolderPickerCall;
+        savedFolderPickerCall = null;
         if (call == null) return;
 
-        if (result.getResultCode() == Activity.RESULT_OK && result.getData() != null) {
-            Uri treeUri = result.getData().getData();
+        if (resultCode == Activity.RESULT_OK && data != null) {
+            Uri treeUri = data.getData();
             if (treeUri == null) {
                 call.reject("No URI returned from picker");
                 return;
