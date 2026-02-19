@@ -10,7 +10,7 @@ export default function HelpPage() {
         </div>
         <div>
           <h1 className="text-xl font-bold">Help & Support</h1>
-          <p className="text-sm text-muted-foreground">Get assistance with SANGI POS</p>
+          <p className="text-sm text-muted-foreground">All-in-one offline POS for any business</p>
         </div>
       </div>
 
@@ -133,7 +133,7 @@ export default function HelpPage() {
         </CardHeader>
         <CardContent className="space-y-2 text-xs text-muted-foreground leading-relaxed">
           <p>
-            SANGI POS is a fully offline application. All your business data including orders, customers, inventory, and financial records are stored locally on your device and are never uploaded to any external server.
+            SANGI POS is a fully offline all-in-one point-of-sale application suitable for any business — shops, restaurants, pharmacies, salons, bakeries, wholesale stores, and more. All your business data including orders, customers, inventory, and financial records are stored locally on your device and are never uploaded to any external server.
           </p>
           <p>
             We do not collect, transmit, or share any personal or business data. Your information stays completely under your control. We recommend regular backups to protect against accidental data loss.
