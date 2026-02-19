@@ -16,12 +16,12 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { db } from "@/db/appDb";
-import type { Labour, LabourTransaction, LabourTransactionType, WagePeriod, LabourAttendance, AttendanceStatus } from "@/db/schema";
+import type { Labour, LabourTransaction, LabourTransactionType, WagePeriod, LabourAttendance, AttendanceStatus, LabourProduction, LabourProductionLine, MenuItem } from "@/db/schema";
 import { WAGE_PERIODS } from "@/db/schema";
 import { useToast } from "@/hooks/use-toast";
 import { makeId } from "@/features/admin/id";
 import { formatIntMoney, parseNonDecimalInt } from "@/features/pos/format";
-import { Plus, Trash2, ArrowLeft, Wallet, ArrowDownCircle, ArrowUpCircle, MinusCircle, PlusCircle, Share2, Clock, Calendar, CheckCircle2, XCircle, Clock3, ChevronLeft, ChevronRight } from "lucide-react";
+import { Plus, Trash2, ArrowLeft, Wallet, ArrowDownCircle, ArrowUpCircle, MinusCircle, PlusCircle, Share2, Clock, Calendar, CheckCircle2, XCircle, Clock3, ChevronLeft, ChevronRight, Factory, Package } from "lucide-react";
 import { jsPDF } from "jspdf";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, subMonths, addMonths, isAfter } from "date-fns";
 
@@ -74,11 +74,23 @@ export default function LabourWagesSection({ workPeriodId, onBack }: Props) {
   const [attendanceRecords, setAttendanceRecords] = React.useState<LabourAttendance[]>([]);
   const [showAttendanceView, setShowAttendanceView] = React.useState(false);
 
+  // Production (piece-rate) state
+  const [productions, setProductions] = React.useState<LabourProduction[]>([]);
+  const [showProductionView, setShowProductionView] = React.useState(false);
+  const [prodDialogOpen, setProdDialogOpen] = React.useState(false);
+  const [prodLines, setProdLines] = React.useState<LabourProductionLine[]>([{ itemName: "", qty: 0, perItemWage: 0, lineTotal: 0 }]);
+  const [prodNote, setProdNote] = React.useState("");
+  const [menuItems, setMenuItems] = React.useState<MenuItem[]>([]);
+  const [menuSearchQuery, setMenuSearchQuery] = React.useState("");
+  const [showMenuPicker, setShowMenuPicker] = React.useState<number | null>(null); // index of line being picked
+
   const refresh = React.useCallback(async () => {
     const all = await db.labours.orderBy("createdAt").reverse().toArray();
     setLabours(all);
     const txAll = await db.labourTransactions.orderBy("createdAt").reverse().toArray();
     setTransactions(txAll);
+    const prodAll = await db.labourProduction.orderBy("createdAt").reverse().toArray();
+    setProductions(prodAll);
   }, []);
 
   React.useEffect(() => { void refresh(); }, [refresh]);
@@ -127,7 +139,7 @@ export default function LabourWagesSection({ workPeriodId, onBack }: Props) {
   const saveLabour = async () => {
     try {
       if (!formName.trim()) throw new Error("Name is required");
-      if (formWageAmount <= 0 && formHourlyRate <= 0) throw new Error("Enter wage amount or hourly rate");
+      if (formWagePeriod !== "piece_rate" && formWageAmount <= 0 && formHourlyRate <= 0) throw new Error("Enter wage amount or hourly rate");
 
       if (editingLabour) {
         await db.labours.update(editingLabour.id, {
@@ -351,6 +363,7 @@ export default function LabourWagesSection({ workPeriodId, onBack }: Props) {
     if (!deleteTarget) return;
     await db.labourTransactions.where("labourId").equals(deleteTarget.id).delete();
     await db.labourAttendance.where("labourId").equals(deleteTarget.id).delete();
+    await db.labourProduction.where("labourId").equals(deleteTarget.id).delete();
     await db.labours.delete(deleteTarget.id);
     toast({ title: "Staff deleted" });
     setDeleteTarget(null);
@@ -375,6 +388,89 @@ export default function LabourWagesSection({ workPeriodId, onBack }: Props) {
       });
     }
     await refreshAttendance(labourId, attendanceMonth);
+  };
+
+  // ─── Production helpers ───
+  const labourProds = selectedLabour
+    ? productions.filter((p) => p.labourId === selectedLabour.id)
+    : [];
+
+  const unpaidProductionTotal = React.useMemo(() => {
+    if (!selectedLabour) return 0;
+    return labourProds.reduce((sum, p) => sum + (p.total - p.paid), 0);
+  }, [selectedLabour, labourProds]);
+
+  const openProdDialog = async () => {
+    const items = await db.items.orderBy("name").toArray();
+    setMenuItems(items);
+    setProdLines([{ itemName: "", qty: 0, perItemWage: 0, lineTotal: 0 }]);
+    setProdNote("");
+    setMenuSearchQuery("");
+    setShowMenuPicker(null);
+    setProdDialogOpen(true);
+  };
+
+  const addProdLine = () => {
+    setProdLines((prev) => [...prev, { itemName: "", qty: 0, perItemWage: 0, lineTotal: 0 }]);
+  };
+
+  const removeProdLine = (idx: number) => {
+    setProdLines((prev) => prev.filter((_, i) => i !== idx));
+  };
+
+  const updateProdLine = (idx: number, field: keyof LabourProductionLine, val: any) => {
+    setProdLines((prev) => {
+      const next = [...prev];
+      const line = { ...next[idx], [field]: val };
+      line.lineTotal = (line.qty || 0) * (line.perItemWage || 0);
+      next[idx] = line;
+      return next;
+    });
+  };
+
+  const selectMenuItem = (idx: number, item: MenuItem) => {
+    setProdLines((prev) => {
+      const next = [...prev];
+      next[idx] = { ...next[idx], itemId: item.id, itemName: item.name };
+      return next;
+    });
+    setShowMenuPicker(null);
+    setMenuSearchQuery("");
+  };
+
+  const prodTotal = prodLines.reduce((s, l) => s + l.lineTotal, 0);
+
+  const saveProdRecord = async () => {
+    if (!selectedLabour || prodTotal <= 0) return;
+    try {
+      const validLines = prodLines.filter((l) => l.itemName && l.qty > 0 && l.perItemWage > 0);
+      if (validLines.length === 0) throw new Error("Add at least one item with qty and wage");
+
+      const prod: LabourProduction = {
+        id: makeId("lprod"),
+        labourId: selectedLabour.id,
+        lines: validLines,
+        total: validLines.reduce((s, l) => s + l.lineTotal, 0),
+        paid: 0,
+        note: prodNote.trim() || undefined,
+        workPeriodId,
+        createdAt: Date.now(),
+      };
+      await db.labourProduction.put(prod);
+
+      // Add the earned amount to short balance (employer owes worker)
+      await db.labours.update(selectedLabour.id, {
+        shortBalance: selectedLabour.shortBalance + prod.total,
+      });
+
+      toast({ title: "Production recorded", description: `${selectedLabour.name} — ${formatIntMoney(prod.total)}` });
+      setProdDialogOpen(false);
+      const updated = await db.labours.get(selectedLabour.id);
+      if (updated) setSelectedLabour(updated);
+      await refresh();
+    } catch (e: any) {
+      toast({ title: "Error", description: e?.message, variant: "destructive" });
+    }
   };
 
   const labourTxs = selectedLabour
@@ -589,14 +685,14 @@ export default function LabourWagesSection({ workPeriodId, onBack }: Props) {
     return (
       <div className="space-y-4">
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon" onClick={() => { setSelectedLabour(null); setShowAttendanceView(false); }}>
+          <Button variant="ghost" size="icon" onClick={() => { setSelectedLabour(null); setShowAttendanceView(false); setShowProductionView(false); }}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div className="flex-1">
             <h2 className="text-lg font-semibold">{fresh.name}</h2>
             <p className="text-xs text-muted-foreground">
               {fresh.position && <span className="font-medium">{fresh.position} • </span>}
-              {wagePeriodLabel(fresh.wagePeriod)} — {formatIntMoney(fresh.wageAmount)}
+              {fresh.wagePeriod === "piece_rate" ? "Per Piece" : `${wagePeriodLabel(fresh.wagePeriod)} — ${formatIntMoney(fresh.wageAmount)}`}
               {fresh.hourlyRate ? ` • ${formatIntMoney(fresh.hourlyRate)}/hr` : ""}
             </p>
           </div>
@@ -622,22 +718,31 @@ export default function LabourWagesSection({ workPeriodId, onBack }: Props) {
           </Card>
         </div>
 
-        {/* Tab toggle: Transactions / Attendance */}
-        <div className="flex gap-2 border-b">
+        {/* Tab toggle: Transactions / Attendance / Production */}
+        <div className="flex gap-2 border-b overflow-x-auto">
           <button
             type="button"
-            className={`pb-2 text-sm font-medium border-b-2 transition-colors px-3 ${!showAttendanceView ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"}`}
-            onClick={() => setShowAttendanceView(false)}
+            className={`pb-2 text-sm font-medium border-b-2 transition-colors px-3 whitespace-nowrap ${!showAttendanceView && !showProductionView ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+            onClick={() => { setShowAttendanceView(false); setShowProductionView(false); }}
           >
             Transactions
           </button>
           <button
             type="button"
-            className={`pb-2 text-sm font-medium border-b-2 transition-colors px-3 ${showAttendanceView ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"}`}
-            onClick={() => { setShowAttendanceView(true); setAttendanceMonth(new Date()); }}
+            className={`pb-2 text-sm font-medium border-b-2 transition-colors px-3 whitespace-nowrap ${showAttendanceView ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+            onClick={() => { setShowAttendanceView(true); setShowProductionView(false); setAttendanceMonth(new Date()); }}
           >
             Attendance
           </button>
+          {fresh.wagePeriod === "piece_rate" && (
+            <button
+              type="button"
+              className={`pb-2 text-sm font-medium border-b-2 transition-colors px-3 whitespace-nowrap ${showProductionView ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+              onClick={() => { setShowProductionView(true); setShowAttendanceView(false); }}
+            >
+              Production
+            </button>
+          )}
         </div>
 
         {showAttendanceView ? (
@@ -646,25 +751,81 @@ export default function LabourWagesSection({ workPeriodId, onBack }: Props) {
               {renderAttendanceCalendar(fresh)}
             </CardContent>
           </Card>
+        ) : showProductionView ? (
+          /* ─── Production View ─── */
+          <div className="space-y-3">
+            <Button size="sm" onClick={() => void openProdDialog()} className="gap-1">
+              <Factory className="h-3.5 w-3.5" /> Add Production Entry
+            </Button>
+
+            {labourProds.length === 0 ? (
+              <Card>
+                <CardContent className="p-6 text-center text-sm text-muted-foreground">
+                  No production records yet. Tap "Add Production Entry" to record manufactured items.
+                </CardContent>
+              </Card>
+            ) : (
+              labourProds.map((prod) => (
+                <Card key={prod.id}>
+                  <CardContent className="p-3 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="text-xs text-muted-foreground">
+                        {new Date(prod.createdAt).toLocaleDateString()} {new Date(prod.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                      </div>
+                      <div className="text-sm font-bold">{formatIntMoney(prod.total)}</div>
+                    </div>
+                    {prod.lines.map((line, i) => (
+                      <div key={i} className="flex justify-between text-sm">
+                        <span>{line.itemName}</span>
+                        <span className="text-muted-foreground">{line.qty} × {formatIntMoney(line.perItemWage)} = {formatIntMoney(line.lineTotal)}</span>
+                      </div>
+                    ))}
+                    <div className="flex justify-between text-xs pt-1 border-t">
+                      <span className="text-muted-foreground">Paid: {formatIntMoney(prod.paid)}</span>
+                      <span className={prod.total - prod.paid > 0 ? "text-destructive font-medium" : "text-green-600 font-medium"}>
+                        {prod.total - prod.paid > 0 ? `Unpaid: ${formatIntMoney(prod.total - prod.paid)}` : "Fully Paid"}
+                      </span>
+                    </div>
+                    {prod.note && <div className="text-xs text-muted-foreground">{prod.note}</div>}
+                  </CardContent>
+                </Card>
+              ))
+            )}
+          </div>
         ) : (
           <>
             {/* Action buttons */}
             <div className="grid grid-cols-2 gap-2">
-              <Button variant="default" size="sm" onClick={() => void openTxDialog(fresh, "wage")} className="gap-1">
-                <Wallet className="h-3.5 w-3.5" /> Pay Wage
-              </Button>
+              {fresh.wagePeriod === "piece_rate" ? (
+                <>
+                  <Button variant="default" size="sm" onClick={() => void openProdDialog()} className="gap-1">
+                    <Factory className="h-3.5 w-3.5" /> Add Production
+                  </Button>
+                  {fresh.shortBalance > 0 && (
+                    <Button variant="default" size="sm" onClick={() => void openTxDialog(fresh, "deduct_short")} className="gap-1">
+                      <Wallet className="h-3.5 w-3.5" /> Pay Wage
+                    </Button>
+                  )}
+                </>
+              ) : (
+                <Button variant="default" size="sm" onClick={() => void openTxDialog(fresh, "wage")} className="gap-1">
+                  <Wallet className="h-3.5 w-3.5" /> Pay Wage
+                </Button>
+              )}
               <Button variant="outline" size="sm" onClick={() => void openTxDialog(fresh, "advance")} className="gap-1">
                 <ArrowUpCircle className="h-3.5 w-3.5" /> Give Advance
               </Button>
-              <Button variant="outline" size="sm" onClick={() => void openTxDialog(fresh, "short")} className="gap-1">
-                <ArrowDownCircle className="h-3.5 w-3.5" /> Record Short
-              </Button>
+              {fresh.wagePeriod !== "piece_rate" && (
+                <Button variant="outline" size="sm" onClick={() => void openTxDialog(fresh, "short")} className="gap-1">
+                  <ArrowDownCircle className="h-3.5 w-3.5" /> Record Short
+                </Button>
+              )}
               {fresh.advanceBalance > 0 && (
                 <Button variant="outline" size="sm" onClick={() => void openTxDialog(fresh, "deduct_advance")} className="gap-1">
                   <MinusCircle className="h-3.5 w-3.5" /> Deduct Advance
                 </Button>
               )}
-              {fresh.shortBalance > 0 && (
+              {fresh.shortBalance > 0 && fresh.wagePeriod !== "piece_rate" && (
                 <Button variant="outline" size="sm" onClick={() => void openTxDialog(fresh, "deduct_short")} className="gap-1">
                   <PlusCircle className="h-3.5 w-3.5" /> Pay Short
                 </Button>
@@ -742,33 +903,40 @@ export default function LabourWagesSection({ workPeriodId, onBack }: Props) {
                       <SelectItem key={wp.value} value={wp.value}>{wp.label}</SelectItem>
                     ))}
                   </SelectContent>
-                </Select>
+              </Select>
+                {formWagePeriod === "piece_rate" && (
+                  <p className="text-xs text-muted-foreground">Worker gets paid per item manufactured. Add production entries to track earnings.</p>
+                )}
               </div>
-              <div className="space-y-1">
-                <Label>Wage Amount {formHourlyRate > 0 ? "(optional — set 0 if hourly only)" : "*"}</Label>
-                <Input
-                  inputMode="numeric"
-                  value={formWageAmount === 0 ? "" : String(formWageAmount)}
-                  onChange={(e) => setFormWageAmount(parseNonDecimalInt(e.target.value))}
-                  placeholder="0"
-                />
-              </div>
-              <div className="space-y-1">
-                <Label>Pay Per Hour (optional)</Label>
-                <Input
-                  inputMode="numeric"
-                  value={formHourlyRate === 0 ? "" : String(formHourlyRate)}
-                  onChange={(e) => setFormHourlyRate(parseNonDecimalInt(e.target.value))}
-                  placeholder="e.g. 150"
-                />
-                <p className="text-xs text-muted-foreground">If set, you can calculate wage by hours worked when paying</p>
-              </div>
+              {formWagePeriod !== "piece_rate" && (
+                <>
+                  <div className="space-y-1">
+                    <Label>Wage Amount {formHourlyRate > 0 ? "(optional — set 0 if hourly only)" : "*"}</Label>
+                    <Input
+                      inputMode="numeric"
+                      value={formWageAmount === 0 ? "" : String(formWageAmount)}
+                      onChange={(e) => setFormWageAmount(parseNonDecimalInt(e.target.value))}
+                      placeholder="0"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label>Pay Per Hour (optional)</Label>
+                    <Input
+                      inputMode="numeric"
+                      value={formHourlyRate === 0 ? "" : String(formHourlyRate)}
+                      onChange={(e) => setFormHourlyRate(parseNonDecimalInt(e.target.value))}
+                      placeholder="e.g. 150"
+                    />
+                    <p className="text-xs text-muted-foreground">If set, you can calculate wage by hours worked when paying</p>
+                  </div>
+                </>
+              )}
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setLabourDialogOpen(false)}>Cancel</Button>
               <Button
                 onClick={() => void saveLabour()}
-                disabled={!formName.trim() || (formWageAmount <= 0 && formHourlyRate <= 0)}
+                disabled={!formName.trim() || (formWagePeriod !== "piece_rate" && formWageAmount <= 0 && formHourlyRate <= 0)}
               >
                 {editingLabour ? "Update" : "Add"}
               </Button>
@@ -980,6 +1148,120 @@ export default function LabourWagesSection({ workPeriodId, onBack }: Props) {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        {/* Production Entry Dialog */}
+        <Dialog open={prodDialogOpen} onOpenChange={setProdDialogOpen}>
+          <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Add Production Entry</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3">
+              <p className="text-xs text-muted-foreground">
+                Add items manufactured by {selectedLabour?.name}. Select from menu or type a custom item name.
+              </p>
+
+              {prodLines.map((line, idx) => (
+                <div key={idx} className="rounded-md border p-3 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-medium text-muted-foreground">Item {idx + 1}</span>
+                    {prodLines.length > 1 && (
+                      <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => removeProdLine(idx)}>
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    )}
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Item Name</Label>
+                    <div className="flex gap-1">
+                      <Input
+                        value={line.itemName}
+                        onChange={(e) => updateProdLine(idx, "itemName", e.target.value)}
+                        placeholder="Type or pick from menu"
+                        className="h-8 text-sm flex-1"
+                      />
+                      <Button variant="outline" size="sm" className="h-8 px-2" onClick={() => { setShowMenuPicker(showMenuPicker === idx ? null : idx); setMenuSearchQuery(""); }}>
+                        <Package className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                    {showMenuPicker === idx && (
+                      <div className="rounded-md border bg-background p-2 space-y-1 max-h-40 overflow-y-auto">
+                        <Input
+                          value={menuSearchQuery}
+                          onChange={(e) => setMenuSearchQuery(e.target.value)}
+                          placeholder="Search menu items..."
+                          className="h-7 text-xs"
+                          autoFocus
+                        />
+                        {menuItems
+                          .filter((m) => !menuSearchQuery || m.name.toLowerCase().includes(menuSearchQuery.toLowerCase()))
+                          .slice(0, 20)
+                          .map((m) => (
+                            <button
+                              key={m.id}
+                              type="button"
+                              className="w-full text-left text-xs px-2 py-1 rounded hover:bg-accent transition-colors"
+                              onClick={() => selectMenuItem(idx, m)}
+                            >
+                              {m.name}
+                            </button>
+                          ))}
+                      </div>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <Label className="text-xs">Qty Made</Label>
+                      <Input
+                        inputMode="numeric"
+                        value={line.qty === 0 ? "" : String(line.qty)}
+                        onChange={(e) => updateProdLine(idx, "qty", parseNonDecimalInt(e.target.value))}
+                        placeholder="0"
+                        className="h-8 text-sm"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Per Item Wage</Label>
+                      <Input
+                        inputMode="numeric"
+                        value={line.perItemWage === 0 ? "" : String(line.perItemWage)}
+                        onChange={(e) => updateProdLine(idx, "perItemWage", parseNonDecimalInt(e.target.value))}
+                        placeholder="0"
+                        className="h-8 text-sm"
+                      />
+                    </div>
+                  </div>
+                  {line.lineTotal > 0 && (
+                    <div className="text-xs text-right font-medium">
+                      {line.qty} × {formatIntMoney(line.perItemWage)} = <span className="text-primary">{formatIntMoney(line.lineTotal)}</span>
+                    </div>
+                  )}
+                </div>
+              ))}
+
+              <Button variant="outline" size="sm" onClick={addProdLine} className="gap-1 w-full">
+                <Plus className="h-3.5 w-3.5" /> Add Another Item
+              </Button>
+
+              <div className="space-y-1">
+                <Label className="text-xs">Note (optional)</Label>
+                <Input value={prodNote} onChange={(e) => setProdNote(e.target.value)} placeholder="Optional note" className="h-8 text-sm" />
+              </div>
+
+              {prodTotal > 0 && (
+                <div className="rounded-md border border-primary/30 bg-primary/5 p-3 text-center">
+                  <div className="text-xs text-muted-foreground">Total Wage Earned</div>
+                  <div className="text-lg font-bold text-primary">{formatIntMoney(prodTotal)}</div>
+                </div>
+              )}
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setProdDialogOpen(false)}>Cancel</Button>
+              <Button onClick={() => void saveProdRecord()} disabled={prodTotal <= 0}>
+                Save Production — {formatIntMoney(prodTotal)}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </>
     );
   }
@@ -1014,7 +1296,7 @@ export default function LabourWagesSection({ workPeriodId, onBack }: Props) {
                     <div className="text-xs text-primary font-medium">{l.position}</div>
                   )}
                   <div className="text-xs text-muted-foreground">
-                    {wagePeriodLabel(l.wagePeriod)} • {formatIntMoney(l.wageAmount)}
+                    {l.wagePeriod === "piece_rate" ? "Per Piece / Manufacturer" : `${wagePeriodLabel(l.wagePeriod)} • ${formatIntMoney(l.wageAmount)}`}
                     {l.hourlyRate ? ` • ${formatIntMoney(l.hourlyRate)}/hr` : ""}
                   </div>
                   {(l.contact || l.address) && (

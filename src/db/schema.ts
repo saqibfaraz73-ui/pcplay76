@@ -442,12 +442,13 @@ export type RecoveryPayment = {
 
 // ─── Labour / Wages ────────────────────
 
-export type WagePeriod = "daily" | "weekly" | "monthly";
+export type WagePeriod = "daily" | "weekly" | "monthly" | "piece_rate";
 
 export const WAGE_PERIODS: { value: WagePeriod; label: string }[] = [
   { value: "daily", label: "Daily" },
   { value: "weekly", label: "Weekly" },
   { value: "monthly", label: "Monthly" },
+  { value: "piece_rate", label: "Per Piece / Manufacturer" },
 ];
 
 export type Labour = {
@@ -486,6 +487,26 @@ export type LabourAttendance = {
   date: string; // YYYY-MM-DD
   status: AttendanceStatus;
   note?: string;
+  createdAt: number;
+};
+
+// Production record for piece-rate / manufacturer labourers
+export type LabourProductionLine = {
+  itemId?: string;      // optional link to menu item
+  itemName: string;     // item name (custom or from menu)
+  qty: number;          // quantity manufactured
+  perItemWage: number;  // wage per item
+  lineTotal: number;    // qty * perItemWage
+};
+
+export type LabourProduction = {
+  id: string;
+  labourId: string;
+  lines: LabourProductionLine[];
+  total: number;        // sum of all line totals
+  paid: number;         // amount paid so far against this record
+  note?: string;
+  workPeriodId?: string;
   createdAt: number;
 };
 
