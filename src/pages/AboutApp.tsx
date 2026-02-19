@@ -1,6 +1,6 @@
 import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ShoppingCart, ClipboardList, DollarSign, Users, Truck, UtensilsCrossed, CalendarCheck, Shield, Wifi, BarChart3, Printer, Settings, Package, Home, Info, Tags } from "lucide-react";
+import { ShoppingCart, ClipboardList, DollarSign, Users, Truck, UtensilsCrossed, CalendarCheck, Shield, Wifi, BarChart3, Printer, Settings, Package, Home, Info, Tags, Briefcase, FileText } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { db } from "@/db/appDb";
 
@@ -27,6 +27,11 @@ const features = [
     icon: DollarSign,
     title: "Expenses",
     description: "Record daily business expenses with preset categories like Staff/Wages, Utilities, Rent, Transport, and more. Track spending per work period and include notes for reference.",
+  },
+  {
+    icon: Briefcase,
+    title: "Staff Wages & Attendance",
+    description: "Manage staff/workers with job positions, daily/weekly/monthly wage periods, and optional hourly rates. Mark daily attendance (present, absent, half-day) with a calendar view. When paying salary, absent days are auto-calculated from attendance records to deduct accordingly. Track advance balances, short salary, and generate wage log PDFs.",
   },
   {
     icon: Users,
@@ -72,6 +77,11 @@ const features = [
     icon: Tags,
     title: "Print Barcodes / Labels",
     description: "Generate and print barcode labels for products. Select items from your product list, enter manually, or import from Excel/CSV/PDF files. Supports A4 PDF, ZPL (Zebra), TSPL (TSC/Xprinter), and direct ESC/POS thermal printing.",
+  },
+  {
+    icon: FileText,
+    title: "Custom Print",
+    description: "Build custom receipts with optional logo, business name, title, and metadata like bill number, prepared by, and payment method. Also supports uploading and printing existing PDF or image files directly via thermal printer.",
   },
   {
     icon: Package,
