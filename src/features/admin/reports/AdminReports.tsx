@@ -10,7 +10,7 @@ import type { CreditCustomer, DeliveryPerson, Expense, ExportCustomer, ExportSal
 import type { AdvanceOrder, BookingOrder } from "@/db/booking-schema";
 import { useToast } from "@/hooks/use-toast";
 import { formatIntMoney, fmtDate, fmtDateTime, fmtTime12 } from "@/features/pos/format";
-import { writePdfFile, writePdfFileAndShare } from "@/features/files/sangi-folders";
+import { sharePdfBytes } from "@/features/pos/share-utils";
 import { SalesReportPreview } from "@/features/admin/reports/SalesReportPreview";
 import { useAuth } from "@/auth/AuthProvider";
 
@@ -783,12 +783,7 @@ export function AdminReports() {
       });
       const bytes = doc.output("arraybuffer");
       const fileName = `sales_${toDateInputValue(fromTs)}_${toDateInputValue(toTs)}.pdf`;
-      await writePdfFileAndShare({
-        folder: "Sales Report",
-        fileName,
-        pdfBytes: new Uint8Array(bytes),
-        shareTitle: "Sales Report",
-      });
+      await sharePdfBytes(new Uint8Array(bytes), fileName, "Sales Report");
       toast({ title: "Sales report exported", description: fileName });
     } catch (e: any) {
       toast({ title: "Export failed", description: e?.message ?? String(e), variant: "destructive" });

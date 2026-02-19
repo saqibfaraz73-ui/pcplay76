@@ -3,10 +3,6 @@ import type { Category, MenuItem } from "@/db/schema";
 import { makeId } from "@/features/admin/id";
 import { format } from "date-fns";
 import * as XLSX from "xlsx";
-import { Capacitor } from "@capacitor/core";
-import { Filesystem, Directory } from "@capacitor/filesystem";
-import { Share } from "@capacitor/share";
-import { ensureSangiFolders, folderPath } from "@/features/files/sangi-folders";
 
 // Excel export format columns
 const EXCEL_HEADERS = [
@@ -220,41 +216,8 @@ export async function importMenuItemsFromCSV(csvContent: string): Promise<Import
   return result;
 }
 
-function uint8ToBase64(bytes: Uint8Array): string {
-  let binary = "";
-  const chunkSize = 8192;
-  for (let i = 0; i < bytes.length; i += chunkSize) {
-    const chunk = bytes.subarray(i, Math.min(i + chunkSize, bytes.length));
-    for (let j = 0; j < chunk.length; j++) {
-      binary += String.fromCharCode(chunk[j]);
-    }
-  }
-  return btoa(binary);
-}
-
-/** Save and share Excel file on native, or download on web */
+/** Share Excel file via native share sheet (cache-based, no SAF) or browser download on web */
 export async function downloadExcel(blob: Blob, filename: string) {
-  if (Capacitor.isNativePlatform()) {
-    await ensureSangiFolders();
-    const buffer = await blob.arrayBuffer();
-    const base64 = uint8ToBase64(new Uint8Array(buffer));
-    const path = `${folderPath("Sales Report")}/${filename}`;
-    await Filesystem.writeFile({
-      directory: Directory.Documents,
-      path,
-      data: base64,
-      recursive: true,
-    });
-    const uri = await Filesystem.getUri({ directory: Directory.Documents, path });
-    await Share.share({ title: filename, url: uri.uri, dialogTitle: filename });
-  } else {
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-  }
+  const { shareFileBlob } = await import("@/features/pos/share-utils");
+  await shareFileBlob(blob, filename);
 }
