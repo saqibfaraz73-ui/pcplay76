@@ -1,18 +1,21 @@
 /**
- * Licensing DB table stored in Dexie alongside existing app data.
- * Premium is activated via Super Admin login (device-specific PIN)
- * or via PRELOADED_DEVICE_ID baked into the APK build.
+ * Licensing DB — Play Store + AdMob system
+ *
+ * Free limits per section: 5 entries
+ * After limit: watch a rewarded ad → get +3 entries
+ * Premium (Play Store): no limits, no ads
  */
+
 import { db } from "@/db/appDb";
-import { PRELOADED_DEVICE_ID } from "./preloaded-license";
-import { readLicenseFile } from "./license-file";
+import { checkPlayStorePremium } from "./play-store-billing";
+
 export type LicenseRecord = {
   id: "license";
   deviceId: string;
-  licensedDeviceId?: string; // The device ID this license is activated for
+  licensedDeviceId?: string;
   activationKey?: string;
   isPremium: boolean;
-  validUntil?: number; // timestamp – license expires after this date (0 or undefined = no expiry)
+  validUntil?: number;
   upgradeMessage?: string;
   cashSalesCount: number;
   creditSalesCount: number;
@@ -22,23 +25,26 @@ export type LicenseRecord = {
   expensesCount: number;
   customPrintCount: number;
   labelPrintCount: number;
+  // Ad bonus credits per module (resets do NOT count toward the base limit)
+  cashAdBonus: number;
+  creditAdBonus: number;
+  deliveryAdBonus: number;
+  tableAdBonus: number;
+  partyAdBonus: number;
+  expensesAdBonus: number;
+  customPrintAdBonus: number;
+  labelPrintAdBonus: number;
 };
 
-const MODULE_LIMIT = 10;
-const TOTAL_LIMIT = 40;
-const LODGE_LIMIT = 5;
-const EXPENSE_LIMIT = 5;
-const PRINT_LIMIT = 10;
+/** Free entries per section before watching an ad */
+export const FREE_LIMIT = 5;
+/** Entries granted after watching a rewarded ad */
+export const AD_BONUS = 3;
 
-/**
- * Generate a deterministic device ID from stable hardware/browser properties.
- * Same device will always produce the same ID, even after uninstall/reinstall.
- */
+/** Generate a deterministic device ID from browser/hardware properties */
 function generateDeviceId(): string {
   const nav = typeof navigator !== "undefined" ? navigator : null;
   const scr = typeof screen !== "undefined" ? screen : null;
-
-  // Use only stable, non-random properties that survive reinstall
   const parts = [
     nav?.userAgent ?? "",
     nav?.language ?? "",
@@ -46,7 +52,6 @@ function generateDeviceId(): string {
     String(scr?.width ?? 0),
     String(scr?.height ?? 0),
     String(scr?.colorDepth ?? 0),
-    String(scr?.pixelDepth ?? 0),
     String(new Date().getTimezoneOffset()),
     String(nav?.hardwareConcurrency ?? 0),
     String((nav as any)?.deviceMemory ?? 0),
@@ -54,10 +59,7 @@ function generateDeviceId(): string {
     nav?.platform ?? "",
   ];
   const seed = parts.join("|");
-
-  // djb2 hash — deterministic
-  let h1 = 5381;
-  let h2 = 52711;
+  let h1 = 5381, h2 = 52711;
   for (let i = 0; i < seed.length; i++) {
     const c = seed.charCodeAt(i);
     h1 = ((h1 << 5) + h1 + c) | 0;
@@ -68,62 +70,62 @@ function generateDeviceId(): string {
   return `SNG-${hex1}-${hex2}`;
 }
 
+function defaultRecord(deviceId: string): LicenseRecord {
+  return {
+    id: "license",
+    deviceId,
+    isPremium: false,
+    cashSalesCount: 0,
+    creditSalesCount: 0,
+    deliverySalesCount: 0,
+    tableSalesCount: 0,
+    partyLodgeCount: 0,
+    expensesCount: 0,
+    customPrintCount: 0,
+    labelPrintCount: 0,
+    cashAdBonus: 0,
+    creditAdBonus: 0,
+    deliveryAdBonus: 0,
+    tableAdBonus: 0,
+    partyAdBonus: 0,
+    expensesAdBonus: 0,
+    customPrintAdBonus: 0,
+    labelPrintAdBonus: 0,
+  };
+}
+
 export async function getLicense(): Promise<LicenseRecord> {
-  let rec = await (db as any).license.get("license") as LicenseRecord | undefined;
-  
+  let rec = (await (db as any).license.get("license")) as LicenseRecord | undefined;
+
   if (!rec) {
     const deviceId = generateDeviceId();
-    // Auto-activate if a preloaded device ID matches this device
-    const preloadMatch = PRELOADED_DEVICE_ID && PRELOADED_DEVICE_ID === deviceId;
-    rec = {
-      id: "license",
-      deviceId,
-      isPremium: preloadMatch,
-      licensedDeviceId: preloadMatch ? PRELOADED_DEVICE_ID : undefined,
-      cashSalesCount: 0,
-      creditSalesCount: 0,
-      deliverySalesCount: 0,
-      tableSalesCount: 0,
-      partyLodgeCount: 0,
-      expensesCount: 0,
-      customPrintCount: 0,
-      labelPrintCount: 0,
-    };
+    rec = defaultRecord(deviceId);
     await (db as any).license.put(rec);
   }
 
-  // Also check preloaded ID for existing records that aren't yet activated
-  if (!rec.isPremium && PRELOADED_DEVICE_ID && PRELOADED_DEVICE_ID === rec.deviceId) {
-    rec = { ...rec, isPremium: true, licensedDeviceId: PRELOADED_DEVICE_ID };
-    await (db as any).license.put(rec);
-  }
-
-  // Check for encrypted license file activation
-  if (!rec.isPremium) {
-    try {
-      const licFile = await readLicenseFile();
-      if (licFile && licFile.deviceId === rec.deviceId) {
-        const validUntilTs = licFile.validUntil ? new Date(licFile.validUntil).getTime() : undefined;
-        rec = { ...rec, isPremium: true, licensedDeviceId: licFile.deviceId, validUntil: validUntilTs };
-        await (db as any).license.put(rec);
-      }
-    } catch {
-      // License file not found or invalid — ignore
+  // Ensure bonus fields exist on old records
+  const bonusFields: (keyof LicenseRecord)[] = [
+    "cashAdBonus", "creditAdBonus", "deliveryAdBonus", "tableAdBonus",
+    "partyAdBonus", "expensesAdBonus", "customPrintAdBonus", "labelPrintAdBonus",
+  ];
+  let needsUpdate = false;
+  for (const field of bonusFields) {
+    if (rec[field] === undefined) {
+      (rec as any)[field] = 0;
+      needsUpdate = true;
     }
   }
+  if (needsUpdate) await (db as any).license.put(rec);
 
-  // Premium only valid if current device matches the licensed device
-  if (rec.isPremium && rec.licensedDeviceId) {
-    if (rec.deviceId !== rec.licensedDeviceId) {
-      return { ...rec, isPremium: false };
+  // Check Play Store premium status
+  try {
+    const status = await checkPlayStorePremium();
+    if (status.isPremium !== rec.isPremium) {
+      rec = { ...rec, isPremium: status.isPremium, validUntil: status.expiresAt };
+      await (db as any).license.put(rec);
     }
-  }
-
-  // Check license expiry
-  if (rec.isPremium && rec.validUntil && rec.validUntil > 0) {
-    if (Date.now() > rec.validUntil) {
-      return { ...rec, isPremium: false, upgradeMessage: "Your premium license has expired. Please contact support to renew or upgrade your license." };
-    }
+  } catch {
+    // Ignore — use cached value
   }
 
   return rec;
@@ -134,9 +136,11 @@ export async function updateLicense(partial: Partial<Omit<LicenseRecord, "id">>)
   await (db as any).license.put({ ...current, ...partial });
 }
 
-export type SalesModule = "cash" | "credit" | "delivery" | "table" | "partyLodge" | "expenses" | "customPrint" | "labelPrint";
+export type SalesModule =
+  | "cash" | "credit" | "delivery" | "table"
+  | "partyLodge" | "expenses" | "customPrint" | "labelPrint";
 
-const moduleKey: Record<SalesModule, keyof LicenseRecord> = {
+const countKey: Record<SalesModule, keyof LicenseRecord> = {
   cash: "cashSalesCount",
   credit: "creditSalesCount",
   delivery: "deliverySalesCount",
@@ -147,50 +151,80 @@ const moduleKey: Record<SalesModule, keyof LicenseRecord> = {
   labelPrint: "labelPrintCount",
 };
 
-const moduleLimit: Partial<Record<SalesModule, number>> = {
-  partyLodge: LODGE_LIMIT,
-  expenses: EXPENSE_LIMIT,
-  customPrint: PRINT_LIMIT,
-  labelPrint: PRINT_LIMIT,
+const bonusKey: Record<SalesModule, keyof LicenseRecord> = {
+  cash: "cashAdBonus",
+  credit: "creditAdBonus",
+  delivery: "deliveryAdBonus",
+  table: "tableAdBonus",
+  partyLodge: "partyAdBonus",
+  expenses: "expensesAdBonus",
+  customPrint: "customPrintAdBonus",
+  labelPrint: "labelPrintAdBonus",
 };
 
-export async function canMakeSale(module: SalesModule, count: number = 1): Promise<{ allowed: boolean; message: string; remaining?: number }> {
+export type CanSaleResult = {
+  allowed: boolean;
+  message: string;
+  remaining?: number;
+  needsAd?: boolean;
+};
+
+/**
+ * Check if an action is allowed.
+ * - Premium: always allowed
+ * - Free: up to FREE_LIMIT + adBonus entries
+ * - At limit: needsAd = true
+ */
+export async function canMakeSale(
+  module: SalesModule,
+  count: number = 1
+): Promise<CanSaleResult> {
   const lic = await getLicense();
   if (lic.isPremium) return { allowed: true, message: "" };
 
-  const moduleCount = (lic[moduleKey[module]] as number) ?? 0;
-  const limit = moduleLimit[module] ?? MODULE_LIMIT;
+  const used = (lic[countKey[module]] as number) ?? 0;
+  const bonus = (lic[bonusKey[module]] as number) ?? 0;
+  const totalAllowed = FREE_LIMIT + bonus;
+  const remaining = totalAllowed - used;
 
-  // For sales modules, also check total limit
-  if (module !== "partyLodge" && module !== "expenses" && module !== "customPrint" && module !== "labelPrint") {
-    const total = lic.cashSalesCount + lic.creditSalesCount + lic.deliverySalesCount + lic.tableSalesCount;
-    if (total >= TOTAL_LIMIT) {
-      return {
-        allowed: false,
-        message: lic.upgradeMessage || `You have reached the free limit of ${TOTAL_LIMIT} total receipts. Please upgrade to Premium to continue.`,
-      };
-    }
-  }
-
-  const remaining = limit - moduleCount;
-  if (moduleCount + count > limit) {
+  if (used + count > totalAllowed) {
     return {
       allowed: false,
       remaining: Math.max(0, remaining),
-      message: lic.upgradeMessage || `You have used ${moduleCount}/${limit} free barcodes. ${remaining > 0 ? `Only ${remaining} remaining.` : "Limit reached."} Please upgrade to Premium to continue.`,
+      needsAd: true,
+      message:
+        remaining > 0
+          ? `You have ${remaining} free ${module} entr${remaining === 1 ? "y" : "ies"} left. Watch an ad to get ${AD_BONUS} more.`
+          : `Free limit reached (${FREE_LIMIT} entries). Watch a short ad to get ${AD_BONUS} more entries.`,
     };
   }
+
   return { allowed: true, message: "", remaining };
 }
 
 /**
- * Increment sale count WITHOUT calling getLicense() (which does filesystem I/O).
- * This is safe to call inside a Dexie transaction because it only touches IndexedDB.
+ * Grant ad bonus entries for a module (called after user watches an ad).
  */
-export async function incrementSaleCount(module: SalesModule, count: number = 1): Promise<void> {
-  const rec = await (db as any).license.get("license") as LicenseRecord | undefined;
-  if (!rec || rec.isPremium) return;
-  const key = moduleKey[module];
-  await (db as any).license.put({ ...rec, [key]: ((rec[key] as number) ?? 0) + count });
+export async function grantAdBonus(module: SalesModule): Promise<void> {
+  const rec = (await (db as any).license.get("license")) as LicenseRecord | undefined;
+  if (!rec) return;
+  const key = bonusKey[module];
+  const current = (rec[key] as number) ?? 0;
+  await (db as any).license.put({ ...rec, [key]: current + AD_BONUS });
 }
 
+/**
+ * Increment usage count. Safe inside Dexie transactions.
+ */
+export async function incrementSaleCount(
+  module: SalesModule,
+  count: number = 1
+): Promise<void> {
+  const rec = (await (db as any).license.get("license")) as LicenseRecord | undefined;
+  if (!rec || rec.isPremium) return;
+  const key = countKey[module];
+  await (db as any).license.put({
+    ...rec,
+    [key]: ((rec[key] as number) ?? 0) + count,
+  });
+}

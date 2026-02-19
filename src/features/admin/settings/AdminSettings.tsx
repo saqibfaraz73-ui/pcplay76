@@ -13,7 +13,7 @@ import { Capacitor } from "@capacitor/core";
 import { AdminTablesWaiters } from "@/features/admin/tables/AdminTablesWaiters";
 import { Trash2, Plus } from "lucide-react";
 import { getLicense, updateLicense } from "@/features/licensing/licensing-db";
-import { UpgradeDialog } from "@/features/licensing/UpgradeDialog";
+
 import { DataCleanup } from "@/features/admin/settings/DataCleanup";
 import { decodeLicenseBase64 } from "@/features/licensing/license-file";
 import {

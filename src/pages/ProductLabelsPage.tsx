@@ -1,7 +1,7 @@
 import React from "react";
 import { db } from "@/db/appDb";
-import { canMakeSale, incrementSaleCount, getLicense } from "@/features/licensing/licensing-db";
-import { UpgradeDialog } from "@/features/licensing/UpgradeDialog";
+import { canMakeSale, incrementSaleCount, getLicense, FREE_LIMIT, type SalesModule } from "@/features/licensing/licensing-db";
+import { AdRewardDialog } from "@/features/licensing/AdRewardDialog";
 import type { MenuItem, Category, Settings } from "@/db/schema";
 import { makeId } from "@/features/admin/id";
 import { formatIntMoney } from "@/features/pos/format";
@@ -75,14 +75,14 @@ export default function ProductLabelsPage() {
 
   // Licensing
   const [printing, setPrinting] = React.useState(false);
-  const [upgradeOpen, setUpgradeOpen] = React.useState(false);
-  const [upgradeMsg, setUpgradeMsg] = React.useState("");
+  const [adOpen, setAdOpen] = React.useState(false);
+  const [adMsg, setAdMsg] = React.useState("");
+  const [pendingAction, setPendingAction] = React.useState<"print" | "pdf" | "direct" | null>(null);
   const [usageInfo, setUsageInfo] = React.useState<{ count: number; limit: number; premium: boolean } | null>(null);
 
   const refreshUsage = React.useCallback(async () => {
     const lic = await getLicense();
-    console.log("[LabelLicense]", { isPremium: lic.isPremium, labelPrintCount: lic.labelPrintCount, deviceId: lic.deviceId, licensedDeviceId: lic.licensedDeviceId });
-    setUsageInfo({ count: lic.labelPrintCount ?? 0, limit: 10, premium: lic.isPremium });
+    setUsageInfo({ count: lic.labelPrintCount ?? 0, limit: FREE_LIMIT, premium: lic.isPremium });
   }, []);
 
   React.useEffect(() => {
@@ -307,7 +307,7 @@ export default function ProductLabelsPage() {
     }
     const check = await canMakeSale("labelPrint", totalLabels);
     if (!check.allowed) {
-      setUpgradeMsg(check.message); setUpgradeOpen(true);
+      setAdMsg(check.message); setPendingAction("print"); setAdOpen(true);
       return;
     }
     const labels = buildLabels();
@@ -383,7 +383,7 @@ export default function ProductLabelsPage() {
     }
     const check = await canMakeSale("labelPrint", totalLabels);
     if (!check.allowed) {
-      setUpgradeMsg(check.message); setUpgradeOpen(true);
+      setAdMsg(check.message); setPendingAction("pdf"); setAdOpen(true);
       return;
     }
     try {
@@ -402,7 +402,7 @@ export default function ProductLabelsPage() {
     }
     const check = await canMakeSale("labelPrint", totalLabels);
     if (!check.allowed) {
-      setUpgradeMsg(check.message); setUpgradeOpen(true);
+      setAdMsg(check.message); setPendingAction("direct"); setAdOpen(true);
       return;
     }
     if (!settings) {
@@ -442,7 +442,7 @@ export default function ProductLabelsPage() {
       return;
     }
     const check = await canMakeSale("labelPrint", totalLabels);
-    if (!check.allowed) { setUpgradeMsg(check.message); setUpgradeOpen(true); return; }
+    if (!check.allowed) { setAdMsg(check.message); setPendingAction("direct"); setAdOpen(true); return; }
     setPrinting(true);
     try {
       const labels = buildLabels();
@@ -719,7 +719,7 @@ export default function ProductLabelsPage() {
               <Button onClick={async () => {
                 if (labelItems.length === 0) return;
                 const check = await canMakeSale("labelPrint", totalLabels);
-                if (!check.allowed) { setUpgradeMsg(check.message); setUpgradeOpen(true); return; }
+                if (!check.allowed) { setAdMsg(check.message); setPendingAction(null); setAdOpen(true); return; }
                 const labels = buildLabels();
                 const zpl = generateLabelsZpl(labels);
                 await shareTextFile(zpl, `labels-${labels.length}.zpl`);
@@ -730,7 +730,7 @@ export default function ProductLabelsPage() {
               <Button onClick={async () => {
                 if (labelItems.length === 0) return;
                 const check = await canMakeSale("labelPrint", totalLabels);
-                if (!check.allowed) { setUpgradeMsg(check.message); setUpgradeOpen(true); return; }
+                if (!check.allowed) { setAdMsg(check.message); setPendingAction(null); setAdOpen(true); return; }
                 const labels = buildLabels();
                 const tspl = generateLabelsTspl(labels);
                 await shareTextFile(tspl, `labels-${labels.length}.prn`);
@@ -771,7 +771,16 @@ export default function ProductLabelsPage() {
       )}
       <div className="pb-24" />
     </div>
-    <UpgradeDialog open={upgradeOpen} onOpenChange={setUpgradeOpen} message={upgradeMsg} />
+    <AdRewardDialog
+      open={adOpen}
+      onOpenChange={(v) => { setAdOpen(v); if (!v) setPendingAction(null); }}
+      module="labelPrint"
+      message={adMsg}
+      onRewarded={() => {
+        if (pendingAction === "print") void handlePrintLabels();
+        else if (pendingAction === "pdf") void handlePdfDownload();
+      }}
+    />
     </>
   );
 }

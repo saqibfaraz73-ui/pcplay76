@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { db } from "@/db/appDb";
 import type { Category, CreditCustomer, MenuItem, RestaurantTable, Settings, TableOrder, TableOrderLine, Waiter } from "@/db/schema";
 import { canMakeSale, incrementSaleCount } from "@/features/licensing/licensing-db";
-import { UpgradeDialog } from "@/features/licensing/UpgradeDialog";
+import { AdRewardDialog } from "@/features/licensing/AdRewardDialog";
 import { ensureSeedData } from "@/db/seed";
 import { useAuth } from "@/auth/AuthProvider";
 import { useWorkPeriod } from "@/features/pos/WorkPeriodProvider";
@@ -455,9 +455,9 @@ export function PosTablesManager() {
   const [editTaxAmount, setEditTaxAmount] = React.useState<number | null>(null);
   const [editServiceAmount, setEditServiceAmount] = React.useState<number | null>(null);
 
-  // Upgrade dialog
-  const [upgradeOpen, setUpgradeOpen] = React.useState(false);
-  const [upgradeMsg, setUpgradeMsg] = React.useState("");
+  // Ad reward dialog
+  const [adOpen, setAdOpen] = React.useState(false);
+  const [adMsg, setAdMsg] = React.useState("");
 
   const completeCheckout = async (paymentMethod: "cash" | "credit", shouldPrint: boolean) => {
     if (!currentTableOrder) return;
@@ -481,8 +481,8 @@ export function PosTablesManager() {
     // License limit check
     const limitCheck = await canMakeSale("table");
     if (!limitCheck.allowed) {
-      setUpgradeMsg(limitCheck.message);
-      setUpgradeOpen(true);
+      setAdMsg(limitCheck.message);
+      setAdOpen(true);
       return;
     }
 
@@ -1442,7 +1442,13 @@ export function PosTablesManager() {
         </DialogContent>
       </Dialog>
 
-      <UpgradeDialog open={upgradeOpen} onOpenChange={setUpgradeOpen} message={upgradeMsg} />
+      <AdRewardDialog
+        open={adOpen}
+        onOpenChange={setAdOpen}
+        module="table"
+        message={adMsg}
+        onRewarded={() => {}}
+      />
     </div>
   );
 }

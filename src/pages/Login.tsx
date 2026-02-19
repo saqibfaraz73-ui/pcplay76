@@ -34,7 +34,6 @@ export default function Login() {
 
   // Registration fields
   const [regName, setRegName] = React.useState("");
-  const [regPhone, setRegPhone] = React.useState("");
   const [regPassword, setRegPassword] = React.useState("");
   const [regConfirm, setRegConfirm] = React.useState("");
   const [regQuestion, setRegQuestion] = React.useState(SECURITY_QUESTIONS[0]);
@@ -79,8 +78,8 @@ export default function Login() {
 
   const onRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!regName.trim() || !regPhone.trim() || !regPassword.trim()) {
-      toast({ title: "All fields are required", variant: "destructive" });
+    if (!regName.trim() || !regPassword.trim()) {
+      toast({ title: "Name and password are required", variant: "destructive" });
       return;
     }
     if (regPassword !== regConfirm) {
@@ -97,8 +96,8 @@ export default function Login() {
     }
     setLoading(true);
     try {
-      await registerAdmin(regName, regPhone, regPassword, regQuestion, regAnswer);
-      const result = await login({ identifier: regPhone.trim(), credential: regPassword.trim() });
+      await registerAdmin(regName, "", regPassword, regQuestion, regAnswer);
+      const result = await login({ identifier: regName.trim(), credential: regPassword.trim() });
       if (result.ok) {
         toast({ title: "Welcome!", description: "Admin account created successfully." });
       }
@@ -196,11 +195,7 @@ export default function Login() {
               <div className="space-y-2">
                 <Label htmlFor="regName">Your Name</Label>
                 <Input id="regName" value={regName} onChange={(e) => setRegName(e.target.value)} autoComplete="off" placeholder="e.g. Ahmad" />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="regPhone">Phone Number</Label>
-                <Input id="regPhone" inputMode="tel" value={regPhone} onChange={(e) => setRegPhone(e.target.value)} autoComplete="off" placeholder="e.g. 03001234567" />
-                <p className="text-xs text-muted-foreground">You'll use this phone number to log in.</p>
+                <p className="text-xs text-muted-foreground">You'll use this name to log in.</p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="regPassword">Password</Label>
@@ -237,13 +232,13 @@ export default function Login() {
         <Card className="w-full">
           <CardHeader>
             <CardTitle>Login</CardTitle>
-            <CardDescription>Admin: name or phone + password · Staff: name or phone + PIN</CardDescription>
+            <CardDescription>Admin: name + password · Staff: name + PIN</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={onLogin} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="identifier">Phone / Name</Label>
-                <Input id="identifier" value={identifier} onChange={(e) => setIdentifier(e.target.value)} autoComplete="off" placeholder="Admin phone or staff name" />
+                <Label htmlFor="identifier">Name</Label>
+                <Input id="identifier" value={identifier} onChange={(e) => setIdentifier(e.target.value)} autoComplete="off" placeholder="Your name" />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="credential">Password / PIN</Label>

@@ -27,8 +27,8 @@ import { formatIntMoney, parseNonDecimalInt, fmtDate, fmtDateTime } from "@/feat
 import { writePdfFile, shareFile } from "@/features/files/sangi-folders";
 import { Capacitor } from "@capacitor/core";
 import { Plus, Trash2, Share2 } from "lucide-react";
-import { canMakeSale, incrementSaleCount } from "@/features/licensing/licensing-db";
-import { UpgradeDialog } from "@/features/licensing/UpgradeDialog";
+import { canMakeSale, incrementSaleCount, type SalesModule } from "@/features/licensing/licensing-db";
+import { AdRewardDialog } from "@/features/licensing/AdRewardDialog";
 
 export default function PosExpenses() {
   const { toast } = useToast();
@@ -42,9 +42,10 @@ export default function PosExpenses() {
   const [deleteTarget, setDeleteTarget] = React.useState<Expense | null>(null);
   const [showLabour, setShowLabour] = React.useState(false);
 
-  // Upgrade dialog
-  const [upgradeOpen, setUpgradeOpen] = React.useState(false);
-  const [upgradeMsg, setUpgradeMsg] = React.useState("");
+  // Ad reward dialog
+  const [adOpen, setAdOpen] = React.useState(false);
+  const [adMsg, setAdMsg] = React.useState("");
+  const [pendingSave, setPendingSave] = React.useState(false);
 
   // Form state
   const [expenseName, setExpenseName] = React.useState("");
@@ -199,8 +200,9 @@ export default function PosExpenses() {
       // License check
       const check = await canMakeSale("expenses");
       if (!check.allowed) {
-        setUpgradeMsg(check.message);
-        setUpgradeOpen(true);
+        setAdMsg(check.message);
+        setPendingSave(true);
+        setAdOpen(true);
         return;
       }
 
@@ -431,7 +433,13 @@ export default function PosExpenses() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-      <UpgradeDialog open={upgradeOpen} onOpenChange={setUpgradeOpen} message={upgradeMsg} />
+      <AdRewardDialog
+        open={adOpen}
+        onOpenChange={(v) => { setAdOpen(v); if (!v) setPendingSave(false); }}
+        module="expenses"
+        message={adMsg}
+        onRewarded={() => { if (pendingSave) void saveExpense(); }}
+      />
     </div>
   );
 }

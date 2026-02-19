@@ -23,7 +23,7 @@ import { useWorkPeriod } from "@/features/pos/WorkPeriodProvider";
 import { saveDeliveryCustomer } from "@/features/admin/delivery/delivery-customers";
 import { Play, Square, Printer, Save, Truck, ClipboardList, UtensilsCrossed, X, Share2, ScanBarcode } from "lucide-react";
 import { format } from "date-fns";
-import { UpgradeDialog } from "@/features/licensing/UpgradeDialog";
+import { AdRewardDialog } from "@/features/licensing/AdRewardDialog";
 import { Link } from "react-router-dom";
 
 type CartLine = {
@@ -82,9 +82,10 @@ export default function PosDashboard() {
   const [receiptOpen, setReceiptOpen] = React.useState(false);
   const [receiptOrder, setReceiptOrder] = React.useState<Order | null>(null);
 
-  // Upgrade dialog
-  const [upgradeOpen, setUpgradeOpen] = React.useState(false);
-  const [upgradeMsg, setUpgradeMsg] = React.useState("");
+  // Ad reward dialog
+  const [adOpen, setAdOpen] = React.useState(false);
+  const [adMsg, setAdMsg] = React.useState("");
+  const [adModule, setAdModule] = React.useState<"cash" | "credit" | "delivery">("cash");
 
   const [creditOpen, setCreditOpen] = React.useState(false);
   const [creditCustomerId, setCreditCustomerId] = React.useState<string>("");
@@ -634,12 +635,13 @@ export default function PosDashboard() {
     }
   };
 
-  /** Handle createOrder errors – show upgrade dialog if limit hit */
+  /** Handle createOrder errors – show ad dialog if limit hit */
   const handleSaleError = (e: any, fallbackTitle: string) => {
     const msg = e?.message ?? String(e);
     if (msg.startsWith("__UPGRADE__")) {
-      setUpgradeMsg(msg.replace("__UPGRADE__", ""));
-      setUpgradeOpen(true);
+      setAdMsg(msg.replace("__UPGRADE__", ""));
+      setAdModule("cash");
+      setAdOpen(true);
     } else {
       toast({ title: fallbackTitle, description: msg, variant: "destructive" });
     }
@@ -1482,7 +1484,13 @@ export default function PosDashboard() {
         />
       ) : null}
 
-      <UpgradeDialog open={upgradeOpen} onOpenChange={setUpgradeOpen} message={upgradeMsg} />
+      <AdRewardDialog
+        open={adOpen}
+        onOpenChange={setAdOpen}
+        module={adModule}
+        message={adMsg}
+        onRewarded={() => {}}
+      />
 
       {/* Cancel pending table order dialog */}
       <Dialog open={!!cancelTableOrderId} onOpenChange={(open) => { if (!open) setCancelTableOrderId(null); }}>
