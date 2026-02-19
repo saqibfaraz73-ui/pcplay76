@@ -88,16 +88,7 @@ const features = [
 export default function AboutApp() {
   const { toast } = useToast();
   const [tapCount, setTapCount] = React.useState(0);
-  const [devOverrideActive, setDevOverrideActive] = React.useState(false);
   const tapTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // Check current override state on mount
-  React.useEffect(() => {
-    void (async () => {
-      const rec = await (db as any).license.get("license");
-      setDevOverrideActive(!!rec?.devPremiumOverride);
-    })();
-  }, []);
 
   const handleVersionTap = () => {
     const next = tapCount + 1;
@@ -110,39 +101,32 @@ export default function AboutApp() {
       setTapCount(0);
       if (tapTimer.current) clearTimeout(tapTimer.current);
 
-      const pin = window.prompt(
-        devOverrideActive
-          ? "🔐 Enter PIN to manage premium override:\n(Premium is currently ACTIVE)"
-          : "🔐 Enter PIN to activate premium:"
-      );
-
+      const pin = window.prompt("🔐 Enter PIN:");
       if (pin !== UNLOCK_PIN) {
         if (pin !== null) toast({ title: "❌ Wrong PIN", variant: "destructive" });
         return;
       }
 
-      // PIN correct — if already active, ask to disable
-      if (devOverrideActive) {
-        const disable = window.confirm("✅ Premium override is currently ACTIVE.\n\nPress OK to DISABLE it, or Cancel to keep it enabled.");
-        void (async () => {
-          try {
-            const rec = await (db as any).license.get("license");
-            if (!rec) return;
-            if (disable) {
+      // Read DB directly to get real current state
+      void (async () => {
+        try {
+          const rec = await (db as any).license.get("license");
+          const isActive = !!(rec?.devPremiumOverride);
+
+          if (isActive) {
+            // Currently active — offer to disable
+            const choice = window.prompt(
+              "✅ Premium override is currently ACTIVE.\n\nType 'disable' to turn it OFF, or press Cancel to keep it ON:"
+            );
+            if (choice?.toLowerCase().trim() === "disable") {
               await (db as any).license.put({ ...rec, devPremiumOverride: false });
-              setDevOverrideActive(false);
-              toast({ title: "🔓 Premium Deactivated", description: "Dev override disabled." });
-            } else {
-              toast({ title: "✅ Premium remains active", description: "No changes made." });
+              toast({ title: "🔓 Premium Deactivated", description: "Dev override disabled. Restart if needed." });
+            } else if (choice !== null) {
+              toast({ title: "No changes made" });
             }
-          } catch (e: any) {
-            toast({ title: "Error", description: e?.message, variant: "destructive" });
-          }
-        })();
-      } else {
-        void (async () => {
-          try {
-            const rec = (await (db as any).license.get("license")) ?? {
+          } else {
+            // Not active — activate
+            const base = rec ?? {
               id: "license",
               cashSalesCount: 0, creditSalesCount: 0, deliverySalesCount: 0,
               tableSalesCount: 0, partyLodgeCount: 0, expensesCount: 0,
@@ -151,16 +135,15 @@ export default function AboutApp() {
               tableAdBonus: 0, partyAdBonus: 0, expensesAdBonus: 0,
               customPrintAdBonus: 0, labelPrintAdBonus: 0,
             };
-            await (db as any).license.put({ ...rec, devPremiumOverride: true });
-            setDevOverrideActive(true);
-            toast({ title: "✅ Premium Activated", description: "Dev premium override enabled. Restart if needed." });
-          } catch (e: any) {
-            toast({ title: "Error", description: e?.message, variant: "destructive" });
+            await (db as any).license.put({ ...base, devPremiumOverride: true });
+            toast({ title: "✅ Premium Activated", description: "Dev override enabled. Restart if needed." });
           }
-        })();
-      }
+        } catch (e: any) {
+          toast({ title: "Error", description: e?.message, variant: "destructive" });
+        }
+      })();
     } else if (next >= 4) {
-      toast({ title: `${UNLOCK_TAPS - next} more taps to unlock`, description: "" });
+      toast({ title: `${UNLOCK_TAPS - next} more taps to unlock` });
     }
   };
 
