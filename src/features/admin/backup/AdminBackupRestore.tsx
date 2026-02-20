@@ -9,7 +9,8 @@ import { Capacitor } from "@capacitor/core";
 import { Filesystem, Directory } from "@capacitor/filesystem";
 import { Share } from "@capacitor/share";
 import { markBackupDone } from "./BackupReminder";
-import { CloudUpload, Share2 } from "lucide-react";
+import { CloudUpload, Download, Share2 } from "lucide-react";
+import { saveTextFile as saveTextToDevice } from "@/features/pos/share-utils";
 
 type BackupPayloadV1 = {
   version: 1;
@@ -122,8 +123,8 @@ export function AdminBackupRestore() {
     return { fileName, content };
   };
 
-  /** Create backup and immediately open the share sheet (cache-based — no SAF folder picker) */
-  const backup = async () => {
+  /** Create backup and share via share sheet */
+  const backupAndShare = async () => {
     try {
       const { fileName, content } = await buildPayload();
       setLastBackupContent({ fileName, content });
@@ -131,9 +132,27 @@ export function AdminBackupRestore() {
       if (Capacitor.isNativePlatform()) {
         await shareTextViaCache(content, fileName);
       } else {
+        // Web: use Web Share API fallback
+        const blob = new Blob([content], { type: "application/json" });
+        const file = new File([blob], fileName, { type: "application/json" });
+        if (navigator.share) {
+          try { await navigator.share({ title: fileName, files: [file] }); return; } catch {}
+        }
         downloadTextFile(content, fileName);
         toast({ title: "Backup downloaded", description: fileName });
       }
+    } catch (e: any) {
+      toast({ title: "Backup failed", description: e?.message ?? String(e), variant: "destructive" });
+    }
+  };
+
+  /** Create backup and save to device storage */
+  const backupAndSave = async () => {
+    try {
+      const { fileName, content } = await buildPayload();
+      setLastBackupContent({ fileName, content });
+      markBackupDone();
+      await saveTextToDevice(content, fileName);
     } catch (e: any) {
       toast({ title: "Backup failed", description: e?.message ?? String(e), variant: "destructive" });
     }
@@ -237,9 +256,13 @@ export function AdminBackupRestore() {
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex flex-wrap gap-2">
-          <Button onClick={() => void backup()}>
+          <Button onClick={() => void backupAndSave()}>
+            <Download className="h-4 w-4 mr-1" />
+            Save Backup
+          </Button>
+          <Button variant="outline" onClick={() => void backupAndShare()}>
             <Share2 className="h-4 w-4 mr-1" />
-            Create &amp; Share Backup
+            Share Backup
           </Button>
           {lastBackupContent && (
             <Button variant="outline" onClick={() => void reshareBackup()}>

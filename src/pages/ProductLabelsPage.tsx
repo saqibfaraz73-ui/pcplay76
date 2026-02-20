@@ -13,7 +13,8 @@ import { generateLabelsZpl } from "@/features/labels/label-zpl";
 import { generateLabelsTspl } from "@/features/labels/label-tspl";
 import { isNativeAndroid, btConnect, btSend } from "@/features/pos/bluetooth-printer";
 import { usbSend } from "@/features/pos/usb-printer";
-import { sharePdfBlob, shareTextFile } from "@/features/pos/share-utils";
+import { sharePdfBlob, shareTextFile, savePdfBlob, saveTextFile } from "@/features/pos/share-utils";
+import { SaveShareMenu } from "@/components/SaveShareMenu";
 import { getBtAddress, getUsbDevice } from "@/features/pos/printer-routing";
 import * as XLSX from "xlsx";
 import { Button } from "@/components/ui/button";
@@ -711,33 +712,66 @@ export default function ProductLabelsPage() {
               Choose the format that matches your printer type.
             </p>
             <div className="flex flex-wrap gap-3">
-              <Button onClick={handlePdfDownload} variant="secondary" className="gap-2">
-                <Share2 className="h-4 w-4" /> Share A4 PDF
-              </Button>
+              <SaveShareMenu
+                label="A4 PDF"
+                variant="secondary"
+                size="default"
+                onSave={async () => {
+                  if (labelItems.length === 0) return;
+                  const check = await canMakeSale("labelPrint", totalLabels);
+                  if (!check.allowed) { setAdMsg(check.message); setPendingAction("pdf"); setAdOpen(true); return; }
+                  const blob = generateLabelPdfBlob(buildLabels());
+                  await savePdfBlob(blob, "product-labels");
+                  await incrementSaleCount("labelPrint", totalLabels); refreshUsage();
+                }}
+                onShare={handlePdfDownload}
+              />
             </div>
             <div className="flex flex-wrap gap-3">
-              <Button onClick={async () => {
-                if (labelItems.length === 0) return;
-                const check = await canMakeSale("labelPrint", totalLabels);
-                if (!check.allowed) { setAdMsg(check.message); setPendingAction(null); setAdOpen(true); return; }
-                const labels = buildLabels();
-                const zpl = generateLabelsZpl(labels);
-                await shareTextFile(zpl, `labels-${labels.length}.zpl`);
-                await incrementSaleCount("labelPrint", totalLabels); refreshUsage();
-              }} variant="outline" className="gap-2">
-                <Share2 className="h-4 w-4" /> Share ZPL
-              </Button>
-              <Button onClick={async () => {
-                if (labelItems.length === 0) return;
-                const check = await canMakeSale("labelPrint", totalLabels);
-                if (!check.allowed) { setAdMsg(check.message); setPendingAction(null); setAdOpen(true); return; }
-                const labels = buildLabels();
-                const tspl = generateLabelsTspl(labels);
-                await shareTextFile(tspl, `labels-${labels.length}.prn`);
-                await incrementSaleCount("labelPrint", totalLabels); refreshUsage();
-              }} variant="outline" className="gap-2">
-                <Share2 className="h-4 w-4" /> Share TSPL
-              </Button>
+              <SaveShareMenu
+                label="ZPL"
+                size="default"
+                onSave={async () => {
+                  if (labelItems.length === 0) return;
+                  const check = await canMakeSale("labelPrint", totalLabels);
+                  if (!check.allowed) { setAdMsg(check.message); setPendingAction(null); setAdOpen(true); return; }
+                  const labels = buildLabels();
+                  const zpl = generateLabelsZpl(labels);
+                  await saveTextFile(zpl, `labels-${labels.length}.zpl`);
+                  await incrementSaleCount("labelPrint", totalLabels); refreshUsage();
+                }}
+                onShare={async () => {
+                  if (labelItems.length === 0) return;
+                  const check = await canMakeSale("labelPrint", totalLabels);
+                  if (!check.allowed) { setAdMsg(check.message); setPendingAction(null); setAdOpen(true); return; }
+                  const labels = buildLabels();
+                  const zpl = generateLabelsZpl(labels);
+                  await shareTextFile(zpl, `labels-${labels.length}.zpl`);
+                  await incrementSaleCount("labelPrint", totalLabels); refreshUsage();
+                }}
+              />
+              <SaveShareMenu
+                label="TSPL"
+                size="default"
+                onSave={async () => {
+                  if (labelItems.length === 0) return;
+                  const check = await canMakeSale("labelPrint", totalLabels);
+                  if (!check.allowed) { setAdMsg(check.message); setPendingAction(null); setAdOpen(true); return; }
+                  const labels = buildLabels();
+                  const tspl = generateLabelsTspl(labels);
+                  await saveTextFile(tspl, `labels-${labels.length}.prn`);
+                  await incrementSaleCount("labelPrint", totalLabels); refreshUsage();
+                }}
+                onShare={async () => {
+                  if (labelItems.length === 0) return;
+                  const check = await canMakeSale("labelPrint", totalLabels);
+                  if (!check.allowed) { setAdMsg(check.message); setPendingAction(null); setAdOpen(true); return; }
+                  const labels = buildLabels();
+                  const tspl = generateLabelsTspl(labels);
+                  await shareTextFile(tspl, `labels-${labels.length}.prn`);
+                  await incrementSaleCount("labelPrint", totalLabels); refreshUsage();
+                }}
+              />
             </div>
             <div className="space-y-2">
               <p className="text-xs text-muted-foreground font-medium">Direct Print (sends to configured printer):</p>

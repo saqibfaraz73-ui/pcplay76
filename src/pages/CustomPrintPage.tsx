@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileText, Upload, Printer, Share2, Plus, Trash2, Eye, ImageIcon } from "lucide-react";
+import { FileText, Upload, Printer, Share2, Plus, Trash2, Eye, ImageIcon, Download } from "lucide-react";
 import { toast } from "sonner";
 import jsPDF from "jspdf";
 import { isNativeAndroid, btConnect, btSend } from "@/features/pos/bluetooth-printer";
@@ -14,7 +14,7 @@ import { usbSend } from "@/features/pos/usb-printer";
 import { db } from "@/db/appDb";
 import { canMakeSale, incrementSaleCount } from "@/features/licensing/licensing-db";
 import { AdRewardDialog } from "@/features/licensing/AdRewardDialog";
-import { sharePdfBlob, shareFileBlob } from "@/features/pos/share-utils";
+import { sharePdfBlob, shareFileBlob, savePdfBlob, saveFileBlob } from "@/features/pos/share-utils";
 
 interface ReceiptLine {
   id: string;
@@ -326,6 +326,19 @@ export default function CustomPrintPage() {
     }
   };
 
+  const saveReceipt = async () => {
+    try {
+      const check = await canMakeSale("customPrint");
+      if (!check.allowed) { setAdMsg(check.message); setPendingPrintAction("share"); setAdOpen(true); return; }
+      const doc = await buildReceiptPdf();
+      const blob = doc.output("blob");
+      await savePdfBlob(blob, title || "receipt");
+      await incrementSaleCount("customPrint");
+    } catch {
+      toast.error("Save failed");
+    }
+  };
+
   const shareReceipt = async () => {
     try {
       const check = await canMakeSale("customPrint");
@@ -471,6 +484,17 @@ export default function CustomPrintPage() {
     }
   };
 
+  const saveUploadedFile = async () => {
+    if (!uploadedFileUrl) return;
+    try {
+      const res = await fetch(uploadedFileUrl);
+      const blob = await res.blob();
+      await saveFileBlob(blob, uploadedFileName || "file");
+    } catch {
+      toast.error("Save failed");
+    }
+  };
+
   const shareUploadedFile = async () => {
     if (!uploadedFileUrl) return;
     try {
@@ -580,7 +604,8 @@ export default function CustomPrintPage() {
                 <div className="flex flex-wrap gap-2 pt-2">
                   <Button variant="outline" onClick={previewReceipt}><Eye className="h-4 w-4 mr-1" /> Preview</Button>
                   <Button variant="default" onClick={printReceipt}><Printer className="h-4 w-4 mr-1" /> Print</Button>
-                  <Button variant="secondary" onClick={shareReceipt}><Share2 className="h-4 w-4 mr-1" /> Share</Button>
+                  <Button variant="secondary" onClick={saveReceipt}><Download className="h-4 w-4 mr-1" /> Save</Button>
+                  <Button variant="outline" onClick={shareReceipt}><Share2 className="h-4 w-4 mr-1" /> Share</Button>
                 </div>
               </CardContent>
             </Card>
@@ -665,7 +690,8 @@ export default function CustomPrintPage() {
                   </div>
                   <div className="flex flex-wrap gap-2">
                     <Button variant="default" onClick={printUploadedFile}><Printer className="h-4 w-4 mr-1" /> Print</Button>
-                    <Button variant="secondary" onClick={shareUploadedFile}><Share2 className="h-4 w-4 mr-1" /> Share / Download</Button>
+                    <Button variant="secondary" onClick={saveUploadedFile}><Download className="h-4 w-4 mr-1" /> Save</Button>
+                    <Button variant="outline" onClick={shareUploadedFile}><Share2 className="h-4 w-4 mr-1" /> Share</Button>
                     <Button variant="outline" onClick={() => { setUploadedFileUrl(null); setUploadedFileName(""); setUploadedFileType(null); }}>
                       <Trash2 className="h-4 w-4 mr-1" /> Remove
                     </Button>

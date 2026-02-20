@@ -10,7 +10,8 @@ import type { CreditCustomer, DeliveryPerson, Expense, ExportCustomer, ExportSal
 import type { AdvanceOrder, BookingOrder } from "@/db/booking-schema";
 import { useToast } from "@/hooks/use-toast";
 import { formatIntMoney, fmtDate, fmtDateTime, fmtTime12 } from "@/features/pos/format";
-import { sharePdfBytes } from "@/features/pos/share-utils";
+import { sharePdfBytes, savePdfBytes } from "@/features/pos/share-utils";
+import { SaveShareMenu } from "@/components/SaveShareMenu";
 import { SalesReportPreview } from "@/features/admin/reports/SalesReportPreview";
 import { useAuth } from "@/auth/AuthProvider";
 
@@ -735,55 +736,69 @@ export function AdminReports() {
     }
   };
 
+  const buildSalesBytes = async () => {
+    let orders: Order[];
+    let expenses: Expense[];
+    let fromTs: number;
+    let toTs: number;
+    
+    if (filterType === "workPeriod" && selectedWorkPeriodId) {
+      orders = await fetchOrdersByWorkPeriod(selectedWorkPeriodId);
+      expenses = await fetchExpensesByWorkPeriod(selectedWorkPeriodId);
+      const wp = workPeriods.find((w) => w.id === selectedWorkPeriodId);
+      fromTs = wp?.startedAt ?? now;
+      toTs = wp?.endedAt ?? now;
+    } else {
+      fromTs = startOfDay(parseDateInput(from));
+      toTs = endOfDay(parseDateInput(to));
+      orders = await fetchOrdersInRange(fromTs, toTs);
+      expenses = await fetchExpensesInRange(fromTs, toTs);
+    }
+    
+    const tableOrders = filterType === "workPeriod" && selectedWorkPeriodId
+      ? await fetchTableOrdersByWorkPeriod(selectedWorkPeriodId)
+      : await fetchTableOrdersInRange(fromTs, toTs);
+
+    const expSales = await fetchExportSalesInRange(fromTs, toTs);
+    const advOrders = await fetchAdvanceOrdersInRange(fromTs, toTs);
+    const bkOrders = await fetchBookingOrdersInRange(fromTs, toTs);
+
+    const doc = buildSalesPdf({
+      restaurantName: settings?.restaurantName ?? "SANGI POS",
+      from: fromTs,
+      to: toTs,
+      orders,
+      customers,
+      deliveryPersons,
+      items,
+      expenses,
+      tableOrders,
+      tables,
+      waiters,
+      settings,
+      exportSales: expSales,
+      exportCustomers,
+      advanceOrders: advOrders,
+      bookingOrders: bkOrders,
+    });
+    const bytes = doc.output("arraybuffer");
+    const fileName = `sales_${toDateInputValue(fromTs)}_${toDateInputValue(toTs)}.pdf`;
+    return { bytes: new Uint8Array(bytes), fileName };
+  };
+
+  const saveSales = async () => {
+    try {
+      const { bytes, fileName } = await buildSalesBytes();
+      await savePdfBytes(bytes, fileName);
+    } catch (e: any) {
+      toast({ title: "Save failed", description: e?.message ?? String(e), variant: "destructive" });
+    }
+  };
+
   const exportSales = async () => {
     try {
-      let orders: Order[];
-      let expenses: Expense[];
-      let fromTs: number;
-      let toTs: number;
-      
-      if (filterType === "workPeriod" && selectedWorkPeriodId) {
-        orders = await fetchOrdersByWorkPeriod(selectedWorkPeriodId);
-        expenses = await fetchExpensesByWorkPeriod(selectedWorkPeriodId);
-        const wp = workPeriods.find((w) => w.id === selectedWorkPeriodId);
-        fromTs = wp?.startedAt ?? now;
-        toTs = wp?.endedAt ?? now;
-      } else {
-        fromTs = startOfDay(parseDateInput(from));
-        toTs = endOfDay(parseDateInput(to));
-        orders = await fetchOrdersInRange(fromTs, toTs);
-        expenses = await fetchExpensesInRange(fromTs, toTs);
-      }
-      
-      const tableOrders = filterType === "workPeriod" && selectedWorkPeriodId
-        ? await fetchTableOrdersByWorkPeriod(selectedWorkPeriodId)
-        : await fetchTableOrdersInRange(fromTs, toTs);
-
-      const expSales = await fetchExportSalesInRange(fromTs, toTs);
-      const advOrders = await fetchAdvanceOrdersInRange(fromTs, toTs);
-      const bkOrders = await fetchBookingOrdersInRange(fromTs, toTs);
-
-      const doc = buildSalesPdf({
-        restaurantName: settings?.restaurantName ?? "SANGI POS",
-        from: fromTs,
-        to: toTs,
-        orders,
-        customers,
-        deliveryPersons,
-        items,
-        expenses,
-        tableOrders,
-        tables,
-        waiters,
-        settings,
-        exportSales: expSales,
-        exportCustomers,
-        advanceOrders: advOrders,
-        bookingOrders: bkOrders,
-      });
-      const bytes = doc.output("arraybuffer");
-      const fileName = `sales_${toDateInputValue(fromTs)}_${toDateInputValue(toTs)}.pdf`;
-      await sharePdfBytes(new Uint8Array(bytes), fileName, "Sales Report");
+      const { bytes, fileName } = await buildSalesBytes();
+      await sharePdfBytes(bytes, fileName, "Sales Report");
       toast({ title: "Sales report exported", description: fileName });
     } catch (e: any) {
       toast({ title: "Export failed", description: e?.message ?? String(e), variant: "destructive" });
@@ -871,7 +886,7 @@ export function AdminReports() {
           <CardDescription>Export the sales report as PDF — matches the app view above (summary, credit customers, items sales).</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-wrap gap-2">
-          <Button onClick={() => void exportSales()}>Export &amp; Share PDF</Button>
+          <SaveShareMenu label="Sales PDF" onSave={() => void saveSales()} onShare={() => void exportSales()} />
         </CardContent>
       </Card>
     </div>

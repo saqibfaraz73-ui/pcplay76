@@ -5,10 +5,10 @@ import { Button } from "@/components/ui/button";
 import { formatIntMoney, fmtDateTime } from "@/features/pos/format";
 import { printReceiptFromOrder } from "@/features/pos/receipt-print";
 import { useToast } from "@/hooks/use-toast";
-import { Printer, Share2 } from "lucide-react";
+import { Printer, Download, Share2 } from "lucide-react";
 
 import jsPDF from "jspdf";
-import { sharePdfBytes } from "@/features/pos/share-utils";
+import { sharePdfBytes, savePdfBytes } from "@/features/pos/share-utils";
 import { db } from "@/db/appDb";
 import { format } from "date-fns";
 
@@ -150,18 +150,32 @@ export function ReceiptDialog({
     }
   }, [customerName, deliveryPersonName, order, toast]);
 
+  const getReceiptPdfBytes = React.useCallback(async () => {
+    const settings = await db.settings.get("app");
+    const receiptSize = settings?.receiptSize ?? "2x3";
+    const doc = buildReceiptPdf(order, { creditCustomerName: customerName, deliveryPersonName, receiptSize, settings: settings ?? null });
+    const bytes = new Uint8Array(doc.output("arraybuffer"));
+    const fileName = `receipt_${order.receiptNo}_${Date.now()}.pdf`;
+    return { bytes, fileName };
+  }, [customerName, deliveryPersonName, order]);
+
+  const onSave = React.useCallback(async () => {
+    try {
+      const { bytes, fileName } = await getReceiptPdfBytes();
+      await savePdfBytes(bytes, fileName);
+    } catch (e: any) {
+      toast({ title: "Could not save", description: e?.message ?? String(e), variant: "destructive" });
+    }
+  }, [getReceiptPdfBytes, toast]);
+
   const onShare = React.useCallback(async () => {
     try {
-      const settings = await db.settings.get("app");
-      const receiptSize = settings?.receiptSize ?? "2x3";
-      const doc = buildReceiptPdf(order, { creditCustomerName: customerName, deliveryPersonName, receiptSize, settings: settings ?? null });
-      const bytes = new Uint8Array(doc.output("arraybuffer"));
-      const fileName = `receipt_${order.receiptNo}_${Date.now()}.pdf`;
+      const { bytes, fileName } = await getReceiptPdfBytes();
       await sharePdfBytes(bytes, fileName, `Receipt #${order.receiptNo}`);
     } catch (e: any) {
       toast({ title: "Could not share", description: e?.message ?? String(e), variant: "destructive" });
     }
-  }, [customerName, deliveryPersonName, order, toast]);
+  }, [getReceiptPdfBytes, order, toast]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -273,6 +287,10 @@ export function ReceiptDialog({
         </div>
 
         <DialogFooter className="flex flex-wrap gap-2">
+          <Button variant="outline" onClick={onSave}>
+            <Download className="h-4 w-4 mr-1" />
+            Save PDF
+          </Button>
           <Button variant="outline" onClick={onShare}>
             <Share2 className="h-4 w-4 mr-1" />
             Share PDF

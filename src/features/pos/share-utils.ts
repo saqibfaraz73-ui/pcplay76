@@ -1,9 +1,8 @@
 /**
- * Shared utility for sharing files using native Capacitor Share or Web Share API.
+ * Shared utility for sharing AND saving files.
  *
- * On Android native (SAF): writes a temp file to the Cache directory and shares
- * that URI — this avoids triggering the SAF folder picker entirely.
- * On web: uses Web Share API or fallback download.
+ * save*  → writes to device Documents folder (native) or browser download (web)
+ * share* → opens native share sheet (native) or Web Share API (web)
  */
 import { toast } from "sonner";
 import { Capacitor } from "@capacitor/core";
@@ -26,9 +25,89 @@ async function blobToUint8(blob: Blob): Promise<Uint8Array> {
   return new Uint8Array(buffer);
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// SAVE TO DEVICE — writes to Documents folder on native, browser download on web
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Browser download fallback */
+function browserDownload(blob: Blob, fileName: string) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+/** Save raw bytes to device Documents folder */
+async function nativeSaveToDocuments(bytes: Uint8Array, fileName: string): Promise<void> {
+  const dir = "SangiPOS";
+  try {
+    await Filesystem.mkdir({ directory: Directory.Documents, path: dir, recursive: true });
+  } catch { /* exists */ }
+  await Filesystem.writeFile({
+    directory: Directory.Documents,
+    path: `${dir}/${fileName}`,
+    data: uint8ToBase64(bytes),
+    recursive: true,
+  });
+  toast.success(`Saved to Documents/SangiPOS/${fileName}`);
+}
+
+/** Save a PDF blob to device storage */
+export async function savePdfBlob(blob: Blob, name: string): Promise<void> {
+  const fileName = `${name}.pdf`;
+  if (Capacitor.isNativePlatform()) {
+    const bytes = await blobToUint8(blob);
+    await nativeSaveToDocuments(bytes, fileName);
+    return;
+  }
+  browserDownload(blob, fileName);
+  toast.success("File downloaded");
+}
+
+/** Save raw PDF bytes to device storage */
+export async function savePdfBytes(bytes: Uint8Array, fileName: string): Promise<void> {
+  if (Capacitor.isNativePlatform()) {
+    await nativeSaveToDocuments(bytes, fileName);
+    return;
+  }
+  const blob = new Blob([bytes.buffer as ArrayBuffer], { type: "application/pdf" });
+  browserDownload(blob, fileName);
+  toast.success("File downloaded");
+}
+
+/** Save any file blob to device storage */
+export async function saveFileBlob(blob: Blob, fileName: string): Promise<void> {
+  if (Capacitor.isNativePlatform()) {
+    const bytes = await blobToUint8(blob);
+    await nativeSaveToDocuments(bytes, fileName);
+    return;
+  }
+  browserDownload(blob, fileName);
+  toast.success("File downloaded");
+}
+
+/** Save text file to device storage */
+export async function saveTextFile(content: string, fileName: string): Promise<void> {
+  const blob = new Blob([content], { type: "application/octet-stream" });
+  if (Capacitor.isNativePlatform()) {
+    const bytes = await blobToUint8(blob);
+    await nativeSaveToDocuments(bytes, fileName);
+    return;
+  }
+  browserDownload(blob, fileName);
+  toast.success("File downloaded");
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SHARE — opens native share sheet or Web Share API
+// ─────────────────────────────────────────────────────────────────────────────
+
 /**
  * Share a file on native Android via a temp cache file.
- * Does NOT trigger the SAF folder picker — cache dir needs no permissions.
  */
 async function nativeShareViaCache(bytes: Uint8Array, fileName: string): Promise<void> {
   const tmpPath = `__share_tmp__/${fileName}`;
@@ -48,7 +127,7 @@ async function nativeShareViaCache(bytes: Uint8Array, fileName: string): Promise
   }
 }
 
-/** Share a PDF blob using native share (cache-based, no SAF) or web fallback */
+/** Share a PDF blob using native share or web fallback */
 export async function sharePdfBlob(blob: Blob, name: string): Promise<void> {
   const fileName = `${name}.pdf`;
   if (Capacitor.isNativePlatform()) {
@@ -60,7 +139,7 @@ export async function sharePdfBlob(blob: Blob, name: string): Promise<void> {
   await webShareFile(file, name);
 }
 
-/** Share raw PDF bytes on native (cache-based) or download on web */
+/** Share raw PDF bytes on native or download on web */
 export async function sharePdfBytes(bytes: Uint8Array, fileName: string, title?: string): Promise<void> {
   if (Capacitor.isNativePlatform()) {
     await nativeShareViaCache(bytes, fileName);
@@ -71,7 +150,7 @@ export async function sharePdfBytes(bytes: Uint8Array, fileName: string, title?:
   await webShareFile(file, title ?? fileName);
 }
 
-/** Share any file blob using native share (cache-based) or fallback */
+/** Share any file blob using native share or fallback */
 export async function shareFileBlob(blob: Blob, fileName: string): Promise<void> {
   if (Capacitor.isNativePlatform()) {
     const bytes = await blobToUint8(blob);
@@ -89,7 +168,7 @@ async function webShareFile(file: File, title: string): Promise<void> {
       await navigator.share({ title, files: [file] });
       return;
     } catch (err: any) {
-      if (err?.name === "AbortError") return; // user dismissed — don't download
+      if (err?.name === "AbortError") return;
       try {
         const url = URL.createObjectURL(file);
         await navigator.share({ title, url });
@@ -101,14 +180,7 @@ async function webShareFile(file: File, title: string): Promise<void> {
     }
   }
   // Last resort: trigger download
-  const url = URL.createObjectURL(file);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = file.name;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  browserDownload(file, file.name);
   toast.success("File downloaded");
 }
 

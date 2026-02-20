@@ -11,7 +11,8 @@ import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { db } from "@/db/appDb";
 import type { InventoryAdjustment, MenuItem, Settings } from "@/db/schema";
-import { sharePdfBytes } from "@/features/pos/share-utils";
+import { sharePdfBytes, savePdfBytes } from "@/features/pos/share-utils";
+import { SaveShareMenu } from "@/components/SaveShareMenu";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
@@ -123,19 +124,33 @@ export function AdminInventoryAdjustments() {
     .filter((r) => r.adj.createdAt >= fromTs && r.adj.createdAt <= toTs)
     .sort((a, b) => b.adj.createdAt - a.adj.createdAt);
 
+  const buildAdjBytes = async () => {
+    const itemName = itemId ? items.find((i) => i.id === itemId)?.name ?? itemId : "All items";
+    const doc = buildPdf({
+      restaurantName: settings?.restaurantName ?? "SANGI POS",
+      from: startOfDay(from),
+      to: endOfDay(to),
+      itemName,
+      rows: filtered,
+    });
+    const bytes = doc.output("arraybuffer");
+    const fileName = `inventory_adjustments_${format(from, "yyyy-MM-dd")}_${format(to, "yyyy-MM-dd")}.pdf`;
+    return { bytes: new Uint8Array(bytes), fileName };
+  };
+
+  const savePdf = async () => {
+    try {
+      const { bytes, fileName } = await buildAdjBytes();
+      await savePdfBytes(bytes, fileName);
+    } catch (e: any) {
+      toast({ title: "Save failed", description: e?.message ?? String(e), variant: "destructive" });
+    }
+  };
+
   const exportPdf = async () => {
     try {
-      const itemName = itemId ? items.find((i) => i.id === itemId)?.name ?? itemId : "All items";
-      const doc = buildPdf({
-        restaurantName: settings?.restaurantName ?? "SANGI POS",
-        from: startOfDay(from),
-        to: endOfDay(to),
-        itemName,
-        rows: filtered,
-      });
-      const bytes = doc.output("arraybuffer");
-      const fileName = `inventory_adjustments_${format(from, "yyyy-MM-dd")}_${format(to, "yyyy-MM-dd")}.pdf`;
-      await sharePdfBytes(new Uint8Array(bytes), fileName, "Inventory Adjustments");
+      const { bytes, fileName } = await buildAdjBytes();
+      await sharePdfBytes(bytes, fileName, "Inventory Adjustments");
       toast({ title: "Exported", description: fileName });
     } catch (e: any) {
       toast({ title: "Export failed", description: e?.message ?? String(e), variant: "destructive" });
@@ -174,7 +189,7 @@ export function AdminInventoryAdjustments() {
           </div>
 
           <div className="flex flex-wrap gap-2">
-            <Button onClick={() => void exportPdf()}>Export &amp; Share PDF</Button>
+            <SaveShareMenu label="Adjustments PDF" onSave={() => void savePdf()} onShare={() => void exportPdf()} />
             <Button variant="outline" onClick={() => void refresh()}>
               Refresh
             </Button>
