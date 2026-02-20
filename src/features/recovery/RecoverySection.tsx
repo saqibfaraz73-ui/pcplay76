@@ -298,9 +298,14 @@ export function RecoverySection() {
 
   // ── Share/Print receipt ──
   const shareReceipt = async (cust: RecoveryCustomer, pay: RecoveryPayment) => {
-    const text = [
-      businessName,
-      `--- PAYMENT RECEIPT ---`,
+    const doc = new jsPDF({ unit: "mm", format: [80, 120] });
+    doc.setFontSize(12);
+    doc.text(businessName, 40, 8, { align: "center" });
+    doc.setFontSize(10);
+    doc.text("PAYMENT RECEIPT", 40, 14, { align: "center" });
+    doc.setFontSize(9);
+    let y = 22;
+    const lines = [
       `Receipt #: ${pay.receiptNo ?? "N/A"}`,
       `Customer: ${cust.name}`,
       `Package: ${cust.pkg ?? "N/A"}`,
@@ -309,14 +314,16 @@ export function RecoverySection() {
       `Month: ${pay.month}`,
       `Agent: ${pay.agentName}`,
       `Date: ${format(pay.createdAt, "dd/MM/yyyy hh:mm a")}`,
-      `------------------------`,
-    ].join("\n");
+    ];
+    for (const l of lines) { doc.text(l, 5, y); y += 6; }
+    const fileName = `receipt_${pay.receiptNo ?? pay.id}.pdf`;
+    const bytes = new Uint8Array(doc.output("arraybuffer"));
+    await sharePdfBytes(bytes, fileName, `Receipt - ${cust.name}`);
+  };
+
+  const printReceipt = async (cust: RecoveryCustomer, pay: RecoveryPayment) => {
     if (Capacitor.isNativePlatform()) {
-      const { Share } = await import("@capacitor/share");
-      try { await Share.share({ title: "Payment Receipt", text }); } catch { /* cancelled */ }
-    } else {
-      // Generate PDF on web
-      const { jsPDF } = await import("jspdf");
+      // On native, generate PDF and open share sheet (user can print from there)
       const doc = new jsPDF({ unit: "mm", format: [80, 120] });
       doc.setFontSize(12);
       doc.text(businessName, 40, 8, { align: "center" });
@@ -335,12 +342,12 @@ export function RecoverySection() {
         `Date: ${format(pay.createdAt, "dd/MM/yyyy hh:mm a")}`,
       ];
       for (const l of lines) { doc.text(l, 5, y); y += 6; }
-      doc.save(`receipt_${pay.receiptNo ?? pay.id}.pdf`);
-      toast({ title: "Receipt PDF downloaded" });
+      const fileName = `receipt_${pay.receiptNo ?? pay.id}.pdf`;
+      const bytes = new Uint8Array(doc.output("arraybuffer"));
+      await sharePdfBytes(bytes, fileName, `Receipt - ${cust.name}`);
+      return;
     }
-  };
-
-  const printReceipt = (cust: RecoveryCustomer, pay: RecoveryPayment) => {
+    // Web fallback - print dialog
     const w = window.open("", "_blank", "width=350,height=500");
     if (!w) return;
     w.document.write(`<html><head><title>Receipt</title><style>body{font-family:monospace;font-size:12px;padding:10px}h3{text-align:center;margin:0}h2{text-align:center;margin:0 0 4px}</style></head><body>
