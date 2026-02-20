@@ -249,8 +249,9 @@ export default function PosHome() {
         />
         <div className="flex-1">
           <h1 className="text-xl font-bold text-foreground">
-            Welcome, {session?.username}!
+            Dashboard
           </h1>
+          <p className="text-xs text-muted-foreground">Welcome, {session?.username}!</p>
           <p className="text-sm text-muted-foreground">
             {businessName} — {todayStr}
           </p>

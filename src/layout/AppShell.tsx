@@ -24,7 +24,7 @@ import { showInterstitialAd } from "@/features/licensing/admob-ads";
 import { getLicense } from "@/features/licensing/licensing-db";
 
 const navItems = [
-  { to: "/home", label: "Home", icon: Home },
+  { to: "/home", label: "Dashboard", icon: Home },
   { to: "/admin", label: "Admin", icon: ClipboardList, adminOnly: true },
 ];
 
@@ -170,10 +170,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                           {/* Dashboard link for waiter/agent who have no main nav */}
                           {(isWaiter || isRecoveryAgent) && (
                             <Link
-                              to={isRecoveryAgent ? "/recovery" : "/home"}
+                              to={isRecoveryAgent ? "/recovery" : isWaiter ? "/pos/tables" : "/home"}
                               className={cn(
                                 "flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors",
-                                isActive(isRecoveryAgent ? "/recovery" : "/home")
+                                isActive(isRecoveryAgent ? "/recovery" : isWaiter ? "/pos/tables" : "/home")
                                   ? "bg-accent text-accent-foreground"
                                   : "text-muted-foreground hover:text-foreground",
                               )}
@@ -316,10 +316,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   {/* Dashboard link for waiter/agent */}
                   {(isWaiter || isRecoveryAgent) && (
                     <Link
-                      to={isRecoveryAgent ? "/recovery" : "/home"}
+                      to={isRecoveryAgent ? "/recovery" : isWaiter ? "/pos/tables" : "/home"}
                       className={cn(
                         "rounded-md px-3 py-2 text-sm transition-colors",
-                        isActive(isRecoveryAgent ? "/recovery" : "/home")
+                        isActive(isRecoveryAgent ? "/recovery" : isWaiter ? "/pos/tables" : "/home")
                           ? "bg-accent text-accent-foreground"
                           : "text-muted-foreground hover:text-foreground",
                       )}
