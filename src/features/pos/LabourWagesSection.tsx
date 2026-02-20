@@ -577,11 +577,11 @@ export default function LabourWagesSection({ workPeriodId, onBack }: Props) {
     return { bytes: new Uint8Array(bytes), fileName };
   };
 
-  const saveLabourPdf = async (labour: Labour) => {
+  const saveLabourPdf = async (labour: Labour, overrideName?: string) => {
     try {
       const result = await buildLabourPdfBytes(labour);
       if (!result) return;
-      await savePdfBytes(result.bytes, result.fileName);
+      await savePdfBytes(result.bytes, overrideName ?? result.fileName);
     } catch (e: any) {
       toast({ title: "Save failed", description: e?.message ?? String(e), variant: "destructive" });
     }
@@ -733,7 +733,7 @@ export default function LabourWagesSection({ workPeriodId, onBack }: Props) {
               {fresh.hourlyRate ? ` • ${formatIntMoney(fresh.hourlyRate)}/hr` : ""}
             </p>
           </div>
-          <SaveShareMenu label="Export" size="sm" onSave={() => void saveLabourPdf(fresh)} onShare={() => void shareLabourPdf(fresh)} />
+          <SaveShareMenu label="Export" size="sm" getDefaultFileName={() => `${fresh.name}-wage-log-${txFilterFrom}-${txFilterTo}.pdf`} onSave={(fn) => void saveLabourPdf(fresh, fn)} onShare={() => void shareLabourPdf(fresh)} />
           <Button variant="outline" size="sm" onClick={() => openEditLabour(fresh)}>Edit</Button>
         </div>
 
@@ -885,7 +885,7 @@ export default function LabourWagesSection({ workPeriodId, onBack }: Props) {
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-muted-foreground">{labourTxs.length} transactions • Total paid: {formatIntMoney(labourTxsTotal)}</span>
-                  <SaveShareMenu label="Wage PDF" size="sm" onSave={() => void saveLabourPdf(fresh)} onShare={() => void shareLabourPdf(fresh)} disabled={labourTxs.length === 0} />
+                  <SaveShareMenu label="Wage PDF" size="sm" getDefaultFileName={() => `${fresh.name}-wage-log-${txFilterFrom}-${txFilterTo}.pdf`} onSave={(fn) => void saveLabourPdf(fresh, fn)} onShare={() => void shareLabourPdf(fresh)} disabled={labourTxs.length === 0} />
                 </div>
                 {labourTxs.length === 0 ? (
                   <div className="text-sm text-muted-foreground">No transactions in this date range.</div>

@@ -692,13 +692,13 @@ export default function PosPartyLodge() {
     return doc;
   };
 
-  const saveArrivalsPdf = async () => {
+  const saveArrivalsPdf = async (overrideName?: string) => {
     try {
       if (arrivals.length === 0) { toast({ title: "No arrivals to export", variant: "destructive" }); return; }
       const doc = buildArrivalsReportPdf();
       const bytes = doc.output("arraybuffer");
       const fileName = `arrivals_report_${filterFrom}_${filterTo}.pdf`;
-      await savePdfBytes(new Uint8Array(bytes), fileName);
+      await savePdfBytes(new Uint8Array(bytes), overrideName ?? fileName);
     } catch (e: any) {
       toast({ title: "Save failed", description: e?.message ?? String(e), variant: "destructive" });
     }
@@ -801,13 +801,13 @@ export default function PosPartyLodge() {
     return doc;
   };
 
-  const savePaymentsPdf = async () => {
+  const savePaymentsPdf = async (overrideName?: string) => {
     try {
       if (payments.length === 0) { toast({ title: "No payments to export", variant: "destructive" }); return; }
       const doc = buildPaymentsReportPdf();
       const bytes = doc.output("arraybuffer");
       const fileName = `payments_report_${filterFrom}_${filterTo}.pdf`;
-      await savePdfBytes(new Uint8Array(bytes), fileName);
+      await savePdfBytes(new Uint8Array(bytes), overrideName ?? fileName);
     } catch (e: any) {
       toast({ title: "Save failed", description: e?.message ?? String(e), variant: "destructive" });
     }
@@ -881,13 +881,13 @@ export default function PosPartyLodge() {
     return doc;
   };
 
-  const saveSingleArrivalsPdf = async (sup: Supplier) => {
+  const saveSingleArrivalsPdf = async (sup: Supplier, overrideName?: string) => {
     try {
       const doc = buildSingleArrivalsPdf(sup);
       const bytes = doc.output("arraybuffer");
       const safeName = sup.name.replace(/[^a-zA-Z0-9]/g, "_").slice(0, 30);
       const fileName = `arrivals_${safeName}_${filterFrom}_${filterTo}.pdf`;
-      await savePdfBytes(new Uint8Array(bytes), fileName);
+      await savePdfBytes(new Uint8Array(bytes), overrideName ?? fileName);
     } catch (e: any) {
       toast({ title: "Save failed", description: e?.message ?? String(e), variant: "destructive" });
     }
@@ -931,13 +931,13 @@ export default function PosPartyLodge() {
     }
   };
 
-  const saveSingleSupplierPdf = async (sup: Supplier) => {
+  const saveSingleSupplierPdf = async (sup: Supplier, overrideName?: string) => {
     try {
       const doc = buildSingleSupplierPdf(sup);
       const bytes = doc.output("arraybuffer");
       const safeName = sup.name.replace(/[^a-zA-Z0-9]/g, "_").slice(0, 30);
       const fileName = `supplier_${safeName}_${filterFrom}_${filterTo}.pdf`;
-      await savePdfBytes(new Uint8Array(bytes), fileName);
+      await savePdfBytes(new Uint8Array(bytes), overrideName ?? fileName);
     } catch (e: any) {
       toast({ title: "Save failed", description: e?.message ?? String(e), variant: "destructive" });
     }
@@ -955,13 +955,13 @@ export default function PosPartyLodge() {
     }
   };
 
-  const savePartyPdf = async () => {
+  const savePartyPdf = async (overrideName?: string) => {
     try {
       if (suppliers.length === 0) { toast({ title: "No suppliers to export", variant: "destructive" }); return; }
       const doc = buildPartyPdf();
       const bytes = doc.output("arraybuffer");
       const fileName = `party_lodge_${filterFrom}_${filterTo}.pdf`;
-      await savePdfBytes(new Uint8Array(bytes), fileName);
+      await savePdfBytes(new Uint8Array(bytes), overrideName ?? fileName);
     } catch (e: any) {
       toast({ title: "Save failed", description: e?.message ?? String(e), variant: "destructive" });
     }
@@ -1174,8 +1174,8 @@ export default function PosPartyLodge() {
                     <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => openEdit(sup)}>
                       Edit
                     </Button>
-                    <SaveShareMenu label="PDF" size="sm" className="text-xs h-7" onSave={() => void saveSingleSupplierPdf(sup)} onShare={() => void shareSingleSupplierPdf(sup)} />
-                    <SaveShareMenu label="Arrivals" size="sm" className="text-xs h-7" onSave={() => void saveSingleArrivalsPdf(sup)} onShare={() => void shareSingleArrivalsPdf(sup)} />
+                    <SaveShareMenu label="PDF" size="sm" className="text-xs h-7" getDefaultFileName={() => { const s = sup.name.replace(/[^a-zA-Z0-9]/g, "_").slice(0, 30); return `supplier_${s}_${filterFrom}_${filterTo}.pdf`; }} onSave={(fn) => void saveSingleSupplierPdf(sup, fn)} onShare={() => void shareSingleSupplierPdf(sup)} />
+                    <SaveShareMenu label="Arrivals" size="sm" className="text-xs h-7" getDefaultFileName={() => { const s = sup.name.replace(/[^a-zA-Z0-9]/g, "_").slice(0, 30); return `arrivals_${s}_${filterFrom}_${filterTo}.pdf`; }} onSave={(fn) => void saveSingleArrivalsPdf(sup, fn)} onShare={() => void shareSingleArrivalsPdf(sup)} />
                     <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => downloadPartyImportTemplate(sup.name)} title="Download import template">
                       <Download className="h-3 w-3 mr-1" />
                       Template
@@ -1308,9 +1308,9 @@ export default function PosPartyLodge() {
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
-            <SaveShareMenu label="Full PDF" onSave={() => void savePartyPdf()} onShare={() => void sharePartyPdf()} disabled={suppliers.length === 0} />
-            <SaveShareMenu label="Arrivals PDF" onSave={() => void saveArrivalsPdf()} onShare={() => void shareArrivalsPdf()} disabled={arrivals.length === 0} />
-            <SaveShareMenu label="Payments PDF" onSave={() => void savePaymentsPdf()} onShare={() => void sharePaymentsPdf()} disabled={payments.length === 0} />
+            <SaveShareMenu label="Full PDF" getDefaultFileName={() => `party_lodge_${filterFrom}_${filterTo}.pdf`} onSave={(fn) => void savePartyPdf(fn)} onShare={() => void sharePartyPdf()} disabled={suppliers.length === 0} />
+            <SaveShareMenu label="Arrivals PDF" getDefaultFileName={() => `arrivals_report_${filterFrom}_${filterTo}.pdf`} onSave={(fn) => void saveArrivalsPdf(fn)} onShare={() => void shareArrivalsPdf()} disabled={arrivals.length === 0} />
+            <SaveShareMenu label="Payments PDF" getDefaultFileName={() => `payments_report_${filterFrom}_${filterTo}.pdf`} onSave={(fn) => void savePaymentsPdf(fn)} onShare={() => void sharePaymentsPdf()} disabled={payments.length === 0} />
             <Button variant="outline" size="sm" onClick={() => void exportPartyExcel()} disabled={suppliers.length === 0}>
               <FileSpreadsheet className="h-4 w-4 mr-1" />
               Export Excel

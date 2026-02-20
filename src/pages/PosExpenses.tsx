@@ -167,10 +167,10 @@ export default function PosExpenses() {
     return { bytes: new Uint8Array(bytes), fileName };
   };
 
-  const saveExpensesPdf = async () => {
+  const saveExpensesPdf = async (overrideName?: string) => {
     try {
       const { bytes, fileName } = await buildExpensesBytes();
-      await savePdfBytes(bytes, fileName);
+      await savePdfBytes(bytes, overrideName ?? fileName);
     } catch (e: any) {
       toast({ title: "Save failed", description: e?.message ?? String(e), variant: "destructive" });
     }
@@ -293,7 +293,8 @@ export default function PosExpenses() {
             <span className="text-sm text-muted-foreground">{filteredExpenses.length} expenses • {formatIntMoney(filteredTotal)}</span>
             <SaveShareMenu
               label="Expenses PDF"
-              onSave={() => void saveExpensesPdf()}
+              getDefaultFileName={() => `expenses_${filterFrom}_${filterTo}.pdf`}
+              onSave={(fn) => void saveExpensesPdf(fn)}
               onShare={() => void shareExpensesPdf()}
               disabled={filteredExpenses.length === 0}
             />

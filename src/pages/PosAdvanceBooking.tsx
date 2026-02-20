@@ -108,10 +108,10 @@ function AdvanceLodgeSection({ advanceOrders, settings }: { advanceOrders: Advan
     return { bytes: new Uint8Array(bytes), fileName };
   };
 
-  const savePdf = async () => {
+  const savePdf = async (overrideName?: string) => {
     try {
       const { bytes, fileName } = await buildAdvanceBytes();
-      await savePdfBytes(bytes, fileName);
+      await savePdfBytes(bytes, overrideName ?? fileName);
     } catch (e: any) {
       toast({ title: "Save failed", description: e?.message, variant: "destructive" });
     }
@@ -144,7 +144,7 @@ function AdvanceLodgeSection({ advanceOrders, settings }: { advanceOrders: Advan
               <Input type="date" value={lodgeTo} onChange={(e) => setLodgeTo(e.target.value)} />
             </div>
           </div>
-          <SaveShareMenu label="Lodge PDF" size="sm" className="w-full sm:w-auto" onSave={() => void savePdf()} onShare={() => void sharePdf()} />
+          <SaveShareMenu label="Lodge PDF" size="sm" className="w-full sm:w-auto" getDefaultFileName={() => `advance_lodge_${lodgeFrom}_${lodgeTo}.pdf`} onSave={(fn) => void savePdf(fn)} onShare={() => void sharePdf()} />
         </div>
 
         {filteredOrders.length > 0 && (
@@ -215,10 +215,10 @@ function BookingLodgeSection({ bookingOrders, settings }: { bookingOrders: Booki
     return { bytes: new Uint8Array(bytes), fileName };
   };
 
-  const saveBookingPdf = async () => {
+  const saveBookingPdf = async (overrideName?: string) => {
     try {
       const { bytes, fileName } = await buildBookingBytes();
-      await savePdfBytes(bytes, fileName);
+      await savePdfBytes(bytes, overrideName ?? fileName);
     } catch (e: any) {
       toast({ title: "Save failed", description: e?.message, variant: "destructive" });
     }
@@ -251,7 +251,7 @@ function BookingLodgeSection({ bookingOrders, settings }: { bookingOrders: Booki
               <Input type="date" value={lodgeTo} onChange={(e) => setLodgeTo(e.target.value)} />
             </div>
           </div>
-          <SaveShareMenu label="Booking PDF" size="sm" className="w-full sm:w-auto" onSave={() => void saveBookingPdf()} onShare={() => void sharePdf()} />
+          <SaveShareMenu label="Booking PDF" size="sm" className="w-full sm:w-auto" getDefaultFileName={() => `booking_lodge_${lodgeFrom}_${lodgeTo}.pdf`} onSave={(fn) => void saveBookingPdf(fn)} onShare={() => void sharePdf()} />
         </div>
 
         {filteredBookings.length > 0 && (

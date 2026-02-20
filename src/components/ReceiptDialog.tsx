@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { formatIntMoney, fmtDateTime } from "@/features/pos/format";
 import { printReceiptFromOrder } from "@/features/pos/receipt-print";
 import { useToast } from "@/hooks/use-toast";
-import { Printer, Download, Share2 } from "lucide-react";
+import { Printer } from "lucide-react";
+import { SaveShareMenu } from "@/components/SaveShareMenu";
 
 import jsPDF from "jspdf";
 import { sharePdfBytes, savePdfBytes } from "@/features/pos/share-utils";
@@ -159,10 +160,10 @@ export function ReceiptDialog({
     return { bytes, fileName };
   }, [customerName, deliveryPersonName, order]);
 
-  const onSave = React.useCallback(async () => {
+  const onSave = React.useCallback(async (overrideName?: string) => {
     try {
       const { bytes, fileName } = await getReceiptPdfBytes();
-      await savePdfBytes(bytes, fileName);
+      await savePdfBytes(bytes, overrideName ?? fileName);
     } catch (e: any) {
       toast({ title: "Could not save", description: e?.message ?? String(e), variant: "destructive" });
     }
@@ -287,14 +288,12 @@ export function ReceiptDialog({
         </div>
 
         <DialogFooter className="flex flex-wrap gap-2">
-          <Button variant="outline" onClick={onSave}>
-            <Download className="h-4 w-4 mr-1" />
-            Save PDF
-          </Button>
-          <Button variant="outline" onClick={onShare}>
-            <Share2 className="h-4 w-4 mr-1" />
-            Share PDF
-          </Button>
+          <SaveShareMenu
+            label="Receipt PDF"
+            getDefaultFileName={() => `receipt_${order.receiptNo}_${Date.now()}.pdf`}
+            onSave={(fn) => void onSave(fn)}
+            onShare={() => void onShare()}
+          />
           <Button variant="outline" onClick={() => void onPrint()}>
             <Printer className="h-4 w-4 mr-1" />
             Print
