@@ -364,9 +364,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                         </Link>
                       ))
                     : null}
-                  <Link to="/custom-print" className={cn("rounded-md px-3 py-2 text-sm transition-colors", isActive("/custom-print") ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground")}>
-                    Custom Print
-                  </Link>
+                  {!isWaiter && !isRecoveryAgent && (
+                    <Link to="/custom-print" className={cn("rounded-md px-3 py-2 text-sm transition-colors", isActive("/custom-print") ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground")}>
+                      Custom Print
+                    </Link>
+                  )}
                   <Link to="/about" className={cn("rounded-md px-3 py-2 text-sm transition-colors", isActive("/about") ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground")}>
                     About
                   </Link>
