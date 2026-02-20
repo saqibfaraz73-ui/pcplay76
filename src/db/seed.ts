@@ -64,6 +64,18 @@ export async function ensureSeedData() {
       printerConnection: "none",
       printerName: undefined,
       printerAddress: undefined,
+      // All sections enabled by default — user can disable from Settings
+      deliveryEnabled: true,
+      tableManagementEnabled: true,
+      advanceBookingEnabled: true,
+      recoveryEnabled: true,
+      salesDashboardEnabled: true,
+      syncEnabled: true,
+      expiryDateEnabled: true,
+      skuSearchEnabled: true,
+      cashierReportsEnabled: true,
+      cashierCancelOrderEnabled: true,
+      cashierEndWorkPeriodPendingCheck: true,
       updatedAt: now,
     };
     await db.settings.put(settings);
