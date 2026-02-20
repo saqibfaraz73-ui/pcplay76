@@ -57,6 +57,11 @@ export function WorkPeriodProvider({ children }: { children: React.ReactNode }) 
     setCurrentWorkPeriod(null);
   }, [currentWorkPeriod]);
 
+  // Auto-load active work period on mount
+  React.useEffect(() => {
+    refreshWorkPeriod();
+  }, [refreshWorkPeriod]);
+
   const isWorkPeriodActive = currentWorkPeriod !== null && !currentWorkPeriod.isClosed;
 
   const value = React.useMemo<WorkPeriodContextValue>(
