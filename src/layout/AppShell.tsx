@@ -167,6 +167,21 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                       </SheetHeader>
                       <div className="mt-4 space-y-4">
                         <nav className="grid gap-1">
+                          {/* Dashboard link for waiter/agent who have no main nav */}
+                          {(isWaiter || isRecoveryAgent) && (
+                            <Link
+                              to={isRecoveryAgent ? "/recovery" : "/pos/tables"}
+                              className={cn(
+                                "flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors",
+                                isActive(isRecoveryAgent ? "/recovery" : "/pos/tables")
+                                  ? "bg-accent text-accent-foreground"
+                                  : "text-muted-foreground hover:text-foreground",
+                              )}
+                            >
+                              <Home className="h-4 w-4" />
+                              Dashboard
+                            </Link>
+                          )}
                           {visibleNavItems.map((n) => {
                             const Icon = n.icon;
                             return (
@@ -298,6 +313,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 </div>
 
                 <nav className="hidden items-center gap-2 md:flex">
+                  {/* Dashboard link for waiter/agent */}
+                  {(isWaiter || isRecoveryAgent) && (
+                    <Link
+                      to={isRecoveryAgent ? "/recovery" : "/pos/tables"}
+                      className={cn(
+                        "rounded-md px-3 py-2 text-sm transition-colors",
+                        isActive(isRecoveryAgent ? "/recovery" : "/pos/tables")
+                          ? "bg-accent text-accent-foreground"
+                          : "text-muted-foreground hover:text-foreground",
+                      )}
+                    >
+                      Dashboard
+                    </Link>
+                  )}
                   {visibleNavItems.map((n) => (
                     <Link
                       key={n.to}
