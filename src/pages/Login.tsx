@@ -63,7 +63,7 @@ export default function Login() {
 
   React.useEffect(() => {
     if (!session) return;
-    navigate("/home", { replace: true });
+    navigate(session.role === "recovery" ? "/recovery" : "/home", { replace: true });
   }, [navigate, session]);
 
   const onRegister = async (e: React.FormEvent) => {
@@ -107,7 +107,7 @@ export default function Login() {
         toast({ title: "Login failed", description: "Wrong credentials." });
         return;
       }
-      navigate("/home", { replace: true });
+      navigate(result.role === "recovery" ? "/recovery" : "/home", { replace: true });
     } finally {
       setLoading(false);
     }

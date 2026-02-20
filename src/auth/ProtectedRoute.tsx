@@ -11,7 +11,10 @@ export function ProtectedRoute({ allow, children }: { allow: UserRole[]; childre
     return <Navigate to="/login" replace state={{ from: location.pathname }} />;
   }
   if (!allow.includes(session.role)) {
-    return <Navigate to={session.role === "waiter" || session.role === "supervisor" ? "/pos/tables" : "/pos"} replace />;
+    const fallback = session.role === "recovery" ? "/recovery"
+      : session.role === "waiter" || session.role === "supervisor" ? "/pos/tables"
+      : "/pos";
+    return <Navigate to={fallback} replace />;
   }
   return <>{children}</>;
 }
