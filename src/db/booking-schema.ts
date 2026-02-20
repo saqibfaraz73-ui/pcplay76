@@ -43,12 +43,15 @@ export type BookableItem = {
 
 export type BookingOrderStatus = "pending" | "completed" | "cancelled";
 
+export type BookingLabel = "Booking" | "Appointment";
+
 export type BookingOrder = {
   id: string;
   receiptNo: number;
   bookableItemId: string;
   bookableItemName: string;
   status: BookingOrderStatus;
+  label?: BookingLabel; // "Booking" (default) or "Appointment"
   date: number; // date as timestamp (start of day)
   startTime: string; // e.g. "09:00"
   durationHours: number; // e.g. 1.5

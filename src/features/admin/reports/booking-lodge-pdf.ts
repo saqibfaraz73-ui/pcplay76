@@ -155,7 +155,7 @@ export function buildBookingLodgePdf(args: {
       doc.setFontSize(9);
       doc.setFont("helvetica", "bold");
       doc.setTextColor(isCancelled ? 180 : 0);
-      doc.text(`Bkg #${o.receiptNo} — ${o.bookableItemName}${isCancelled ? " [CANCELLED]" : ""}`, left, y);
+      doc.text(`${o.label === "Appointment" ? "Apt" : "Bkg"} #${o.receiptNo} — ${o.bookableItemName}${isCancelled ? " [CANCELLED]" : ""}`, left, y);
       y += 12;
 
       doc.setFont("helvetica", "normal");

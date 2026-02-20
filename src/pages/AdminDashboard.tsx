@@ -4,10 +4,14 @@ import { AdminProducts } from "@/features/admin/products/AdminProducts";
 import { AdminInventory } from "@/features/admin/inventory/AdminInventory";
 import { AdminCustomers } from "@/features/admin/customers/AdminCustomers";
 import { AdminBackupRestore } from "@/features/admin/backup/AdminBackupRestore";
+import { DataCleanup } from "@/features/admin/settings/DataCleanup";
+import { useAuth } from "@/auth/AuthProvider";
 
 export default function AdminDashboard() {
   const [searchParams] = useSearchParams();
   const defaultTab = searchParams.get("tab") || "products";
+  const { session } = useAuth();
+  const isAdmin = session?.role === "admin";
 
   return (
     <div className="space-y-4">
@@ -21,11 +25,13 @@ export default function AdminDashboard() {
           <TabsTrigger value="inventory">Inventory</TabsTrigger>
           <TabsTrigger value="customers">Customers</TabsTrigger>
           <TabsTrigger value="backup">Backup</TabsTrigger>
+          {isAdmin && <TabsTrigger value="cleanup">Data Cleanup</TabsTrigger>}
         </TabsList>
         <TabsContent value="products"><AdminProducts /></TabsContent>
         <TabsContent value="inventory"><AdminInventory /></TabsContent>
         <TabsContent value="customers"><AdminCustomers /></TabsContent>
         <TabsContent value="backup"><AdminBackupRestore /></TabsContent>
+        {isAdmin && <TabsContent value="cleanup"><DataCleanup /></TabsContent>}
       </Tabs>
     </div>
   );

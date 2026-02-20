@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import { db } from "@/db/appDb";
 import type { MenuItem, Settings } from "@/db/schema";
-import type { AdvanceOrder, AdvanceOrderLine, BookableItem, BookingOrder } from "@/db/booking-schema";
+import type { AdvanceOrder, AdvanceOrderLine, BookableItem, BookingOrder, BookingLabel } from "@/db/booking-schema";
 import { useAuth } from "@/auth/AuthProvider";
 import { useToast } from "@/hooks/use-toast";
 import { formatIntMoney, fmtDate, fmtDateTime, fmtTime12 } from "@/features/pos/format";
@@ -449,6 +449,7 @@ export default function PosAdvanceBooking() {
   const [bookCustPhone, setBookCustPhone] = React.useState("");
   const [bookCustAddress, setBookCustAddress] = React.useState("");
   const [bookIsMaintenance, setBookIsMaintenance] = React.useState(false);
+  const [bookLabel, setBookLabel] = React.useState<BookingLabel>("Booking");
 
   const selectedBookItem = bookableItems.find((b) => b.id === bookItemId);
   const bookItemPrice = selectedBookItem?.price ?? 0;
@@ -471,6 +472,7 @@ export default function PosAdvanceBooking() {
     setBookCustPhone("");
     setBookCustAddress("");
     setBookIsMaintenance(false);
+    setBookLabel("Booking");
     setBookDlg(true);
   };
 
@@ -511,6 +513,7 @@ export default function PosAdvanceBooking() {
       bookableItemId: bookItemId,
       bookableItemName: selectedBookItem.name,
       status: "pending",
+      label: bookLabel,
       date: new Date(bookDate).setHours(0, 0, 0, 0),
       startTime: bookStart,
       durationHours: durationToHours(Number(bookDuration) || 1, bookDurationUnit),
@@ -649,7 +652,7 @@ export default function PosAdvanceBooking() {
       const doc = buildBookingReceiptPdf(order, s);
       const bytes = doc.output("arraybuffer");
       const fileName = `booking_${order.receiptNo}_${Date.now()}.pdf`;
-      await sharePdfBytes(new Uint8Array(bytes), fileName, `Booking #${order.receiptNo}`);
+      await sharePdfBytes(new Uint8Array(bytes), fileName, `${order.label === "Appointment" ? "Appointment" : "Booking"} #${order.receiptNo}`);
     } catch (e: any) {
       toast({ title: "Share failed", description: e?.message, variant: "destructive" });
     }
@@ -813,7 +816,7 @@ export default function PosAdvanceBooking() {
                     <div className="flex items-start justify-between gap-2 flex-wrap">
                       <div>
                          <div className="text-sm font-medium">
-                           Bkg #{o.receiptNo} — {o.bookableItemName}
+                           {o.label === "Appointment" ? "Apt" : "Bkg"} #{o.receiptNo} — {o.bookableItemName}
                            {o.isMaintenance && <span className="ml-1.5 text-xs text-muted-foreground">(Maintenance)</span>}
                          </div>
                          <div className="text-xs text-muted-foreground">
@@ -967,8 +970,15 @@ export default function PosAdvanceBooking() {
       {/* ═══ BOOKING DIALOG ═══ */}
       <Dialog open={bookDlg} onOpenChange={setBookDlg}>
         <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>New Booking</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>New {bookLabel}</DialogTitle></DialogHeader>
           <div className="space-y-3">
+            <div className="space-y-1">
+              <Label className="text-xs">Type</Label>
+              <select value={bookLabel} onChange={(e) => setBookLabel(e.target.value as BookingLabel)} className="h-10 w-full rounded-md border bg-background px-3 text-sm">
+                <option value="Booking">Booking</option>
+                <option value="Appointment">Appointment</option>
+              </select>
+            </div>
             <div className="space-y-1">
               <Label className="text-xs">Select Item</Label>
               <select value={bookItemId} onChange={(e) => setBookItemId(e.target.value)} className="h-10 w-full rounded-md border bg-background px-3 text-sm">
