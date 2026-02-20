@@ -84,6 +84,7 @@ export function RecoverySection() {
   const [formBalance, setFormBalance] = React.useState<number>(0);
   const [formAgentId, setFormAgentId] = React.useState<string>("__none");
   const [formFrequency, setFormFrequency] = React.useState<BillingFrequency>("monthly");
+  const [bulkAgentId, setBulkAgentId] = React.useState<string>("__none");
 
   // History view
   const [historyId, setHistoryId] = React.useState<string | null>(null);
@@ -258,7 +259,7 @@ export function RecoverySection() {
       const rows = XLSX.utils.sheet_to_json<any>(ws);
       let count = 0;
       // Determine which agent to assign to imported customers
-      const importAgentId = isRecovery && myAgentId ? myAgentId : (selectedAgent !== "all" ? selectedAgent : undefined);
+      const importAgentId = isRecovery && myAgentId ? myAgentId : (bulkAgentId !== "__none" ? bulkAgentId : undefined);
       const importAgentName = isRecovery ? agentName : (importAgentId ? agents.find(a => a.id === importAgentId)?.name : undefined);
       for (const r of rows) {
         const name = String(r["Name"] || r["name"] || "").trim();
@@ -524,22 +525,7 @@ export function RecoverySection() {
           <p className="text-sm text-muted-foreground">Manage recovery customers, payments & reports.</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          {(isAdmin || isCashier) && (
-            <>
-              <input ref={fileInputRef} type="file" accept=".xlsx,.xls,.csv" onChange={importExcel} className="hidden" />
-              <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
-                <Upload className="h-3 w-3 mr-1" /> Import
-              </Button>
-            </>
-          )}
-          {isRecovery && (
-            <>
-              <input ref={fileInputRef} type="file" accept=".xlsx,.xls,.csv" onChange={importExcel} className="hidden" />
-              <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
-                <Upload className="h-3 w-3 mr-1" /> Import
-              </Button>
-            </>
-          )}
+          
           <Button variant="outline" size="sm" onClick={() => void exportExcel()}>
             <Download className="h-3 w-3 mr-1" /> Export
           </Button>
@@ -659,6 +645,38 @@ export function RecoverySection() {
               <Button variant="outline" onClick={resetForm}>Cancel</Button>
               <Button onClick={() => void saveCustomer()}>{editId ? "Update" : "Add"}</Button>
             </div>
+
+            {/* Bulk Import Section inside Add Customer */}
+            {!editId && (
+              <div className="sm:col-span-3 border-t pt-3 mt-1">
+                <p className="text-sm font-medium mb-2">Or Import from Excel</p>
+                <div className="flex items-end gap-3 flex-wrap">
+                  {(isAdmin || isCashier) && agents.length > 0 && (
+                    <div className="space-y-1">
+                      <Label className="text-xs">Assign Agent (bulk)</Label>
+                      <Select value={bulkAgentId} onValueChange={setBulkAgentId}>
+                        <SelectTrigger className="h-9 w-48">
+                          <SelectValue placeholder="Select agent for import" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__none">No agent</SelectItem>
+                          {agents.map(a => (
+                            <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                  <div>
+                    <input ref={fileInputRef} type="file" accept=".xlsx,.xls,.csv" onChange={importExcel} className="hidden" />
+                    <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
+                      <Upload className="h-3 w-3 mr-1" /> Import Excel
+                    </Button>
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">Columns: Name, Contact, Address, Pkg, Frequency, Bill, Balance</p>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}
