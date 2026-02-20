@@ -83,7 +83,10 @@ export function PosTablesManager() {
   const [selectedWaiterId, setSelectedWaiterId] = React.useState("");
 
   // View mode
-  const [viewMode, setViewMode] = React.useState<"tables" | "order">("tables");
+  // Waiters go directly to order view (skip table selection)
+  const [viewMode, setViewMode] = React.useState<"tables" | "order">(
+    session?.role === "waiter" ? "order" : "tables"
+  );
 
   // Checkout dialog
   const [checkoutOpen, setCheckoutOpen] = React.useState(false);
@@ -893,11 +896,11 @@ export function PosTablesManager() {
         <select
           value={selectedWaiterId}
           onChange={(e) => setSelectedWaiterId(e.target.value)}
-          disabled={isWaiter && !isSupervisor && settings?.waiterRestrictToOwnTables && !!loggedInWaiter}
+          disabled={isWaiter && !isSupervisor && !!loggedInWaiter}
           className="h-9 rounded-md border bg-background px-3 text-sm flex-1 max-w-xs disabled:opacity-70"
         >
           <option value="">Select waiter...</option>
-          {(isWaiter && !isSupervisor && settings?.waiterRestrictToOwnTables && loggedInWaiter
+          {(isWaiter && !isSupervisor && loggedInWaiter
             ? [loggedInWaiter]
             : waiters
           ).map((w) => (
