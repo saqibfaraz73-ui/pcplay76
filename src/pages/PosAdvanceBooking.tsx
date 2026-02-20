@@ -324,6 +324,25 @@ export default function PosAdvanceBooking() {
 
   React.useEffect(() => { void refresh(); }, [refresh]);
 
+  /* ─── Date range filters for order lists ─── */
+  const now = Date.now();
+  const [advListFrom, setAdvListFrom] = React.useState(toDateInputValue(now));
+  const [advListTo, setAdvListTo] = React.useState(toDateInputValue(now));
+  const [bkListFrom, setBkListFrom] = React.useState(toDateInputValue(now));
+  const [bkListTo, setBkListTo] = React.useState(toDateInputValue(now));
+
+  const filteredAdvanceOrders = React.useMemo(() => {
+    const fromTs = new Date(advListFrom).setHours(0, 0, 0, 0);
+    const toTs = new Date(advListTo).setHours(23, 59, 59, 999);
+    return advanceOrders.filter((o) => o.createdAt >= fromTs && o.createdAt <= toTs);
+  }, [advanceOrders, advListFrom, advListTo]);
+
+  const filteredBookingOrders = React.useMemo(() => {
+    const fromTs = new Date(bkListFrom).setHours(0, 0, 0, 0);
+    const toTs = new Date(bkListTo).setHours(23, 59, 59, 999);
+    return bookingOrders.filter((o) => o.createdAt >= fromTs && o.createdAt <= toTs);
+  }, [bookingOrders, bkListFrom, bkListTo]);
+
   /* ─── Advance Item Sale Dialog ─── */
   const [advDlg, setAdvDlg] = React.useState(false);
   const [advLines, setAdvLines] = React.useState<(AdvanceOrderLine & { key: string })[]>([]);
@@ -710,11 +729,23 @@ export default function PosAdvanceBooking() {
           {/* Advance Lodge - date range share PDF */}
           <AdvanceLodgeSection advanceOrders={advanceOrders} settings={settings} />
 
-          {advanceOrders.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No advance orders yet.</p>
+          {/* Date range filter for advance order list */}
+          <div className="grid grid-cols-2 gap-2">
+            <div className="space-y-1">
+              <Label className="text-xs">From</Label>
+              <Input type="date" value={advListFrom} onChange={(e) => setAdvListFrom(e.target.value)} />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">To</Label>
+              <Input type="date" value={advListTo} onChange={(e) => setAdvListTo(e.target.value)} />
+            </div>
+          </div>
+
+          {filteredAdvanceOrders.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No advance orders in selected range.</p>
           ) : (
             <div className="space-y-2">
-              {advanceOrders.map((o) => (
+              {filteredAdvanceOrders.map((o) => (
                 <Card key={o.id} className={o.status === "cancelled" ? "opacity-60" : ""}>
                   <CardContent className="pt-4 space-y-2">
                     <div className="flex items-start justify-between gap-2 flex-wrap">
@@ -806,11 +837,23 @@ export default function PosAdvanceBooking() {
           {/* Booking Lodge - date range share PDF */}
           <BookingLodgeSection bookingOrders={bookingOrders} settings={settings} />
 
-          {bookingOrders.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No bookings yet.</p>
+          {/* Date range filter for booking list */}
+          <div className="grid grid-cols-2 gap-2">
+            <div className="space-y-1">
+              <Label className="text-xs">From</Label>
+              <Input type="date" value={bkListFrom} onChange={(e) => setBkListFrom(e.target.value)} />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">To</Label>
+              <Input type="date" value={bkListTo} onChange={(e) => setBkListTo(e.target.value)} />
+            </div>
+          </div>
+
+          {filteredBookingOrders.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No bookings in selected range.</p>
           ) : (
             <div className="space-y-2">
-              {bookingOrders.map((o) => (
+              {filteredBookingOrders.map((o) => (
                 <Card key={o.id} className={o.status === "cancelled" ? "opacity-60" : ""}>
                   <CardContent className="pt-4 space-y-2">
                     <div className="flex items-start justify-between gap-2 flex-wrap">
