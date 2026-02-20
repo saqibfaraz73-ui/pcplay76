@@ -1,5 +1,9 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
+import { isNativeAndroid } from "@/features/pos/bluetooth-printer";
+import { sendToSectionPrinter } from "@/features/pos/printer-routing";
+import { isDuplicatePrint } from "@/features/pos/print-dedup";
+import { formatIntMoney } from "@/features/pos/format";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -322,29 +326,50 @@ export function RecoverySection() {
   };
 
   const printReceipt = async (cust: RecoveryCustomer, pay: RecoveryPayment) => {
-    if (Capacitor.isNativePlatform()) {
-      // On native, generate PDF and open share sheet (user can print from there)
-      const doc = new jsPDF({ unit: "mm", format: [80, 120] });
-      doc.setFontSize(12);
-      doc.text(businessName, 40, 8, { align: "center" });
-      doc.setFontSize(10);
-      doc.text("PAYMENT RECEIPT", 40, 14, { align: "center" });
-      doc.setFontSize(9);
-      let y = 22;
-      const lines = [
-        `Receipt #: ${pay.receiptNo ?? "N/A"}`,
-        `Customer: ${cust.name}`,
-        `Package: ${cust.pkg ?? "N/A"}`,
-        `Amount: ${pay.amount}`,
-        `Status: ${pay.status.toUpperCase()}`,
-        `Month: ${pay.month}`,
-        `Agent: ${pay.agentName}`,
-        `Date: ${format(pay.createdAt, "dd/MM/yyyy hh:mm a")}`,
-      ];
-      for (const l of lines) { doc.text(l, 5, y); y += 6; }
-      const fileName = `receipt_${pay.receiptNo ?? pay.id}.pdf`;
-      const bytes = new Uint8Array(doc.output("arraybuffer"));
-      await sharePdfBytes(bytes, fileName, `Receipt - ${cust.name}`);
+    if (isNativeAndroid()) {
+      // Print on thermal printer via ESC/POS — same as order receipts
+      const s = await db.settings.get("app");
+      if (!s) throw new Error("Settings not loaded. Configure printer first.");
+      const width = s.paperSize === "80" ? 48 : 32;
+      const hr = "-".repeat(width);
+      const CENTER_ON = "\x1ba\x01";
+      const LEFT_ON = "\x1ba\x00";
+      const lr = (l: string, r: string) => l.padEnd(width - r.length) + r;
+
+      const out: string[] = [];
+      out.push("\x1b@\x1b3\x14" + CENTER_ON);
+      out.push(businessName);
+      out.push("PAYMENT RECEIPT");
+      out.push(hr);
+      out.push(`Receipt #: ${pay.receiptNo ?? "N/A"}`);
+      out.push(`Date: ${format(pay.createdAt, "dd/MM/yyyy hh:mm a")}`);
+      out.push(LEFT_ON);
+      out.push(hr);
+      out.push(lr("Customer:", cust.name));
+      out.push(lr("Package:", cust.pkg ?? "N/A"));
+      out.push(lr("Amount:", String(pay.amount)));
+      out.push(lr("Status:", pay.status.toUpperCase()));
+      out.push(lr("Month:", pay.month));
+      out.push(lr("Agent:", pay.agentName));
+      out.push(lr("Balance:", String(cust.balance)));
+      out.push(hr);
+      out.push(CENTER_ON);
+      out.push("Thank you!");
+      out.push(LEFT_ON);
+      out.push("");
+      out.push("");
+      out.push("");
+      out.push("\x1dV\x41\x03"); // partial cut
+
+      const escPos = out.join("\n");
+      if (isDuplicatePrint(escPos)) return;
+
+      try {
+        await sendToSectionPrinter(s, "sales", escPos);
+      } catch (err: any) {
+        console.error("Recovery receipt print error:", err);
+        throw new Error(err?.message || "Printing failed. Check printer connection.");
+      }
       return;
     }
     // Web fallback - print dialog
