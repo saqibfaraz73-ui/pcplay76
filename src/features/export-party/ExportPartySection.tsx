@@ -797,13 +797,13 @@ export function ExportPartySection() {
     return doc;
   };
 
-  const saveSingleSalesPdf = async (cust: ExportCustomer) => {
+  const saveSingleSalesPdf = async (cust: ExportCustomer, overrideName?: string) => {
     try {
       const doc = buildSingleSalesPdf(cust);
       const bytes = doc.output("arraybuffer");
       const safeName = cust.name.replace(/[^a-zA-Z0-9]/g, "_").slice(0, 30);
       const fileName = `sales_${safeName}_${filterFrom}_${filterTo}.pdf`;
-      await savePdfBytes(new Uint8Array(bytes), fileName);
+      await savePdfBytes(new Uint8Array(bytes), overrideName ?? fileName);
     } catch (e: any) {
       toast({ title: "Save failed", description: e?.message ?? String(e), variant: "destructive" });
     }
@@ -980,13 +980,13 @@ export function ExportPartySection() {
     e.target.value = "";
   };
 
-  const savePdf = async (type: "full" | "sales" | "payments") => {
+  const savePdf = async (type: "full" | "sales" | "payments", overrideName?: string) => {
     try {
       const doc = type === "full" ? buildExportPdf() : type === "sales" ? buildSalesPdf() : buildPaymentsPdf();
       const bytes = doc.output("arraybuffer");
       const label = type === "full" ? "export_party" : type === "sales" ? "export_sales" : "export_payments";
       const fileName = `${label}_${filterFrom}_${filterTo}.pdf`;
-      await savePdfBytes(new Uint8Array(bytes), fileName);
+      await savePdfBytes(new Uint8Array(bytes), overrideName ?? fileName);
     } catch (e: any) {
       toast({ title: "Save failed", description: e?.message ?? String(e), variant: "destructive" });
     }
@@ -1089,7 +1089,7 @@ export function ExportPartySection() {
                       History
                     </Button>
                     <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => openEdit(cust)}>Edit</Button>
-                    <SaveShareMenu label="Sales" size="sm" className="text-xs h-7" onSave={() => void saveSingleSalesPdf(cust)} onShare={() => void shareSingleSalesPdf(cust)} />
+                    <SaveShareMenu label="Sales" size="sm" className="text-xs h-7" getDefaultFileName={() => { const s = cust.name.replace(/[^a-zA-Z0-9]/g, "_").slice(0, 30); return `sales_${s}_${filterFrom}_${filterTo}.pdf`; }} onSave={(fn) => void saveSingleSalesPdf(cust, fn)} onShare={() => void shareSingleSalesPdf(cust)} />
                     <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => downloadPartyImportTemplate(cust.name)} title="Download import template">
                       <Download className="h-3 w-3 mr-1" /> Template
                     </Button>
@@ -1229,9 +1229,9 @@ export function ExportPartySection() {
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
-            <SaveShareMenu label="Full PDF" onSave={() => void savePdf("full")} onShare={() => void sharePdf("full")} disabled={customers.length === 0} />
-            <SaveShareMenu label="Sales PDF" onSave={() => void savePdf("sales")} onShare={() => void sharePdf("sales")} disabled={sales.length === 0} />
-            <SaveShareMenu label="Payments PDF" onSave={() => void savePdf("payments")} onShare={() => void sharePdf("payments")} disabled={payments.length === 0} />
+            <SaveShareMenu label="Full PDF" getDefaultFileName={() => `export_party_${filterFrom}_${filterTo}.pdf`} onSave={(fn) => void savePdf("full", fn)} onShare={() => void sharePdf("full")} disabled={customers.length === 0} />
+            <SaveShareMenu label="Sales PDF" getDefaultFileName={() => `export_sales_${filterFrom}_${filterTo}.pdf`} onSave={(fn) => void savePdf("sales", fn)} onShare={() => void sharePdf("sales")} disabled={sales.length === 0} />
+            <SaveShareMenu label="Payments PDF" getDefaultFileName={() => `export_payments_${filterFrom}_${filterTo}.pdf`} onSave={(fn) => void savePdf("payments", fn)} onShare={() => void sharePdf("payments")} disabled={payments.length === 0} />
             <Button variant="outline" size="sm" onClick={() => void exportExcel()} disabled={customers.length === 0}>
               <FileSpreadsheet className="h-4 w-4 mr-1" /> Export Excel
             </Button>

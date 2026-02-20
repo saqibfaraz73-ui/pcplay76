@@ -786,10 +786,10 @@ export function AdminReports() {
     return { bytes: new Uint8Array(bytes), fileName };
   };
 
-  const saveSales = async () => {
+  const saveSales = async (overrideName?: string) => {
     try {
       const { bytes, fileName } = await buildSalesBytes();
-      await savePdfBytes(bytes, fileName);
+      await savePdfBytes(bytes, overrideName ?? fileName);
     } catch (e: any) {
       toast({ title: "Save failed", description: e?.message ?? String(e), variant: "destructive" });
     }
@@ -886,7 +886,7 @@ export function AdminReports() {
           <CardDescription>Export the sales report as PDF — matches the app view above (summary, credit customers, items sales).</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-wrap gap-2">
-          <SaveShareMenu label="Sales PDF" onSave={() => void saveSales()} onShare={() => void exportSales()} />
+          <SaveShareMenu label="Sales PDF" getDefaultFileName={() => `sales_${from}_${to}.pdf`} onSave={(fn) => void saveSales(fn)} onShare={() => void exportSales()} />
         </CardContent>
       </Card>
     </div>

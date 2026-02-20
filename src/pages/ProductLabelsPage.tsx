@@ -716,12 +716,13 @@ export default function ProductLabelsPage() {
                 label="A4 PDF"
                 variant="secondary"
                 size="default"
-                onSave={async () => {
+                getDefaultFileName={() => `product-labels.pdf`}
+                onSave={async (fn) => {
                   if (labelItems.length === 0) return;
                   const check = await canMakeSale("labelPrint", totalLabels);
                   if (!check.allowed) { setAdMsg(check.message); setPendingAction("pdf"); setAdOpen(true); return; }
                   const blob = generateLabelPdfBlob(buildLabels());
-                  await savePdfBlob(blob, "product-labels");
+                  await savePdfBlob(blob, fn ?? "product-labels");
                   await incrementSaleCount("labelPrint", totalLabels); refreshUsage();
                 }}
                 onShare={handlePdfDownload}
@@ -731,13 +732,14 @@ export default function ProductLabelsPage() {
               <SaveShareMenu
                 label="ZPL"
                 size="default"
-                onSave={async () => {
+                getDefaultFileName={() => `labels-${buildLabels().length}.zpl`}
+                onSave={async (fn) => {
                   if (labelItems.length === 0) return;
                   const check = await canMakeSale("labelPrint", totalLabels);
                   if (!check.allowed) { setAdMsg(check.message); setPendingAction(null); setAdOpen(true); return; }
                   const labels = buildLabels();
                   const zpl = generateLabelsZpl(labels);
-                  await saveTextFile(zpl, `labels-${labels.length}.zpl`);
+                  await saveTextFile(zpl, fn ?? `labels-${labels.length}.zpl`);
                   await incrementSaleCount("labelPrint", totalLabels); refreshUsage();
                 }}
                 onShare={async () => {
@@ -753,13 +755,14 @@ export default function ProductLabelsPage() {
               <SaveShareMenu
                 label="TSPL"
                 size="default"
-                onSave={async () => {
+                getDefaultFileName={() => `labels-${buildLabels().length}.prn`}
+                onSave={async (fn) => {
                   if (labelItems.length === 0) return;
                   const check = await canMakeSale("labelPrint", totalLabels);
                   if (!check.allowed) { setAdMsg(check.message); setPendingAction(null); setAdOpen(true); return; }
                   const labels = buildLabels();
                   const tspl = generateLabelsTspl(labels);
-                  await saveTextFile(tspl, `labels-${labels.length}.prn`);
+                  await saveTextFile(tspl, fn ?? `labels-${labels.length}.prn`);
                   await incrementSaleCount("labelPrint", totalLabels); refreshUsage();
                 }}
                 onShare={async () => {

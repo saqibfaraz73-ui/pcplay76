@@ -138,10 +138,10 @@ export function AdminInventoryAdjustments() {
     return { bytes: new Uint8Array(bytes), fileName };
   };
 
-  const savePdf = async () => {
+  const savePdf = async (overrideName?: string) => {
     try {
       const { bytes, fileName } = await buildAdjBytes();
-      await savePdfBytes(bytes, fileName);
+      await savePdfBytes(bytes, overrideName ?? fileName);
     } catch (e: any) {
       toast({ title: "Save failed", description: e?.message ?? String(e), variant: "destructive" });
     }
@@ -189,7 +189,7 @@ export function AdminInventoryAdjustments() {
           </div>
 
           <div className="flex flex-wrap gap-2">
-            <SaveShareMenu label="Adjustments PDF" onSave={() => void savePdf()} onShare={() => void exportPdf()} />
+            <SaveShareMenu label="Adjustments PDF" getDefaultFileName={() => `inventory_adjustments_${format(from, "yyyy-MM-dd")}_${format(to, "yyyy-MM-dd")}.pdf`} onSave={(fn) => void savePdf(fn)} onShare={() => void exportPdf()} />
             <Button variant="outline" onClick={() => void refresh()}>
               Refresh
             </Button>

@@ -365,12 +365,13 @@ export function AdminCustomers() {
                 <div className="flex flex-wrap gap-2">
                   <SaveShareMenu
                     label="Full Lodge"
-                    onSave={async () => {
+                    getDefaultFileName={() => `credit_lodge_${selectedCustomer.name.replace(/\s+/g, "_")}_${Date.now()}.pdf`}
+                    onSave={async (fn) => {
                       try {
                         const doc = buildCreditLodgePdf({ restaurantName: settings?.restaurantName ?? "SANGI POS", fromLabel: from, toLabel: to, customer: selectedCustomer, orders: lodgeOrders, payments: selectedPayments });
                         const bytes = doc.output("arraybuffer");
-                        const fileName = `credit_lodge_${selectedCustomer.name.replace(/\s+/g, "_")}_${Date.now()}.pdf`;
-                        await savePdfBytes(new Uint8Array(bytes), fileName);
+                        const defaultName = `credit_lodge_${selectedCustomer.name.replace(/\s+/g, "_")}_${Date.now()}.pdf`;
+                        await savePdfBytes(new Uint8Array(bytes), fn ?? defaultName);
                       } catch (e: any) { toast({ title: "Could not save PDF", description: e?.message ?? String(e), variant: "destructive" }); }
                     }}
                     onShare={async () => {
@@ -384,12 +385,13 @@ export function AdminCustomers() {
                   />
                   <SaveShareMenu
                     label="Payments"
-                    onSave={async () => {
+                    getDefaultFileName={() => `credit_payments_${selectedCustomer.name.replace(/\s+/g, "_")}_${Date.now()}.pdf`}
+                    onSave={async (fn) => {
                       try {
                         const doc = buildCreditPaymentsPdf({ restaurantName: settings?.restaurantName ?? "SANGI POS", fromLabel: from, toLabel: to, customer: selectedCustomer, orders: lodgeOrders, payments: selectedPayments });
                         const bytes = doc.output("arraybuffer");
-                        const fileName = `credit_payments_${selectedCustomer.name.replace(/\s+/g, "_")}_${Date.now()}.pdf`;
-                        await savePdfBytes(new Uint8Array(bytes), fileName);
+                        const defaultName = `credit_payments_${selectedCustomer.name.replace(/\s+/g, "_")}_${Date.now()}.pdf`;
+                        await savePdfBytes(new Uint8Array(bytes), fn ?? defaultName);
                       } catch (e: any) { toast({ title: "Could not save PDF", description: e?.message ?? String(e), variant: "destructive" }); }
                     }}
                     onShare={async () => {
@@ -403,12 +405,13 @@ export function AdminCustomers() {
                   />
                   <SaveShareMenu
                     label="Items"
-                    onSave={async () => {
+                    getDefaultFileName={() => `credit_items_${selectedCustomer.name.replace(/\s+/g, "_")}_${Date.now()}.pdf`}
+                    onSave={async (fn) => {
                       try {
                         const doc = buildCreditItemsPdf({ restaurantName: settings?.restaurantName ?? "SANGI POS", fromLabel: from, toLabel: to, customer: selectedCustomer, orders: lodgeOrders, payments: selectedPayments });
                         const bytes = doc.output("arraybuffer");
-                        const fileName = `credit_items_${selectedCustomer.name.replace(/\s+/g, "_")}_${Date.now()}.pdf`;
-                        await savePdfBytes(new Uint8Array(bytes), fileName);
+                        const defaultName = `credit_items_${selectedCustomer.name.replace(/\s+/g, "_")}_${Date.now()}.pdf`;
+                        await savePdfBytes(new Uint8Array(bytes), fn ?? defaultName);
                       } catch (e: any) { toast({ title: "Could not save PDF", description: e?.message ?? String(e), variant: "destructive" }); }
                     }}
                     onShare={async () => {
