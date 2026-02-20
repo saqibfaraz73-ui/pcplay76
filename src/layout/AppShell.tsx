@@ -170,10 +170,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                           {/* Dashboard link for waiter/agent who have no main nav */}
                           {(isWaiter || isRecoveryAgent) && (
                             <Link
-                              to={isRecoveryAgent ? "/recovery" : "/pos/tables"}
+                              to={isRecoveryAgent ? "/recovery" : "/home"}
                               className={cn(
                                 "flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors",
-                                isActive(isRecoveryAgent ? "/recovery" : "/pos/tables")
+                                isActive(isRecoveryAgent ? "/recovery" : "/home")
                                   ? "bg-accent text-accent-foreground"
                                   : "text-muted-foreground hover:text-foreground",
                               )}
@@ -316,10 +316,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   {/* Dashboard link for waiter/agent */}
                   {(isWaiter || isRecoveryAgent) && (
                     <Link
-                      to={isRecoveryAgent ? "/recovery" : "/pos/tables"}
+                      to={isRecoveryAgent ? "/recovery" : "/home"}
                       className={cn(
                         "rounded-md px-3 py-2 text-sm transition-colors",
-                        isActive(isRecoveryAgent ? "/recovery" : "/pos/tables")
+                        isActive(isRecoveryAgent ? "/recovery" : "/home")
                           ? "bg-accent text-accent-foreground"
                           : "text-muted-foreground hover:text-foreground",
                       )}
