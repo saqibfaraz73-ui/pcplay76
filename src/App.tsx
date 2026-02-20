@@ -109,7 +109,7 @@ const App = () => (
                 <Route
                   path="/admin/printer"
                   element={
-                     <ProtectedRoute allow={["admin", "cashier", "supervisor"]}>
+                     <ProtectedRoute allow={["admin", "cashier", "supervisor", "waiter", "recovery"]}>
                       <AdminPrinterPage />
                     </ProtectedRoute>
                   }
