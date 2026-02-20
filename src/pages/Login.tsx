@@ -157,7 +157,14 @@ export default function Login() {
     }
   };
 
-  if (screen === "checking") return null;
+  if (screen === "checking") return (
+    <div className="mx-auto flex min-h-[calc(100dvh-6rem)] max-w-lg flex-col items-center justify-center px-4">
+      <div className="h-20 w-20 overflow-hidden rounded-xl border-2 border-primary/20 shadow-lg">
+        <img src={appLogo} alt="SANGI POS logo" className="h-full w-full object-cover" loading="eager" />
+      </div>
+      <p className="mt-4 text-sm text-muted-foreground">Loading...</p>
+    </div>
+  );
 
   return (
     <div className="mx-auto flex min-h-[calc(100dvh-6rem)] max-w-lg flex-col items-center justify-center px-4">
@@ -211,6 +218,11 @@ export default function Login() {
               <Button type="submit" className="w-full" disabled={loading}>
                 {loading ? "Setting up..." : "Create Admin Account"}
               </Button>
+              <div className="flex justify-center">
+                <Button type="button" variant="link" className="text-xs" onClick={() => setScreen("login")}>
+                  Already registered? Login
+                </Button>
+              </div>
             </form>
           </CardContent>
         </Card>
