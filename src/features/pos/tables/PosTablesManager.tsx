@@ -82,11 +82,8 @@ export function PosTablesManager() {
   const [selectedTableId, setSelectedTableId] = React.useState("");
   const [selectedWaiterId, setSelectedWaiterId] = React.useState("");
 
-  // View mode
-  // Waiters go directly to order view (skip table selection)
-  const [viewMode, setViewMode] = React.useState<"tables" | "order">(
-    session?.role === "waiter" ? "order" : "tables"
-  );
+  // View mode — all roles start on items/order dashboard
+  const [viewMode, setViewMode] = React.useState<"tables" | "order">("order");
 
   // Checkout dialog
   const [checkoutOpen, setCheckoutOpen] = React.useState(false);
