@@ -4,8 +4,7 @@ import type { Category, MenuItem, Settings } from "@/db/schema";
 import { formatIntMoney } from "@/features/pos/format";
 import { resolveStockImage } from "@/features/pos/stock-images";
 import { getItemImageSrc } from "@/features/admin/products/item-images";
-import { writePdfFile, shareFile } from "@/features/files/sangi-folders";
-import { Capacitor } from "@capacitor/core";
+import { sharePdfBlob } from "@/features/pos/share-utils";
 
 /**
  * Load an image URL as a base64 data URL for embedding in jsPDF.
@@ -194,26 +193,7 @@ export async function generateMenuPdf() {
     y += 2; // gap between categories
   }
 
-  // Always use share dialog (web uses Web Share API, native uses Capacitor Share)
-  if (Capacitor.isNativePlatform()) {
-    const pdfBytes = doc.output("arraybuffer");
-    const result = await writePdfFile({
-      folder: "Sales Report",
-      fileName: `Menu_${Date.now()}.pdf`,
-      pdfBytes: new Uint8Array(pdfBytes),
-    });
-    await shareFile({ title: "Menu", uri: result.uri });
-  } else {
-    // Web: use Web Share API if available, otherwise fallback to download
-    const pdfBlob = doc.output("blob");
-    const file = new File([pdfBlob], "Menu.pdf", { type: "application/pdf" });
-    if (navigator.share && navigator.canShare?.({ files: [file] })) {
-      await navigator.share({ title: "Menu", files: [file] });
-    } else {
-      // Fallback: trigger share-like behavior via blob URL
-      const url = URL.createObjectURL(pdfBlob);
-      window.open(url, "_blank");
-      setTimeout(() => URL.revokeObjectURL(url), 10000);
-    }
-  }
+  // Always open share dialog (no save to device)
+  const pdfBlob = doc.output("blob");
+  await sharePdfBlob(pdfBlob, `Menu_${Date.now()}`);
 }
