@@ -1,4 +1,5 @@
 import React from "react";
+import { FileNamePrompt } from "@/components/FileNamePrompt";
 import { Button } from "@/components/ui/button";
 import { isNativeAndroid } from "@/features/pos/bluetooth-printer";
 import { sendToSectionPrinter } from "@/features/pos/printer-routing";
@@ -301,8 +302,12 @@ export function RecoverySection() {
   };
 
   // ── Export agent sales as JSON (shareable via WhatsApp) ──
-  const exportAgentSales = async () => {
-    const myCusts = customers; // already filtered for recovery agents
+  const [exportPromptOpen, setExportPromptOpen] = React.useState(false);
+  const [exportDefaultName, setExportDefaultName] = React.useState("");
+  const pendingExportBlob = React.useRef<Blob | null>(null);
+
+  const startExportAgentSales = () => {
+    const myCusts = customers;
     const myPayments = payments.filter(p => myCusts.some(c => c.id === p.customerId));
     const exportData = {
       type: "recovery-agent-export",
@@ -313,10 +318,20 @@ export function RecoverySection() {
       payments: myPayments,
     };
     const json = JSON.stringify(exportData, null, 2);
-    const blob = new Blob([json], { type: "application/json" });
-    const fileName = `recovery_${agentName.replace(/\s+/g, "_")}_${format(new Date(), "yyyyMMdd_HHmm")}.json`;
-    await downloadFile(blob, fileName);
+    pendingExportBlob.current = new Blob([json], { type: "application/json" });
+    const defaultName = `recovery_${agentName.replace(/\s+/g, "_")}_${format(new Date(), "yyyyMMdd_HHmm")}.json`;
+    setExportDefaultName(defaultName);
+    setExportPromptOpen(true);
+  };
+
+  const confirmExport = async (fileName: string) => {
+    setExportPromptOpen(false);
+    if (!pendingExportBlob.current) return;
+    await downloadFile(pendingExportBlob.current, fileName);
+    const myCusts = customers;
+    const myPayments = payments.filter(p => myCusts.some(c => c.id === p.customerId));
     toast({ title: `Exported ${myCusts.length} customers & ${myPayments.length} payments` });
+    pendingExportBlob.current = null;
   };
 
   // ── Collect / Import agent data JSON ──
@@ -618,7 +633,7 @@ export function RecoverySection() {
           <p className="text-sm text-muted-foreground">Manage recovery customers, payments & reports.</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          <Button variant="outline" size="sm" onClick={() => void exportAgentSales()}>
+          <Button variant="outline" size="sm" onClick={startExportAgentSales}>
             <Upload className="h-3 w-3 mr-1" /> Export Sales
           </Button>
           {(isAdmin || isCashier) && (
@@ -942,6 +957,12 @@ export function RecoverySection() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      <FileNamePrompt
+        open={exportPromptOpen}
+        defaultName={exportDefaultName}
+        onConfirm={confirmExport}
+        onCancel={() => setExportPromptOpen(false)}
+      />
     </div>
   );
 }
