@@ -25,6 +25,7 @@ import { Capacitor } from "@capacitor/core";
 import { Filesystem, Directory } from "@capacitor/filesystem";
 import { Share } from "@capacitor/share";
 import jsPDF from "jspdf";
+import { sharePdfBytes } from "@/features/pos/share-utils";
 
 function uid(prefix: string) {
   return `${prefix}_${Math.random().toString(16).slice(2)}_${Date.now().toString(16)}`;
@@ -372,39 +373,30 @@ export function RecoverySection() {
   // ── Share history ──
   const shareHistory = async (cust: RecoveryCustomer) => {
     const custPayments = getCustomerPayments(cust.id);
-    if (Capacitor.isNativePlatform()) {
-      const lines = [`Payment History: ${cust.name}`, `Pkg: ${cust.pkg ?? "N/A"}`, `Monthly: ${cust.monthlyBill}`, `Balance: ${cust.balance}`, `---`];
-      for (const p of custPayments) {
-        lines.push(`${p.month} | ${p.status.toUpperCase()} | ${p.amount} | ${p.agentName} | ${format(p.createdAt, "dd/MM/yyyy")}`);
-      }
-      try { await Share.share({ title: `History - ${cust.name}`, text: lines.join("\n") }); } catch { /* cancelled */ }
-    } else {
-      // Generate PDF on web
-      const { jsPDF } = await import("jspdf");
-      const doc = new jsPDF({ unit: "mm", format: "a4" });
-      doc.setFontSize(14);
-      doc.text(`Payment History: ${cust.name}`, 14, 15);
-      doc.setFontSize(10);
-      doc.text(`Package: ${cust.pkg ?? "N/A"}  |  Monthly: ${cust.monthlyBill}  |  Balance: ${cust.balance}`, 14, 23);
-      doc.setFontSize(9);
-      // Table header
-      let y = 32;
-      doc.setFont("helvetica", "bold");
-      doc.text("Month", 14, y); doc.text("Status", 45, y); doc.text("Amount", 75, y); doc.text("Agent", 105, y); doc.text("Date", 145, y);
-      doc.setFont("helvetica", "normal");
+    // Always generate PDF (both native and web)
+    const doc = new jsPDF({ unit: "mm", format: "a4" });
+    doc.setFontSize(14);
+    doc.text(`Payment History: ${cust.name}`, 14, 15);
+    doc.setFontSize(10);
+    doc.text(`Package: ${cust.pkg ?? "N/A"}  |  Monthly: ${cust.monthlyBill}  |  Balance: ${cust.balance}`, 14, 23);
+    doc.setFontSize(9);
+    let y = 32;
+    doc.setFont("helvetica", "bold");
+    doc.text("Month", 14, y); doc.text("Status", 45, y); doc.text("Amount", 75, y); doc.text("Agent", 105, y); doc.text("Date", 145, y);
+    doc.setFont("helvetica", "normal");
+    y += 6;
+    for (const p of custPayments) {
+      if (y > 280) { doc.addPage(); y = 15; }
+      doc.text(p.month, 14, y);
+      doc.text(p.status.toUpperCase(), 45, y);
+      doc.text(String(p.amount), 75, y);
+      doc.text(p.agentName, 105, y);
+      doc.text(format(p.createdAt, "dd/MM/yyyy"), 145, y);
       y += 6;
-      for (const p of custPayments) {
-        if (y > 280) { doc.addPage(); y = 15; }
-        doc.text(p.month, 14, y);
-        doc.text(p.status.toUpperCase(), 45, y);
-        doc.text(String(p.amount), 75, y);
-        doc.text(p.agentName, 105, y);
-        doc.text(format(p.createdAt, "dd/MM/yyyy"), 145, y);
-        y += 6;
-      }
-      doc.save(`history_${cust.name.replace(/\s+/g, "_")}.pdf`);
-      toast({ title: "History PDF downloaded" });
     }
+    const fileName = `history_${cust.name.replace(/\s+/g, "_")}_${Date.now()}.pdf`;
+    const bytes = new Uint8Array(doc.output("arraybuffer"));
+    await sharePdfBytes(bytes, fileName, `History - ${cust.name}`);
   };
 
   // ── Overall Report PDF (per-agent breakdown) ──
