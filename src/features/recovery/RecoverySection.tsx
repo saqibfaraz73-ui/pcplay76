@@ -22,8 +22,6 @@ import {
 import { format } from "date-fns";
 import * as XLSX from "xlsx";
 import { Capacitor } from "@capacitor/core";
-import { Filesystem, Directory } from "@capacitor/filesystem";
-import { Share } from "@capacitor/share";
 import jsPDF from "jspdf";
 import { sharePdfBytes, savePdfBytes } from "@/features/pos/share-utils";
 import { SaveShareMenu } from "@/components/SaveShareMenu";
@@ -40,21 +38,8 @@ async function getNextReceiptNo(): Promise<number> {
 }
 
 async function downloadFile(blob: Blob, fileName: string) {
-  if (Capacitor.isNativePlatform()) {
-    const reader = new FileReader();
-    reader.onload = async () => {
-      const base64 = (reader.result as string).split(",")[1];
-      const path = `Sangi Pos/Recovery/${fileName}`;
-      await Filesystem.writeFile({ path, data: base64, directory: Directory.Documents, recursive: true });
-      try { await Share.share({ title: fileName, url: (await Filesystem.getUri({ path, directory: Directory.Documents })).uri }); } catch { /* cancelled */ }
-    };
-    reader.readAsDataURL(blob);
-  } else {
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url; a.download = fileName; a.click();
-    URL.revokeObjectURL(url);
-  }
+  const { shareFileBlob } = await import("@/features/pos/share-utils");
+  await shareFileBlob(blob, fileName);
 }
 
 export function RecoverySection() {
@@ -327,6 +312,7 @@ export function RecoverySection() {
       `------------------------`,
     ].join("\n");
     if (Capacitor.isNativePlatform()) {
+      const { Share } = await import("@capacitor/share");
       try { await Share.share({ title: "Payment Receipt", text }); } catch { /* cancelled */ }
     } else {
       // Generate PDF on web
