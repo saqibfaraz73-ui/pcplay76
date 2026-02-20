@@ -224,7 +224,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                           )}
 
                           {/* Sync link for cashier/waiter when enabled */}
-                          {!isAdmin && !isWaiter && !isRecoveryAgent && syncEnabled && (
+                          {!isAdmin && !isRecoveryAgent && syncEnabled && (
                             <Link
                               to="/admin/sync"
                               className={cn(
@@ -335,7 +335,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                       Printer
                     </Link>
                   )}
-                  {!isAdmin && !isWaiter && !isRecoveryAgent && syncEnabled && (
+                  {!isAdmin && !isRecoveryAgent && syncEnabled && (
                     <Link
                       to="/admin/sync"
                       className={cn(
