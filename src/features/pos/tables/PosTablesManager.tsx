@@ -873,8 +873,8 @@ export function PosTablesManager() {
         </div>
       </div>
 
-      {/* Table Selection (only in waiter-only mode) */}
-      {tableSelectionDisabled && visibleTables.length > 0 && (
+      {/* Table Selection (in waiter-only mode OR when waiter skipped table grid) */}
+      {(tableSelectionDisabled || (isWaiter && !tableSelectionDisabled)) && visibleTables.length > 0 && (
         <div className="flex items-center gap-2">
           <Label className="shrink-0">Table (optional):</Label>
           <select
