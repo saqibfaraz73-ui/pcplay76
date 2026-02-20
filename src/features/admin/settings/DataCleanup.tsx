@@ -39,14 +39,23 @@ const SECTIONS: { id: Section; label: string; description: string }[] = [
   { id: "creditPayments", label: "Credit Payments", description: "Customer credit payments" },
 ];
 
+/** Maximum allowed "To date" is 7 days ago */
+function getMaxToDate(): string {
+  const d = new Date();
+  d.setDate(d.getDate() - 7);
+  return d.toISOString().slice(0, 10);
+}
+
 export function DataCleanup() {
   const { toast } = useToast();
+  const maxTo = getMaxToDate();
   const [fromDate, setFromDate] = React.useState("");
   const [toDate, setToDate] = React.useState("");
   const [selected, setSelected] = React.useState<Set<Section>>(new Set());
   const [showConfirm, setShowConfirm] = React.useState(false);
   const [deleting, setDeleting] = React.useState(false);
   const [deletedCounts, setDeletedCounts] = React.useState<Record<string, number> | null>(null);
+  const [pendingWarning, setPendingWarning] = React.useState<{ advancePending: number; bookingPending: number } | null>(null);
 
   const toggle = (s: Section) => {
     setSelected((prev) => {
@@ -57,7 +66,30 @@ export function DataCleanup() {
     });
   };
 
-  const canDelete = fromDate && toDate && selected.size > 0 && new Date(fromDate) <= new Date(toDate);
+  const toDateValid = toDate && toDate <= maxTo;
+  const canDelete = fromDate && toDateValid && selected.size > 0 && new Date(fromDate) <= new Date(toDate);
+
+  const checkPendingAndConfirm = async () => {
+    if (selected.has("advance")) {
+      const from = new Date(fromDate).setHours(0, 0, 0, 0);
+      const to = new Date(toDate).setHours(23, 59, 59, 999);
+
+      const advPending = await db.advanceOrders
+        .where("createdAt").between(from, to, true, true)
+        .filter((o) => o.status === "pending")
+        .count();
+      const bkPending = await db.bookingOrders
+        .where("createdAt").between(from, to, true, true)
+        .filter((o) => o.status === "pending")
+        .count();
+
+      if (advPending > 0 || bkPending > 0) {
+        setPendingWarning({ advancePending: advPending, bookingPending: bkPending });
+        return;
+      }
+    }
+    setShowConfirm(true);
+  };
 
   const handleDelete = async () => {
     setShowConfirm(false);
@@ -69,10 +101,8 @@ export function DataCleanup() {
     try {
       if (selected.has("sales")) {
         const orders = await db.orders.where("createdAt").between(from, to, true, true).toArray();
-        const wpIds = new Set(orders.map((o) => o.workPeriodId).filter(Boolean));
         await db.orders.where("createdAt").between(from, to, true, true).delete();
         counts["Orders"] = orders.length;
-        // Delete work periods that fall in range
         const wps = await db.workPeriods.where("startedAt").between(from, to, true, true).toArray();
         await db.workPeriods.bulkDelete(wps.map((w) => w.id));
         counts["Work Periods"] = wps.length;
@@ -154,7 +184,7 @@ export function DataCleanup() {
             Data Cleanup
           </CardTitle>
           <CardDescription>
-            Permanently delete old data by date range to keep the app clean and fast. This action cannot be undone.
+            Permanently delete old data (older than 7 days) by date range to keep the app clean and fast. This action cannot be undone.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -162,11 +192,14 @@ export function DataCleanup() {
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="cleanup-from">From date</Label>
-              <Input id="cleanup-from" type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
+              <Input id="cleanup-from" type="date" value={fromDate} max={maxTo} onChange={(e) => setFromDate(e.target.value)} />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="cleanup-to">To date</Label>
-              <Input id="cleanup-to" type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} />
+              <Label htmlFor="cleanup-to">To date (max: 7 days ago)</Label>
+              <Input id="cleanup-to" type="date" value={toDate} max={maxTo} onChange={(e) => setToDate(e.target.value)} />
+              {toDate && !toDateValid && (
+                <p className="text-xs text-destructive">Only data older than 7 days can be deleted.</p>
+              )}
             </div>
           </div>
 
@@ -210,7 +243,7 @@ export function DataCleanup() {
             <Button
               variant="destructive"
               disabled={!canDelete || deleting}
-              onClick={() => setShowConfirm(true)}
+              onClick={() => void checkPendingAndConfirm()}
               className="gap-2"
             >
               <Trash2 className="h-4 w-4" />
@@ -219,6 +252,32 @@ export function DataCleanup() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Pending Orders Warning Dialog */}
+      <AlertDialog open={!!pendingWarning} onOpenChange={() => setPendingWarning(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>⚠️ Pending Orders Found</AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <p>There are pending orders in the selected date range that need to be completed or cancelled first:</p>
+              <ul className="list-disc pl-5 space-y-1">
+                {(pendingWarning?.advancePending ?? 0) > 0 && (
+                  <li>{pendingWarning!.advancePending} pending advance order(s)</li>
+                )}
+                {(pendingWarning?.bookingPending ?? 0) > 0 && (
+                  <li>{pendingWarning!.bookingPending} pending booking/appointment(s)</li>
+                )}
+              </ul>
+              <p className="text-sm font-medium mt-2">
+                Please go to Advance / Booking and complete or cancel these orders before cleaning up data.
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>OK</AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Confirmation Dialog */}
       <AlertDialog open={showConfirm} onOpenChange={setShowConfirm}>

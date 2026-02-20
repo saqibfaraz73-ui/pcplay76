@@ -136,7 +136,7 @@ function buildBookingEscPos(order: BookingOrder, settings: Settings): string {
     title,
     settings.showAddress && settings.address ? settings.address : null,
     settings.showPhone && settings.phone ? settings.phone : null,
-    "BOOKING",
+    (order.label === "Appointment" ? "APPOINTMENT" : "BOOKING"),
     `Receipt #: ${order.receiptNo}`,
     LEFT_ON,
     hr,
@@ -230,7 +230,7 @@ export function buildBookingKot(order: BookingOrder, settings: Settings): string
   const out: string[] = ["\x1b@\x1b3\x18" + CENTER_ON];
   out.push("KITCHEN ORDER");
   out.push(hr);
-  out.push(`Bkg #: ${order.receiptNo}`);
+  out.push(`${order.label === "Appointment" ? "Apt" : "Bkg"} #: ${order.receiptNo}`);
   if (order.cashier) out.push(`By: ${order.cashier}`);
   if (order.customerName) out.push(`Customer: ${order.customerName}`);
   out.push(timeStr);
@@ -335,7 +335,7 @@ export function buildBookingReceiptPdf(order: BookingOrder, settings: Settings |
   const hr = () => { doc.setDrawColor(0); doc.setLineWidth(0.5); doc.line(left, y - 3, left + width, y - 3); };
 
   line(settings?.restaurantName || "SANGI POS", true, 9);
-  line("BOOKING", true, 8);
+  line(order.label === "Appointment" ? "APPOINTMENT" : "BOOKING", true, 8);
   line(`Receipt #${order.receiptNo}`, false, 7);
   line(`Item: ${order.bookableItemName}`);
   line(`Date: ${fmtDate(order.date)}`);

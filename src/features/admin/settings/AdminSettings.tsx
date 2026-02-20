@@ -14,7 +14,7 @@ import { AdminTablesWaiters } from "@/features/admin/tables/AdminTablesWaiters";
 import { Trash2, Plus } from "lucide-react";
 import { getLicense } from "@/features/licensing/licensing-db";
 
-import { DataCleanup } from "@/features/admin/settings/DataCleanup";
+
 import {
   AlertDialog,
   AlertDialogAction,
@@ -829,8 +829,6 @@ export function AdminSettings() {
         </CardContent>
       </Card>
 
-      {/* Data Cleanup */}
-      <DataCleanup />
 
       {/* Delete staff confirmation */}
       <AlertDialog open={!!deleteStaffId} onOpenChange={() => setDeleteStaffId(null)}>
