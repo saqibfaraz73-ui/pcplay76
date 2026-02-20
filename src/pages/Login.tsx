@@ -63,9 +63,7 @@ export default function Login() {
 
   React.useEffect(() => {
     if (!session) return;
-    const dest = session.role === "recovery" ? "/recovery"
-      : session.role === "waiter" ? "/pos/tables"
-      : "/home";
+    const dest = session.role === "recovery" ? "/recovery" : "/pos/tables";
     navigate(dest, { replace: true });
   }, [navigate, session]);
 
@@ -110,9 +108,7 @@ export default function Login() {
         toast({ title: "Login failed", description: "Wrong credentials." });
         return;
       }
-      const dest = result.role === "recovery" ? "/recovery"
-        : result.role === "waiter" ? "/pos/tables"
-        : "/home";
+      const dest = result.role === "recovery" ? "/recovery" : "/pos/tables";
       navigate(dest, { replace: true });
     } finally {
       setLoading(false);
