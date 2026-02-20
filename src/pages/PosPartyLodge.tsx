@@ -23,7 +23,8 @@ import { useAuth } from "@/auth/AuthProvider";
 import { useWorkPeriod } from "@/features/pos/WorkPeriodProvider";
 import { makeId } from "@/features/admin/id";
 import { formatIntMoney, parseNonDecimalInt, fmtDate, fmtDateTime } from "@/features/pos/format";
-import { sharePdfBytes } from "@/features/pos/share-utils";
+import { sharePdfBytes, savePdfBytes } from "@/features/pos/share-utils";
+import { SaveShareMenu } from "@/components/SaveShareMenu";
 import { Capacitor } from "@capacitor/core";
 import { Plus, Trash2, Share2, CreditCard, Banknote, PackagePlus, Upload, Download, Printer, XCircle, FileSpreadsheet } from "lucide-react";
 import { printEntryReceipt, shareEntryReceipt, getNextEntryNo, type EntryReceiptData } from "@/features/pos/entry-receipt";
@@ -691,6 +692,18 @@ export default function PosPartyLodge() {
     return doc;
   };
 
+  const saveArrivalsPdf = async () => {
+    try {
+      if (arrivals.length === 0) { toast({ title: "No arrivals to export", variant: "destructive" }); return; }
+      const doc = buildArrivalsReportPdf();
+      const bytes = doc.output("arraybuffer");
+      const fileName = `arrivals_report_${filterFrom}_${filterTo}.pdf`;
+      await savePdfBytes(new Uint8Array(bytes), fileName);
+    } catch (e: any) {
+      toast({ title: "Save failed", description: e?.message ?? String(e), variant: "destructive" });
+    }
+  };
+
   const shareArrivalsPdf = async () => {
     try {
       if (arrivals.length === 0) { toast({ title: "No arrivals to export", variant: "destructive" }); return; }
@@ -788,6 +801,18 @@ export default function PosPartyLodge() {
     return doc;
   };
 
+  const savePaymentsPdf = async () => {
+    try {
+      if (payments.length === 0) { toast({ title: "No payments to export", variant: "destructive" }); return; }
+      const doc = buildPaymentsReportPdf();
+      const bytes = doc.output("arraybuffer");
+      const fileName = `payments_report_${filterFrom}_${filterTo}.pdf`;
+      await savePdfBytes(new Uint8Array(bytes), fileName);
+    } catch (e: any) {
+      toast({ title: "Save failed", description: e?.message ?? String(e), variant: "destructive" });
+    }
+  };
+
   const sharePaymentsPdf = async () => {
     try {
       if (payments.length === 0) { toast({ title: "No payments to export", variant: "destructive" }); return; }
@@ -856,6 +881,18 @@ export default function PosPartyLodge() {
     return doc;
   };
 
+  const saveSingleArrivalsPdf = async (sup: Supplier) => {
+    try {
+      const doc = buildSingleArrivalsPdf(sup);
+      const bytes = doc.output("arraybuffer");
+      const safeName = sup.name.replace(/[^a-zA-Z0-9]/g, "_").slice(0, 30);
+      const fileName = `arrivals_${safeName}_${filterFrom}_${filterTo}.pdf`;
+      await savePdfBytes(new Uint8Array(bytes), fileName);
+    } catch (e: any) {
+      toast({ title: "Save failed", description: e?.message ?? String(e), variant: "destructive" });
+    }
+  };
+
   const shareSingleArrivalsPdf = async (sup: Supplier) => {
     try {
       const doc = buildSingleArrivalsPdf(sup);
@@ -894,6 +931,18 @@ export default function PosPartyLodge() {
     }
   };
 
+  const saveSingleSupplierPdf = async (sup: Supplier) => {
+    try {
+      const doc = buildSingleSupplierPdf(sup);
+      const bytes = doc.output("arraybuffer");
+      const safeName = sup.name.replace(/[^a-zA-Z0-9]/g, "_").slice(0, 30);
+      const fileName = `supplier_${safeName}_${filterFrom}_${filterTo}.pdf`;
+      await savePdfBytes(new Uint8Array(bytes), fileName);
+    } catch (e: any) {
+      toast({ title: "Save failed", description: e?.message ?? String(e), variant: "destructive" });
+    }
+  };
+
   const shareSingleSupplierPdf = async (sup: Supplier) => {
     try {
       const doc = buildSingleSupplierPdf(sup);
@@ -903,6 +952,18 @@ export default function PosPartyLodge() {
       await sharePdfBytes(new Uint8Array(bytes), fileName, `Supplier Lodge: ${sup.name}`);
     } catch (e: any) {
       toast({ title: "PDF failed", description: e?.message ?? String(e), variant: "destructive" });
+    }
+  };
+
+  const savePartyPdf = async () => {
+    try {
+      if (suppliers.length === 0) { toast({ title: "No suppliers to export", variant: "destructive" }); return; }
+      const doc = buildPartyPdf();
+      const bytes = doc.output("arraybuffer");
+      const fileName = `party_lodge_${filterFrom}_${filterTo}.pdf`;
+      await savePdfBytes(new Uint8Array(bytes), fileName);
+    } catch (e: any) {
+      toast({ title: "Save failed", description: e?.message ?? String(e), variant: "destructive" });
     }
   };
 
@@ -1113,14 +1174,8 @@ export default function PosPartyLodge() {
                     <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => openEdit(sup)}>
                       Edit
                     </Button>
-                    <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => void shareSingleSupplierPdf(sup)}>
-                      <Share2 className="h-3 w-3 mr-1" />
-                      PDF
-                    </Button>
-                    <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => void shareSingleArrivalsPdf(sup)}>
-                      <PackagePlus className="h-3 w-3 mr-1" />
-                      Arrivals PDF
-                    </Button>
+                    <SaveShareMenu label="PDF" size="sm" className="text-xs h-7" onSave={() => void saveSingleSupplierPdf(sup)} onShare={() => void shareSingleSupplierPdf(sup)} />
+                    <SaveShareMenu label="Arrivals" size="sm" className="text-xs h-7" onSave={() => void saveSingleArrivalsPdf(sup)} onShare={() => void shareSingleArrivalsPdf(sup)} />
                     <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => downloadPartyImportTemplate(sup.name)} title="Download import template">
                       <Download className="h-3 w-3 mr-1" />
                       Template
@@ -1253,18 +1308,9 @@ export default function PosPartyLodge() {
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button variant="outline" size="sm" onClick={() => void sharePartyPdf()} disabled={suppliers.length === 0}>
-              <Share2 className="h-4 w-4 mr-1" />
-              Share Full PDF
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => void shareArrivalsPdf()} disabled={arrivals.length === 0}>
-              <PackagePlus className="h-4 w-4 mr-1" />
-              Share Arrivals PDF
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => void sharePaymentsPdf()} disabled={payments.length === 0}>
-              <CreditCard className="h-4 w-4 mr-1" />
-              Share Payments PDF
-            </Button>
+            <SaveShareMenu label="Full PDF" onSave={() => void savePartyPdf()} onShare={() => void sharePartyPdf()} disabled={suppliers.length === 0} />
+            <SaveShareMenu label="Arrivals PDF" onSave={() => void saveArrivalsPdf()} onShare={() => void shareArrivalsPdf()} disabled={arrivals.length === 0} />
+            <SaveShareMenu label="Payments PDF" onSave={() => void savePaymentsPdf()} onShare={() => void sharePaymentsPdf()} disabled={payments.length === 0} />
             <Button variant="outline" size="sm" onClick={() => void exportPartyExcel()} disabled={suppliers.length === 0}>
               <FileSpreadsheet className="h-4 w-4 mr-1" />
               Export Excel

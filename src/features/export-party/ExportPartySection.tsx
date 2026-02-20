@@ -15,7 +15,8 @@ import { STOCK_UNITS } from "@/db/schema";
 import { useToast } from "@/hooks/use-toast";
 import { makeId } from "@/features/admin/id";
 import { formatIntMoney, parseNonDecimalInt, fmtDate, fmtDateTime } from "@/features/pos/format";
-import { sharePdfBytes } from "@/features/pos/share-utils";
+import { sharePdfBytes, savePdfBytes } from "@/features/pos/share-utils";
+import { SaveShareMenu } from "@/components/SaveShareMenu";
 import { Capacitor } from "@capacitor/core";
 import { Plus, Trash2, Share2, CreditCard, Banknote, PackagePlus, Upload, Download, Printer, XCircle, FileSpreadsheet } from "lucide-react";
 import { printEntryReceipt, shareEntryReceipt, getNextEntryNo, type EntryReceiptData } from "@/features/pos/entry-receipt";
@@ -796,6 +797,18 @@ export function ExportPartySection() {
     return doc;
   };
 
+  const saveSingleSalesPdf = async (cust: ExportCustomer) => {
+    try {
+      const doc = buildSingleSalesPdf(cust);
+      const bytes = doc.output("arraybuffer");
+      const safeName = cust.name.replace(/[^a-zA-Z0-9]/g, "_").slice(0, 30);
+      const fileName = `sales_${safeName}_${filterFrom}_${filterTo}.pdf`;
+      await savePdfBytes(new Uint8Array(bytes), fileName);
+    } catch (e: any) {
+      toast({ title: "Save failed", description: e?.message ?? String(e), variant: "destructive" });
+    }
+  };
+
   const shareSingleSalesPdf = async (cust: ExportCustomer) => {
     try {
       const doc = buildSingleSalesPdf(cust);
@@ -831,6 +844,18 @@ export function ExportPartySection() {
       toast({ title: `${cust.name} Excel exported` });
     } catch (e: any) {
       toast({ title: "Export failed", description: e?.message ?? String(e), variant: "destructive" });
+    }
+  };
+
+  const saveSingleCustomerPdf = async (cust: ExportCustomer) => {
+    try {
+      const doc = buildSingleCustomerPdf(cust);
+      const bytes = doc.output("arraybuffer");
+      const safeName = cust.name.replace(/[^a-zA-Z0-9]/g, "_").slice(0, 30);
+      const fileName = `export_${safeName}_${filterFrom}_${filterTo}.pdf`;
+      await savePdfBytes(new Uint8Array(bytes), fileName);
+    } catch (e: any) {
+      toast({ title: "Save failed", description: e?.message ?? String(e), variant: "destructive" });
     }
   };
 
@@ -955,6 +980,18 @@ export function ExportPartySection() {
     e.target.value = "";
   };
 
+  const savePdf = async (type: "full" | "sales" | "payments") => {
+    try {
+      const doc = type === "full" ? buildExportPdf() : type === "sales" ? buildSalesPdf() : buildPaymentsPdf();
+      const bytes = doc.output("arraybuffer");
+      const label = type === "full" ? "export_party" : type === "sales" ? "export_sales" : "export_payments";
+      const fileName = `${label}_${filterFrom}_${filterTo}.pdf`;
+      await savePdfBytes(new Uint8Array(bytes), fileName);
+    } catch (e: any) {
+      toast({ title: "Save failed", description: e?.message ?? String(e), variant: "destructive" });
+    }
+  };
+
   const sharePdf = async (type: "full" | "sales" | "payments") => {
     try {
       const doc = type === "full" ? buildExportPdf() : type === "sales" ? buildSalesPdf() : buildPaymentsPdf();
@@ -1052,9 +1089,7 @@ export function ExportPartySection() {
                       History
                     </Button>
                     <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => openEdit(cust)}>Edit</Button>
-                    <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => void shareSingleSalesPdf(cust)}>
-                      <PackagePlus className="h-3 w-3 mr-1" /> Sales PDF
-                    </Button>
+                    <SaveShareMenu label="Sales" size="sm" className="text-xs h-7" onSave={() => void saveSingleSalesPdf(cust)} onShare={() => void shareSingleSalesPdf(cust)} />
                     <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => downloadPartyImportTemplate(cust.name)} title="Download import template">
                       <Download className="h-3 w-3 mr-1" /> Template
                     </Button>
@@ -1194,15 +1229,9 @@ export function ExportPartySection() {
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button variant="outline" size="sm" onClick={() => void sharePdf("full")} disabled={customers.length === 0}>
-              <Share2 className="h-4 w-4 mr-1" /> Full PDF
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => void sharePdf("sales")} disabled={sales.length === 0}>
-              <PackagePlus className="h-4 w-4 mr-1" /> Sales PDF
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => void sharePdf("payments")} disabled={payments.length === 0}>
-              <CreditCard className="h-4 w-4 mr-1" /> Payments PDF
-            </Button>
+            <SaveShareMenu label="Full PDF" onSave={() => void savePdf("full")} onShare={() => void sharePdf("full")} disabled={customers.length === 0} />
+            <SaveShareMenu label="Sales PDF" onSave={() => void savePdf("sales")} onShare={() => void sharePdf("sales")} disabled={sales.length === 0} />
+            <SaveShareMenu label="Payments PDF" onSave={() => void savePdf("payments")} onShare={() => void sharePdf("payments")} disabled={payments.length === 0} />
             <Button variant="outline" size="sm" onClick={() => void exportExcel()} disabled={customers.length === 0}>
               <FileSpreadsheet className="h-4 w-4 mr-1" /> Export Excel
             </Button>

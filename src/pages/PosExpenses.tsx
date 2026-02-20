@@ -24,7 +24,8 @@ import { useWorkPeriod } from "@/features/pos/WorkPeriodProvider";
 import { useAuth } from "@/auth/AuthProvider";
 import { makeId } from "@/features/admin/id";
 import { formatIntMoney, parseNonDecimalInt, fmtDate, fmtDateTime } from "@/features/pos/format";
-import { sharePdfBytes } from "@/features/pos/share-utils";
+import { sharePdfBytes, savePdfBytes } from "@/features/pos/share-utils";
+import { SaveShareMenu } from "@/components/SaveShareMenu";
 import { Plus, Trash2, Share2 } from "lucide-react";
 import { canMakeSale, incrementSaleCount, type SalesModule } from "@/features/licensing/licensing-db";
 import { AdRewardDialog } from "@/features/licensing/AdRewardDialog";
@@ -157,18 +158,28 @@ export default function PosExpenses() {
     return doc;
   };
 
+  const buildExpensesBytes = async () => {
+    const list = filteredExpenses;
+    if (list.length === 0) throw new Error("No expenses in this date range");
+    const doc = buildExpensesPdf(list, filterFrom, filterTo);
+    const bytes = doc.output("arraybuffer");
+    const fileName = `expenses_${filterFrom}_${filterTo}.pdf`;
+    return { bytes: new Uint8Array(bytes), fileName };
+  };
+
+  const saveExpensesPdf = async () => {
+    try {
+      const { bytes, fileName } = await buildExpensesBytes();
+      await savePdfBytes(bytes, fileName);
+    } catch (e: any) {
+      toast({ title: "Save failed", description: e?.message ?? String(e), variant: "destructive" });
+    }
+  };
+
   const shareExpensesPdf = async () => {
     try {
-      const list = filteredExpenses;
-      if (list.length === 0) {
-        toast({ title: "No expenses in this date range", variant: "destructive" });
-        return;
-      }
-      const doc = buildExpensesPdf(list, filterFrom, filterTo);
-      const bytes = doc.output("arraybuffer");
-      const fileName = `expenses_${filterFrom}_${filterTo}.pdf`;
-
-      await sharePdfBytes(new Uint8Array(bytes), fileName, "Expenses Report");
+      const { bytes, fileName } = await buildExpensesBytes();
+      await sharePdfBytes(bytes, fileName, "Expenses Report");
     } catch (e: any) {
       toast({ title: "PDF failed", description: e?.message ?? String(e), variant: "destructive" });
     }
@@ -280,10 +291,12 @@ export default function PosExpenses() {
           </div>
           <div className="flex items-center justify-between">
             <span className="text-sm text-muted-foreground">{filteredExpenses.length} expenses • {formatIntMoney(filteredTotal)}</span>
-            <Button variant="outline" size="sm" onClick={() => void shareExpensesPdf()} disabled={filteredExpenses.length === 0}>
-              <Share2 className="h-4 w-4 mr-1" />
-              Share PDF
-            </Button>
+            <SaveShareMenu
+              label="Expenses PDF"
+              onSave={() => void saveExpensesPdf()}
+              onShare={() => void shareExpensesPdf()}
+              disabled={filteredExpenses.length === 0}
+            />
           </div>
         </CardContent>
       </Card>

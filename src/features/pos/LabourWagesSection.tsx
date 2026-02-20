@@ -22,7 +22,8 @@ import { useToast } from "@/hooks/use-toast";
 import { makeId } from "@/features/admin/id";
 import { formatIntMoney, parseNonDecimalInt } from "@/features/pos/format";
 import { Plus, Trash2, ArrowLeft, Wallet, ArrowDownCircle, ArrowUpCircle, MinusCircle, PlusCircle, Share2, Clock, Calendar, CheckCircle2, XCircle, Clock3, ChevronLeft, ChevronRight, Factory, Package } from "lucide-react";
-import { sharePdfBytes } from "@/features/pos/share-utils";
+import { sharePdfBytes, savePdfBytes } from "@/features/pos/share-utils";
+import { SaveShareMenu } from "@/components/SaveShareMenu";
 import { jsPDF } from "jspdf";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, subMonths, addMonths, isAfter } from "date-fns";
 
@@ -514,7 +515,7 @@ export default function LabourWagesSection({ workPeriodId, onBack }: Props) {
     return "text-orange-500";
   };
 
-  const shareLabourPdf = async (labour: Labour) => {
+  const buildLabourPdfBytes = async (labour: Labour) => {
     if (labourTxs.length === 0) {
       toast({ title: "No transactions in this date range" });
       return;
@@ -573,7 +574,27 @@ export default function LabourWagesSection({ workPeriodId, onBack }: Props) {
 
     const bytes = doc.output("arraybuffer");
     const fileName = `${labour.name}-wage-log-${txFilterFrom}-${txFilterTo}.pdf`;
-    await sharePdfBytes(new Uint8Array(bytes), fileName, `${labour.name} Wage Log`);
+    return { bytes: new Uint8Array(bytes), fileName };
+  };
+
+  const saveLabourPdf = async (labour: Labour) => {
+    try {
+      const result = await buildLabourPdfBytes(labour);
+      if (!result) return;
+      await savePdfBytes(result.bytes, result.fileName);
+    } catch (e: any) {
+      toast({ title: "Save failed", description: e?.message ?? String(e), variant: "destructive" });
+    }
+  };
+
+  const shareLabourPdf = async (labour: Labour) => {
+    try {
+      const result = await buildLabourPdfBytes(labour);
+      if (!result) return;
+      await sharePdfBytes(result.bytes, result.fileName, `${labour.name} Wage Log`);
+    } catch (e: any) {
+      toast({ title: "Share failed", description: e?.message ?? String(e), variant: "destructive" });
+    }
   };
 
   // Attendance summary for current month
@@ -712,9 +733,7 @@ export default function LabourWagesSection({ workPeriodId, onBack }: Props) {
               {fresh.hourlyRate ? ` • ${formatIntMoney(fresh.hourlyRate)}/hr` : ""}
             </p>
           </div>
-          <Button variant="outline" size="sm" onClick={() => void shareLabourPdf(fresh)} className="gap-1">
-            <Share2 className="h-3.5 w-3.5" /> Share
-          </Button>
+          <SaveShareMenu label="Export" size="sm" onSave={() => void saveLabourPdf(fresh)} onShare={() => void shareLabourPdf(fresh)} />
           <Button variant="outline" size="sm" onClick={() => openEditLabour(fresh)}>Edit</Button>
         </div>
 
@@ -866,9 +885,7 @@ export default function LabourWagesSection({ workPeriodId, onBack }: Props) {
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-muted-foreground">{labourTxs.length} transactions • Total paid: {formatIntMoney(labourTxsTotal)}</span>
-                  <Button variant="outline" size="sm" onClick={() => void shareLabourPdf(fresh)} disabled={labourTxs.length === 0} className="gap-1">
-                    <Share2 className="h-3.5 w-3.5" /> Share PDF
-                  </Button>
+                  <SaveShareMenu label="Wage PDF" size="sm" onSave={() => void saveLabourPdf(fresh)} onShare={() => void shareLabourPdf(fresh)} disabled={labourTxs.length === 0} />
                 </div>
                 {labourTxs.length === 0 ? (
                   <div className="text-sm text-muted-foreground">No transactions in this date range.</div>

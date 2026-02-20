@@ -22,7 +22,8 @@ import { makeId } from "@/features/admin/id";
 import { printAdvanceReceipt, printAdvanceKot, printBookingReceipt, printBookingKot } from "@/features/pos/advance-receipt";
 import { buildBookingLodgePdf } from "@/features/admin/reports/booking-lodge-pdf";
 import { buildAdvanceLodgePdf } from "@/features/admin/reports/advance-lodge-pdf";
-import { sharePdfBytes } from "@/features/pos/share-utils";
+import { sharePdfBytes, savePdfBytes } from "@/features/pos/share-utils";
+import { SaveShareMenu } from "@/components/SaveShareMenu";
 import { Plus, Trash2, X, Check, Ban, Printer, FileText, Share2, Wrench } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 
@@ -94,19 +95,32 @@ function AdvanceLodgeSection({ advanceOrders, settings }: { advanceOrders: Advan
   const totalAdvance = completed.reduce((s, o) => s + o.advancePayment, 0);
   const totalRemaining = completed.reduce((s, o) => s + o.remainingPayment, 0);
 
+  const buildAdvanceBytes = async () => {
+    const restaurantName = settings?.restaurantName || "SANGI POS";
+    const doc = buildAdvanceLodgePdf({
+      restaurantName,
+      fromLabel: lodgeFrom,
+      toLabel: lodgeTo,
+      advanceOrders: filteredOrders,
+    });
+    const bytes = doc.output("arraybuffer");
+    const fileName = `advance_lodge_${lodgeFrom}_${lodgeTo}.pdf`;
+    return { bytes: new Uint8Array(bytes), fileName };
+  };
+
+  const savePdf = async () => {
+    try {
+      const { bytes, fileName } = await buildAdvanceBytes();
+      await savePdfBytes(bytes, fileName);
+    } catch (e: any) {
+      toast({ title: "Save failed", description: e?.message, variant: "destructive" });
+    }
+  };
+
   const sharePdf = async () => {
     try {
-      const restaurantName = settings?.restaurantName || "SANGI POS";
-      const doc = buildAdvanceLodgePdf({
-        restaurantName,
-        fromLabel: lodgeFrom,
-        toLabel: lodgeTo,
-        advanceOrders: filteredOrders,
-      });
-      const bytes = doc.output("arraybuffer");
-      const fileName = `advance_lodge_${lodgeFrom}_${lodgeTo}.pdf`;
-
-      await sharePdfBytes(new Uint8Array(bytes), fileName, "Advance Orders Lodge");
+      const { bytes, fileName } = await buildAdvanceBytes();
+      await sharePdfBytes(bytes, fileName, "Advance Orders Lodge");
     } catch (e: any) {
       toast({ title: "PDF failed", description: e?.message, variant: "destructive" });
     }
@@ -130,9 +144,7 @@ function AdvanceLodgeSection({ advanceOrders, settings }: { advanceOrders: Advan
               <Input type="date" value={lodgeTo} onChange={(e) => setLodgeTo(e.target.value)} />
             </div>
           </div>
-          <Button size="sm" variant="outline" className="gap-1 w-full sm:w-auto" onClick={() => void sharePdf()}>
-            <Share2 className="h-3.5 w-3.5" /> Share PDF
-          </Button>
+          <SaveShareMenu label="Lodge PDF" size="sm" className="w-full sm:w-auto" onSave={() => void savePdf()} onShare={() => void sharePdf()} />
         </div>
 
         {filteredOrders.length > 0 && (
@@ -190,19 +202,32 @@ function BookingLodgeSection({ bookingOrders, settings }: { bookingOrders: Booki
     return Object.values(map).sort((a, b) => b.revenue - a.revenue);
   }, [completed]);
 
+  const buildBookingBytes = async () => {
+    const restaurantName = settings?.restaurantName || "SANGI POS";
+    const doc = buildBookingLodgePdf({
+      restaurantName,
+      fromLabel: lodgeFrom,
+      toLabel: lodgeTo,
+      bookingOrders: filteredBookings,
+    });
+    const bytes = doc.output("arraybuffer");
+    const fileName = `booking_lodge_${lodgeFrom}_${lodgeTo}.pdf`;
+    return { bytes: new Uint8Array(bytes), fileName };
+  };
+
+  const saveBookingPdf = async () => {
+    try {
+      const { bytes, fileName } = await buildBookingBytes();
+      await savePdfBytes(bytes, fileName);
+    } catch (e: any) {
+      toast({ title: "Save failed", description: e?.message, variant: "destructive" });
+    }
+  };
+
   const sharePdf = async () => {
     try {
-      const restaurantName = settings?.restaurantName || "SANGI POS";
-      const doc = buildBookingLodgePdf({
-        restaurantName,
-        fromLabel: lodgeFrom,
-        toLabel: lodgeTo,
-        bookingOrders: filteredBookings,
-      });
-      const bytes = doc.output("arraybuffer");
-      const fileName = `booking_lodge_${lodgeFrom}_${lodgeTo}.pdf`;
-
-      await sharePdfBytes(new Uint8Array(bytes), fileName, "Booking Lodge Report");
+      const { bytes, fileName } = await buildBookingBytes();
+      await sharePdfBytes(bytes, fileName, "Booking Lodge Report");
     } catch (e: any) {
       toast({ title: "PDF failed", description: e?.message, variant: "destructive" });
     }
@@ -226,9 +251,7 @@ function BookingLodgeSection({ bookingOrders, settings }: { bookingOrders: Booki
               <Input type="date" value={lodgeTo} onChange={(e) => setLodgeTo(e.target.value)} />
             </div>
           </div>
-          <Button size="sm" variant="outline" className="gap-1 w-full sm:w-auto" onClick={() => void sharePdf()}>
-            <Share2 className="h-3.5 w-3.5" /> Share PDF
-          </Button>
+          <SaveShareMenu label="Booking PDF" size="sm" className="w-full sm:w-auto" onSave={() => void saveBookingPdf()} onShare={() => void sharePdf()} />
         </div>
 
         {filteredBookings.length > 0 && (
