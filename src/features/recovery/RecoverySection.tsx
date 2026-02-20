@@ -300,6 +300,80 @@ export function RecoverySection() {
     await downloadFile(new Blob([buf]), `recovery_customers_${format(new Date(), "yyyyMMdd")}.xlsx`);
   };
 
+  // ── Export agent sales as JSON (shareable via WhatsApp) ──
+  const exportAgentSales = async () => {
+    const myCusts = customers; // already filtered for recovery agents
+    const myPayments = payments.filter(p => myCusts.some(c => c.id === p.customerId));
+    const exportData = {
+      type: "recovery-agent-export",
+      version: 1,
+      agentName: agentName,
+      exportedAt: Date.now(),
+      customers: myCusts,
+      payments: myPayments,
+    };
+    const json = JSON.stringify(exportData, null, 2);
+    const blob = new Blob([json], { type: "application/json" });
+    const fileName = `recovery_${agentName.replace(/\s+/g, "_")}_${format(new Date(), "yyyyMMdd_HHmm")}.json`;
+    await downloadFile(blob, fileName);
+    toast({ title: `Exported ${myCusts.length} customers & ${myPayments.length} payments` });
+  };
+
+  // ── Collect / Import agent data JSON ──
+  const collectFileRef = React.useRef<HTMLInputElement>(null);
+  const [collectStats, setCollectStats] = React.useState<{ imported: number; skipped: number; payments: number } | null>(null);
+
+  const collectAgentData = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    let totalImported = 0, totalSkipped = 0, totalPayments = 0;
+
+    for (const file of Array.from(files)) {
+      try {
+        const text = await file.text();
+        const data = JSON.parse(text);
+        if (data.type !== "recovery-agent-export") {
+          toast({ title: `${file.name}: Not a valid agent export file`, variant: "destructive" });
+          continue;
+        }
+        const importCusts: RecoveryCustomer[] = data.customers ?? [];
+        const importPayments: RecoveryPayment[] = data.payments ?? [];
+
+        // Get existing customer IDs and payment IDs for deduplication
+        const existingCustIds = new Set((await db.recoveryCustomers.toArray()).map(c => c.id));
+        const existingPayIds = new Set((await db.recoveryPayments.toArray()).map(p => p.id));
+
+        for (const c of importCusts) {
+          if (existingCustIds.has(c.id)) {
+            // Update balance if the imported one has newer data
+            const existing = await db.recoveryCustomers.get(c.id);
+            if (existing && c.balance !== existing.balance) {
+              await db.recoveryCustomers.update(c.id, { balance: c.balance, lastBillingAt: c.lastBillingAt });
+            }
+            totalSkipped++;
+          } else {
+            await db.recoveryCustomers.add(c);
+            totalImported++;
+          }
+        }
+
+        for (const p of importPayments) {
+          if (!existingPayIds.has(p.id)) {
+            await db.recoveryPayments.add(p);
+            totalPayments++;
+          }
+        }
+      } catch (err: any) {
+        toast({ title: `${file.name}: Import failed`, description: err?.message, variant: "destructive" });
+      }
+    }
+
+    setCollectStats({ imported: totalImported, skipped: totalSkipped, payments: totalPayments });
+    toast({ title: `Collected: ${totalImported} new customers, ${totalPayments} payments (${totalSkipped} existing updated)` });
+    void load();
+    e.target.value = "";
+  };
+
   // ── Share/Print receipt ──
   const shareReceipt = async (cust: RecoveryCustomer, pay: RecoveryPayment) => {
     const doc = new jsPDF({ unit: "mm", format: [80, 120] });
@@ -544,7 +618,17 @@ export function RecoverySection() {
           <p className="text-sm text-muted-foreground">Manage recovery customers, payments & reports.</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          
+          <Button variant="outline" size="sm" onClick={() => void exportAgentSales()}>
+            <Upload className="h-3 w-3 mr-1" /> Export Sales
+          </Button>
+          {(isAdmin || isCashier) && (
+            <>
+              <input ref={collectFileRef} type="file" accept=".json" multiple onChange={collectAgentData} className="hidden" />
+              <Button variant="outline" size="sm" onClick={() => collectFileRef.current?.click()}>
+                <Download className="h-3 w-3 mr-1" /> Collect Agent Data
+              </Button>
+            </>
+          )}
           <Button variant="outline" size="sm" onClick={() => void exportExcel()}>
             <Download className="h-3 w-3 mr-1" /> Export
           </Button>
@@ -582,6 +666,21 @@ export function RecoverySection() {
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input className="pl-9" placeholder="Search customers..." value={search} onChange={(e) => setSearch(e.target.value)} />
       </div>
+
+      {/* Collect stats banner */}
+      {collectStats && (
+        <Card className="bg-muted/50">
+          <CardContent className="py-3 px-4 flex items-center justify-between">
+            <div className="text-sm">
+              <span className="font-medium">Last Collection:</span>{" "}
+              {collectStats.imported} new customers, {collectStats.payments} payments imported, {collectStats.skipped} existing updated
+            </div>
+            <Button variant="ghost" size="sm" onClick={() => setCollectStats(null)}>
+              <X className="h-3 w-3" />
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Quick lists */}
       <div className="flex gap-2 flex-wrap">
