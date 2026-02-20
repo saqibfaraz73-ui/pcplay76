@@ -61,6 +61,7 @@ export function RecoverySection() {
   const [businessName, setBusinessName] = React.useState("SANGI POS");
   const [search, setSearch] = React.useState("");
   const [showAdd, setShowAdd] = React.useState(false);
+  const [agentCanAddCustomer, setAgentCanAddCustomer] = React.useState(false);
 
   // Agent filter for admin/cashier view
   const [selectedAgent, setSelectedAgent] = React.useState<string>("all");
@@ -123,6 +124,7 @@ export function RecoverySection() {
     setPayments(p);
     setAgents(staff);
     if (s?.restaurantName) setBusinessName(s.restaurantName);
+    setAgentCanAddCustomer(!!s?.recoveryAgentAddCustomerEnabled);
   }, []);
 
   React.useEffect(() => { void load(); }, [load]);
@@ -650,9 +652,11 @@ export function RecoverySection() {
           <Button variant="outline" size="sm" onClick={() => setShowReport(true)}>
             <FileText className="h-3 w-3 mr-1" /> Report
           </Button>
-          <Button size="sm" onClick={() => { resetForm(); setShowAdd(true); }}>
-            <Plus className="h-3 w-3 mr-1" /> Add Customer
-          </Button>
+          {(isAdmin || isCashier || (isRecovery && agentCanAddCustomer)) && (
+            <Button size="sm" onClick={() => { resetForm(); setShowAdd(true); }}>
+              <Plus className="h-3 w-3 mr-1" /> Add Customer
+            </Button>
+          )}
         </div>
       </header>
 
@@ -910,7 +914,7 @@ export function RecoverySection() {
                     <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setHistoryId(c.id)}>
                       <History className="h-3 w-3 mr-1" /> History
                     </Button>
-                    {(isAdmin || isCashier) && (
+                    {(isAdmin || isCashier || (isRecovery && agentCanAddCustomer)) && (
                       <>
                         <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => editCustomer(c)}>Edit</Button>
                         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setDeleteId(c.id)}>

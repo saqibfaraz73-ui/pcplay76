@@ -81,6 +81,7 @@ export function AdminSettings() {
   const [supervisorPrinterEnabled, setSupervisorPrinterEnabled] = React.useState(false);
   const [waiterPrinterEnabled, setWaiterPrinterEnabled] = React.useState(false);
   const [recoveryPrinterEnabled, setRecoveryPrinterEnabled] = React.useState(false);
+  const [recoveryAgentAddCustomerEnabled, setRecoveryAgentAddCustomerEnabled] = React.useState(false);
   const [salesDashboardEnabled, setSalesDashboardEnabled] = React.useState(true);
   const [skuSearchEnabled, setSkuSearchEnabled] = React.useState(false);
   const [currencySymbol, setCurrencySymbolState] = React.useState("");
@@ -146,6 +147,7 @@ export function AdminSettings() {
     setSupervisorPrinterEnabled(!!s?.supervisorPrinterEnabled);
     setWaiterPrinterEnabled(!!s?.waiterPrinterEnabled);
     setRecoveryPrinterEnabled(!!s?.recoveryPrinterEnabled);
+    setRecoveryAgentAddCustomerEnabled(!!s?.recoveryAgentAddCustomerEnabled);
     setSalesDashboardEnabled(s?.salesDashboardEnabled !== false); // default true
     setSkuSearchEnabled(!!s?.skuSearchEnabled);
     setCurrencySymbolState(s?.currencySymbol ?? "");
@@ -234,6 +236,7 @@ export function AdminSettings() {
         supervisorPrinterEnabled,
         waiterPrinterEnabled,
         recoveryPrinterEnabled,
+        recoveryAgentAddCustomerEnabled,
         salesDashboardEnabled,
         skuSearchEnabled,
         currencySymbol: currencySymbol.trim(),
@@ -568,6 +571,41 @@ export function AdminSettings() {
                 </div>
                 <Switch checked={tableSelectionDisabled} onCheckedChange={setTableSelectionDisabled} />
               </div>
+              <div className="flex items-center justify-between gap-3 rounded-md border p-3">
+                <div>
+                  <div className="text-sm font-medium">Restrict waiters to assigned tables</div>
+                  <div className="text-xs text-muted-foreground">If enabled, waiters can only take orders on tables assigned to them.</div>
+                </div>
+                <Switch checked={waiterRestrictToOwnTables} onCheckedChange={setWaiterRestrictToOwnTables} />
+              </div>
+              <div className="flex items-center justify-between gap-3 rounded-md border p-3">
+                <div>
+                  <div className="text-sm font-medium">Allow waiter to access Printer Settings</div>
+                  <div className="text-xs text-muted-foreground">If enabled, waiters can configure printer settings.</div>
+                </div>
+                <Switch checked={waiterPrinterEnabled} onCheckedChange={setWaiterPrinterEnabled} />
+              </div>
+              <div className="flex items-center justify-between gap-3 rounded-md border p-3">
+                <div>
+                  <div className="text-sm font-medium">Allow waiter to use Main App (Sync)</div>
+                  <div className="text-xs text-muted-foreground">If enabled, waiters can set their device as the Main sync server.</div>
+                </div>
+                <Switch checked={waiterMainAppEnabled} onCheckedChange={setWaiterMainAppEnabled} />
+              </div>
+              <div className="flex items-center justify-between gap-3 rounded-md border p-3">
+                <div>
+                  <div className="text-sm font-medium">Allow supervisor to access Printer Settings</div>
+                  <div className="text-xs text-muted-foreground">If enabled, supervisors can configure printer settings.</div>
+                </div>
+                <Switch checked={supervisorPrinterEnabled} onCheckedChange={setSupervisorPrinterEnabled} />
+              </div>
+              <div className="flex items-center justify-between gap-3 rounded-md border p-3">
+                <div>
+                  <div className="text-sm font-medium">Pending orders check on work period end</div>
+                  <div className="text-xs text-muted-foreground">Show warning about open table orders when ending a work period.</div>
+                </div>
+                <Switch checked={cashierEndWorkPeriodPendingCheck} onCheckedChange={setCashierEndWorkPeriodPendingCheck} />
+              </div>
             </>
           )}
           <div className="flex justify-end">
@@ -630,11 +668,49 @@ export function AdminSettings() {
         </CardContent>
       </Card>
 
-      {/* Permissions */}
+      {/* Recovery Settings */}
       <Card>
         <CardHeader>
-          <CardTitle>Permissions & Features</CardTitle>
-          <CardDescription>Control access and visibility for different roles.</CardDescription>
+          <CardTitle>Recovery / Bill Collection</CardTitle>
+          <CardDescription>Configure recovery module for bill collection agents.</CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-4">
+          <div className="flex items-center justify-between gap-3 rounded-md border p-3">
+            <div>
+              <div className="text-sm font-medium">Enable Recovery</div>
+              <div className="text-xs text-muted-foreground">Show the Recovery section for bill collection (e.g. internet services).</div>
+            </div>
+            <Switch checked={recoveryEnabled} onCheckedChange={setRecoveryEnabled} />
+          </div>
+          {recoveryEnabled && (
+            <>
+              <div className="flex items-center justify-between gap-3 rounded-md border p-3">
+                <div>
+                  <div className="text-sm font-medium">Allow agent to add/edit customers</div>
+                  <div className="text-xs text-muted-foreground">If enabled, recovery agents can add, edit, and delete customers. Otherwise they only see assigned customers.</div>
+                </div>
+                <Switch checked={recoveryAgentAddCustomerEnabled} onCheckedChange={setRecoveryAgentAddCustomerEnabled} />
+              </div>
+              <div className="flex items-center justify-between gap-3 rounded-md border p-3">
+                <div>
+                  <div className="text-sm font-medium">Allow agent to access Printer Settings</div>
+                  <div className="text-xs text-muted-foreground">If enabled, recovery agents can configure printer settings.</div>
+                </div>
+                <Switch checked={recoveryPrinterEnabled} onCheckedChange={setRecoveryPrinterEnabled} />
+              </div>
+            </>
+          )}
+          <div className="flex justify-end">
+            <Button onClick={() => void save()} disabled={!settings}>Save Recovery Settings</Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* General Permissions */}
+      <Card>
+        <CardHeader>
+          <CardTitle>General Permissions</CardTitle>
+          <CardDescription>Control access for sales dashboard and cashier roles.</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4">
           <div className="flex items-center justify-between gap-3 rounded-md border p-3">
@@ -653,13 +729,6 @@ export function AdminSettings() {
           </div>
           <div className="flex items-center justify-between gap-3 rounded-md border p-3">
             <div>
-              <div className="text-sm font-medium">Enable Recovery</div>
-              <div className="text-xs text-muted-foreground">Show the Recovery section for bill collection (e.g. internet services).</div>
-            </div>
-            <Switch checked={recoveryEnabled} onCheckedChange={setRecoveryEnabled} />
-          </div>
-          <div className="flex items-center justify-between gap-3 rounded-md border p-3">
-            <div>
               <div className="text-sm font-medium">Allow cashier to view Reports</div>
               <div className="text-xs text-muted-foreground">If enabled, cashiers can access the Reports section.</div>
             </div>
@@ -671,48 +740,6 @@ export function AdminSettings() {
               <div className="text-xs text-muted-foreground">If disabled, only admin can cancel orders.</div>
             </div>
             <Switch checked={cashierCancelOrderEnabled} onCheckedChange={setCashierCancelOrderEnabled} />
-          </div>
-          <div className="flex items-center justify-between gap-3 rounded-md border p-3">
-            <div>
-              <div className="text-sm font-medium">Pending orders check on work period end</div>
-              <div className="text-xs text-muted-foreground">Show warning about open table orders when ending a work period.</div>
-            </div>
-            <Switch checked={cashierEndWorkPeriodPendingCheck} onCheckedChange={setCashierEndWorkPeriodPendingCheck} />
-          </div>
-          <div className="flex items-center justify-between gap-3 rounded-md border p-3">
-            <div>
-              <div className="text-sm font-medium">Allow supervisor to access Printer Settings</div>
-              <div className="text-xs text-muted-foreground">If enabled, supervisors can configure printer settings.</div>
-            </div>
-            <Switch checked={supervisorPrinterEnabled} onCheckedChange={setSupervisorPrinterEnabled} />
-          </div>
-          <div className="flex items-center justify-between gap-3 rounded-md border p-3">
-            <div>
-              <div className="text-sm font-medium">Allow waiter to access Printer Settings</div>
-              <div className="text-xs text-muted-foreground">If enabled, waiters can configure printer settings.</div>
-            </div>
-            <Switch checked={waiterPrinterEnabled} onCheckedChange={setWaiterPrinterEnabled} />
-          </div>
-          <div className="flex items-center justify-between gap-3 rounded-md border p-3">
-            <div>
-              <div className="text-sm font-medium">Allow recovery agent to access Printer Settings</div>
-              <div className="text-xs text-muted-foreground">If enabled, recovery agents can configure printer settings.</div>
-            </div>
-            <Switch checked={recoveryPrinterEnabled} onCheckedChange={setRecoveryPrinterEnabled} />
-          </div>
-          <div className="flex items-center justify-between gap-3 rounded-md border p-3">
-            <div>
-              <div className="text-sm font-medium">Allow waiter to use Main App (Sync)</div>
-              <div className="text-xs text-muted-foreground">If enabled, waiters can set their device as the Main sync server.</div>
-            </div>
-            <Switch checked={waiterMainAppEnabled} onCheckedChange={setWaiterMainAppEnabled} />
-          </div>
-          <div className="flex items-center justify-between gap-3 rounded-md border p-3">
-            <div>
-              <div className="text-sm font-medium">Restrict waiters to assigned tables</div>
-              <div className="text-xs text-muted-foreground">If enabled, waiters can only take orders on tables assigned to them.</div>
-            </div>
-            <Switch checked={waiterRestrictToOwnTables} onCheckedChange={setWaiterRestrictToOwnTables} />
           </div>
           <div className="flex justify-end">
             <Button onClick={() => void save()} disabled={!settings}>Save</Button>
