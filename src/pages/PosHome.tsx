@@ -25,6 +25,7 @@ import {
   Banknote,
   Shield,
   Wifi,
+  Trash2,
 } from "lucide-react";
 import appLogo from "@/assets/app-logo.jpg";
 
@@ -182,6 +183,13 @@ export default function PosHome() {
         icon: Settings,
         color: "bg-gray-500/10 text-gray-600 border-gray-200",
         description: "App settings",
+      });
+      actions.push({
+        to: "/admin?tab=cleanup",
+        label: "Data Cleanup",
+        icon: Trash2,
+        color: "bg-red-500/10 text-red-600 border-red-200",
+        description: "Clean old data",
       });
     }
 
