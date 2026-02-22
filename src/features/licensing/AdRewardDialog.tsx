@@ -147,18 +147,6 @@ export function AdRewardDialog({
                 <><Crown className="h-4 w-4 mr-2 text-amber-500" />Subscribe via Google Play</>
               )}
             </Button>
-            <Button
-              variant="outline"
-              className="w-full"
-              onClick={() => void handleRestore()}
-              disabled={restoring || !isOnline}
-            >
-              {restoring ? (
-                <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Restoring...</>
-              ) : (
-                <><RotateCcw className="h-4 w-4 mr-2" />Restore Previous Purchase</>
-              )}
-            </Button>
             <Button variant="ghost" className="w-full text-xs" onClick={() => setUpgradeVisible(false)}>
               Back
             </Button>
