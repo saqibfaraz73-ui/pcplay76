@@ -40,7 +40,7 @@ let _isPremiumCache: boolean = false;
 /** Free entries per section before watching an ad */
 export const FREE_LIMIT = 5;
 /** Entries granted after watching a rewarded ad */
-export const AD_BONUS = 3;
+export const AD_BONUS = 5;
 
 function defaultRecord(): LicenseRecord {
   return {
