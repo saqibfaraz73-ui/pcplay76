@@ -50,6 +50,45 @@ export async function checkPlayStorePremium(): Promise<PremiumStatus> {
 }
 
 /**
+ * Launch the Play Store in-app purchase flow for premium subscription.
+ * Returns true if purchase was successful.
+ */
+export async function purchasePremium(): Promise<boolean> {
+  if (!Capacitor.isNativePlatform()) {
+    // In browser: open Play Store listing
+    window.open(
+      `https://play.google.com/store/apps/details?id=app.lovable.c24ea21fcabc47b293cbb637319377b7`,
+      "_blank"
+    );
+    return false;
+  }
+
+  // ── REAL BILLING (uncomment when RevenueCat is connected) ───────────────
+  // try {
+  //   const { Purchases } = await import('@revenuecat/purchases-capacitor');
+  //   const offerings = await Purchases.getOfferings();
+  //   const pkg = offerings.current?.availablePackages?.[0];
+  //   if (!pkg) throw new Error('No packages available');
+  //   const result = await Purchases.purchasePackage({ aPackage: pkg });
+  //   return result.customerInfo.entitlements.active['premium'] !== undefined;
+  // } catch (e: any) {
+  //   if (e?.userCancelled) return false;
+  //   console.warn('[PlayBilling] Purchase failed:', e);
+  //   return false;
+  // }
+  // ────────────────────────────────────────────────────────────────────────
+
+  // Fallback: open Play Store listing
+  try {
+    const { Browser } = await import("@capacitor/browser");
+    await Browser.open({
+      url: `https://play.google.com/store/apps/details?id=app.lovable.c24ea21fcabc47b293cbb637319377b7`,
+    });
+  } catch {}
+  return false;
+}
+
+/**
  * Restore purchase from Play Store.
  * Returns true if a valid premium subscription was found.
  */

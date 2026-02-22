@@ -1,6 +1,6 @@
 /**
  * AdRewardDialog — shown when a free limit is reached.
- * User can watch a rewarded ad to get +3 entries, or upgrade to Premium.
+ * User can watch a rewarded ad to get +5 entries, or upgrade to Premium.
  * When offline, the dialog is non-dismissable until they go online or upgrade.
  */
 import React from "react";
@@ -15,7 +15,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { showRewardedAd } from "./admob-ads";
 import { grantAdBonus, AD_BONUS, type SalesModule } from "./licensing-db";
-import { PlayCircle, Crown, Loader2, WifiOff } from "lucide-react";
+import { purchasePremium, restorePlayStorePurchase } from "./play-store-billing";
+import { PlayCircle, Crown, Loader2, WifiOff, ShieldCheck, RotateCcw } from "lucide-react";
 
 interface AdRewardDialogProps {
   open: boolean;
@@ -47,13 +48,15 @@ export function AdRewardDialog({
   const [loading, setLoading] = React.useState(false);
   const [upgradeVisible, setUpgradeVisible] = React.useState(false);
   const [adError, setAdError] = React.useState<string | null>(null);
+  const [purchasing, setPurchasing] = React.useState(false);
+  const [restoring, setRestoring] = React.useState(false);
   const isOnline = useIsOnline();
 
   // Reset error when connectivity changes
   React.useEffect(() => { if (isOnline) setAdError(null); }, [isOnline]);
 
   const handleWatchAd = async () => {
-    if (!isOnline) return; // guard — button should already be disabled
+    if (!isOnline) return;
     setAdError(null);
     setLoading(true);
     try {
@@ -72,8 +75,36 @@ export function AdRewardDialog({
     }
   };
 
-  // Allow closing — closing never resets free entries or counts.
-  // Bonus entries are ONLY granted after a fully completed rewarded ad (earned === true).
+  const handlePurchase = async () => {
+    setPurchasing(true);
+    try {
+      const success = await purchasePremium();
+      if (success) {
+        onOpenChange(false);
+        onRewarded();
+      }
+    } catch {
+      // silently fail
+    } finally {
+      setPurchasing(false);
+    }
+  };
+
+  const handleRestore = async () => {
+    setRestoring(true);
+    try {
+      const restored = await restorePlayStorePurchase();
+      if (restored) {
+        onOpenChange(false);
+        onRewarded();
+      }
+    } catch {
+      // silently fail
+    } finally {
+      setRestoring(false);
+    }
+  };
+
   const handleOpenChange = (val: boolean) => {
     onOpenChange(val);
   };
@@ -88,15 +119,49 @@ export function AdRewardDialog({
               Upgrade to Premium
             </AlertDialogTitle>
             <AlertDialogDescription>
-              Get unlimited entries across all sections — no ads, no limits.
+              No ads, no limits — unlimited access to all features.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <div className="rounded-md border bg-muted/50 p-3 space-y-2 text-sm">
-            <p className="font-medium">Subscribe via Google Play Store:</p>
-            <p className="text-muted-foreground">Open the app on your device and subscribe to SANGI POS Pro from the Play Store to unlock unlimited access.</p>
+          <div className="rounded-md border bg-muted/50 p-4 space-y-3 text-sm">
+            <div className="flex items-start gap-2">
+              <ShieldCheck className="h-4 w-4 mt-0.5 text-primary shrink-0" />
+              <div>
+                <p className="font-medium">What you get with Premium:</p>
+                <ul className="mt-1 space-y-1 text-muted-foreground list-disc list-inside">
+                  <li>Unlimited entries across all sections</li>
+                  <li>No ads — ever</li>
+                  <li>Priority support</li>
+                </ul>
+              </div>
+            </div>
           </div>
-          <AlertDialogFooter>
-            <Button variant="outline" onClick={() => setUpgradeVisible(false)}>Back</Button>
+          <AlertDialogFooter className="flex-col gap-2 sm:flex-col">
+            <Button
+              className="w-full"
+              onClick={() => void handlePurchase()}
+              disabled={purchasing || !isOnline}
+            >
+              {purchasing ? (
+                <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Processing...</>
+              ) : (
+                <><Crown className="h-4 w-4 mr-2 text-amber-500" />Subscribe via Google Play</>
+              )}
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={() => void handleRestore()}
+              disabled={restoring || !isOnline}
+            >
+              {restoring ? (
+                <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Restoring...</>
+              ) : (
+                <><RotateCcw className="h-4 w-4 mr-2" />Restore Previous Purchase</>
+              )}
+            </Button>
+            <Button variant="ghost" className="w-full text-xs" onClick={() => setUpgradeVisible(false)}>
+              Back
+            </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -154,7 +219,7 @@ export function AdRewardDialog({
             onClick={() => setUpgradeVisible(true)}
           >
             <Crown className="h-4 w-4 mr-2 text-amber-500" />
-            Upgrade to Premium (No Ads)
+            Upgrade to Premium (No Ads &amp; Unlimited Access)
           </Button>
           <Button
             variant="ghost"
