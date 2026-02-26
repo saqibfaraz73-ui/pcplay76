@@ -92,6 +92,20 @@ export function SalesReportPreview({
   const totalExpenses = React.useMemo(() => expenses.reduce((s, e) => s + e.amount, 0), [expenses]);
   const netAfterExpenses = net - totalExpenses;
 
+  // Tax & Service charge totals
+  const taxEnabled = settings?.taxEnabled ?? false;
+  const serviceChargeEnabled = settings?.serviceChargeEnabled ?? false;
+  const totalTax = React.useMemo(() => 
+    completed.reduce((s, o) => s + (o.taxAmount ?? 0), 0) + completedTableOrders.reduce((s, o) => s + (o.taxAmount ?? 0), 0),
+    [completed, completedTableOrders]
+  );
+  const totalServiceCharge = React.useMemo(() => 
+    completed.reduce((s, o) => s + (o.serviceChargeAmount ?? 0), 0) + completedTableOrders.reduce((s, o) => s + (o.serviceChargeAmount ?? 0), 0),
+    [completed, completedTableOrders]
+  );
+  const taxLabel = settings?.taxLabel || "Tax";
+  const serviceLabel = settings?.serviceChargeLabel || "Service Charge";
+
   const creditSale = React.useMemo(
     () => completed.filter((o) => o.paymentMethod === "credit").reduce((s, o) => s + o.total, 0) + tableCreditSales,
     [completed, tableCreditSales],
@@ -232,6 +246,18 @@ export function SalesReportPreview({
             <div className="rounded-md border p-3">
               <div className="text-xs text-muted-foreground">Delivery cancelled</div>
               <div className="text-base font-semibold text-destructive">{formatIntMoney(deliveryCancelled)}</div>
+            </div>
+          )}
+          {taxEnabled && totalTax > 0 && (
+            <div className="rounded-md border p-3">
+              <div className="text-xs text-muted-foreground">Total {taxLabel}</div>
+              <div className="text-base font-semibold">{formatIntMoney(totalTax)}</div>
+            </div>
+          )}
+          {serviceChargeEnabled && totalServiceCharge > 0 && (
+            <div className="rounded-md border p-3">
+              <div className="text-xs text-muted-foreground">Total {serviceLabel}</div>
+              <div className="text-base font-semibold">{formatIntMoney(totalServiceCharge)}</div>
             </div>
           )}
         </div>

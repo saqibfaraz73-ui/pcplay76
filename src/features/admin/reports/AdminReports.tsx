@@ -472,6 +472,13 @@ function buildSalesPdf(args: {
   y += 4;
   row("Overall Sales", formatIntMoney(overallSales), true);
   row("Total Discount", formatIntMoney(overallDiscount));
+  // Tax & Service charge totals
+  const taxEnabled = args.settings?.taxEnabled ?? false;
+  const serviceChargeEnabled = args.settings?.serviceChargeEnabled ?? false;
+  const totalTaxAmount = completed.reduce((s, o) => s + (o.taxAmount ?? 0), 0) + completedTableOrders.reduce((s, o) => s + (o.taxAmount ?? 0), 0);
+  const totalServiceAmount = completed.reduce((s, o) => s + (o.serviceChargeAmount ?? 0), 0) + completedTableOrders.reduce((s, o) => s + (o.serviceChargeAmount ?? 0), 0);
+  if (taxEnabled && totalTaxAmount > 0) row(`Total ${args.settings?.taxLabel || "Tax"}`, formatIntMoney(totalTaxAmount));
+  if (serviceChargeEnabled && totalServiceAmount > 0) row(`Total ${args.settings?.serviceChargeLabel || "Service Charge"}`, formatIntMoney(totalServiceAmount));
   row("Total Cancelled", formatIntMoney(totalCancelledAmount));
   row("Minus Expenses", `-${formatIntMoney(totalExpenses)}`, false, [200, 0, 0]);
   y += 4;
