@@ -10,6 +10,38 @@ import { sendPrintJob } from "@/features/sync/sync-client";
 import { isDuplicatePrint } from "@/features/pos/print-dedup";
 import { sendToSectionPrinter, getPrinterForSection, type PrintSection } from "@/features/pos/printer-routing";
 
+/**
+ * Build ESC/POS native QR code commands.
+ * Uses GS ( k function for QR code generation on compatible printers.
+ */
+function buildEscPosQr(data: string): string {
+  const CENTER_ON = "\x1ba\x01";
+  const LEFT_ON = "\x1ba\x00";
+  
+  let cmd = CENTER_ON;
+  
+  // GS ( k — QR Code: Select model (Model 2)
+  cmd += "\x1d\x28\x6b\x04\x00\x31\x41\x32\x00";
+  
+  // GS ( k — QR Code: Set module size (4 dots)
+  cmd += "\x1d\x28\x6b\x03\x00\x31\x43\x04";
+  
+  // GS ( k — QR Code: Set error correction level (L = 48)
+  cmd += "\x1d\x28\x6b\x03\x00\x31\x45\x30";
+  
+  // GS ( k — QR Code: Store data
+  const storeLen = data.length + 3;
+  const pL = storeLen & 0xff;
+  const pH = (storeLen >> 8) & 0xff;
+  cmd += "\x1d\x28\x6b" + String.fromCharCode(pL, pH) + "\x31\x50\x30" + data;
+  
+  // GS ( k — QR Code: Print
+  cmd += "\x1d\x28\x6b\x03\x00\x31\x51\x30";
+  
+  cmd += LEFT_ON;
+  return cmd;
+}
+
 function escapeHtml(s: string) {
   return s.replace(/[&<>"']/g, (c) => {
     switch (c) {
@@ -64,7 +96,7 @@ async function buildEscPosReceipt(
   let logoCommands = "";
   if (settings.showLogo && settings.receiptLogoPath) {
     try {
-      logoCommands = await generateLogoEscPos(settings.receiptLogoPath, settings.paperSize);
+      logoCommands = await generateLogoEscPos(settings.receiptLogoPath, settings.paperSize, opts?.forUsb);
     } catch (e) {
       console.warn("Could not load logo for printing:", e);
     }
@@ -138,6 +170,24 @@ async function buildEscPosReceipt(
     ...(opts?.forUsb ? [] : [LEFT_ON]),
   ];
 
+  // QR code with receipt data (optional, uses ESC/POS native QR commands)
+  let qrCommands = "";
+  if (settings.receiptQrEnabled) {
+    const qrData = JSON.stringify({
+      rn: order.receiptNo,
+      dt: order.createdAt,
+      c: order.cashier,
+      pm: order.paymentMethod,
+      st: order.subtotal,
+      dc: order.discountTotal,
+      tx: order.taxAmount,
+      sc: order.serviceChargeAmount,
+      t: order.total,
+      items: order.lines.map(l => ({ n: l.name, q: l.qty, p: l.unitPrice, s: l.subtotal })),
+    });
+    qrCommands = buildEscPosQr("SANGI-RCV:" + qrData);
+  }
+
   const totalContentLines = headerLines.length + 1 + itemLines.length + totals.length + (logoCommands ? 4 : 0);
   const feedCount = getFeedLinesForSize(settings, totalContentLines);
 
@@ -157,6 +207,7 @@ async function buildEscPosReceipt(
   receipt += hr + "\n";
   receipt += itemLines.join("\n") + "\n";
   receipt += totals.join("\n");
+  if (qrCommands) receipt += "\n" + qrCommands;
   if (feedCount > 0) receipt += "\n".repeat(feedCount);
   receipt += "\n\x1dV\x41\x03";
   return receipt;

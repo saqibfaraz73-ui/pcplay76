@@ -34,7 +34,7 @@ async function blobUrlToBase64(url: string): Promise<string> {
   });
 }
 
-export default function CustomPrintPage() {
+export default function CustomPrintPage({ embedded }: { embedded?: boolean }) {
   // Custom receipt builder state
   const [title, setTitle] = useState("");
   const [businessName, setBusinessName] = useState("");
@@ -508,10 +508,12 @@ export default function CustomPrintPage() {
 
   return (
     <div className="space-y-4">
-      <header>
-        <h1 className="text-2xl font-semibold">Custom Print</h1>
-        <p className="text-sm text-muted-foreground">Create a custom receipt or upload your own PDF to print/share.</p>
-      </header>
+      {!embedded && (
+        <header>
+          <h1 className="text-2xl font-semibold">Custom Print</h1>
+          <p className="text-sm text-muted-foreground">Create a custom receipt or upload your own PDF to print/share.</p>
+        </header>
+      )}
 
       <Tabs defaultValue="create">
         <TabsList className="flex w-full flex-wrap justify-start gap-1">

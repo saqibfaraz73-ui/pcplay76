@@ -5,13 +5,24 @@ import { AdminInventory } from "@/features/admin/inventory/AdminInventory";
 import { AdminCustomers } from "@/features/admin/customers/AdminCustomers";
 import { AdminBackupRestore } from "@/features/admin/backup/AdminBackupRestore";
 import { DataCleanup } from "@/features/admin/settings/DataCleanup";
+import { AdminDelivery } from "@/features/admin/delivery/AdminDelivery";
 import { useAuth } from "@/auth/AuthProvider";
+import { db } from "@/db/appDb";
+import React from "react";
+import CustomPrintPage from "@/pages/CustomPrintPage";
 
 export default function AdminDashboard() {
   const [searchParams] = useSearchParams();
   const defaultTab = searchParams.get("tab") || "products";
   const { session } = useAuth();
   const isAdmin = session?.role === "admin";
+  const [deliveryEnabled, setDeliveryEnabled] = React.useState(false);
+
+  React.useEffect(() => {
+    db.settings.get("app").then((s) => {
+      setDeliveryEnabled(!!s?.deliveryEnabled);
+    });
+  }, []);
 
   return (
     <div className="space-y-4">
@@ -25,12 +36,18 @@ export default function AdminDashboard() {
           <TabsTrigger value="inventory">Inventory</TabsTrigger>
           <TabsTrigger value="customers">Customers</TabsTrigger>
           <TabsTrigger value="backup">Backup</TabsTrigger>
+          {deliveryEnabled && <TabsTrigger value="delivery">Delivery</TabsTrigger>}
+          <TabsTrigger value="custom-print">Custom Print</TabsTrigger>
           {isAdmin && <TabsTrigger value="cleanup">Data Cleanup</TabsTrigger>}
         </TabsList>
         <TabsContent value="products"><AdminProducts /></TabsContent>
         <TabsContent value="inventory"><AdminInventory /></TabsContent>
         <TabsContent value="customers"><AdminCustomers /></TabsContent>
         <TabsContent value="backup"><AdminBackupRestore /></TabsContent>
+        {deliveryEnabled && (
+          <TabsContent value="delivery"><AdminDelivery /></TabsContent>
+        )}
+        <TabsContent value="custom-print"><CustomPrintPage embedded /></TabsContent>
         {isAdmin && <TabsContent value="cleanup"><DataCleanup /></TabsContent>}
       </Tabs>
     </div>

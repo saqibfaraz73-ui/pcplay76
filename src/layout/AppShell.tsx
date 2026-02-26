@@ -25,14 +25,14 @@ import { getLicense } from "@/features/licensing/licensing-db";
 
 const navItems = [
   { to: "/home", label: "Dashboard", icon: Home },
+  { to: "/pos", label: "Sales", icon: ShoppingCart, salesOnly: true },
+  { to: "/pos/tables", label: "Tables", icon: UtensilsCrossed, tablesOnly: true },
   { to: "/admin", label: "Admin", icon: ClipboardList, adminOnly: true },
 ];
 
 const adminSubNav = [
   { to: "/admin/reports", label: "Reports", icon: BarChart3 },
   { to: "/admin/labels", label: "Print Barcodes", icon: Tags },
-  { to: "/admin/delivery", label: "Delivery", icon: Truck },
-  { to: "/admin/sync", label: "Sync", icon: Wifi },
   { to: "/admin/printer", label: "Printer", icon: Printer },
   { to: "/admin/settings", label: "Settings", icon: Settings },
 ];
@@ -128,18 +128,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     if (isWaiter || isRecoveryAgent) return [];
     return navItems.filter((n) => {
       if (n.adminOnly && !isAdmin) return false;
-      if (n.to === "/pos" && !salesDashboardEnabled) return false;
+      if ((n as any).salesOnly && !salesDashboardEnabled) return false;
+      if ((n as any).tablesOnly && !tableManagementEnabled) return false;
       return true;
     });
   }, [isAdmin, isWaiter, isRecoveryAgent, salesDashboardEnabled]);
 
   const visibleAdminSubNav = React.useMemo(() => {
-    return adminSubNav.filter((n) => {
-      if (n.to === "/admin/sync" && !syncEnabled) return false;
-      if (n.to === "/admin/delivery" && !deliveryEnabled) return false;
-      return true;
-    });
-  }, [syncEnabled, deliveryEnabled]);
+    return adminSubNav;
+  }, []);
 
   const isActive = (path: string) =>
     location.pathname === path || location.pathname.startsWith(`${path}/`);
@@ -238,21 +235,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                             </Link>
                           )}
 
-                          {/* Sync link for cashier/waiter when enabled */}
-                          {!isAdmin && !isRecoveryAgent && syncEnabled && (
-                            <Link
-                              to="/admin/sync"
-                              className={cn(
-                                "flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors",
-                                isActive("/admin/sync")
-                                  ? "bg-accent text-accent-foreground"
-                                  : "text-muted-foreground hover:text-foreground",
-                              )}
-                            >
-                              <Wifi className="h-4 w-4" />
-                              Sync
-                            </Link>
-                          )}
 
                           {/* Admin sub-navigation */}
                           {isAdmin ? (
@@ -284,11 +266,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                           <div className="mt-3 mb-1 px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                             More
                           </div>
-                          {!isWaiter && !isRecoveryAgent && (
-                            <Link to="/custom-print" className={cn("flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors", isActive("/custom-print") ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground")}>
-                              <FileText className="h-4 w-4" /> Custom Print
-                            </Link>
-                          )}
                           <Link to="/about" className={cn("flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors", isActive("/about") ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground")}>
                             <Info className="h-4 w-4" /> About App
                           </Link>
@@ -364,19 +341,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                       Printer
                     </Link>
                   )}
-                  {!isAdmin && !isRecoveryAgent && syncEnabled && (
-                    <Link
-                      to="/admin/sync"
-                      className={cn(
-                        "rounded-md px-3 py-2 text-sm transition-colors",
-                        isActive("/admin/sync")
-                          ? "bg-accent text-accent-foreground"
-                          : "text-muted-foreground hover:text-foreground",
-                      )}
-                    >
-                      Sync
-                    </Link>
-                  )}
                   {isAdmin
                     ? visibleAdminSubNav.map((n) => (
                         <Link
@@ -393,11 +357,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                         </Link>
                       ))
                     : null}
-                  {!isWaiter && !isRecoveryAgent && (
-                    <Link to="/custom-print" className={cn("rounded-md px-3 py-2 text-sm transition-colors", isActive("/custom-print") ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground")}>
-                      Custom Print
-                    </Link>
-                  )}
                   <Link to="/about" className={cn("rounded-md px-3 py-2 text-sm transition-colors", isActive("/about") ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground")}>
                     About
                   </Link>

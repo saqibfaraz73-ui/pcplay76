@@ -21,7 +21,7 @@ import { ReceiptDialog } from "@/components/ReceiptDialog";
 import { printReceiptFromOrder, printKotFromOrder } from "@/features/pos/receipt-print";
 import { useWorkPeriod } from "@/features/pos/WorkPeriodProvider";
 import { saveDeliveryCustomer } from "@/features/admin/delivery/delivery-customers";
-import { Play, Square, Printer, Save, Truck, ClipboardList, UtensilsCrossed, X, Share2, ScanBarcode } from "lucide-react";
+import { Play, Square, Printer, Save, Truck, ClipboardList, UtensilsCrossed, X, Share2, ScanBarcode, QrCode } from "lucide-react";
 import { format } from "date-fns";
 import { AdRewardDialog } from "@/features/licensing/AdRewardDialog";
 import { Link } from "react-router-dom";
@@ -81,6 +81,9 @@ export default function PosDashboard() {
 
   const [receiptOpen, setReceiptOpen] = React.useState(false);
   const [receiptOrder, setReceiptOrder] = React.useState<Order | null>(null);
+
+  // Scanned receipt QR data dialog
+  const [scannedReceiptData, setScannedReceiptData] = React.useState<any | null>(null);
 
   // Ad reward dialog
   const [adOpen, setAdOpen] = React.useState(false);
@@ -190,15 +193,30 @@ export default function PosDashboard() {
         } as any,
         (decodedText) => {
           const now = Date.now();
-          const scanned = decodedText.trim().toLowerCase();
+          const scanned = decodedText.trim();
+          const scannedLower = scanned.toLowerCase();
           // Debounce: ignore same code within 1.5s, but ALLOW re-scan after that
-          if (scanned === lastScannedRef.current && now - lastScanTimeRef.current < 1500) return;
-          lastScannedRef.current = scanned;
+          if (scannedLower === lastScannedRef.current && now - lastScanTimeRef.current < 1500) return;
+          lastScannedRef.current = scannedLower;
           lastScanTimeRef.current = now;
 
           playScanBeep();
+
+          // Check if this is a receipt QR code
+          if (scanned.startsWith("SANGI-RCV:")) {
+            try {
+              const jsonStr = scanned.substring("SANGI-RCV:".length);
+              const data = JSON.parse(jsonStr);
+              setScannedReceiptData(data);
+              toast({ title: "Receipt QR scanned", description: `Bill #${data.rn}` });
+            } catch {
+              toast({ title: "Invalid receipt QR", variant: "destructive" });
+            }
+            return;
+          }
+
           const currentItems = itemsRef.current;
-          const matchedItem = currentItems.find((i) => i.sku?.toLowerCase() === scanned);
+          const matchedItem = currentItems.find((i) => i.sku?.toLowerCase() === scannedLower);
           if (matchedItem) {
             // Use ref to always call latest addToCart (avoids stale closure)
             addToCartRef.current(matchedItem);
@@ -1512,6 +1530,59 @@ export default function PosDashboard() {
             <Button variant="destructive" onClick={() => void cancelPendingTableOrder()} disabled={!cancelTableReason.trim()}>
               Cancel Order
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Scanned Receipt QR Data Dialog */}
+      <Dialog open={!!scannedReceiptData} onOpenChange={(open) => { if (!open) setScannedReceiptData(null); }}>
+        <DialogContent className="max-w-sm max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <QrCode className="h-5 w-5" />
+              Receipt #{scannedReceiptData?.rn}
+            </DialogTitle>
+          </DialogHeader>
+          {scannedReceiptData && (
+            <div className="space-y-3 text-sm">
+              <div className="grid grid-cols-2 gap-2">
+                <div><span className="text-muted-foreground">Date:</span> {scannedReceiptData.dt ? new Date(scannedReceiptData.dt).toLocaleString() : "—"}</div>
+                <div><span className="text-muted-foreground">Cashier:</span> {scannedReceiptData.c}</div>
+                <div><span className="text-muted-foreground">Payment:</span> {scannedReceiptData.pm?.toUpperCase()}</div>
+              </div>
+              <div className="border rounded-md overflow-hidden">
+                <table className="w-full text-xs">
+                  <thead className="bg-muted">
+                    <tr>
+                      <th className="text-left p-2">Item</th>
+                      <th className="text-right p-2">Qty</th>
+                      <th className="text-right p-2">Price</th>
+                      <th className="text-right p-2">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {scannedReceiptData.items?.map((item: any, idx: number) => (
+                      <tr key={idx} className="border-t">
+                        <td className="p-2">{item.n}</td>
+                        <td className="text-right p-2">{item.q}</td>
+                        <td className="text-right p-2">{formatIntMoney(item.p)}</td>
+                        <td className="text-right p-2">{formatIntMoney(item.s)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div className="space-y-1 border-t pt-2">
+                <div className="flex justify-between"><span>Subtotal</span><span>{formatIntMoney(scannedReceiptData.st)}</span></div>
+                {scannedReceiptData.dc > 0 && <div className="flex justify-between"><span>Discount</span><span>{formatIntMoney(scannedReceiptData.dc)}</span></div>}
+                {scannedReceiptData.tx > 0 && <div className="flex justify-between"><span>Tax</span><span>{formatIntMoney(scannedReceiptData.tx)}</span></div>}
+                {scannedReceiptData.sc > 0 && <div className="flex justify-between"><span>Service</span><span>{formatIntMoney(scannedReceiptData.sc)}</span></div>}
+                <div className="flex justify-between font-bold text-base"><span>Total</span><span>{formatIntMoney(scannedReceiptData.t)}</span></div>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setScannedReceiptData(null)}>Close</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
