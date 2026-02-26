@@ -21,6 +21,14 @@ export type ItemVariation = {
   stock?: number; // optional per-variant stock
 };
 
+// Global add-on (e.g. "Extra Cheese", "Gift Wrap") — available for any item
+export type ItemAddOn = {
+  id: string;
+  name: string;
+  price: number;
+  createdAt: number;
+};
+
 export type MenuItem = {
   id: string;
   categoryId: string;
