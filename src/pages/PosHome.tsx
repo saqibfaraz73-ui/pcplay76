@@ -26,6 +26,7 @@ import {
   Shield,
   Wifi,
   Trash2,
+  FileText,
 } from "lucide-react";
 import appLogo from "@/assets/app-logo.jpg";
 
@@ -166,6 +167,23 @@ export default function PosHome() {
         icon: Wifi,
         color: "bg-sky-500/10 text-sky-600 border-sky-200",
         description: "Device sync",
+      });
+      actions.push({
+        to: "/custom-print",
+        label: "Custom Print",
+        icon: FileText,
+        color: "bg-slate-500/10 text-slate-600 border-slate-200",
+        description: "Custom receipts",
+      });
+    }
+
+    if (!isWaiter && settings?.deliveryEnabled) {
+      actions.push({
+        to: "/admin/delivery",
+        label: "Delivery",
+        icon: Truck,
+        color: "bg-lime-500/10 text-lime-600 border-lime-200",
+        description: "Delivery management",
       });
     }
 
