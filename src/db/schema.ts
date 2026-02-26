@@ -21,12 +21,10 @@ export type ItemVariation = {
   stock?: number; // optional per-variant stock
 };
 
-// Global add-on (e.g. "Extra Cheese", "Gift Wrap") — available for any item
+// Per-item add-on (e.g. "Extra Cheese" for Pizza, "Gift Wrap" for a product)
 export type ItemAddOn = {
-  id: string;
   name: string;
   price: number;
-  createdAt: number;
 };
 
 export type MenuItem = {
@@ -41,6 +39,7 @@ export type MenuItem = {
   stockUnit?: StockUnit; // optional unit of measurement
   expiryDate?: number; // optional expiry date as timestamp
   variations?: ItemVariation[]; // optional product variations (e.g. Small, Medium, Large)
+  addOns?: ItemAddOn[]; // optional per-item add-ons (e.g. Extra Cheese, Gift Wrap)
   createdAt: number;
 };
 

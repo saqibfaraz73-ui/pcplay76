@@ -41,9 +41,6 @@ export function AdminProducts() {
   const [categories, setCategories] = React.useState<Category[]>([]);
   const [items, setItems] = React.useState<MenuItem[]>([]);
   const [settings, setSettings] = React.useState<Settings | null>(null);
-  const [addOns, setAddOns] = React.useState<ItemAddOn[]>([]);
-  const [newAddOnName, setNewAddOnName] = React.useState("");
-  const [newAddOnPrice, setNewAddOnPrice] = React.useState<number>(0);
   const [open, setOpen] = React.useState(false);
   const [mode, setMode] = React.useState<EditMode>({ type: "none" });
 
@@ -67,23 +64,21 @@ export function AdminProducts() {
   const [itemIdDraft, setItemIdDraft] = React.useState<string>("");
   const [itemExpiryDate, setItemExpiryDate] = React.useState<Date | undefined>(undefined);
   const [itemVariations, setItemVariations] = React.useState<ItemVariation[]>([]);
-  const [itemSku, setItemSku] = React.useState("");
+  const [itemAddOns, setItemAddOns] = React.useState<ItemAddOn[]>([]);
   const [skuScanning, setSkuScanning] = React.useState(false);
   const skuScannerRef = React.useRef<HTMLDivElement>(null);
   const html5QrRef = React.useRef<Html5Qrcode | null>(null);
   const importInputRef = React.useRef<HTMLInputElement>(null);
 
   const refresh = React.useCallback(async () => {
-    const [cats, its, s, ao] = await Promise.all([
+    const [cats, its, s] = await Promise.all([
       db.categories.orderBy("createdAt").toArray(),
       db.items.orderBy("createdAt").toArray(),
       db.settings.get("app"),
-      db.addOns.orderBy("createdAt").toArray(),
     ]);
     setCategories(cats);
     setItems(its);
     setSettings(s ?? null);
-    setAddOns(ao);
     setItemCategoryId((prev) => prev || cats[0]?.id || "");
   }, []);
 
@@ -116,6 +111,7 @@ export function AdminProducts() {
     setItemInitialStock(0);
     setItemExpiryDate(undefined);
     setItemVariations([]);
+    setItemAddOns([]);
     setItemSku("");
     setItemCategoryId(categories[0]?.id ?? "");
     setOpen(true);
@@ -133,6 +129,7 @@ export function AdminProducts() {
     setItemStockUnit(item.stockUnit ?? "pcs");
     setItemExpiryDate(item.expiryDate ? new Date(item.expiryDate) : undefined);
     setItemVariations(item.variations ?? []);
+    setItemAddOns(item.addOns ?? []);
     setItemSku(item.sku ?? "");
     const inv = await db.inventory.get(item.id);
     setItemInitialStock(inv?.quantity ?? 0);
@@ -176,6 +173,7 @@ export function AdminProducts() {
           stockUnit: itemStockUnit !== "pcs" ? itemStockUnit : undefined,
           expiryDate: itemExpiryDate ? itemExpiryDate.getTime() : undefined,
           variations: itemVariations.length > 0 ? itemVariations.filter(v => v.name.trim() && v.price > 0) : undefined,
+          addOns: itemAddOns.length > 0 ? itemAddOns.filter(a => a.name.trim() && a.price > 0) : undefined,
           createdAt: mode.item?.createdAt ?? now,
         };
         await db.items.put(next);
@@ -415,71 +413,6 @@ export function AdminProducts() {
         </CardContent>
       </Card>
 
-      {/* Add-ons management card */}
-      <Card className="lg:col-span-2">
-        <CardHeader className="flex flex-row items-start justify-between gap-3">
-          <div>
-            <CardTitle>Add-ons</CardTitle>
-            <CardDescription>Global add-ons available for any item (e.g. Extra Cheese, Gift Wrap, Sauce).</CardDescription>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="flex items-center gap-2">
-            <Input
-              placeholder="Add-on name"
-              value={newAddOnName}
-              onChange={(e) => setNewAddOnName(e.target.value)}
-              className="flex-1"
-            />
-            <Input
-              placeholder="Price"
-              inputMode="numeric"
-              value={newAddOnPrice === 0 ? "" : String(newAddOnPrice)}
-              onChange={(e) => setNewAddOnPrice(parseNonDecimalInt(e.target.value))}
-              className="w-24"
-            />
-            <Button
-              onClick={async () => {
-                const name = newAddOnName.trim();
-                if (!name) { toast({ title: "Name required", variant: "destructive" }); return; }
-                if (newAddOnPrice <= 0) { toast({ title: "Price must be > 0", variant: "destructive" }); return; }
-                await db.addOns.put({ id: makeId("addon"), name, price: Math.round(newAddOnPrice), createdAt: Date.now() });
-                setNewAddOnName("");
-                setNewAddOnPrice(0);
-                toast({ title: "Add-on created" });
-                await refresh();
-              }}
-            >
-              Add
-            </Button>
-          </div>
-          {addOns.length === 0 ? (
-            <div className="text-sm text-muted-foreground">No add-ons yet. Create one above.</div>
-          ) : (
-            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-              {addOns.map((ao) => (
-                <div key={ao.id} className="flex items-center justify-between gap-2 rounded-md border p-2">
-                  <div className="min-w-0">
-                    <div className="truncate text-sm font-medium">{ao.name}</div>
-                    <div className="text-xs text-muted-foreground">{formatIntMoney(ao.price)}</div>
-                  </div>
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    onClick={async () => {
-                      await db.addOns.delete(ao.id);
-                      toast({ title: "Add-on deleted" });
-                      await refresh();
-                    }}
-                  >
-                    ×
-                  </Button>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
 
       {/* Edit dialog */}
       <Dialog open={open} onOpenChange={setOpen}>
@@ -706,6 +639,58 @@ export function AdminProducts() {
                             </span>
                           ) : null}
                         </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Add-ons (per item) */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label>Add-ons (optional)</Label>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setItemAddOns((prev) => [...prev, { name: "", price: 0 }])}
+                  >
+                    + Add Add-on
+                  </Button>
+                </div>
+                {itemAddOns.length > 0 && (
+                  <div className="space-y-2">
+                    {itemAddOns.map((ao, idx) => (
+                      <div key={idx} className="flex items-center gap-2 rounded-md border p-2">
+                        <Input
+                          placeholder="e.g. Extra Cheese"
+                          value={ao.name}
+                          onChange={(e) => {
+                            const next = [...itemAddOns];
+                            next[idx] = { ...next[idx], name: e.target.value };
+                            setItemAddOns(next);
+                          }}
+                          className="flex-1"
+                        />
+                        <Input
+                          placeholder="Price"
+                          inputMode="numeric"
+                          value={ao.price === 0 ? "" : String(ao.price)}
+                          onChange={(e) => {
+                            const next = [...itemAddOns];
+                            next[idx] = { ...next[idx], price: parseNonDecimalInt(e.target.value) };
+                            setItemAddOns(next);
+                          }}
+                          className="w-24"
+                        />
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => setItemAddOns((prev) => prev.filter((_, i) => i !== idx))}
+                        >
+                          ×
+                        </Button>
                       </div>
                     ))}
                   </div>

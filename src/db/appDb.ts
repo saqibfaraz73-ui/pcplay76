@@ -13,7 +13,6 @@ import type {
   ExportSale,
   InventoryAdjustment,
   InventoryRow,
-  ItemAddOn,
   Labour,
   LabourAttendance,
   LabourProduction,
@@ -70,7 +69,7 @@ export class SangiPosDb extends Dexie {
   labourTransactions!: Table<LabourTransaction, string>;
   labourAttendance!: Table<LabourAttendance, string>;
   labourProduction!: Table<LabourProduction, string>;
-  addOns!: Table<ItemAddOn, string>;
+  
 
   constructor() {
     super("sangi_pos_db_v1");
@@ -574,7 +573,7 @@ export class SangiPosDb extends Dexie {
       counters: "id",
     });
 
-    // v22: add global add-ons
+    // v22: remove global addOns table (add-ons are now per-item)
     this.version(22).stores({
       categories: "id, name, createdAt",
       items: "id, categoryId, name, price, createdAt",
@@ -608,7 +607,7 @@ export class SangiPosDb extends Dexie {
       labourTransactions: "id, labourId, type, createdAt",
       labourAttendance: "id, labourId, date, status, createdAt",
       labourProduction: "id, labourId, createdAt",
-      addOns: "id, name, createdAt",
+      addOns: null, // delete the table
       settings: "id",
       counters: "id",
     });
