@@ -310,7 +310,7 @@ export function PosTablesManager() {
     const existingOrder = tableOrders.find((o) => o.tableId === tableId);
 
     // Helper to get real item ID from cart key (strips variant suffix)
-    const getRealItemId = (cartKey: string) => cartKey.includes("__v") ? cartKey.split("__v")[0] : cartKey;
+    const getRealItemId = (cartKey: string) => cartKey.includes("__v") ? cartKey.split("__v")[0] : cartKey.includes("__ao_") ? cartKey.split("__ao_")[0] : cartKey;
 
     const lines: TableOrderLine[] = cart.map((l) => ({
       itemId: l.itemId,
@@ -935,6 +935,8 @@ export function PosTablesManager() {
             const stock = inventory[item.id] ?? 0;
             const outOfStock = item.trackInventory && stock <= 0;
             const hasVariants = item.variations && item.variations.length > 0;
+            const hasAddOns = item.addOns && item.addOns.length > 0;
+            const hasOptions = hasVariants || hasAddOns;
 
             const itemCard = (
               <div
@@ -954,6 +956,9 @@ export function PosTablesManager() {
                 {hasVariants && (
                   <div className="text-[10px] text-primary">+{item.variations!.length} variant{item.variations!.length > 1 ? "s" : ""}</div>
                 )}
+                {hasAddOns && (
+                  <div className="text-[10px] text-primary">+{item.addOns!.length} add-on{item.addOns!.length > 1 ? "s" : ""}</div>
+                )}
                 {item.trackInventory && (
                   <div className={cn("text-[10px]", stock <= 0 ? "text-destructive" : stock <= 5 ? "text-orange-500 dark:text-orange-400" : "text-muted-foreground")}>
                     Stock: {stock}
@@ -967,7 +972,7 @@ export function PosTablesManager() {
               </div>
             );
 
-            if (hasVariants) {
+            if (hasOptions) {
               return (
                 <DropdownMenu key={item.id}>
                   <DropdownMenuTrigger asChild disabled={outOfStock}>
@@ -992,7 +997,7 @@ export function PosTablesManager() {
                         </div>
                       </div>
                     </DropdownMenuItem>
-                    {item.variations!.map((v, idx) => {
+                    {hasVariants && item.variations!.map((v, idx) => {
                       const vStock = v.stock ?? 0;
                       const vOut = item.trackInventory && vStock <= 0;
                       return (
@@ -1015,6 +1020,33 @@ export function PosTablesManager() {
                         </DropdownMenuItem>
                       );
                     })}
+                    {hasAddOns && (
+                      <>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuLabel className="text-xs text-muted-foreground">Add-ons</DropdownMenuLabel>
+                        {item.addOns!.map((ao, idx) => (
+                          <DropdownMenuItem
+                            key={`ao-${idx}`}
+                            onClick={() => {
+                              const aoKey = `${item.id}__ao_${ao.name}`;
+                              const aoName = `${item.name} + ${ao.name}`;
+                              setCart((prev) => {
+                                const existIdx = prev.findIndex((p) => p.itemId === aoKey);
+                                if (existIdx === -1) return [...prev, { itemId: aoKey, name: aoName, unitPrice: ao.price, qty: 1 }];
+                                const next = [...prev];
+                                next[existIdx] = { ...next[existIdx], qty: next[existIdx].qty + 1 };
+                                return next;
+                              });
+                            }}
+                          >
+                            <div className="flex w-full justify-between items-center">
+                              <span>{ao.name}</span>
+                              <span className="font-bold">{formatIntMoney(ao.price)}</span>
+                            </div>
+                          </DropdownMenuItem>
+                        ))}
+                      </>
+                    )}
                   </DropdownMenuContent>
                 </DropdownMenu>
               );
