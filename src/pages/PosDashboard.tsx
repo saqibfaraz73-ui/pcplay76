@@ -951,6 +951,8 @@ export default function PosDashboard() {
                   : null;
                 const isExpired = i.expiryDate && i.expiryDate < Date.now();
                 const hasVariants = i.variations && i.variations.length > 0;
+                const hasAddOns = i.addOns && i.addOns.length > 0;
+                const hasOptions = hasVariants || hasAddOns;
 
                 const itemCard = (
                   <div
@@ -974,6 +976,9 @@ export default function PosDashboard() {
                     {hasVariants && (
                       <div className="text-[10px] text-primary">+{i.variations!.length} variant{i.variations!.length > 1 ? "s" : ""}</div>
                     )}
+                    {hasAddOns && (
+                      <div className="text-[10px] text-primary">+{i.addOns!.length} add-on{i.addOns!.length > 1 ? "s" : ""}</div>
+                    )}
                     {i.trackInventory && (
                       <div className={cn("text-[10px]", low ? "text-destructive" : "text-muted-foreground")}>
                         Stock: {qty}{i.stockUnit && i.stockUnit !== "pcs" ? ` ${i.stockUnit}` : ""}
@@ -987,7 +992,7 @@ export default function PosDashboard() {
                   </div>
                 );
 
-                if (hasVariants) {
+                if (hasOptions) {
                   return (
                     <DropdownMenu key={i.id}>
                       <DropdownMenuTrigger asChild disabled={!isWorkPeriodActive}>
@@ -1012,12 +1017,12 @@ export default function PosDashboard() {
                             </div>
                           </div>
                         </DropdownMenuItem>
-                        {i.variations!.map((v, idx) => {
+                        {hasVariants && i.variations!.map((v, idx) => {
                           const vStock = v.stock ?? 0;
                           const vOut = i.trackInventory && vStock <= 0;
                           return (
                             <DropdownMenuItem
-                              key={idx}
+                              key={`v-${idx}`}
                               disabled={vOut}
                               onClick={() => addToCart(i, v.price)}
                             >
@@ -1035,6 +1040,33 @@ export default function PosDashboard() {
                             </DropdownMenuItem>
                           );
                         })}
+                        {hasAddOns && (
+                          <>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuLabel className="text-xs text-muted-foreground">Add-ons</DropdownMenuLabel>
+                            {i.addOns!.map((ao, idx) => (
+                              <DropdownMenuItem
+                                key={`ao-${idx}`}
+                                onClick={() => {
+                                  const aoKey = `${i.id}__ao_${ao.name}`;
+                                  const aoName = `${i.name} + ${ao.name}`;
+                                  setCart((prev) => {
+                                    const existIdx = prev.findIndex((p) => p.itemId === aoKey);
+                                    if (existIdx === -1) return [...prev, { itemId: aoKey, name: aoName, unitPrice: ao.price, qty: 1 }];
+                                    const next = [...prev];
+                                    next[existIdx] = { ...next[existIdx], qty: next[existIdx].qty + 1 };
+                                    return next;
+                                  });
+                                }}
+                              >
+                                <div className="flex w-full justify-between items-center">
+                                  <span>{ao.name}</span>
+                                  <span className="font-bold">{formatIntMoney(ao.price)}</span>
+                                </div>
+                              </DropdownMenuItem>
+                            ))}
+                          </>
+                        )}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   );
