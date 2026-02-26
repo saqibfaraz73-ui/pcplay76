@@ -84,6 +84,7 @@ export function AdminSettings() {
   const [recoveryAgentAddCustomerEnabled, setRecoveryAgentAddCustomerEnabled] = React.useState(false);
   const [salesDashboardEnabled, setSalesDashboardEnabled] = React.useState(true);
   const [skuSearchEnabled, setSkuSearchEnabled] = React.useState(false);
+  const [receiptQrEnabled, setReceiptQrEnabled] = React.useState(false);
   const [currencySymbol, setCurrencySymbolState] = React.useState("");
   const [deliveryEnabled, setDeliveryEnabled] = React.useState(false);
   const [recoveryEnabled, setRecoveryEnabled] = React.useState(false);
@@ -150,6 +151,7 @@ export function AdminSettings() {
     setRecoveryAgentAddCustomerEnabled(!!s?.recoveryAgentAddCustomerEnabled);
     setSalesDashboardEnabled(s?.salesDashboardEnabled !== false); // default true
     setSkuSearchEnabled(!!s?.skuSearchEnabled);
+    setReceiptQrEnabled(!!s?.receiptQrEnabled);
     setCurrencySymbolState(s?.currencySymbol ?? "");
     setDeliveryEnabled(!!s?.deliveryEnabled);
     setRecoveryEnabled(!!s?.recoveryEnabled);
@@ -239,6 +241,7 @@ export function AdminSettings() {
         recoveryAgentAddCustomerEnabled,
         salesDashboardEnabled,
         skuSearchEnabled,
+        receiptQrEnabled,
         currencySymbol: currencySymbol.trim(),
         deliveryEnabled,
         recoveryEnabled,
@@ -416,6 +419,13 @@ export function AdminSettings() {
                 <div className="text-xs text-muted-foreground">Show SKU on POS items and allow searching by SKU/barcode.</div>
               </div>
               <Switch checked={skuSearchEnabled} onCheckedChange={setSkuSearchEnabled} />
+            </div>
+            <div className="flex items-center justify-between gap-3 rounded-md border p-3">
+              <div>
+                <div className="text-sm font-medium">Print QR code on receipt</div>
+                <div className="text-xs text-muted-foreground">Print a QR code containing receipt data. Scan it from POS scanner to view order details.</div>
+              </div>
+              <Switch checked={receiptQrEnabled} onCheckedChange={setReceiptQrEnabled} />
             </div>
             <div className="flex items-center justify-between gap-3 rounded-md border p-3">
               <div>

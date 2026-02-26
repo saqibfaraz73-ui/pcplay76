@@ -319,6 +319,7 @@ export type Settings = {
   recoveryAgentAddCustomerEnabled?: boolean; // if true, recovery agents can add/edit/delete customers
   salesDashboardEnabled?: boolean; // if true, sales dashboard is shown (default true)
   skuSearchEnabled?: boolean; // if true, show SKU on POS items and allow search by SKU
+  receiptQrEnabled?: boolean; // if true, print QR code on receipt containing receipt data
   currencySymbol?: string; // e.g. "Rs", "$", "€", "£", "₹"
   updatedAt: number;
 };

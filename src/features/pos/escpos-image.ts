@@ -112,12 +112,13 @@ function canvasToEscPosRaster(canvas: HTMLCanvasElement): string {
  */
 export async function generateLogoEscPos(
   imagePath: string,
-  paperSize: "58" | "80"
+  paperSize: "58" | "80",
+  forUsb?: boolean
 ): Promise<string> {
-  // Force a fixed small logo size regardless of input image dimensions
+  // USB printers can handle larger images; BT kept small for payload size
   const dots = getMaxDots(paperSize);
-  const LOGO_WIDTH = Math.min(dots, 240);
-  const LOGO_HEIGHT = 80;
+  const LOGO_WIDTH = forUsb ? Math.min(dots, 360) : Math.min(dots, 240);
+  const LOGO_HEIGHT = forUsb ? 160 : 80;
   const canvas = await loadImageAsCanvas(imagePath, LOGO_WIDTH, LOGO_HEIGHT);
 
   // Center alignment
