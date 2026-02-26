@@ -103,6 +103,7 @@ export type OrderLine = {
   name: string;
   qty: number;
   unitPrice: number;
+  buyingPrice?: number; // cost price at time of sale (for accurate profit)
   subtotal: number;
   expiryDate?: number; // optional expiry date from item at time of sale
 };

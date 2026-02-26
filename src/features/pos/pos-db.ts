@@ -44,18 +44,25 @@ export async function createOrder(args: {
     throw new Error(`__UPGRADE__${limitCheck.message}`);
   }
 
-  // Build lines (include expiry date from item if available)
-  // Cart itemId may contain variant suffix (__v{price}), strip it for inventory lookups
-  const getRealItemId = (cartKey: string) => cartKey.includes("__v") ? cartKey.split("__v")[0] : cartKey;
+  // Build lines (include expiry date and buying price from item/variant)
+  // Cart itemId may contain variant suffix (__v{price}) or add-on suffix (__ao_), strip for inventory lookups
+  const getRealItemId = (cartKey: string) => cartKey.includes("__") ? cartKey.split("__")[0] : cartKey;
 
   const lines: OrderLine[] = args.cart.map((l) => {
     const realId = getRealItemId(l.itemId);
     const item = args.itemsById[realId];
+    // Determine buying price: check variant match first, then base item
+    let buyingPrice: number | undefined = item?.buyingPrice;
+    if (l.itemId.includes("__v") && item?.variations) {
+      const variant = item.variations.find(v => v.price === l.unitPrice);
+      if (variant?.buyingPrice != null) buyingPrice = variant.buyingPrice;
+    }
     return {
       itemId: realId,
       name: l.name,
       qty: l.qty,
       unitPrice: Math.round(l.unitPrice),
+      buyingPrice: buyingPrice != null ? Math.round(buyingPrice) : undefined,
       subtotal: Math.round(l.unitPrice) * l.qty,
       expiryDate: item?.expiryDate,
     };

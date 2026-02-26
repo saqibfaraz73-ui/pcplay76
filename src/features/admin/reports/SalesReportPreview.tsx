@@ -155,17 +155,18 @@ export function SalesReportPreview({
 
   const itemsSales = React.useMemo(() => {
     const byItem: Record<string, { itemId: string; name: string; qty: number; revenue: number; profit: number }> = {};
-    const addLines = (list: Array<{ lines: Array<{ itemId: string; name: string; qty: number; unitPrice: number; subtotal: number }> }>) => {
+    const addLines = (list: Array<{ lines: Array<{ itemId: string; name: string; qty: number; unitPrice: number; subtotal: number; buyingPrice?: number }> }>) => {
       for (const o of list) {
         for (const l of o.lines) {
           const item = itemsById[l.itemId];
-          const buying = item?.buyingPrice ?? 0;
+          const buying = l.buyingPrice ?? item?.buyingPrice ?? 0;
+          const hasBuying = l.buyingPrice != null || item?.buyingPrice != null;
           if (!byItem[l.itemId]) {
             byItem[l.itemId] = { itemId: l.itemId, name: l.name, qty: 0, revenue: 0, profit: 0 };
           }
           byItem[l.itemId].qty += l.qty;
           byItem[l.itemId].revenue += l.subtotal;
-          if (item?.buyingPrice != null) {
+          if (hasBuying) {
             byItem[l.itemId].profit += (l.unitPrice - buying) * l.qty;
           }
         }
