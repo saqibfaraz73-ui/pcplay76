@@ -148,7 +148,8 @@ async function buildEscPosReceipt(
   const showBizName = settings.showBusinessNameOnReceipt !== false; // default true
   const headerLines = [
     CENTER_ON,
-    showBizName ? title : null,
+    // When biz name is disabled, logo (printed above) takes its place — no extra blank line
+    ...(showBizName ? [title] : []),
     settings.showAddress && settings.address ? settings.address : null,
     settings.showPhone && settings.phone ? settings.phone : null,
     `Bill #: ${order.receiptNo}`,
