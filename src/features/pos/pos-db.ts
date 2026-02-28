@@ -52,10 +52,15 @@ export async function createOrder(args: {
     const realId = getRealItemId(l.itemId);
     const item = args.itemsById[realId];
     // Determine buying price: check variant match first, then base item
-    let buyingPrice: number | undefined = item?.buyingPrice;
-    if (l.itemId.includes("__v") && item?.variations) {
+    // Add-on lines have no cost price — set buyingPrice to undefined
+    let buyingPrice: number | undefined;
+    if (l.itemId.includes("__ao_")) {
+      buyingPrice = undefined; // add-ons have no buying price
+    } else if (l.itemId.includes("__v") && item?.variations) {
       const variant = item.variations.find(v => v.price === l.unitPrice);
-      if (variant?.buyingPrice != null) buyingPrice = variant.buyingPrice;
+      buyingPrice = variant?.buyingPrice != null ? variant.buyingPrice : item?.buyingPrice;
+    } else {
+      buyingPrice = item?.buyingPrice;
     }
     return {
       itemId: realId,
