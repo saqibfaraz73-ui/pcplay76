@@ -336,6 +336,13 @@ export type Settings = {
   // Section-based printer routing (replaces salesPrinterType/tablePrinterType)
   printerSections?: string[]; // user-defined section names (e.g. ["A", "B", "Kitchen"])
   sectionPrinterMap?: Record<string, "bluetooth" | "usb" | "none">; // section → printer type
+  // Dedicated label printer (separate from receipt printer)
+  labelPrinterType?: "bluetooth" | "usb" | "none"; // connection type for label printer
+  labelPrinterLanguage?: "zpl" | "tspl" | "escpos"; // command language
+  labelBtAddress?: string; // Bluetooth MAC address for label printer
+  labelBtName?: string; // Bluetooth friendly name for label printer
+  labelUsbDevice?: string; // USB device name for label printer
+  labelUsbLabel?: string; // USB friendly label for label printer
   updatedAt: number;
 };
 

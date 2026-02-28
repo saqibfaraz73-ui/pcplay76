@@ -55,7 +55,7 @@ function receiptPreviewText(args: { paperSize: "58" | "80" }) {
 }
 
 type PrinterType = "bluetooth" | "usb" | "none";
-
+type LabelLanguage = "zpl" | "tspl" | "escpos";
 export function AdminPrinter() {
   const { toast } = useToast();
   const [settings, setSettings] = React.useState<Settings | null>(null);
@@ -75,6 +75,14 @@ export function AdminPrinter() {
   const [defaultPrinterType, setDefaultPrinterType] = React.useState<PrinterType>("none");
   const [printerSections, setPrinterSections] = React.useState<string[]>([]);
   const [sectionPrinterMap, setSectionPrinterMap] = React.useState<Record<string, PrinterType>>({});
+
+  // Dedicated label printer
+  const [labelPrinterType, setLabelPrinterType] = React.useState<PrinterType>("none");
+  const [labelPrinterLanguage, setLabelPrinterLanguage] = React.useState<LabelLanguage>("escpos");
+  const [labelBtAddress, setLabelBtAddress] = React.useState("");
+  const [labelBtName, setLabelBtName] = React.useState("");
+  const [labelUsbDevice, setLabelUsbDevice] = React.useState("");
+  const [labelUsbLabel, setLabelUsbLabel] = React.useState("");
 
   const [receiptSize, setReceiptSize] = React.useState<ReceiptSize>("2x3");
   const [paperSize, setPaperSize] = React.useState<"58" | "80">("58");
@@ -103,6 +111,12 @@ export function AdminPrinter() {
     setDefaultPrinterType(s.defaultPrinterType ?? s.printerConnection ?? "none");
     setPrinterSections(s.printerSections ?? []);
     setSectionPrinterMap(s.sectionPrinterMap ?? {});
+    setLabelPrinterType(s.labelPrinterType ?? "none");
+    setLabelPrinterLanguage(s.labelPrinterLanguage ?? "escpos");
+    setLabelBtAddress(s.labelBtAddress ?? "");
+    setLabelBtName(s.labelBtName ?? "");
+    setLabelUsbDevice(s.labelUsbDevice ?? "");
+    setLabelUsbLabel(s.labelUsbLabel ?? "");
     setReceiptSize(s.receiptSize ?? "2x3");
     setPaperSize(s.paperSize ?? "58");
     setSubPrinterMode(s.subPrinterMode ?? "own");
@@ -139,6 +153,13 @@ export function AdminPrinter() {
         // Custom section routing
         printerSections,
         sectionPrinterMap,
+        // Label printer
+        labelPrinterType,
+        labelPrinterLanguage,
+        labelBtAddress: labelBtAddress.trim() || undefined,
+        labelBtName: labelBtName.trim() || undefined,
+        labelUsbDevice: labelUsbDevice.trim() || undefined,
+        labelUsbLabel: labelUsbLabel.trim() || undefined,
         receiptSize,
         paperSize,
         subPrinterMode,
@@ -445,6 +466,118 @@ export function AdminPrinter() {
               Configure at least one printer above to assign it.
             </p>
           )}
+        </CardContent>
+      </Card>
+
+      {/* ── Dedicated Label Printer ── */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            Label Printer
+            {labelPrinterType !== "none" && <Badge variant="outline" className="text-xs">Configured</Badge>}
+          </CardTitle>
+          <CardDescription>
+            Optional dedicated printer for barcode labels (Zebra ZPL, TSC TSPL, or ESC/POS thermal).
+            If not configured, labels will use the Default Printer with ESC/POS.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="labelPrinterType">Connection</Label>
+              <select
+                id="labelPrinterType"
+                value={labelPrinterType}
+                onChange={(e) => setLabelPrinterType(e.target.value as PrinterType)}
+                className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+              >
+                <option value="none">None (use Default Printer)</option>
+                <option value="bluetooth">Bluetooth</option>
+                <option value="usb">USB</option>
+              </select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="labelLanguage">Printer Language</Label>
+              <select
+                id="labelLanguage"
+                value={labelPrinterLanguage}
+                onChange={(e) => setLabelPrinterLanguage(e.target.value as LabelLanguage)}
+                className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+              >
+                <option value="escpos">ESC/POS (thermal receipt printers)</option>
+                <option value="zpl">ZPL (Zebra label printers)</option>
+                <option value="tspl">TSPL (TSC / Xprinter label printers)</option>
+              </select>
+            </div>
+          </div>
+
+          {labelPrinterType === "bluetooth" && (
+            <div className="space-y-2">
+              <Label>Label printer Bluetooth device</Label>
+              <select
+                value={labelBtAddress}
+                onChange={(e) => setLabelBtAddress(e.target.value)}
+                className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+              >
+                <option value="">Select printer…</option>
+                {paired.map((d) => (
+                  <option key={d.address} value={d.address}>
+                    {(d.name ?? "(Unnamed)") + " — " + d.address}
+                  </option>
+                ))}
+              </select>
+              <div className="space-y-2">
+                <Label>Printer name (optional)</Label>
+                <input
+                  value={labelBtName}
+                  onChange={(e) => setLabelBtName(e.target.value)}
+                  className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+                  placeholder="e.g. Zebra ZD220"
+                />
+              </div>
+              {paired.length === 0 && (
+                <p className="text-xs text-muted-foreground">
+                  Tap "Refresh paired devices" above to load Bluetooth devices.
+                </p>
+              )}
+            </div>
+          )}
+
+          {labelPrinterType === "usb" && (
+            <div className="space-y-2">
+              <Label>Label printer USB device</Label>
+              <select
+                value={labelUsbDevice}
+                onChange={(e) => setLabelUsbDevice(e.target.value)}
+                className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+              >
+                <option value="">Select printer…</option>
+                {usbDevices.map((d) => (
+                  <option key={d.deviceName} value={d.deviceName}>
+                    {(d.productName || d.manufacturerName || "USB Printer") + ` (${d.vendorId}:${d.productId})`}
+                  </option>
+                ))}
+              </select>
+              <div className="space-y-2">
+                <Label>Printer label (optional)</Label>
+                <input
+                  value={labelUsbLabel}
+                  onChange={(e) => setLabelUsbLabel(e.target.value)}
+                  className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+                  placeholder="e.g. Xprinter XP-360B"
+                />
+              </div>
+              {usbDevices.length === 0 && (
+                <p className="text-xs text-muted-foreground">
+                  Tap "Refresh USB devices" above to load USB devices.
+                </p>
+              )}
+            </div>
+          )}
+
+          <Button onClick={() => void save()} disabled={!settings} size="sm">
+            Save
+          </Button>
         </CardContent>
       </Card>
 

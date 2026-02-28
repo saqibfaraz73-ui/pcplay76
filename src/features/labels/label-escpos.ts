@@ -3,7 +3,7 @@
  * Uses GS k (Code128) for barcode + ESC/POS text for product name/price.
  */
 import type { Settings } from "@/db/schema";
-import { sendToDefaultPrinter } from "@/features/pos/printer-routing";
+import { sendToLabelPrinter } from "@/features/pos/printer-routing";
 import { isNativeAndroid } from "@/features/pos/bluetooth-printer";
 
 interface LabelData {
@@ -61,5 +61,5 @@ export async function printLabelsEscPos(
 
   const allEscPos = labels.map((l) => buildLabelEscPos(l, settings.paperSize)).join("");
 
-  await sendToDefaultPrinter(settings, allEscPos);
+  await sendToLabelPrinter(settings, allEscPos);
 }

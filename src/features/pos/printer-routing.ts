@@ -2,6 +2,7 @@
  * Printer routing helper — resolves which physical printer (BT or USB)
  * to use for a given section. Supports both legacy (sales/tables) and
  * custom category-based printer sections.
+ * Also handles dedicated label printer routing (ZPL/TSPL/ESC-POS).
  */
 import type { Settings } from "@/db/schema";
 import { btConnect, btSend } from "@/features/pos/bluetooth-printer";
@@ -113,4 +114,47 @@ export async function sendToSectionPrinter(
   }
   await btConnect(address);
   await btSend(escPos);
+}
+
+// ─── Dedicated Label Printer ───────────────────────────
+
+/**
+ * Send raw data (ZPL, TSPL, or ESC/POS) to the dedicated label printer.
+ * Uses separate label printer connection settings (labelBtAddress / labelUsbDevice).
+ * Falls back to the default receipt printer if no label printer is configured.
+ */
+export async function sendToLabelPrinter(
+  settings: Settings,
+  data: string
+): Promise<void> {
+  const printerType = settings.labelPrinterType ?? "none";
+
+  if (printerType === "none") {
+    // Fallback: try default receipt printer (ESC/POS only)
+    return sendToDefaultPrinter(settings, data);
+  }
+
+  if (printerType === "usb") {
+    const device = settings.labelUsbDevice ?? "";
+    if (!device) {
+      throw new Error("Label printer USB device not configured. Go to Printer Settings → Label Printer.");
+    }
+    await usbSend(data);
+    return;
+  }
+
+  // Bluetooth
+  const address = settings.labelBtAddress ?? "";
+  if (!address) {
+    throw new Error("Label printer Bluetooth not configured. Go to Printer Settings → Label Printer.");
+  }
+  await btConnect(address);
+  await btSend(data);
+}
+
+/**
+ * Get the label printer language setting.
+ */
+export function getLabelPrinterLanguage(settings: Settings): "zpl" | "tspl" | "escpos" {
+  return settings.labelPrinterLanguage ?? "escpos";
 }

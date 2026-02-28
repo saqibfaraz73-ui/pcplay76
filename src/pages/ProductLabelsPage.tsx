@@ -11,11 +11,10 @@ import { jsPDF } from "jspdf";
 import { printLabelsEscPos } from "@/features/labels/label-escpos";
 import { generateLabelsZpl } from "@/features/labels/label-zpl";
 import { generateLabelsTspl } from "@/features/labels/label-tspl";
-import { isNativeAndroid, btConnect, btSend } from "@/features/pos/bluetooth-printer";
-import { usbSend } from "@/features/pos/usb-printer";
+import { isNativeAndroid } from "@/features/pos/bluetooth-printer";
 import { sharePdfBlob, shareTextFile, savePdfBlob, saveTextFile } from "@/features/pos/share-utils";
+import { sendToLabelPrinter, getLabelPrinterLanguage } from "@/features/pos/printer-routing";
 import { SaveShareMenu } from "@/components/SaveShareMenu";
-import { getBtAddress, getUsbDevice } from "@/features/pos/printer-routing";
 import * as XLSX from "xlsx";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -396,7 +395,8 @@ export default function ProductLabelsPage() {
     }
   };
 
-  const handleThermalPrint = async () => {
+  /** Unified direct print — uses label printer settings (language + connection) */
+  const handleDirectPrint = async () => {
     if (labelItems.length === 0) {
       toast({ title: "No items", description: "Add items to print labels.", variant: "destructive" });
       return;
@@ -412,45 +412,24 @@ export default function ProductLabelsPage() {
     }
     setPrinting(true);
     try {
-      await printLabelsEscPos(buildLabels(), settings);
-      await incrementSaleCount("labelPrint", totalLabels); refreshUsage();
-      toast({ title: "Printed", description: `${labelItems.length} label(s) sent to printer.` });
-    } catch (e: any) {
-      toast({ title: "Print Error", description: e.message, variant: "destructive" });
-    } finally {
-      setPrinting(false);
-    }
-  };
-
-  /** Send raw commands (ZPL/TSPL) directly to configured BT or USB printer */
-  const sendRawToPrinter = async (raw: string, via: "bluetooth" | "usb") => {
-    if (!settings) throw new Error("Settings not loaded. Configure printer first.");
-    if (via === "usb") {
-      const device = getUsbDevice(settings);
-      if (!device) throw new Error("USB printer not configured. Go to Admin > Printer to set up.");
-      await usbSend(raw);
-    } else {
-      const addr = getBtAddress(settings);
-      if (!addr) throw new Error("Bluetooth printer not configured. Go to Admin > Printer to set up.");
-      await btConnect(addr);
-      await btSend(raw);
-    }
-  };
-
-  const handleDirectPrint = async (format: "zpl" | "tspl", via: "bluetooth" | "usb") => {
-    if (labelItems.length === 0) {
-      toast({ title: "No items", description: "Add items to print labels.", variant: "destructive" });
-      return;
-    }
-    const check = await canMakeSale("labelPrint", totalLabels);
-    if (!check.allowed) { setAdMsg(check.message); setPendingAction("direct"); setAdOpen(true); return; }
-    setPrinting(true);
-    try {
       const labels = buildLabels();
-      const raw = format === "zpl" ? generateLabelsZpl(labels) : generateLabelsTspl(labels);
-      await sendRawToPrinter(raw, via);
+      const lang = getLabelPrinterLanguage(settings);
+      let data: string;
+      if (lang === "zpl") {
+        data = generateLabelsZpl(labels);
+      } else if (lang === "tspl") {
+        data = generateLabelsTspl(labels);
+      } else {
+        // ESC/POS — use the existing label builder
+        await printLabelsEscPos(labels, settings);
+        await incrementSaleCount("labelPrint", totalLabels); refreshUsage();
+        toast({ title: "Printed", description: `${labels.length} label(s) sent via ESC/POS.` });
+        return;
+      }
+      // ZPL or TSPL — send through label printer routing
+      await sendToLabelPrinter(settings, data);
       await incrementSaleCount("labelPrint", totalLabels); refreshUsage();
-      toast({ title: "Printed", description: `${labels.length} ${format.toUpperCase()} label(s) sent via ${via}.` });
+      toast({ title: "Printed", description: `${labels.length} ${lang.toUpperCase()} label(s) sent to label printer.` });
     } catch (e: any) {
       toast({ title: "Print Error", description: e.message, variant: "destructive" });
     } finally {
@@ -777,24 +756,14 @@ export default function ProductLabelsPage() {
               />
             </div>
             <div className="space-y-2">
-              <p className="text-xs text-muted-foreground font-medium">Direct Print (sends to configured printer):</p>
-                <div className="flex flex-wrap gap-3">
-                  <Button onClick={() => handleDirectPrint("zpl", "bluetooth")} disabled={printing} variant="outline" className="gap-2">
-                    <Printer className="h-4 w-4" /> ZPL via Bluetooth
-                  </Button>
-                  <Button onClick={() => handleDirectPrint("zpl", "usb")} disabled={printing} variant="outline" className="gap-2">
-                    <Printer className="h-4 w-4" /> ZPL via USB
-                  </Button>
-                  <Button onClick={() => handleDirectPrint("tspl", "bluetooth")} disabled={printing} variant="outline" className="gap-2">
-                    <Printer className="h-4 w-4" /> TSPL via Bluetooth
-                  </Button>
-                  <Button onClick={() => handleDirectPrint("tspl", "usb")} disabled={printing} variant="outline" className="gap-2">
-                    <Printer className="h-4 w-4" /> TSPL via USB
-                  </Button>
-                  <Button onClick={handleThermalPrint} disabled={printing} variant="outline" className="gap-2">
-                    <Printer className="h-4 w-4" /> {printing ? "Printing…" : "ESC/POS Thermal"}
-                  </Button>
-                </div>
+              <p className="text-xs text-muted-foreground font-medium">
+                Direct Print — uses your {settings?.labelPrinterType && settings.labelPrinterType !== "none"
+                  ? `Label Printer (${(settings.labelPrinterLanguage ?? "escpos").toUpperCase()} via ${settings.labelPrinterType})`
+                  : "Default Printer (ESC/POS)"}:
+              </p>
+              <Button onClick={() => void handleDirectPrint()} disabled={printing} variant="outline" className="gap-2">
+                <Printer className="h-4 w-4" /> {printing ? "Printing…" : "Print Labels"}
+              </Button>
             </div>
             {labelItems.some((l) => !l.fromDb) && (
               <div className="pt-2 border-t">
