@@ -191,7 +191,7 @@ export default function PosDashboard() {
             advanced: [{ focusMode: "continuous" } as any],
           },
         } as any,
-        (decodedText) => {
+        async (decodedText) => {
           const now = Date.now();
           const scanned = decodedText.trim();
           const scannedLower = scanned.toLowerCase();
@@ -202,7 +202,34 @@ export default function PosDashboard() {
 
           playScanBeep();
 
-          // Check if this is a receipt QR code
+          // Check if this is a receipt barcode (RCV-{number}) or legacy QR (SANGI-RCV:)
+          if (scanned.startsWith("RCV-")) {
+            const receiptNo = parseInt(scanned.substring(4), 10);
+            if (!isNaN(receiptNo)) {
+              // Look up order from local DB
+              const allOrders = await db.orders.toArray();
+              const found = allOrders.find((o) => o.receiptNo === receiptNo);
+              if (found) {
+                const data = {
+                  rn: found.receiptNo,
+                  dt: found.createdAt,
+                  c: found.cashier,
+                  pm: found.paymentMethod,
+                  st: found.subtotal,
+                  dc: found.discountTotal,
+                  tx: found.taxAmount,
+                  sc: found.serviceChargeAmount,
+                  t: found.total,
+                  items: found.lines.map((l) => ({ n: l.name, q: l.qty, p: l.unitPrice, s: l.subtotal })),
+                };
+                setScannedReceiptData(data);
+                toast({ title: "Receipt found", description: `Bill #${receiptNo}` });
+              } else {
+                toast({ title: "Receipt not found", description: `No order with receipt #${receiptNo}`, variant: "destructive" });
+              }
+            }
+            return;
+          }
           if (scanned.startsWith("SANGI-RCV:")) {
             try {
               const jsonStr = scanned.substring("SANGI-RCV:".length);
