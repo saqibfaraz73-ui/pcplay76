@@ -1,12 +1,11 @@
 import type { Settings } from "@/db/schema";
-import { btConnect, btSend, isNativeAndroid } from "@/features/pos/bluetooth-printer";
-import { usbSend } from "@/features/pos/usb-printer";
+import { isNativeAndroid } from "@/features/pos/bluetooth-printer";
 import { db } from "@/db/appDb";
 import { fmtDateTime, fmtTime12 } from "@/features/pos/format";
 import { getSyncConfig } from "@/features/sync/sync-utils";
 import { sendPrintJob } from "@/features/sync/sync-client";
 import { isDuplicatePrint } from "@/features/pos/print-dedup";
-import { sendToSectionPrinter } from "@/features/pos/printer-routing";
+import { sendToDefaultPrinter } from "@/features/pos/printer-routing";
 
 type KotItem = {
   name: string;
@@ -82,9 +81,9 @@ export async function printTableKot(args: {
     return;
   }
 
-  // Use section-based printer routing for tables
+  // Use default printer for table KOT
   try {
-    await sendToSectionPrinter(settings!, "tables", escPos);
+    await sendToDefaultPrinter(settings!, escPos);
   } catch (printErr: any) {
     console.error("Table KOT print error:", printErr);
     throw new Error(printErr?.message || "Table KOT printing failed. Check printer connection.");

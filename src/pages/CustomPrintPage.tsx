@@ -9,9 +9,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FileText, Upload, Printer, Share2, Plus, Trash2, Eye, ImageIcon, Download } from "lucide-react";
 import { toast } from "sonner";
 import jsPDF from "jspdf";
-import { isNativeAndroid, btConnect, btSend } from "@/features/pos/bluetooth-printer";
-import { usbSend } from "@/features/pos/usb-printer";
+import { isNativeAndroid } from "@/features/pos/bluetooth-printer";
 import { db } from "@/db/appDb";
+import { sendToDefaultPrinter } from "@/features/pos/printer-routing";
 import { canMakeSale, incrementSaleCount } from "@/features/licensing/licensing-db";
 import { AdRewardDialog } from "@/features/licensing/AdRewardDialog";
 import { sharePdfBlob, shareFileBlob, savePdfBlob, saveFileBlob } from "@/features/pos/share-utils";
@@ -282,31 +282,11 @@ export default function CustomPrintPage({ embedded }: { embedded?: boolean }) {
       if (!check.allowed) { setAdMsg(check.message); setPendingPrintAction("print"); setAdOpen(true); return; }
       if (isNativeAndroid()) {
         const settings = await db.settings.get("app");
-        const btAddress = settings?.btPrinterAddress || settings?.printerAddress;
-        const usbDevice = settings?.usbDeviceName;
+        if (!settings) { toast.error("No printer configured. Go to Admin > Printer to set up."); return; }
         const escpos = await buildEscPosCustomReceipt();
-
-        // Try USB first if configured, then Bluetooth
-        if (usbDevice) {
-          try {
-            await usbSend(escpos);
-            toast.success("Receipt sent to USB printer");
-            await incrementSaleCount("customPrint");
-            return;
-          } catch {
-            // Fall through to Bluetooth
-          }
-        }
-
-        if (btAddress) {
-          await btConnect(btAddress);
-          await btSend(escpos);
-          toast.success("Receipt sent to Bluetooth printer");
-          await incrementSaleCount("customPrint");
-          return;
-        }
-
-        toast.error("No printer configured. Go to Admin > Printer to set up.");
+        await sendToDefaultPrinter(settings, escpos);
+        toast.success("Receipt sent to printer");
+        await incrementSaleCount("customPrint");
         return;
       }
 
@@ -393,23 +373,9 @@ export default function CustomPrintPage({ embedded }: { embedded?: boolean }) {
           const fullCmd = "\x1b@\x1b3\x14" + escposData + "\n\n\n\x1dV\x41\x03";
 
           const settings = await db.settings.get("app");
-          const btAddress = settings?.btPrinterAddress || settings?.printerAddress;
-          const usbDevice = settings?.usbDeviceName;
-
-          if (usbDevice) {
-            try {
-              await usbSend(fullCmd);
-              toast.success("Image sent to USB printer");
-              return;
-            } catch { /* fall through to BT */ }
-          }
-          if (btAddress) {
-            await btConnect(btAddress);
-            await btSend(fullCmd);
-            toast.success("Image sent to Bluetooth printer");
-            return;
-          }
-          toast.error("No printer configured. Go to Admin > Printer to set up.");
+          if (!settings) { toast.error("No printer configured."); return; }
+          await sendToDefaultPrinter(settings, fullCmd);
+          toast.success("Image sent to printer");
         } catch (err: any) {
           toast.error(err?.message || "Could not print image");
         }

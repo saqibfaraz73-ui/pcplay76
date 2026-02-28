@@ -1,7 +1,7 @@
 import { formatIntMoney, fmtDateTime } from "@/features/pos/format";
-import { btConnect, btSend, isNativeAndroid } from "@/features/pos/bluetooth-printer";
-import { usbSend } from "@/features/pos/usb-printer";
+import { isNativeAndroid } from "@/features/pos/bluetooth-printer";
 import { db } from "@/db/appDb";
+import { sendToDefaultPrinter } from "@/features/pos/printer-routing";
 import type { Settings, CounterId } from "@/db/schema";
 import { Capacitor } from "@capacitor/core";
 import { shareFile, writePdfFile } from "@/features/files/sangi-folders";
@@ -120,18 +120,8 @@ export async function printEntryReceipt(data: EntryReceiptData) {
 
   if (isNativeAndroid()) {
     if (!settings) throw new Error("Printer not configured. Go to Admin > Printer.");
-    const conn = settings.printerConnection ?? "none";
-    if (conn !== "bluetooth" && conn !== "usb") {
-      throw new Error("Printer not configured. Go to Admin > Printer.");
-    }
     const text = buildEscPos(data, settings);
-    if (conn === "usb") {
-      await usbSend(text);
-    } else {
-      if (!settings.printerAddress) throw new Error("No printer selected.");
-      await btConnect(settings.printerAddress);
-      await btSend(text);
-    }
+    await sendToDefaultPrinter(settings, text);
     return;
   }
 

@@ -1,10 +1,10 @@
 import type { Settings } from "@/db/schema";
 import type { AdvanceOrder, BookingOrder } from "@/db/booking-schema";
 import { formatIntMoney, fmtDate, fmtDateTime, fmtTime12 } from "@/features/pos/format";
-import { btConnect, btSend, isNativeAndroid } from "@/features/pos/bluetooth-printer";
-import { usbSend } from "@/features/pos/usb-printer";
+import { isNativeAndroid } from "@/features/pos/bluetooth-printer";
 import { db } from "@/db/appDb";
 import { isDuplicatePrint } from "@/features/pos/print-dedup";
+import { sendToDefaultPrinter } from "@/features/pos/printer-routing";
 import jsPDF from "jspdf";
 
 /* ─── Receipt size feed (same logic as sales) ─── */
@@ -183,12 +183,7 @@ async function sendToPrinter(text: string) {
     return;
   }
   if (!settings) throw new Error("Printer not configured. Go to Admin > Printer.");
-  const conn = settings.printerConnection ?? "none";
-  if (conn !== "bluetooth" && conn !== "usb") throw new Error("Printer not configured.");
-  if (conn === "usb") { await usbSend(text); return; }
-  if (!settings.printerAddress) throw new Error("No printer selected.");
-  await btConnect(settings.printerAddress);
-  await btSend(text);
+  await sendToDefaultPrinter(settings, text);
 }
 
 /* ─── Public API ─── */
