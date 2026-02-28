@@ -85,6 +85,7 @@ export function AdminSettings() {
   const [salesDashboardEnabled, setSalesDashboardEnabled] = React.useState(true);
   const [skuSearchEnabled, setSkuSearchEnabled] = React.useState(false);
   const [receiptQrEnabled, setReceiptQrEnabled] = React.useState(false);
+  const [showBusinessName, setShowBusinessName] = React.useState(true);
   const [currencySymbol, setCurrencySymbolState] = React.useState("");
   const [deliveryEnabled, setDeliveryEnabled] = React.useState(false);
   const [recoveryEnabled, setRecoveryEnabled] = React.useState(false);
@@ -152,6 +153,7 @@ export function AdminSettings() {
     setSalesDashboardEnabled(s?.salesDashboardEnabled !== false); // default true
     setSkuSearchEnabled(!!s?.skuSearchEnabled);
     setReceiptQrEnabled(!!s?.receiptQrEnabled);
+    setShowBusinessName(s?.showBusinessNameOnReceipt !== false);
     setCurrencySymbolState(s?.currencySymbol ?? "");
     setDeliveryEnabled(!!s?.deliveryEnabled);
     setRecoveryEnabled(!!s?.recoveryEnabled);
@@ -242,6 +244,7 @@ export function AdminSettings() {
         salesDashboardEnabled,
         skuSearchEnabled,
         receiptQrEnabled,
+        showBusinessNameOnReceipt: showBusinessName,
         currencySymbol: currencySymbol.trim(),
         deliveryEnabled,
         recoveryEnabled,
@@ -422,10 +425,17 @@ export function AdminSettings() {
             </div>
             <div className="flex items-center justify-between gap-3 rounded-md border p-3">
               <div>
-                <div className="text-sm font-medium">Print QR code on receipt</div>
-                <div className="text-xs text-muted-foreground">Print a QR code containing receipt data. Scan it from POS scanner to view order details.</div>
+                <div className="text-sm font-medium">Print barcode on receipt</div>
+                <div className="text-xs text-muted-foreground">Print a scannable barcode with receipt number. Scan it from POS to look up order details.</div>
               </div>
               <Switch checked={receiptQrEnabled} onCheckedChange={setReceiptQrEnabled} />
+            </div>
+            <div className="flex items-center justify-between gap-3 rounded-md border p-3">
+              <div>
+                <div className="text-sm font-medium">Show business name on receipt</div>
+                <div className="text-xs text-muted-foreground">Display your business/restaurant name at the top of printed receipts.</div>
+              </div>
+              <Switch checked={showBusinessName} onCheckedChange={setShowBusinessName} />
             </div>
             <div className="flex items-center justify-between gap-3 rounded-md border p-3">
               <div>
