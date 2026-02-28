@@ -3,8 +3,7 @@ import { isNativeAndroid } from "@/features/pos/bluetooth-printer";
 import { db } from "@/db/appDb";
 import { sendToDefaultPrinter } from "@/features/pos/printer-routing";
 import type { Settings, CounterId } from "@/db/schema";
-import { Capacitor } from "@capacitor/core";
-import { shareFile, writePdfFile } from "@/features/files/sangi-folders";
+import { sharePdfBytes } from "@/features/pos/share-utils";
 import jsPDF from "jspdf";
 
 /** Get and increment a sequential counter for arrivals or export sales */
@@ -246,12 +245,6 @@ export async function shareEntryReceipt(data: EntryReceiptData) {
 
   const safeName = data.partyName.replace(/[^a-zA-Z0-9]/g, "_").slice(0, 20);
   const fileName = `${data.type}_${safeName}_${Date.now()}.pdf`;
-
-  if (Capacitor.isNativePlatform()) {
-    const bytes = doc.output("arraybuffer");
-    const saved = await writePdfFile({ folder: "Sales Report", fileName, pdfBytes: new Uint8Array(bytes) });
-    await shareFile({ title: `${label}: ${data.partyName}`, uri: saved.uri });
-  } else {
-    doc.save(fileName);
-  }
+  const bytes = doc.output("arraybuffer");
+  await sharePdfBytes(new Uint8Array(bytes), fileName, `${label}: ${data.partyName}`);
 }
