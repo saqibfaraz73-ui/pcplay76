@@ -515,7 +515,6 @@ function buildSalesPdf(args: {
     for (const o of list) {
       for (const l of o.lines) {
         const item = itemsById[l.itemId];
-        // Use stored buyingPrice from order line first, fall back to item's base buyingPrice
         const buying = l.buyingPrice ?? item?.buyingPrice ?? 0;
         const hasBuying = l.buyingPrice != null || item?.buyingPrice != null;
         if (!byItem[l.itemId]) byItem[l.itemId] = { name: l.name, qty: 0, revenue: 0, profit: 0 };

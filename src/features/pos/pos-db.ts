@@ -55,7 +55,7 @@ export async function createOrder(args: {
     // Add-on lines have no cost price — set buyingPrice to undefined
     let buyingPrice: number | undefined;
     if (l.itemId.includes("__ao_")) {
-      buyingPrice = undefined; // add-ons have no buying price
+      buyingPrice = 0; // add-ons have zero cost
     } else if (l.itemId.includes("__v") && item?.variations) {
       const variant = item.variations.find(v => v.price === l.unitPrice);
       buyingPrice = variant?.buyingPrice != null ? variant.buyingPrice : item?.buyingPrice;
