@@ -145,9 +145,10 @@ async function buildEscPosReceipt(
   const CENTER_ON = "\x1ba\x01";  // ESC a 1 = center alignment
   const LEFT_ON = "\x1ba\x00";    // ESC a 0 = left alignment
 
+  const showBizName = settings.showBusinessNameOnReceipt !== false; // default true
   const headerLines = [
     CENTER_ON,
-    title,
+    showBizName ? title : null,
     settings.showAddress && settings.address ? settings.address : null,
     settings.showPhone && settings.phone ? settings.phone : null,
     `Bill #: ${order.receiptNo}`,

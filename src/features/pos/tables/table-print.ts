@@ -92,7 +92,9 @@ export async function printTableKot(args: {
 }
 
 function buildKotHtml(tableNumber: string, waiterName: string, items: KotItem[]): string {
-  const now = fmtDateTime(Date.now());
+  const now = new Date();
+  const dateStr = `${String(now.getDate()).padStart(2, "0")}/${String(now.getMonth() + 1).padStart(2, "0")}/${String(now.getFullYear()).slice(-2)}`;
+  const timeStr = fmtTime12(now.toTimeString().slice(0, 5));
   const itemsHtml = items
     .map((item) => `<div class="item"><span>${item.name}</span><span>x${item.qty}</span></div>`)
     .join("");
@@ -102,7 +104,7 @@ function buildKotHtml(tableNumber: string, waiterName: string, items: KotItem[])
     <div class="info">
       <div>Table: ${tableNumber}</div>
       <div>Waiter: ${waiterName}</div>
-      <div>${now}</div>
+      <div>${dateStr}  ${timeStr}</div>
     </div>
     <div class="items">
       ${itemsHtml}
@@ -114,6 +116,7 @@ function buildKotEscPos(tableNumber: string, waiterName: string, items: KotItem[
   const width = settings?.paperSize === "80" ? 48 : 32;
   const hr = "-".repeat(width);
   const now = new Date();
+  const dateStr = `${String(now.getDate()).padStart(2, "0")}/${String(now.getMonth() + 1).padStart(2, "0")}/${String(now.getFullYear()).slice(-2)}`;
   const timeStr = fmtTime12(now.toTimeString().slice(0, 5));
 
   const CENTER_ON = "\x1ba\x01";
@@ -127,7 +130,7 @@ function buildKotEscPos(tableNumber: string, waiterName: string, items: KotItem[
   out.push(hr);
   out.push(`Table: ${tableNumber}`);
   out.push(`Waiter: ${waiterName}`);
-  out.push(timeStr);
+  out.push(`${dateStr}  ${timeStr}`);
   out.push(LEFT_ON);
   out.push(hr);
 
