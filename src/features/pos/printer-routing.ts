@@ -1,21 +1,27 @@
 /**
  * Printer routing helper — resolves which physical printer (BT or USB)
- * to use for a given section (sales / tables).
+ * to use for a given section. Supports both legacy (sales/tables) and
+ * custom category-based printer sections.
  */
 import type { Settings } from "@/db/schema";
 import { btConnect, btSend } from "@/features/pos/bluetooth-printer";
 import { usbSend } from "@/features/pos/usb-printer";
 
-export type PrintSection = "sales" | "tables";
+export type PrintSection = string; // any section name (legacy: "sales" | "tables", custom: "A", "B", etc.)
 
 /**
  * Get the printer type assigned to a section.
- * Falls back to legacy `printerConnection` for backward compat.
+ * Checks sectionPrinterMap first, then falls back to legacy fields.
  */
 export function getPrinterForSection(
   settings: Settings,
   section: PrintSection
 ): "bluetooth" | "usb" | "none" {
+  // Check custom section map first
+  if (settings.sectionPrinterMap && settings.sectionPrinterMap[section]) {
+    return settings.sectionPrinterMap[section];
+  }
+  // Legacy fallback for "sales" and "tables"
   if (section === "tables") {
     return settings.tablePrinterType ?? settings.printerConnection ?? "none";
   }
@@ -24,7 +30,6 @@ export function getPrinterForSection(
 
 /**
  * Get the Bluetooth address for the section's printer.
- * Uses the new dual-printer fields, falling back to legacy `printerAddress`.
  */
 export function getBtAddress(settings: Settings): string {
   return settings.btPrinterAddress ?? settings.printerAddress ?? "";
@@ -32,7 +37,6 @@ export function getBtAddress(settings: Settings): string {
 
 /**
  * Get the USB device name for the section's printer.
- * Uses the new dual-printer field, falling back to legacy `printerAddress`.
  */
 export function getUsbDevice(settings: Settings): string {
   return settings.usbDeviceName ?? settings.printerAddress ?? "";
@@ -40,7 +44,6 @@ export function getUsbDevice(settings: Settings): string {
 
 /**
  * Send ESC/POS data to the correct local printer for the given section.
- * Throws if the printer isn't configured or can't connect.
  */
 export async function sendToSectionPrinter(
   settings: Settings,
@@ -51,7 +54,7 @@ export async function sendToSectionPrinter(
 
   if (printerType === "none") {
     throw new Error(
-      `No printer assigned for ${section === "tables" ? "Table Management" : "Sales Dashboard"}. ` +
+      `No printer assigned for section "${section}". ` +
       "Go to Printer Settings → Printer Assignment to configure."
     );
   }

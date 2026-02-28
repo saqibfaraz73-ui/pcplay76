@@ -987,7 +987,6 @@ export default function PosDashboard() {
                       "rounded-lg border bg-card p-2 text-left shadow-sm transition-colors hover:bg-accent cursor-pointer",
                       low && "border-destructive/50",
                       isExpired && posSettings?.showExpiryOnDashboard && "border-destructive",
-                      !isWorkPeriodActive && "opacity-50 cursor-not-allowed",
                     )}
                   >
                     {showItemImages ? (
@@ -1109,7 +1108,6 @@ export default function PosDashboard() {
                       "rounded-lg border bg-card p-2 text-left shadow-sm transition-colors hover:bg-accent",
                       low && "border-destructive/50",
                       isExpired && posSettings?.showExpiryOnDashboard && "border-destructive",
-                      !isWorkPeriodActive && "opacity-50 cursor-not-allowed",
                     )}
                   >
                     {showItemImages ? (

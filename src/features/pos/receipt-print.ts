@@ -348,6 +348,26 @@ export async function printReceiptFromOrder(
     throw new Error("Could not load settings. Please try again.");
   }
 
+  // Resolve printer section: explicit section > category-based section > "sales"
+  let resolvedSection: PrintSection = opts?.section ?? "sales";
+  if (!opts?.section && settings?.sectionPrinterMap) {
+    // Try to determine section from the first item's category
+    try {
+      const firstItemId = order.lines[0]?.itemId;
+      if (firstItemId && !firstItemId.includes("__ao_")) {
+        const item = await db.items.get(firstItemId);
+        if (item) {
+          const cat = await db.categories.get(item.categoryId);
+          if (cat?.printerSection && settings.sectionPrinterMap[cat.printerSection]) {
+            resolvedSection = cat.printerSection;
+          }
+        }
+      }
+    } catch {
+      // fallback to default section
+    }
+  }
+
   if (isNativeAndroid()) {
     // Check if Sub device should send to Main's printer
     const viaMain = await shouldPrintViaMain();
@@ -360,27 +380,25 @@ export async function printReceiptFromOrder(
           showAddress: false, showPhone: false, showLogo: false, updatedAt: 0,
         };
         const text = await buildEscPosReceipt(order, defaultSettings, opts);
-        await sendPrintToMain(text, opts?.section ?? "sales");
+        await sendPrintToMain(text, resolvedSection);
         return;
       }
       throw new Error("Settings not loaded. Please configure printer in Admin > Printer.");
     }
 
-    const section: PrintSection = opts?.section ?? "sales";
-    const isUsb = getPrinterForSection(settings, section) === "usb";
-    const skipBarcode = section === "tables";
+    const isUsb = getPrinterForSection(settings, resolvedSection) === "usb";
+    const skipBarcode = resolvedSection === "tables";
     const text = await buildEscPosReceipt(order, settings, { ...opts, forUsb: isUsb, skipBarcode });
 
     if (viaMain) {
-      await sendPrintToMain(text, opts?.section ?? "sales");
+      await sendPrintToMain(text, resolvedSection);
       return;
     }
 
     if (isDuplicatePrint(text)) return;
 
-
     try {
-      await sendToSectionPrinter(settings, section, text);
+      await sendToSectionPrinter(settings, resolvedSection, text);
     } catch (printErr: any) {
       console.error("Print error:", printErr);
       // If logo was included and print failed, retry without logo
@@ -389,7 +407,7 @@ export async function printReceiptFromOrder(
         const noLogoSettings = { ...settings, showLogo: false };
         const retryText = await buildEscPosReceipt(order, noLogoSettings, { ...opts, forUsb: isUsb });
         try {
-          await sendToSectionPrinter(noLogoSettings, section, retryText);
+          await sendToSectionPrinter(noLogoSettings, resolvedSection, retryText);
           return;
         } catch (retryErr: any) {
           throw new Error(retryErr?.message || "Printing failed. Check printer connection.");

@@ -74,6 +74,8 @@ export function AdminPrinter() {
   // Section routing
   const [salesPrinterType, setSalesPrinterType] = React.useState<PrinterType>("none");
   const [tablePrinterType, setTablePrinterType] = React.useState<PrinterType>("none");
+  const [printerSections, setPrinterSections] = React.useState<string[]>([]);
+  const [sectionPrinterMap, setSectionPrinterMap] = React.useState<Record<string, PrinterType>>({});
 
   const [receiptSize, setReceiptSize] = React.useState<ReceiptSize>("2x3");
   const [paperSize, setPaperSize] = React.useState<"58" | "80">("58");
@@ -101,6 +103,8 @@ export function AdminPrinter() {
     setUsbPrinterLabel(s.usbPrinterLabel ?? "");
     setSalesPrinterType(s.salesPrinterType ?? s.printerConnection ?? "none");
     setTablePrinterType(s.tablePrinterType ?? s.printerConnection ?? "none");
+    setPrinterSections(s.printerSections ?? []);
+    setSectionPrinterMap(s.sectionPrinterMap ?? {});
     setReceiptSize(s.receiptSize ?? "2x3");
     setPaperSize(s.paperSize ?? "58");
     setSubPrinterMode(s.subPrinterMode ?? "own");
@@ -135,6 +139,9 @@ export function AdminPrinter() {
         // Section routing
         salesPrinterType,
         tablePrinterType,
+        // Custom section routing
+        printerSections,
+        sectionPrinterMap,
         receiptSize,
         paperSize,
         subPrinterMode,
@@ -384,14 +391,15 @@ export function AdminPrinter() {
         <CardHeader>
           <CardTitle>Printer Assignment</CardTitle>
           <CardDescription>
-            Choose which printer to use for each section. You can use both printers at the same time — one for Sales and another for Tables.
-            Sub devices will use the same section assignments as the Main device.
+            Choose which printer to use for each section. Assign categories to sections in Admin &gt; Products.
+            Legacy "Sales" and "Tables" sections are always available as fallback.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          {/* Legacy sales/tables routing */}
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="salesPrinter">Sales Dashboard Printer</Label>
+              <Label htmlFor="salesPrinter">Sales Dashboard (default)</Label>
               <select
                 id="salesPrinter"
                 value={salesPrinterType}
@@ -406,7 +414,7 @@ export function AdminPrinter() {
               </select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="tablePrinter">Table Management Printer</Label>
+              <Label htmlFor="tablePrinter">Table Management (default)</Label>
               <select
                 id="tablePrinter"
                 value={tablePrinterType}
@@ -421,6 +429,32 @@ export function AdminPrinter() {
               </select>
             </div>
           </div>
+
+          {/* Custom printer sections */}
+          {printerSections.length > 0 && (
+            <div className="space-y-3 border-t pt-3">
+              <Label className="text-sm font-medium">Custom Sections</Label>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {printerSections.map((sec) => (
+                  <div key={sec} className="space-y-2">
+                    <Label htmlFor={`section-${sec}`}>Section: {sec}</Label>
+                    <select
+                      id={`section-${sec}`}
+                      value={sectionPrinterMap[sec] ?? "none"}
+                      onChange={(e) => setSectionPrinterMap((prev) => ({ ...prev, [sec]: e.target.value as PrinterType }))}
+                      className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+                    >
+                      {sectionOptions.map((o) => (
+                        <option key={o.value} value={o.value}>
+                          {o.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {!hasBt && !hasUsb && (
             <p className="text-xs text-muted-foreground">
