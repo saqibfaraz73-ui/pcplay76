@@ -8,7 +8,38 @@ import { format } from "date-fns";
 import { getSyncConfig } from "@/features/sync/sync-utils";
 import { sendPrintJob } from "@/features/sync/sync-client";
 import { isDuplicatePrint } from "@/features/pos/print-dedup";
-import { sendToSectionPrinter, getPrinterForSection, type PrintSection } from "@/features/pos/printer-routing";
+import { sendToSectionPrinter, sendToDefaultPrinter, getPrinterForSection, type PrintSection } from "@/features/pos/printer-routing";
+
+/**
+ * Resolve the printer section for an order.
+ * If all non-addon items belong to the same printer section → use that section.
+ * If items span multiple sections or none have a section → use default printer ("__default__").
+ */
+async function resolveOrderSection(order: Order, settings: Settings): Promise<PrintSection | "__default__"> {
+  if (!settings.sectionPrinterMap) return "__default__";
+  try {
+    const sections = new Set<string>();
+    for (const line of order.lines) {
+      if (line.itemId.includes("__ao_")) continue; // skip add-ons
+      const item = await db.items.get(line.itemId);
+      if (!item) continue;
+      const cat = await db.categories.get(item.categoryId);
+      if (cat?.printerSection && settings.sectionPrinterMap[cat.printerSection]) {
+        sections.add(cat.printerSection);
+      } else {
+        // Item has no section → mixed
+        return "__default__";
+      }
+    }
+    if (sections.size === 1) {
+      return [...sections][0];
+    }
+    // 0 or multiple sections → default
+    return "__default__";
+  } catch {
+    return "__default__";
+  }
+}
 
 /**
  * Build ESC/POS native QR code commands.
@@ -348,25 +379,13 @@ export async function printReceiptFromOrder(
     throw new Error("Could not load settings. Please try again.");
   }
 
-  // Resolve printer section: explicit section > category-based section > "sales"
-  let resolvedSection: PrintSection = opts?.section ?? "sales";
+  // Resolve printer section: explicit section > category-based > default
+  let resolvedSection: PrintSection | "__default__" = opts?.section ?? "__default__";
   if (!opts?.section && settings?.sectionPrinterMap) {
-    // Try to determine section from the first item's category
-    try {
-      const firstItemId = order.lines[0]?.itemId;
-      if (firstItemId && !firstItemId.includes("__ao_")) {
-        const item = await db.items.get(firstItemId);
-        if (item) {
-          const cat = await db.categories.get(item.categoryId);
-          if (cat?.printerSection && settings.sectionPrinterMap[cat.printerSection]) {
-            resolvedSection = cat.printerSection;
-          }
-        }
-      }
-    } catch {
-      // fallback to default section
-    }
+    resolvedSection = await resolveOrderSection(order, settings);
   }
+
+  const useDefault = resolvedSection === "__default__";
 
   if (isNativeAndroid()) {
     // Check if Sub device should send to Main's printer
@@ -386,19 +405,29 @@ export async function printReceiptFromOrder(
       throw new Error("Settings not loaded. Please configure printer in Admin > Printer.");
     }
 
-    const isUsb = getPrinterForSection(settings, resolvedSection) === "usb";
+    const isUsb = useDefault
+      ? (settings.defaultPrinterType === "usb")
+      : getPrinterForSection(settings, resolvedSection) === "usb";
     const skipBarcode = resolvedSection === "tables";
     const text = await buildEscPosReceipt(order, settings, { ...opts, forUsb: isUsb, skipBarcode });
 
     if (viaMain) {
-      await sendPrintToMain(text, resolvedSection);
+      await sendPrintToMain(text, useDefault ? "sales" : resolvedSection);
       return;
     }
 
     if (isDuplicatePrint(text)) return;
 
+    const sendPrint = async (s: Settings, data: string) => {
+      if (useDefault) {
+        await sendToDefaultPrinter(s, data);
+      } else {
+        await sendToSectionPrinter(s, resolvedSection, data);
+      }
+    };
+
     try {
-      await sendToSectionPrinter(settings, resolvedSection, text);
+      await sendPrint(settings, text);
     } catch (printErr: any) {
       console.error("Print error:", printErr);
       // If logo was included and print failed, retry without logo
@@ -407,7 +436,7 @@ export async function printReceiptFromOrder(
         const noLogoSettings = { ...settings, showLogo: false };
         const retryText = await buildEscPosReceipt(order, noLogoSettings, { ...opts, forUsb: isUsb });
         try {
-          await sendToSectionPrinter(noLogoSettings, resolvedSection, retryText);
+          await sendPrint(noLogoSettings, retryText);
           return;
         } catch (retryErr: any) {
           throw new Error(retryErr?.message || "Printing failed. Check printer connection.");
@@ -532,35 +561,26 @@ export async function printKotFromOrder(order: Order) {
     throw new Error("Printer not configured");
   }
 
-  // Resolve printer section from first item's category
-  let resolvedSection: PrintSection = "sales";
-  if (settings.sectionPrinterMap) {
-    try {
-      const firstItemId = order.lines[0]?.itemId;
-      if (firstItemId && !firstItemId.includes("__ao_")) {
-        const item = await db.items.get(firstItemId);
-        if (item) {
-          const cat = await db.categories.get(item.categoryId);
-          if (cat?.printerSection && settings.sectionPrinterMap[cat.printerSection]) {
-            resolvedSection = cat.printerSection;
-          }
-        }
-      }
-    } catch { /* fallback */ }
-  }
+  // Resolve printer section — single section uses section printer, mixed uses default
+  const resolvedSection = await resolveOrderSection(order, settings);
+  const useDefault = resolvedSection === "__default__";
 
   const text = await buildKotReceipt(order, settings);
 
   // Check if Sub should send to Main's printer
   const viaMain = await shouldPrintViaMain();
   if (viaMain) {
-    await sendPrintToMain(text, resolvedSection);
+    await sendPrintToMain(text, useDefault ? "sales" : resolvedSection);
     return;
   }
 
-  // Use section-based printer routing
+  // Print via section or default printer
   try {
-    await sendToSectionPrinter(settings, resolvedSection, text);
+    if (useDefault) {
+      await sendToDefaultPrinter(settings, text);
+    } else {
+      await sendToSectionPrinter(settings, resolvedSection, text);
+    }
   } catch (printErr: any) {
     console.error("KOT print error:", printErr);
     throw new Error(printErr?.message || "KOT printing failed. Check printer connection.");
