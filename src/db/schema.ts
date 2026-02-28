@@ -1,6 +1,7 @@
 export type Category = {
   id: string;
   name: string;
+  printerSection?: string; // custom printer section (e.g. "A", "B", "Kitchen")
   createdAt: number;
 };
 
@@ -330,6 +331,9 @@ export type Settings = {
   receiptQrEnabled?: boolean; // if true, print barcode on receipt for scanning
   showBusinessNameOnReceipt?: boolean; // if false, hide business name on receipt (default true)
   currencySymbol?: string; // e.g. "Rs", "$", "€", "£", "₹"
+  // Section-based printer routing (replaces salesPrinterType/tablePrinterType)
+  printerSections?: string[]; // user-defined section names (e.g. ["A", "B", "Kitchen"])
+  sectionPrinterMap?: Record<string, "bluetooth" | "usb" | "none">; // section → printer type
   updatedAt: number;
 };
 

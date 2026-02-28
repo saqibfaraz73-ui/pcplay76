@@ -52,6 +52,9 @@ export function AdminProducts() {
   >(null);
 
   const [catName, setCatName] = React.useState("");
+  const [catPrinterSection, setCatPrinterSection] = React.useState("");
+  const [newSectionName, setNewSectionName] = React.useState("");
+  const [printerSections, setPrinterSections] = React.useState<string[]>([]);
 
   const [itemName, setItemName] = React.useState("");
   const [itemCategoryId, setItemCategoryId] = React.useState<string>("");
@@ -80,6 +83,7 @@ export function AdminProducts() {
     setCategories(cats);
     setItems(its);
     setSettings(s ?? null);
+    setPrinterSections(s?.printerSections ?? []);
     setItemCategoryId((prev) => prev || cats[0]?.id || "");
   }, []);
 
@@ -90,12 +94,16 @@ export function AdminProducts() {
   const openNewCategory = () => {
     setMode({ type: "category" });
     setCatName("");
+    setCatPrinterSection("");
+    setNewSectionName("");
     setOpen(true);
   };
 
   const openEditCategory = (category: Category) => {
     setMode({ type: "category", category });
     setCatName(category.name);
+    setCatPrinterSection(category.printerSection ?? "");
+    setNewSectionName("");
     setOpen(true);
   };
 
@@ -143,10 +151,20 @@ export function AdminProducts() {
         const name = catName.trim();
         if (!name) throw new Error("Category name is required.");
         const now = Date.now();
+        const section = catPrinterSection.trim() || undefined;
         if (mode.category) {
-          await db.categories.put({ ...mode.category, name });
+          await db.categories.put({ ...mode.category, name, printerSection: section });
         } else {
-          await db.categories.put({ id: makeId("cat"), name, createdAt: now });
+          await db.categories.put({ id: makeId("cat"), name, printerSection: section, createdAt: now });
+        }
+        // If a new section was created, save it to settings
+        if (section && !printerSections.includes(section)) {
+          const newSections = [...printerSections, section];
+          const s = await db.settings.get("app");
+          if (s) {
+            await db.settings.put({ ...s, printerSections: newSections, updatedAt: Date.now() });
+          }
+          setPrinterSections(newSections);
         }
         toast({ title: "Saved" });
         setOpen(false);
@@ -327,6 +345,9 @@ export function AdminProducts() {
               <div key={c.id} className="flex items-center justify-between gap-2 rounded-md border p-2">
                 <div className="min-w-0">
                   <div className="truncate text-sm font-medium">{c.name}</div>
+                  {c.printerSection && (
+                    <div className="text-xs text-muted-foreground">Section: {c.printerSection}</div>
+                  )}
                 </div>
                 <div className="flex items-center gap-2">
                   <Button variant="outline" size="sm" onClick={() => openEditCategory(c)}>
@@ -437,6 +458,49 @@ export function AdminProducts() {
               <div className="space-y-2">
                 <Label htmlFor="catName">Category name</Label>
                 <Input id="catName" value={catName} onChange={(e) => setCatName(e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="catSection">Printer Section</Label>
+                <div className="flex gap-2">
+                  <select
+                    id="catSection"
+                    value={catPrinterSection}
+                    onChange={(e) => setCatPrinterSection(e.target.value)}
+                    className="h-10 flex-1 rounded-md border bg-background px-3 text-sm"
+                  >
+                    <option value="">None (default)</option>
+                    {printerSections.map((s) => (
+                      <option key={s} value={s}>{s}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex gap-2 mt-1">
+                  <Input
+                    placeholder="New section name..."
+                    value={newSectionName}
+                    onChange={(e) => setNewSectionName(e.target.value)}
+                    className="h-8 text-sm"
+                  />
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    disabled={!newSectionName.trim()}
+                    onClick={() => {
+                      const name = newSectionName.trim();
+                      if (name && !printerSections.includes(name)) {
+                        setPrinterSections((prev) => [...prev, name]);
+                      }
+                      setCatPrinterSection(name);
+                      setNewSectionName("");
+                    }}
+                  >
+                    Add
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Assign a printer section to route printing to a specific printer. Create any name (e.g. A, B, Kitchen, Bar).
+                </p>
               </div>
             </div>
           ) : null}
