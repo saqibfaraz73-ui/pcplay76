@@ -49,7 +49,9 @@ function buildEscPosQr(data: string, moduleSize = 6): string {
 function buildEscPosBarcode(receiptNo: number, paperSize: string): string {
   const CENTER_ON = "\x1ba\x01";
   const LEFT_ON = "\x1ba\x00";
-  const data = `RCV-${receiptNo}`;
+  const barcodeContent = `RCV-${receiptNo}`;
+  // Prefix with {B to select Code128 Code-Set B (alphanumeric)
+  const data = "{B" + barcodeContent;
 
   let cmd = CENTER_ON;
 
