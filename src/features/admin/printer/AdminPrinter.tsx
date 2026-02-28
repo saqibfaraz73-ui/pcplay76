@@ -71,9 +71,8 @@ export function AdminPrinter() {
   const [usbDeviceName, setUsbDeviceName] = React.useState("");
   const [usbPrinterLabel, setUsbPrinterLabel] = React.useState("");
 
-  // Section routing
-  const [salesPrinterType, setSalesPrinterType] = React.useState<PrinterType>("none");
-  const [tablePrinterType, setTablePrinterType] = React.useState<PrinterType>("none");
+  // Default printer & section routing
+  const [defaultPrinterType, setDefaultPrinterType] = React.useState<PrinterType>("none");
   const [printerSections, setPrinterSections] = React.useState<string[]>([]);
   const [sectionPrinterMap, setSectionPrinterMap] = React.useState<Record<string, PrinterType>>({});
 
@@ -101,8 +100,7 @@ export function AdminPrinter() {
     setBtPrinterName(s.btPrinterName ?? "");
     setUsbDeviceName(s.usbDeviceName ?? "");
     setUsbPrinterLabel(s.usbPrinterLabel ?? "");
-    setSalesPrinterType(s.salesPrinterType ?? s.printerConnection ?? "none");
-    setTablePrinterType(s.tablePrinterType ?? s.printerConnection ?? "none");
+    setDefaultPrinterType(s.defaultPrinterType ?? s.printerConnection ?? "none");
     setPrinterSections(s.printerSections ?? []);
     setSectionPrinterMap(s.sectionPrinterMap ?? {});
     setReceiptSize(s.receiptSize ?? "2x3");
@@ -136,9 +134,8 @@ export function AdminPrinter() {
         btPrinterName: btPrinterName.trim() || undefined,
         usbDeviceName: usbDeviceName.trim() || undefined,
         usbPrinterLabel: usbPrinterLabel.trim() || undefined,
-        // Section routing
-        salesPrinterType,
-        tablePrinterType,
+        // Default & section routing
+        defaultPrinterType,
         // Custom section routing
         printerSections,
         sectionPrinterMap,
@@ -386,44 +383,66 @@ export function AdminPrinter() {
         </CardContent>
       </Card>
 
-      {/* ── Section Routing ── */}
+      {/* ── Default Printer & Section Routing ── */}
       <Card>
         <CardHeader>
           <CardTitle>Printer Assignment</CardTitle>
           <CardDescription>
-            Assign printers to sections. Create sections when adding categories in Admin &gt; Products.
+            Set a default printer for all printing. Optionally override per section.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {printerSections.length > 0 ? (
-            <div className="grid gap-3 sm:grid-cols-2">
-              {printerSections.map((sec) => (
-                <div key={sec} className="space-y-2">
-                  <Label htmlFor={`section-${sec}`}>Section: {sec}</Label>
-                  <select
-                    id={`section-${sec}`}
-                    value={sectionPrinterMap[sec] ?? "none"}
-                    onChange={(e) => setSectionPrinterMap((prev) => ({ ...prev, [sec]: e.target.value as PrinterType }))}
-                    className="h-10 w-full rounded-md border bg-background px-3 text-sm"
-                  >
-                    {sectionOptions.map((o) => (
-                      <option key={o.value} value={o.value}>
-                        {o.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              No sections created yet. Go to Admin &gt; Products and assign a printer section to a category.
+          {/* Default Printer */}
+          <div className="space-y-2">
+            <Label htmlFor="defaultPrinter" className="font-semibold">Default Printer</Label>
+            <p className="text-xs text-muted-foreground">
+              Used for sales receipts, advance booking, party/expenses, recovery, barcode labels, custom print, and any section without a specific printer.
             </p>
+            <select
+              id="defaultPrinter"
+              value={defaultPrinterType}
+              onChange={(e) => setDefaultPrinterType(e.target.value as PrinterType)}
+              className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+            >
+              {sectionOptions.map((o) => (
+                <option key={o.value} value={o.value}>{o.label}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Section Overrides */}
+          {printerSections.length > 0 && (
+            <>
+              <div className="border-t pt-3">
+                <Label className="font-semibold text-sm">Section Overrides</Label>
+                <p className="text-xs text-muted-foreground mb-2">
+                  Override the default printer for specific category sections. Leave as "None" to use the default printer.
+                </p>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {printerSections.map((sec) => (
+                  <div key={sec} className="space-y-2">
+                    <Label htmlFor={`section-${sec}`}>Section: {sec}</Label>
+                    <select
+                      id={`section-${sec}`}
+                      value={sectionPrinterMap[sec] ?? "none"}
+                      onChange={(e) => setSectionPrinterMap((prev) => ({ ...prev, [sec]: e.target.value as PrinterType }))}
+                      className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+                    >
+                      <option value="none">Default Printer</option>
+                      {sectionOptions.filter(o => o.value !== "none").map((o) => (
+                        <option key={o.value} value={o.value}>{o.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                ))}
+              </div>
+            </>
           )}
 
-          {!hasBt && !hasUsb && printerSections.length > 0 && (
+          {!hasBt && !hasUsb && (
             <p className="text-xs text-muted-foreground">
-              Configure at least one printer above to assign it to a section.
+              Configure at least one printer above to assign it.
             </p>
           )}
         </CardContent>

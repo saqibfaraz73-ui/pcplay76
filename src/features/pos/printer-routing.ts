@@ -17,12 +17,53 @@ export function getPrinterForSection(
   settings: Settings,
   section: PrintSection
 ): "bluetooth" | "usb" | "none" {
-  // Check custom section map
+  // Check custom section map first
   if (settings.sectionPrinterMap && settings.sectionPrinterMap[section]) {
     return settings.sectionPrinterMap[section];
   }
-  // No legacy fallback — sections must be explicitly mapped
-  return "none";
+  // Fall back to default printer
+  return settings.defaultPrinterType ?? "none";
+}
+
+/**
+ * Get the default printer type (universal fallback).
+ */
+export function getDefaultPrinterType(settings: Settings): "bluetooth" | "usb" | "none" {
+  return settings.defaultPrinterType ?? "none";
+}
+
+/**
+ * Send ESC/POS data to the default printer.
+ * Used for features that don't have section-based routing (advance, booking, recovery, labels, custom print, etc.)
+ */
+export async function sendToDefaultPrinter(
+  settings: Settings,
+  escPos: string
+): Promise<void> {
+  const printerType = getDefaultPrinterType(settings);
+
+  if (printerType === "none") {
+    throw new Error(
+      "No default printer configured. Go to Printer Settings and set a Default Printer."
+    );
+  }
+
+  if (printerType === "usb") {
+    const device = getUsbDevice(settings);
+    if (!device) {
+      throw new Error("USB printer not configured. Go to Printer Settings and set up a USB printer.");
+    }
+    await usbSend(escPos);
+    return;
+  }
+
+  // Bluetooth
+  const address = getBtAddress(settings);
+  if (!address) {
+    throw new Error("Bluetooth printer not configured. Go to Printer Settings and select a Bluetooth printer.");
+  }
+  await btConnect(address);
+  await btSend(escPos);
 }
 
 /**

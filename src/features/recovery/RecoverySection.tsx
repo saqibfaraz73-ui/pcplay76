@@ -2,7 +2,7 @@ import React from "react";
 import { FileNamePrompt } from "@/components/FileNamePrompt";
 import { Button } from "@/components/ui/button";
 import { isNativeAndroid } from "@/features/pos/bluetooth-printer";
-import { sendToSectionPrinter } from "@/features/pos/printer-routing";
+import { sendToDefaultPrinter } from "@/features/pos/printer-routing";
 import { isDuplicatePrint } from "@/features/pos/print-dedup";
 import { formatIntMoney } from "@/features/pos/format";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -456,7 +456,7 @@ export function RecoverySection() {
       if (isDuplicatePrint(escPos)) return;
 
       try {
-        await sendToSectionPrinter(s, "sales", escPos);
+        await sendToDefaultPrinter(s, escPos);
       } catch (err: any) {
         console.error("Recovery receipt print error:", err);
         throw new Error(err?.message || "Printing failed. Check printer connection.");
