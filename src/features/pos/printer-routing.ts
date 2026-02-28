@@ -17,15 +17,12 @@ export function getPrinterForSection(
   settings: Settings,
   section: PrintSection
 ): "bluetooth" | "usb" | "none" {
-  // Check custom section map first
+  // Check custom section map
   if (settings.sectionPrinterMap && settings.sectionPrinterMap[section]) {
     return settings.sectionPrinterMap[section];
   }
-  // Legacy fallback for "sales" and "tables"
-  if (section === "tables") {
-    return settings.tablePrinterType ?? settings.printerConnection ?? "none";
-  }
-  return settings.salesPrinterType ?? settings.printerConnection ?? "none";
+  // No legacy fallback — sections must be explicitly mapped
+  return "none";
 }
 
 /**

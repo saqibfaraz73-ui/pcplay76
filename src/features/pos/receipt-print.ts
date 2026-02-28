@@ -532,18 +532,35 @@ export async function printKotFromOrder(order: Order) {
     throw new Error("Printer not configured");
   }
 
+  // Resolve printer section from first item's category
+  let resolvedSection: PrintSection = "sales";
+  if (settings.sectionPrinterMap) {
+    try {
+      const firstItemId = order.lines[0]?.itemId;
+      if (firstItemId && !firstItemId.includes("__ao_")) {
+        const item = await db.items.get(firstItemId);
+        if (item) {
+          const cat = await db.categories.get(item.categoryId);
+          if (cat?.printerSection && settings.sectionPrinterMap[cat.printerSection]) {
+            resolvedSection = cat.printerSection;
+          }
+        }
+      }
+    } catch { /* fallback */ }
+  }
+
   const text = await buildKotReceipt(order, settings);
 
   // Check if Sub should send to Main's printer
   const viaMain = await shouldPrintViaMain();
   if (viaMain) {
-    await sendPrintToMain(text, "sales");
+    await sendPrintToMain(text, resolvedSection);
     return;
   }
 
-  // Use section-based printer routing (KOT from sales dashboard)
+  // Use section-based printer routing
   try {
-    await sendToSectionPrinter(settings, "sales", text);
+    await sendToSectionPrinter(settings, resolvedSection, text);
   } catch (printErr: any) {
     console.error("KOT print error:", printErr);
     throw new Error(printErr?.message || "KOT printing failed. Check printer connection.");
