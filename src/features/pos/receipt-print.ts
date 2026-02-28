@@ -14,7 +14,7 @@ import { sendToSectionPrinter, getPrinterForSection, type PrintSection } from "@
  * Build ESC/POS native QR code commands.
  * Uses GS ( k function for QR code generation on compatible printers.
  */
-function buildEscPosQr(data: string): string {
+function buildEscPosQr(data: string, moduleSize = 6): string {
   const CENTER_ON = "\x1ba\x01";
   const LEFT_ON = "\x1ba\x00";
   
@@ -23,11 +23,11 @@ function buildEscPosQr(data: string): string {
   // GS ( k — QR Code: Select model (Model 2)
   cmd += "\x1d\x28\x6b\x04\x00\x31\x41\x32\x00";
   
-  // GS ( k — QR Code: Set module size (4 dots)
-  cmd += "\x1d\x28\x6b\x03\x00\x31\x43\x04";
+  // GS ( k — QR Code: Set module size (bigger = easier to scan)
+  cmd += "\x1d\x28\x6b\x03\x00\x31\x43" + String.fromCharCode(moduleSize);
   
-  // GS ( k — QR Code: Set error correction level (L = 48)
-  cmd += "\x1d\x28\x6b\x03\x00\x31\x45\x30";
+  // GS ( k — QR Code: Set error correction level (M = 49, better scan reliability)
+  cmd += "\x1d\x28\x6b\x03\x00\x31\x45\x31";
   
   // GS ( k — QR Code: Store data
   const storeLen = data.length + 3;
@@ -173,19 +173,32 @@ async function buildEscPosReceipt(
   // QR code with receipt data (optional, uses ESC/POS native QR commands)
   let qrCommands = "";
   if (settings.receiptQrEnabled) {
-    const qrData = JSON.stringify({
+    // Keep QR data compact to stay within printer QR capacity (~300 bytes)
+    const qrObj: Record<string, any> = {
       rn: order.receiptNo,
       dt: order.createdAt,
       c: order.cashier,
       pm: order.paymentMethod,
-      st: order.subtotal,
-      dc: order.discountTotal,
-      tx: order.taxAmount,
-      sc: order.serviceChargeAmount,
       t: order.total,
-      items: order.lines.map(l => ({ n: l.name, q: l.qty, p: l.unitPrice, s: l.subtotal })),
-    });
-    qrCommands = buildEscPosQr("SANGI-RCV:" + qrData);
+    };
+    // Only include non-zero summary fields
+    if (order.subtotal !== order.total) qrObj.st = order.subtotal;
+    if (order.discountTotal > 0) qrObj.dc = order.discountTotal;
+    if (order.taxAmount > 0) qrObj.tx = order.taxAmount;
+    if (order.serviceChargeAmount > 0) qrObj.sc = order.serviceChargeAmount;
+    // Include items but truncate names and limit count to keep data small
+    const maxItems = 10;
+    qrObj.items = order.lines.slice(0, maxItems).map(l => ({
+      n: l.name.length > 15 ? l.name.substring(0, 15) : l.name,
+      q: l.qty,
+      p: l.unitPrice,
+      s: l.subtotal,
+    }));
+    if (order.lines.length > maxItems) qrObj.more = order.lines.length - maxItems;
+    const qrPayload = "SANGI-RCV:" + JSON.stringify(qrObj);
+    // Use larger module size on 58mm paper for better readability
+    const modSize = settings.paperSize === "58" ? 5 : 6;
+    qrCommands = buildEscPosQr(qrPayload, modSize);
   }
 
   const totalContentLines = headerLines.length + 1 + itemLines.length + totals.length + (logoCommands ? 4 : 0);
