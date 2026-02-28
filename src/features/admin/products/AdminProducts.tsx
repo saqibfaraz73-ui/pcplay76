@@ -53,8 +53,10 @@ export function AdminProducts() {
 
   const [catName, setCatName] = React.useState("");
   const [catPrinterSection, setCatPrinterSection] = React.useState("");
+  const [catSectionPrinter, setCatSectionPrinter] = React.useState<"bluetooth" | "usb" | "none">("none");
   const [newSectionName, setNewSectionName] = React.useState("");
   const [printerSections, setPrinterSections] = React.useState<string[]>([]);
+  const [sectionPrinterMap, setSectionPrinterMap] = React.useState<Record<string, string>>({});
 
   const [itemName, setItemName] = React.useState("");
   const [itemCategoryId, setItemCategoryId] = React.useState<string>("");
@@ -84,6 +86,7 @@ export function AdminProducts() {
     setItems(its);
     setSettings(s ?? null);
     setPrinterSections(s?.printerSections ?? []);
+    setSectionPrinterMap(s?.sectionPrinterMap ?? {});
     setItemCategoryId((prev) => prev || cats[0]?.id || "");
   }, []);
 
@@ -95,6 +98,7 @@ export function AdminProducts() {
     setMode({ type: "category" });
     setCatName("");
     setCatPrinterSection("");
+    setCatSectionPrinter("none");
     setNewSectionName("");
     setOpen(true);
   };
@@ -103,6 +107,7 @@ export function AdminProducts() {
     setMode({ type: "category", category });
     setCatName(category.name);
     setCatPrinterSection(category.printerSection ?? "");
+    setCatSectionPrinter(category.printerSection ? (sectionPrinterMap[category.printerSection] as any ?? "none") : "none");
     setNewSectionName("");
     setOpen(true);
   };
@@ -157,14 +162,19 @@ export function AdminProducts() {
         } else {
           await db.categories.put({ id: makeId("cat"), name, printerSection: section, createdAt: now });
         }
-        // If a new section was created, save it to settings
-        if (section && !printerSections.includes(section)) {
-          const newSections = [...printerSections, section];
-          const s = await db.settings.get("app");
-          if (s) {
-            await db.settings.put({ ...s, printerSections: newSections, updatedAt: Date.now() });
+        // Save section and its printer mapping to settings
+        const s = await db.settings.get("app");
+        if (s) {
+          const newSections = section && !printerSections.includes(section)
+            ? [...printerSections, section]
+            : s.printerSections ?? printerSections;
+          const newMap = { ...(s.sectionPrinterMap ?? sectionPrinterMap) };
+          if (section) {
+            newMap[section] = catSectionPrinter;
           }
+          await db.settings.put({ ...s, printerSections: newSections, sectionPrinterMap: newMap, updatedAt: Date.now() });
           setPrinterSections(newSections);
+          setSectionPrinterMap(newMap);
         }
         toast({ title: "Saved" });
         setOpen(false);
@@ -502,6 +512,24 @@ export function AdminProducts() {
                   Assign a printer section to route printing to a specific printer. Create any name (e.g. A, B, Kitchen, Bar).
                 </p>
               </div>
+              {catPrinterSection.trim() && (
+                <div className="space-y-2">
+                  <Label htmlFor="catSectionPrinter">Printer for "{catPrinterSection}"</Label>
+                  <select
+                    id="catSectionPrinter"
+                    value={catSectionPrinter}
+                    onChange={(e) => setCatSectionPrinter(e.target.value as any)}
+                    className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+                  >
+                    <option value="none">None (No Printing)</option>
+                    <option value="bluetooth">Bluetooth</option>
+                    <option value="usb">USB</option>
+                  </select>
+                  <p className="text-xs text-muted-foreground">
+                    Choose which printer to use for this section.
+                  </p>
+                </div>
+              )}
             </div>
           ) : null}
 
