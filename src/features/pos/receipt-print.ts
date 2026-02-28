@@ -42,6 +42,32 @@ function buildEscPosQr(data: string, moduleSize = 6): string {
   return cmd;
 }
 
+/**
+ * Build ESC/POS Code128 barcode commands for receipt number.
+ * Prints a scannable barcode containing "RCV-{receiptNo}".
+ */
+function buildEscPosBarcode(receiptNo: number, paperSize: string): string {
+  const CENTER_ON = "\x1ba\x01";
+  const LEFT_ON = "\x1ba\x00";
+  const data = `RCV-${receiptNo}`;
+
+  let cmd = CENTER_ON;
+
+  // GS h — Set barcode height (50 dots)
+  cmd += "\x1d\x68\x32";
+  // GS w — Set barcode width (2 = medium)
+  cmd += "\x1d\x77" + (paperSize === "58" ? "\x02" : "\x02");
+  // GS H — Print HRI (human-readable) below barcode
+  cmd += "\x1d\x48\x02";
+  // GS f — Set HRI font (font A)
+  cmd += "\x1d\x66\x00";
+  // GS k — Print Code128 barcode (type 73 = Code128)
+  cmd += "\x1d\x6b\x49" + String.fromCharCode(data.length) + data;
+
+  cmd += "\n" + LEFT_ON;
+  return cmd;
+}
+
 function escapeHtml(s: string) {
   return s.replace(/[&<>"']/g, (c) => {
     switch (c) {
@@ -173,32 +199,8 @@ async function buildEscPosReceipt(
   // QR code with receipt data (optional, uses ESC/POS native QR commands)
   let qrCommands = "";
   if (settings.receiptQrEnabled) {
-    // Keep QR data compact to stay within printer QR capacity (~300 bytes)
-    const qrObj: Record<string, any> = {
-      rn: order.receiptNo,
-      dt: order.createdAt,
-      c: order.cashier,
-      pm: order.paymentMethod,
-      t: order.total,
-    };
-    // Only include non-zero summary fields
-    if (order.subtotal !== order.total) qrObj.st = order.subtotal;
-    if (order.discountTotal > 0) qrObj.dc = order.discountTotal;
-    if (order.taxAmount > 0) qrObj.tx = order.taxAmount;
-    if (order.serviceChargeAmount > 0) qrObj.sc = order.serviceChargeAmount;
-    // Include items but truncate names and limit count to keep data small
-    const maxItems = 10;
-    qrObj.items = order.lines.slice(0, maxItems).map(l => ({
-      n: l.name.length > 15 ? l.name.substring(0, 15) : l.name,
-      q: l.qty,
-      p: l.unitPrice,
-      s: l.subtotal,
-    }));
-    if (order.lines.length > maxItems) qrObj.more = order.lines.length - maxItems;
-    const qrPayload = "SANGI-RCV:" + JSON.stringify(qrObj);
-    // Use larger module size on 58mm paper for better readability
-    const modSize = settings.paperSize === "58" ? 5 : 6;
-    qrCommands = buildEscPosQr(qrPayload, modSize);
+    // Print a Code128 barcode with receipt number (scannable by any barcode scanner)
+    qrCommands = buildEscPosBarcode(order.receiptNo, settings.paperSize);
   }
 
   const totalContentLines = headerLines.length + 1 + itemLines.length + totals.length + (logoCommands ? 4 : 0);
