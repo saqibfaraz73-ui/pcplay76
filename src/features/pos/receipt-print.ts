@@ -104,6 +104,7 @@ async function buildEscPosReceipt(
     deliveryPersonName?: string;
     deliveryCustomerName?: string;
     forUsb?: boolean;
+    skipBarcode?: boolean;
   }
 ): Promise<string> {
   const width = settings.paperSize === "80" ? 48 : 32;
@@ -201,8 +202,9 @@ async function buildEscPosReceipt(
   ];
 
   // QR code with receipt data (optional, uses ESC/POS native QR commands)
+  // Skip barcode for table management receipts — only print on sales receipts
   let qrCommands = "";
-  if (settings.receiptQrEnabled) {
+  if (settings.receiptQrEnabled && !opts?.skipBarcode) {
     // Print a Code128 barcode with receipt number (scannable by any barcode scanner)
     qrCommands = buildEscPosBarcode(order.receiptNo, settings.paperSize);
   }
@@ -366,7 +368,8 @@ export async function printReceiptFromOrder(
 
     const section: PrintSection = opts?.section ?? "sales";
     const isUsb = getPrinterForSection(settings, section) === "usb";
-    const text = await buildEscPosReceipt(order, settings, { ...opts, forUsb: isUsb });
+    const skipBarcode = section === "tables";
+    const text = await buildEscPosReceipt(order, settings, { ...opts, forUsb: isUsb, skipBarcode });
 
     if (viaMain) {
       await sendPrintToMain(text, opts?.section ?? "sales");
