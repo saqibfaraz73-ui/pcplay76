@@ -391,72 +391,37 @@ export function AdminPrinter() {
         <CardHeader>
           <CardTitle>Printer Assignment</CardTitle>
           <CardDescription>
-            Choose which printer to use for each section. Assign categories to sections in Admin &gt; Products.
-            Legacy "Sales" and "Tables" sections are always available as fallback.
+            Assign printers to sections. Create sections when adding categories in Admin &gt; Products.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Legacy sales/tables routing */}
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="salesPrinter">Sales Dashboard (default)</Label>
-              <select
-                id="salesPrinter"
-                value={salesPrinterType}
-                onChange={(e) => setSalesPrinterType(e.target.value as PrinterType)}
-                className="h-10 w-full rounded-md border bg-background px-3 text-sm"
-              >
-                {sectionOptions.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </select>
+          {printerSections.length > 0 ? (
+            <div className="grid gap-3 sm:grid-cols-2">
+              {printerSections.map((sec) => (
+                <div key={sec} className="space-y-2">
+                  <Label htmlFor={`section-${sec}`}>Section: {sec}</Label>
+                  <select
+                    id={`section-${sec}`}
+                    value={sectionPrinterMap[sec] ?? "none"}
+                    onChange={(e) => setSectionPrinterMap((prev) => ({ ...prev, [sec]: e.target.value as PrinterType }))}
+                    className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+                  >
+                    {sectionOptions.map((o) => (
+                      <option key={o.value} value={o.value}>
+                        {o.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ))}
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="tablePrinter">Table Management (default)</Label>
-              <select
-                id="tablePrinter"
-                value={tablePrinterType}
-                onChange={(e) => setTablePrinterType(e.target.value as PrinterType)}
-                className="h-10 w-full rounded-md border bg-background px-3 text-sm"
-              >
-                {sectionOptions.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          {/* Custom printer sections */}
-          {printerSections.length > 0 && (
-            <div className="space-y-3 border-t pt-3">
-              <Label className="text-sm font-medium">Custom Sections</Label>
-              <div className="grid gap-3 sm:grid-cols-2">
-                {printerSections.map((sec) => (
-                  <div key={sec} className="space-y-2">
-                    <Label htmlFor={`section-${sec}`}>Section: {sec}</Label>
-                    <select
-                      id={`section-${sec}`}
-                      value={sectionPrinterMap[sec] ?? "none"}
-                      onChange={(e) => setSectionPrinterMap((prev) => ({ ...prev, [sec]: e.target.value as PrinterType }))}
-                      className="h-10 w-full rounded-md border bg-background px-3 text-sm"
-                    >
-                      {sectionOptions.map((o) => (
-                        <option key={o.value} value={o.value}>
-                          {o.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                ))}
-              </div>
-            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              No sections created yet. Go to Admin &gt; Products and assign a printer section to a category.
+            </p>
           )}
 
-          {!hasBt && !hasUsb && (
+          {!hasBt && !hasUsb && printerSections.length > 0 && (
             <p className="text-xs text-muted-foreground">
               Configure at least one printer above to assign it to a section.
             </p>
