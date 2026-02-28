@@ -172,9 +172,10 @@ export function SalesReportPreview({
     const addLines = (list: Array<{ lines: Array<{ itemId: string; name: string; qty: number; unitPrice: number; subtotal: number; buyingPrice?: number }> }>) => {
       for (const o of list) {
         for (const l of o.lines) {
+          const isAddOn = l.itemId.includes("__ao_");
           const item = itemsById[l.itemId];
           const buying = l.buyingPrice ?? item?.buyingPrice ?? 0;
-          const hasBuying = l.buyingPrice != null || item?.buyingPrice != null;
+          const hasBuying = !isAddOn && (l.buyingPrice != null || item?.buyingPrice != null);
           if (!byItem[l.itemId]) {
             byItem[l.itemId] = { itemId: l.itemId, name: l.name, qty: 0, revenue: 0, profit: 0 };
           }
