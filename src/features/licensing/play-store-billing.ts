@@ -89,7 +89,7 @@ export async function checkPlayStorePremium(): Promise<PremiumStatus> {
 export async function purchasePremium(): Promise<boolean> {
   if (!Capacitor.isNativePlatform()) {
     window.open(
-      `https://play.google.com/store/apps/details?id=app.lovable.c24ea21fcabc47b293cbb637319377b7`,
+      `https://play.google.com/store/apps/details?id=app.lovable.a89517294eb14219b1dd14af0464d470`,
       "_blank"
     );
     return false;
@@ -104,7 +104,7 @@ export async function purchasePremium(): Promise<boolean> {
     try {
       const { Browser } = await import("@capacitor/browser");
       await Browser.open({
-        url: `https://play.google.com/store/apps/details?id=app.lovable.c24ea21fcabc47b293cbb637319377b7`,
+        url: `https://play.google.com/store/apps/details?id=app.lovable.a89517294eb14219b1dd14af0464d470`,
       });
     } catch {}
     return false;
