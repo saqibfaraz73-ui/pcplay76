@@ -1,16 +1,22 @@
 /**
- * Google Play Store Billing
+ * Google Play Store Billing via RevenueCat
  *
  * Premium status is EXCLUSIVELY determined by Google Play Store.
  * No mock, no local override — only Play Store billing counts.
  *
- * WHEN READY TO CONNECT REAL BILLING:
- * 1. Install: npm install @revenuecat/purchases-capacitor
- * 2. Set your RevenueCat API key and entitlement ID below
- * 3. Uncomment the real billing block and remove the fallback
+ * LICENSE TESTING:
+ * 1. Add test Gmail accounts in Google Play Console → Setup → License testing
+ * 2. Create subscription product "sangi_pos_premium_monthly" in Play Console
+ * 3. Set up RevenueCat project with entitlement "premium"
+ * 4. Replace REVENUECAT_API_KEY below with your actual key
+ * 5. Build APK, upload to internal testing track, install on device with test account
  */
 
 import { Capacitor } from "@capacitor/core";
+
+// ── Replace with your actual RevenueCat Public API Key ──
+const REVENUECAT_API_KEY = "YOUR_REVENUECAT_API_KEY_HERE";
+const ENTITLEMENT_ID = "premium";
 
 export const PREMIUM_PRODUCT_ID = "sangi_pos_premium_monthly";
 
@@ -20,33 +26,60 @@ export type PremiumStatus = {
   source: "play_store" | "none";
 };
 
+let _initialized = false;
+
 /**
- * Check premium status from Play Store.
- * Returns false until RevenueCat is connected.
+ * Initialize RevenueCat SDK. Call once at app startup.
+ */
+export async function initBilling(): Promise<void> {
+  if (_initialized || !Capacitor.isNativePlatform()) return;
+  if (REVENUECAT_API_KEY === "YOUR_REVENUECAT_API_KEY_HERE") {
+    console.warn("[PlayBilling] RevenueCat API key not set. Billing disabled.");
+    return;
+  }
+
+  try {
+    const { Purchases } = await import("@revenuecat/purchases-capacitor");
+    await Purchases.configure({ apiKey: REVENUECAT_API_KEY });
+    _initialized = true;
+    console.log("[PlayBilling] RevenueCat initialized");
+  } catch (e) {
+    console.warn("[PlayBilling] Init failed:", e);
+  }
+}
+
+/**
+ * Check premium status from Play Store via RevenueCat.
  */
 export async function checkPlayStorePremium(): Promise<PremiumStatus> {
   if (!Capacitor.isNativePlatform()) {
     return { isPremium: false, source: "none" };
   }
 
-  // ── REAL BILLING (uncomment when app is on Play Store) ──────────────────
-  // try {
-  //   const { Purchases } = await import('@revenuecat/purchases-capacitor');
-  //   const info = await Purchases.getCustomerInfo();
-  //   const isPremium = info.customerInfo.entitlements.active['premium'] !== undefined;
-  //   const expiry = info.customerInfo.entitlements.active['premium']?.expirationDate;
-  //   return {
-  //     isPremium,
-  //     expiresAt: expiry ? new Date(expiry).getTime() : undefined,
-  //     source: 'play_store',
-  //   };
-  // } catch (e) {
-  //   console.warn('[PlayBilling] Check failed:', e);
-  //   return { isPremium: false, source: 'none' };
-  // }
-  // ────────────────────────────────────────────────────────────────────────
+  if (!_initialized) {
+    await initBilling();
+  }
 
-  return { isPremium: false, source: "none" };
+  if (!_initialized) {
+    // RevenueCat not available — key not set or init failed
+    return { isPremium: false, source: "none" };
+  }
+
+  try {
+    const { Purchases } = await import("@revenuecat/purchases-capacitor");
+    const info = await Purchases.getCustomerInfo();
+    const entitlement = info.customerInfo.entitlements.active[ENTITLEMENT_ID];
+    const isPremium = entitlement !== undefined;
+    const expiry = entitlement?.expirationDate;
+    return {
+      isPremium,
+      expiresAt: expiry ? new Date(expiry).getTime() : undefined,
+      source: "play_store",
+    };
+  } catch (e) {
+    console.warn("[PlayBilling] Check failed:", e);
+    return { isPremium: false, source: "none" };
+  }
 }
 
 /**
@@ -55,7 +88,6 @@ export async function checkPlayStorePremium(): Promise<PremiumStatus> {
  */
 export async function purchasePremium(): Promise<boolean> {
   if (!Capacitor.isNativePlatform()) {
-    // In browser: open Play Store listing
     window.open(
       `https://play.google.com/store/apps/details?id=app.lovable.c24ea21fcabc47b293cbb637319377b7`,
       "_blank"
@@ -63,29 +95,33 @@ export async function purchasePremium(): Promise<boolean> {
     return false;
   }
 
-  // ── REAL BILLING (uncomment when RevenueCat is connected) ───────────────
-  // try {
-  //   const { Purchases } = await import('@revenuecat/purchases-capacitor');
-  //   const offerings = await Purchases.getOfferings();
-  //   const pkg = offerings.current?.availablePackages?.[0];
-  //   if (!pkg) throw new Error('No packages available');
-  //   const result = await Purchases.purchasePackage({ aPackage: pkg });
-  //   return result.customerInfo.entitlements.active['premium'] !== undefined;
-  // } catch (e: any) {
-  //   if (e?.userCancelled) return false;
-  //   console.warn('[PlayBilling] Purchase failed:', e);
-  //   return false;
-  // }
-  // ────────────────────────────────────────────────────────────────────────
+  if (!_initialized) {
+    await initBilling();
+  }
 
-  // Fallback: open Play Store listing
+  if (!_initialized) {
+    // Fallback: open Play Store listing
+    try {
+      const { Browser } = await import("@capacitor/browser");
+      await Browser.open({
+        url: `https://play.google.com/store/apps/details?id=app.lovable.c24ea21fcabc47b293cbb637319377b7`,
+      });
+    } catch {}
+    return false;
+  }
+
   try {
-    const { Browser } = await import("@capacitor/browser");
-    await Browser.open({
-      url: `https://play.google.com/store/apps/details?id=app.lovable.c24ea21fcabc47b293cbb637319377b7`,
-    });
-  } catch {}
-  return false;
+    const { Purchases } = await import("@revenuecat/purchases-capacitor");
+    const offerings = await Purchases.getOfferings();
+    const pkg = offerings.current?.availablePackages?.[0];
+    if (!pkg) throw new Error("No packages available");
+    const result = await Purchases.purchasePackage({ aPackage: pkg });
+    return result.customerInfo.entitlements.active[ENTITLEMENT_ID] !== undefined;
+  } catch (e: any) {
+    if (e?.userCancelled) return false;
+    console.warn("[PlayBilling] Purchase failed:", e);
+    return false;
+  }
 }
 
 /**
@@ -93,19 +129,18 @@ export async function purchasePremium(): Promise<boolean> {
  * Returns true if a valid premium subscription was found.
  */
 export async function restorePlayStorePurchase(): Promise<boolean> {
-  if (!Capacitor.isNativePlatform()) {
+  if (!Capacitor.isNativePlatform()) return false;
+
+  if (!_initialized) {
+    await initBilling();
+  }
+  if (!_initialized) return false;
+
+  try {
+    const { Purchases } = await import("@revenuecat/purchases-capacitor");
+    const info = await Purchases.restorePurchases();
+    return info.customerInfo.entitlements.active[ENTITLEMENT_ID] !== undefined;
+  } catch {
     return false;
   }
-
-  // ── REAL BILLING ─────────────────────────────────────────────────────────
-  // try {
-  //   const { Purchases } = await import('@revenuecat/purchases-capacitor');
-  //   const info = await Purchases.restorePurchases();
-  //   return info.customerInfo.entitlements.active['premium'] !== undefined;
-  // } catch {
-  //   return false;
-  // }
-  // ────────────────────────────────────────────────────────────────────────
-
-  return false;
 }
