@@ -6,7 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
-import SuperLogin from "./pages/SuperLogin";
+
 import PosHome from "./pages/PosHome";
 import PosDashboard from "./pages/PosDashboard";
 import PosOrders from "./pages/PosOrders";
@@ -48,7 +48,7 @@ const App = () => (
               <Routes>
                 <Route path="/" element={<Index />} />
                 <Route path="/login" element={<Login />} />
-                <Route path="/super-admin" element={<SuperLogin />} />
+                
 
                 <Route
                   path="/home"
