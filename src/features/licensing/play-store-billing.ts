@@ -15,7 +15,7 @@
 import { Capacitor } from "@capacitor/core";
 
 // ── Replace with your actual RevenueCat Public API Key ──
-const REVENUECAT_API_KEY = "YOUR_REVENUECAT_API_KEY_HERE";
+const REVENUECAT_API_KEY = "test_oaWsKcJYxeiYLuqGinCfTUCmbjG";
 const ENTITLEMENT_ID = "premium";
 
 export const PREMIUM_PRODUCT_ID = "sangi_pos_premium_monthly";
@@ -39,7 +39,8 @@ export async function initBilling(): Promise<void> {
   }
 
   try {
-    const { Purchases } = await import("@revenuecat/purchases-capacitor");
+    const { Purchases, LOG_LEVEL } = await import("@revenuecat/purchases-capacitor");
+    await Purchases.setLogLevel({ level: LOG_LEVEL.DEBUG });
     await Purchases.configure({ apiKey: REVENUECAT_API_KEY });
     _initialized = true;
     console.log("[PlayBilling] RevenueCat initialized");
