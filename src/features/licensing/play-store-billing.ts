@@ -16,9 +16,9 @@ import { Capacitor } from "@capacitor/core";
 
 // ── Replace with your actual RevenueCat Public API Key ──
 const REVENUECAT_API_KEY = "goog_ouHsDkkGRTlcFuDbXFbNxyDNVhc";
-const ENTITLEMENT_ID = "premium";
+const ENTITLEMENT_ID = "premium"; // ← Must match your RevenueCat Entitlement ID exactly
 
-export const PREMIUM_PRODUCT_ID = "sangi_pos_premium_monthly";
+export const PREMIUM_PRODUCT_ID = "sangi_pro:sangipro";
 
 export type PremiumStatus = {
   isPremium: boolean;
