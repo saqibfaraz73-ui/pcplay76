@@ -225,8 +225,8 @@ const PrivacyPolicy = () => {
           <p>
             If you have any questions, concerns, or requests regarding this Privacy Policy,
             please contact us at:{" "}
-            <a href="mailto:sangiaipos@gmail.com" className="text-primary underline">
-              sangiaipos@gmail.com
+            <a href="mailto:info@sangitech.com" className="text-primary underline">
+              info@sangitech.com
             </a>
           </p>
           <p className="mt-2">

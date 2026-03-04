@@ -24,13 +24,13 @@ export default function HelpPage() {
             If you experience any issues, bugs, or need assistance with the app, please don't hesitate to reach out. Our support team is available to help you resolve any problems.
           </p>
 
-          <a href="mailto:sangiaipos@gmail.com" className="flex items-center gap-3 rounded-lg border p-3 transition-colors hover:bg-accent">
+          <a href="mailto:info@sangitech.com" className="flex items-center gap-3 rounded-lg border p-3 transition-colors hover:bg-accent">
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary/10">
               <Mail className="h-4 w-4 text-primary" />
             </div>
             <div className="min-w-0">
               <h3 className="text-sm font-semibold">Email Support</h3>
-              <p className="text-xs text-muted-foreground">sangiaipos@gmail.com</p>
+              <p className="text-xs text-muted-foreground">info@sangitech.com</p>
               <p className="text-xs text-muted-foreground">For detailed issues, feedback, or feature requests</p>
             </div>
           </a>
