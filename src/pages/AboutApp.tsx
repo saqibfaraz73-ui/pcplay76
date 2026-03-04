@@ -125,8 +125,9 @@ export default function AboutApp() {
         </CardContent>
       </Card>
 
-      <div className="text-center text-xs text-muted-foreground select-none cursor-default">
-        SANGI POS &mdash; Offline POS System &mdash; v1.0
+      <div className="text-center text-xs text-muted-foreground select-none cursor-default space-y-1">
+        <p>SANGI POS &mdash; Offline POS System &mdash; v1.0</p>
+        <a href="/privacy-policy" className="text-primary underline">Privacy Policy</a>
       </div>
     </div>
   );
