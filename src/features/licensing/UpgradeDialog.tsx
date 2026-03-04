@@ -67,9 +67,10 @@ export function UpgradeDialog({ open, onOpenChange, message }: UpgradeDialogProp
             <div>
               <p className="font-medium">What you get with Premium:</p>
               <ul className="mt-1 space-y-1 text-muted-foreground list-disc list-inside">
-                <li>Unlimited entries across all sections</li>
-                <li>No ads — ever</li>
-                <li>Priority support</li>
+                <li>Unlimited orders, expenses & entries — no daily limits</li>
+                <li>Full sales & credit reports with PDF export</li>
+                <li>Ad-free experience — no interruptions, ever</li>
+                <li>Priority support & future feature updates</li>
               </ul>
             </div>
           </div>
