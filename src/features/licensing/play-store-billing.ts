@@ -75,7 +75,28 @@ export async function checkPlayStorePremium(): Promise<PremiumStatus> {
     console.log("[PlayBilling] Looking for entitlement ID:", ENTITLEMENT_ID);
     const entitlement = info.customerInfo.entitlements.active[ENTITLEMENT_ID];
     console.log("[PlayBilling] Matched entitlement:", JSON.stringify(entitlement));
-    const isPremium = entitlement !== undefined;
+    
+    // Primary check: exact entitlement match
+    let isPremium = entitlement !== undefined;
+    
+    // Fallback: if ANY active entitlement exists, treat as premium
+    if (!isPremium) {
+      const activeKeys = Object.keys(info.customerInfo.entitlements.active || {});
+      if (activeKeys.length > 0) {
+        console.log("[PlayBilling] Exact entitlement not found, but found active entitlements:", activeKeys);
+        isPremium = true;
+      }
+    }
+    
+    // Additional fallback: check activeSubscriptions
+    if (!isPremium) {
+      const subs = (info.customerInfo as any).activeSubscriptions;
+      if (subs && subs.length > 0) {
+        console.log("[PlayBilling] Found active subscriptions:", subs);
+        isPremium = true;
+      }
+    }
+    
     console.log("[PlayBilling] isPremium result:", isPremium);
     const expiry = entitlement?.expirationDate;
     return {
@@ -179,13 +200,38 @@ export async function restorePlayStorePurchase(): Promise<boolean> {
   try {
     const { Purchases } = await import("@revenuecat/purchases-capacitor");
     const info = await Purchases.restorePurchases();
-    const success = info.customerInfo.entitlements.active[ENTITLEMENT_ID] !== undefined;
+    console.log("[PlayBilling] Restore - active entitlements:", JSON.stringify(info.customerInfo.entitlements.active));
+    console.log("[PlayBilling] Restore - all entitlements:", JSON.stringify(info.customerInfo.entitlements));
+    
+    // Check exact entitlement
+    let success = info.customerInfo.entitlements.active[ENTITLEMENT_ID] !== undefined;
+    
+    // Fallback: any active entitlement
+    if (!success) {
+      const activeKeys = Object.keys(info.customerInfo.entitlements.active || {});
+      if (activeKeys.length > 0) {
+        console.log("[PlayBilling] Restore - found active entitlements:", activeKeys);
+        success = true;
+      }
+    }
+    
+    // Fallback: active subscriptions
+    if (!success) {
+      const subs = (info.customerInfo as any).activeSubscriptions;
+      if (subs && subs.length > 0) {
+        console.log("[PlayBilling] Restore - found active subscriptions:", subs);
+        success = true;
+      }
+    }
+    
+    console.log("[PlayBilling] Restore result:", success);
     if (success) {
       const { setPremiumCache } = await import("./licensing-db");
       await setPremiumCache(true);
     }
     return success;
-  } catch {
+  } catch (e) {
+    console.error("[PlayBilling] Restore error:", e);
     return false;
   }
 }
