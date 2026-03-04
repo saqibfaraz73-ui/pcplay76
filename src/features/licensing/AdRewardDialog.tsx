@@ -81,7 +81,7 @@ export function AdRewardDialog({
       const success = await purchasePremium();
       if (success) {
         onOpenChange(false);
-        onRewarded();
+        window.location.reload();
       }
     } catch {
       // silently fail
@@ -96,7 +96,7 @@ export function AdRewardDialog({
       const restored = await restorePlayStorePurchase();
       if (restored) {
         onOpenChange(false);
-        onRewarded();
+        window.location.reload();
       }
     } catch {
       // silently fail
@@ -146,6 +146,9 @@ export function AdRewardDialog({
               ) : (
                 <><Crown className="h-4 w-4 mr-2 text-amber-500" />Subscribe via Google Play</>
               )}
+            </Button>
+            <Button variant="ghost" className="w-full text-xs" onClick={() => void handleRestore()} disabled={restoring || !isOnline}>
+              {restoring ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Restoring...</> : <><RotateCcw className="h-4 w-4 mr-2" />Restore Purchase</>}
             </Button>
             <Button variant="ghost" className="w-full text-xs" onClick={() => setUpgradeVisible(false)}>
               Back
