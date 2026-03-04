@@ -129,7 +129,7 @@ export default function AboutApp() {
         <p>SANGI POS &mdash; Offline POS System &mdash; v1.0</p>
         <a href="/privacy-policy" className="text-primary underline">Privacy Policy</a>
         <span className="mx-1">•</span>
-        <a href="https://sangitech.com/delete-your-account-data/" target="_blank" rel="noopener noreferrer" className="text-primary underline">Delete Your Data</a>
+        <a href="/delete-data" className="text-primary underline">Delete Your Data</a>
       </div>
     </div>
   );
