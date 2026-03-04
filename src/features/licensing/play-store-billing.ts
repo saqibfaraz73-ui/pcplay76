@@ -113,15 +113,18 @@ export async function purchasePremium(): Promise<boolean> {
 
   try {
     const { Purchases } = await import("@revenuecat/purchases-capacitor");
+    console.log("[PlayBilling] Fetching offerings...");
     const offerings = await Purchases.getOfferings();
+    console.log("[PlayBilling] Offerings:", JSON.stringify(offerings));
     const pkg = offerings.current?.availablePackages?.[0];
-    if (!pkg) throw new Error("No packages available");
+    if (!pkg) throw new Error("No packages available. Check RevenueCat dashboard: ensure you have an Offering with at least one Package linked to product '" + PREMIUM_PRODUCT_ID + "'.");
+    console.log("[PlayBilling] Purchasing package:", JSON.stringify(pkg));
     const result = await Purchases.purchasePackage({ aPackage: pkg });
     return result.customerInfo.entitlements.active[ENTITLEMENT_ID] !== undefined;
   } catch (e: any) {
     if (e?.userCancelled) return false;
-    console.warn("[PlayBilling] Purchase failed:", e);
-    return false;
+    console.error("[PlayBilling] Purchase failed:", e);
+    throw e; // Re-throw so UI can display the error
   }
 }
 
