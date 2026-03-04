@@ -29,15 +29,35 @@ const DataDeletion = () => {
           <h2 className="text-lg font-semibold mb-3">Steps to Delete Your Data</h2>
           <p className="mb-3">You can delete all your Sangi POS data using any of these methods:</p>
 
+          <div className="rounded-lg border border-primary/30 bg-primary/5 p-4 mb-4">
+            <p className="font-semibold text-primary mb-1">Selective Data Deletion — No Account Deletion Required</p>
+            <p>
+              You do <strong>not</strong> need to delete your account or uninstall the app to remove
+              your data. Sangi POS provides a built-in <strong>Data Cleanup</strong> feature that lets
+              you selectively delete specific types of data while keeping the rest. For example, you
+              can delete only your order history while keeping your product catalog and customer records
+              intact.
+            </p>
+          </div>
+
           <div className="space-y-4">
             <div className="rounded-lg border border-border p-4">
-              <p className="font-semibold mb-1">Option 1 — From Within the App</p>
+              <p className="font-semibold mb-1">Option 1 — Selective Cleanup From Within the App</p>
               <ol className="list-decimal pl-5 space-y-1">
                 <li>Open Sangi POS</li>
                 <li>Go to <strong>Admin → Settings</strong></li>
                 <li>Tap <strong>Data Cleanup</strong></li>
-                <li>Choose what data to delete (orders, expenses, inventory, customers, or all data)</li>
-                <li>Confirm the deletion</li>
+                <li>Choose which data to delete individually:
+                  <ul className="list-disc pl-5 mt-1 space-y-0.5">
+                    <li>Sales &amp; order records</li>
+                    <li>Expense records</li>
+                    <li>Inventory &amp; product data</li>
+                    <li>Customer records</li>
+                    <li>Booking &amp; advance records</li>
+                    <li>Or select <strong>all data</strong> to clear everything</li>
+                  </ul>
+                </li>
+                <li>Confirm the deletion — selected data is removed immediately and permanently</li>
               </ol>
             </div>
 
