@@ -173,7 +173,12 @@ export async function restorePlayStorePurchase(): Promise<boolean> {
   try {
     const { Purchases } = await import("@revenuecat/purchases-capacitor");
     const info = await Purchases.restorePurchases();
-    return info.customerInfo.entitlements.active[ENTITLEMENT_ID] !== undefined;
+    const success = info.customerInfo.entitlements.active[ENTITLEMENT_ID] !== undefined;
+    if (success) {
+      const { setPremiumCache } = await import("./licensing-db");
+      setPremiumCache(true);
+    }
+    return success;
   } catch {
     return false;
   }
