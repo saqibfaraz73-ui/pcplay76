@@ -22,6 +22,20 @@ export function UpgradeDialog({ open, onOpenChange, message }: UpgradeDialogProp
   const [purchasing, setPurchasing] = React.useState(false);
   const [restoring, setRestoring] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const [priceLabel, setPriceLabel] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { getSubscriptionPrice } = await import("./play-store-billing");
+        const price = await getSubscriptionPrice();
+        if (!cancelled && price) setPriceLabel(price);
+      } catch {}
+    })();
+    return () => { cancelled = true; };
+  }, [open]);
 
   const handlePurchase = async () => {
     setPurchasing(true);
@@ -87,7 +101,7 @@ export function UpgradeDialog({ open, onOpenChange, message }: UpgradeDialogProp
             {purchasing ? (
               <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Processing...</>
             ) : (
-              <><Crown className="h-4 w-4 mr-2 text-amber-500" />Subscribe via Google Play</>
+              <><Crown className="h-4 w-4 mr-2 text-amber-500" />Subscribe{priceLabel ? ` — ${priceLabel}/month` : " via Google Play"}</>
             )}
           </Button>
           <Button

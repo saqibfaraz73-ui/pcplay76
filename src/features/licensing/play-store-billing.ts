@@ -84,6 +84,24 @@ export async function checkPlayStorePremium(): Promise<PremiumStatus> {
 }
 
 /**
+ * Get the localized price string for the premium subscription.
+ */
+export async function getSubscriptionPrice(): Promise<string | null> {
+  if (!Capacitor.isNativePlatform()) return null;
+  if (!_initialized) await initBilling();
+  if (!_initialized) return null;
+
+  try {
+    const { Purchases } = await import("@revenuecat/purchases-capacitor");
+    const offerings = await Purchases.getOfferings();
+    const pkg = offerings.current?.availablePackages?.[0];
+    return pkg?.product?.priceString ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Launch the Play Store in-app purchase flow for premium subscription.
  * Returns true if purchase was successful.
  */
