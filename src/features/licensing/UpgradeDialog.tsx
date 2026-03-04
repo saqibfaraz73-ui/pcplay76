@@ -42,8 +42,13 @@ export function UpgradeDialog({ open, onOpenChange, message }: UpgradeDialogProp
     setError(null);
     try {
       const success = await purchasePremium();
-      if (success) onOpenChange(false);
-      else setError("Purchase was not completed. Please try again.");
+      if (success) {
+        onOpenChange(false);
+        // Reload to ensure all components recognize premium status
+        window.location.reload();
+      } else {
+        setError("Purchase was not completed. Please try again.");
+      }
     } catch (e: any) {
       setError(e?.message || "Purchase failed. Please check your internet connection and try again.");
     } finally {
@@ -56,8 +61,12 @@ export function UpgradeDialog({ open, onOpenChange, message }: UpgradeDialogProp
     setError(null);
     try {
       const restored = await restorePlayStorePurchase();
-      if (restored) onOpenChange(false);
-      else setError("No previous purchase found.");
+      if (restored) {
+        onOpenChange(false);
+        window.location.reload();
+      } else {
+        setError("No previous purchase found.");
+      }
     } catch (e: any) {
       setError(e?.message || "Restore failed.");
     } finally {
