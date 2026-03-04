@@ -15,7 +15,7 @@
 import { Capacitor } from "@capacitor/core";
 
 // ── Replace with your actual RevenueCat Public API Key ──
-const REVENUECAT_API_KEY = "test_oaWsKcJYxeiYLuqGinCfTUCmbjG";
+const REVENUECAT_API_KEY = "goog_ouHsDkkGRTlcFuDbXFbNxyDNVhc";
 const ENTITLEMENT_ID = "premium";
 
 export const PREMIUM_PRODUCT_ID = "sangi_pos_premium_monthly";
