@@ -1,10 +1,17 @@
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { HelpCircle, Mail, BookOpen, Shield, Clock, AlertTriangle, RefreshCw, Database } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { HelpCircle, Mail, BookOpen, Shield, Clock, AlertTriangle, RefreshCw, Database, ArrowLeft } from "lucide-react";
 
 export default function HelpPage() {
+  const navigate = useNavigate();
+
   return (
     <div className="space-y-6 pb-20 pt-2">
       <div className="flex items-center gap-3">
+        <Button variant="ghost" size="icon" onClick={() => navigate("/")} className="shrink-0">
+          <ArrowLeft className="h-4 w-4" />
+        </Button>
         <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
           <HelpCircle className="h-5 w-5 text-primary" />
         </div>

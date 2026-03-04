@@ -7,7 +7,7 @@ const PrivacyPolicy = () => {
 
   return (
     <div className="min-h-screen bg-background text-foreground p-4 md:p-8 max-w-3xl mx-auto">
-      <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="mb-4">
+      <Button variant="ghost" size="sm" onClick={() => navigate("/")} className="mb-4">
         <ArrowLeft className="w-4 h-4 mr-1" /> Back
       </Button>
 
