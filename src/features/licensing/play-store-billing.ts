@@ -69,8 +69,14 @@ export async function checkPlayStorePremium(): Promise<PremiumStatus> {
   try {
     const { Purchases } = await import("@revenuecat/purchases-capacitor");
     const info = await Purchases.getCustomerInfo();
+    // ── DEBUG: log full entitlements so we can see what RevenueCat returns ──
+    console.log("[PlayBilling] Full customerInfo.entitlements:", JSON.stringify(info.customerInfo.entitlements));
+    console.log("[PlayBilling] Active entitlements keys:", Object.keys(info.customerInfo.entitlements.active || {}));
+    console.log("[PlayBilling] Looking for entitlement ID:", ENTITLEMENT_ID);
     const entitlement = info.customerInfo.entitlements.active[ENTITLEMENT_ID];
+    console.log("[PlayBilling] Matched entitlement:", JSON.stringify(entitlement));
     const isPremium = entitlement !== undefined;
+    console.log("[PlayBilling] isPremium result:", isPremium);
     const expiry = entitlement?.expirationDate;
     return {
       isPremium,
