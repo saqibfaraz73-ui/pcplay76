@@ -1,6 +1,8 @@
 import React from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ShoppingCart, ClipboardList, DollarSign, Users, Truck, UtensilsCrossed, CalendarCheck, Shield, Wifi, BarChart3, Printer, Settings, Package, Home, Info, Tags, Briefcase, FileText } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { ShoppingCart, ClipboardList, DollarSign, Users, Truck, UtensilsCrossed, CalendarCheck, Shield, Wifi, BarChart3, Printer, Settings, Package, Home, Info, Tags, Briefcase, FileText, ArrowLeft } from "lucide-react";
 
 const features = [
   {
@@ -91,9 +93,14 @@ const features = [
 ];
 
 export default function AboutApp() {
+  const navigate = useNavigate();
+
   return (
     <div className="space-y-6 pb-20 pt-2">
       <div className="flex items-center gap-3">
+        <Button variant="ghost" size="icon" onClick={() => navigate("/")} className="shrink-0">
+          <ArrowLeft className="h-4 w-4" />
+        </Button>
         <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
           <Info className="h-5 w-5 text-primary" />
         </div>
