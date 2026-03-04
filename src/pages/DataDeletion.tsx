@@ -137,8 +137,8 @@ const DataDeletion = () => {
           <h2 className="text-lg font-semibold mb-3">Need Help?</h2>
           <p>
             If you need assistance with data deletion or have any questions, contact us at:{" "}
-            <a href="mailto:sangiaipos@gmail.com" className="text-primary underline">
-              sangiaipos@gmail.com
+            <a href="mailto:info@sangitech.com" className="text-primary underline">
+              info@sangitech.com
             </a>
           </p>
         </section>
