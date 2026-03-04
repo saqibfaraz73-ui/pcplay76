@@ -21,14 +21,17 @@ interface UpgradeDialogProps {
 export function UpgradeDialog({ open, onOpenChange, message }: UpgradeDialogProps) {
   const [purchasing, setPurchasing] = React.useState(false);
   const [restoring, setRestoring] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
 
   const handlePurchase = async () => {
     setPurchasing(true);
+    setError(null);
     try {
       const success = await purchasePremium();
       if (success) onOpenChange(false);
-    } catch {
-      // silently fail
+      else setError("Purchase was not completed. Please try again.");
+    } catch (e: any) {
+      setError(e?.message || "Purchase failed. Please check your internet connection and try again.");
     } finally {
       setPurchasing(false);
     }
@@ -36,11 +39,13 @@ export function UpgradeDialog({ open, onOpenChange, message }: UpgradeDialogProp
 
   const handleRestore = async () => {
     setRestoring(true);
+    setError(null);
     try {
       const restored = await restorePlayStorePurchase();
       if (restored) onOpenChange(false);
-    } catch {
-      // silently fail
+      else setError("No previous purchase found.");
+    } catch (e: any) {
+      setError(e?.message || "Restore failed.");
     } finally {
       setRestoring(false);
     }
@@ -69,6 +74,9 @@ export function UpgradeDialog({ open, onOpenChange, message }: UpgradeDialogProp
             </div>
           </div>
         </div>
+        {error && (
+          <p className="text-xs text-destructive text-center rounded-md border border-destructive/40 bg-destructive/10 p-2">{error}</p>
+        )}
         <AlertDialogFooter className="flex-col gap-2 sm:flex-col">
           <Button
             className="w-full"
