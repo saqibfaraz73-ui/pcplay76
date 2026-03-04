@@ -49,9 +49,11 @@ const PrivacyPolicy = () => {
             servers or any third-party servers at any point.
           </p>
           <p className="mt-2">
-            We do <strong>not</strong> collect, log, or store your IP address, device identifiers,
-            or any network identifiers. Your device's local IP address is used only within your
-            own local network for the optional P2P sync feature and is never transmitted to us.
+            Aside from the necessary identifiers used by the third-party services listed in
+            Section 4 (RevenueCat and AdMob) for subscription and ad functionality, we do{" "}
+            <strong>not</strong> collect, log, or store your device identifiers or IP address on
+            our own servers. Your device's local IP address is used only within your own local
+            network for the optional P2P sync feature and is never transmitted to us.
           </p>
         </section>
 
