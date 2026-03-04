@@ -152,9 +152,9 @@ export async function purchasePremium(): Promise<boolean> {
     const success = result.customerInfo.entitlements.active[ENTITLEMENT_ID] !== undefined;
     console.log("[PlayBilling] Purchase result, premium:", success);
     if (success) {
-      // Immediately update the cached premium status
+      // Immediately update the cached premium status (persists to DB)
       const { setPremiumCache } = await import("./licensing-db");
-      setPremiumCache(true);
+      await setPremiumCache(true);
     }
     return success;
   } catch (e: any) {
@@ -182,7 +182,7 @@ export async function restorePlayStorePurchase(): Promise<boolean> {
     const success = info.customerInfo.entitlements.active[ENTITLEMENT_ID] !== undefined;
     if (success) {
       const { setPremiumCache } = await import("./licensing-db");
-      setPremiumCache(true);
+      await setPremiumCache(true);
     }
     return success;
   } catch {
