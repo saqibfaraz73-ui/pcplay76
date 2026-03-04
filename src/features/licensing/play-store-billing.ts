@@ -106,11 +106,10 @@ export async function getSubscriptionPrice(): Promise<string | null> {
  * Returns true if purchase was successful.
  */
 export async function purchasePremium(): Promise<boolean> {
+  const PLAY_STORE_URL = `https://play.google.com/store/apps/details?id=app.lovable.a89517294eb14219b1dd14af0464d470`;
+
   if (!Capacitor.isNativePlatform()) {
-    window.open(
-      `https://play.google.com/store/apps/details?id=app.lovable.a89517294eb14219b1dd14af0464d470`,
-      "_blank"
-    );
+    window.open(PLAY_STORE_URL, "_blank");
     return false;
   }
 
@@ -119,14 +118,18 @@ export async function purchasePremium(): Promise<boolean> {
   }
 
   if (!_initialized) {
-    // Fallback: open Play Store listing
+    console.warn("[PlayBilling] Not initialized, opening Play Store as fallback");
     try {
       const { Browser } = await import("@capacitor/browser");
-      await Browser.open({
-        url: `https://play.google.com/store/apps/details?id=app.lovable.a89517294eb14219b1dd14af0464d470`,
-      });
-    } catch {}
-    return false;
+      await Browser.open({ url: PLAY_STORE_URL });
+    } catch (browserErr) {
+      console.error("[PlayBilling] Browser fallback failed:", browserErr);
+      // Last resort: try App Store intent
+      try {
+        window.open(`market://details?id=app.lovable.a89517294eb14219b1dd14af0464d470`, "_system");
+      } catch {}
+    }
+    throw new Error("Billing not available. Please update the app from Play Store and try again.");
   }
 
   try {
@@ -135,14 +138,18 @@ export async function purchasePremium(): Promise<boolean> {
     const offerings = await Purchases.getOfferings();
     console.log("[PlayBilling] Offerings:", JSON.stringify(offerings));
     const pkg = offerings.current?.availablePackages?.[0];
-    if (!pkg) throw new Error("No packages available. Check RevenueCat dashboard: ensure you have an Offering with at least one Package linked to product '" + PREMIUM_PRODUCT_ID + "'.");
+    if (!pkg) {
+      throw new Error("No subscription packages found. Please try again later or contact support.");
+    }
     console.log("[PlayBilling] Purchasing package:", JSON.stringify(pkg));
     const result = await Purchases.purchasePackage({ aPackage: pkg });
-    return result.customerInfo.entitlements.active[ENTITLEMENT_ID] !== undefined;
+    const success = result.customerInfo.entitlements.active[ENTITLEMENT_ID] !== undefined;
+    console.log("[PlayBilling] Purchase result, premium:", success);
+    return success;
   } catch (e: any) {
-    if (e?.userCancelled) return false;
-    console.error("[PlayBilling] Purchase failed:", e);
-    throw e; // Re-throw so UI can display the error
+    console.error("[PlayBilling] Purchase error:", JSON.stringify(e), e?.message, e?.code);
+    if (e?.userCancelled || e?.code === "1" || e?.message?.includes("cancelled")) return false;
+    throw new Error(e?.message || "Purchase failed. Please check your internet connection and try again.");
   }
 }
 
