@@ -37,6 +37,9 @@ export type LicenseRecord = {
 // Runtime-only premium state (sourced from Play Store on every getLicense call)
 let _isPremiumCache: boolean = false;
 
+/** Allow play-store-billing to set cache immediately after purchase */
+export function setPremiumCache(val: boolean) { _isPremiumCache = val; }
+
 /** Free entries per section before watching an ad */
 export const FREE_LIMIT = 5;
 /** Entries granted after watching a rewarded ad */

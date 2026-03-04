@@ -145,6 +145,11 @@ export async function purchasePremium(): Promise<boolean> {
     const result = await Purchases.purchasePackage({ aPackage: pkg });
     const success = result.customerInfo.entitlements.active[ENTITLEMENT_ID] !== undefined;
     console.log("[PlayBilling] Purchase result, premium:", success);
+    if (success) {
+      // Immediately update the cached premium status
+      const { setPremiumCache } = await import("./licensing-db");
+      setPremiumCache(true);
+    }
     return success;
   } catch (e: any) {
     console.error("[PlayBilling] Purchase error:", JSON.stringify(e), e?.message, e?.code);
