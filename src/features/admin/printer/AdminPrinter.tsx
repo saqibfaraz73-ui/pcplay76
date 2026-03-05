@@ -116,6 +116,7 @@ export function AdminPrinter() {
   const [networkLabel, setNetworkLabel] = React.useState("");
   const [netBusy, setNetBusy] = React.useState(false);
 
+  const logoFileRef = React.useRef<HTMLInputElement>(null);
   const [paired, setPaired] = React.useState<PairedBluetoothDevice[]>([]);
   const [btBusy, setBtBusy] = React.useState(false);
 
