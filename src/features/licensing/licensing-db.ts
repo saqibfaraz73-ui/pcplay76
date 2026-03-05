@@ -53,8 +53,10 @@ export async function setPremiumCache(val: boolean) {
 export const FREE_LIMIT = 5;
 /** Entries granted after watching a rewarded ad */
 export const AD_BONUS = 5;
-/** How often (ms) the user must go online to verify subscription — 7 days */
-export const ONLINE_CHECK_INTERVAL = 7 * 24 * 60 * 60 * 1000;
+/** Warning threshold — show warning after 7 days */
+export const ONLINE_WARNING_INTERVAL = 7 * 24 * 60 * 60 * 1000;
+/** Hard block — force verification after 8 days (7 + 24hr grace) */
+export const ONLINE_CHECK_INTERVAL = 8 * 24 * 60 * 60 * 1000;
 
 function defaultRecord(): LicenseRecord {
   return {
@@ -183,6 +185,8 @@ export type CanSaleResult = {
   remaining?: number;
   needsAd?: boolean;
   needsOnlineVerification?: boolean;
+  /** Warning: user has 24hr grace period remaining */
+  onlineWarning?: { hoursRemaining: number };
 };
 
 /**
@@ -196,11 +200,11 @@ export async function canMakeSale(
   count: number = 1
 ): Promise<CanSaleResult> {
   // Check if periodic online verification is needed
-  const onlineCheckNeeded = await needsOnlineCheck();
-  if (onlineCheckNeeded) {
+  const onlineStatus = await getOnlineCheckStatus();
+  if (onlineStatus.status === "blocked") {
     return {
       allowed: false,
-      message: "Periodic internet verification required. Please connect to the internet to verify your subscription status (required every 7 days).",
+      message: "Periodic internet verification required. Please connect to the internet to verify your subscription status.",
       needsOnlineVerification: true,
     };
   }
@@ -260,10 +264,32 @@ export async function incrementSaleCount(
  * Check if the user needs to connect to internet for periodic verification.
  * Returns true if more than 7 days have passed since last online check.
  */
-export async function needsOnlineCheck(): Promise<boolean> {
+export type OnlineCheckStatus = "ok" | "warning" | "blocked";
+
+/**
+ * Check online verification status:
+ * - "ok": within 7 days
+ * - "warning": 7-8 days (24hr grace period, show warning but allow usage)
+ * - "blocked": 8+ days (hard block)
+ */
+export async function getOnlineCheckStatus(): Promise<{ status: OnlineCheckStatus; hoursRemaining: number }> {
   const rec = (await (db as any).license.get("license")) as any;
-  if (!rec) return false;
+  if (!rec) return { status: "ok", hoursRemaining: 0 };
   const lastVerified = rec.lastOnlineVerifiedAt || 0;
-  if (lastVerified === 0) return false; // Never verified = fresh install, don't block
-  return Date.now() - lastVerified > ONLINE_CHECK_INTERVAL;
+  if (lastVerified === 0) return { status: "ok", hoursRemaining: 0 }; // Fresh install
+  const elapsed = Date.now() - lastVerified;
+  if (elapsed > ONLINE_CHECK_INTERVAL) {
+    return { status: "blocked", hoursRemaining: 0 };
+  }
+  if (elapsed > ONLINE_WARNING_INTERVAL) {
+    const msRemaining = ONLINE_CHECK_INTERVAL - elapsed;
+    return { status: "warning", hoursRemaining: Math.max(0, Math.ceil(msRemaining / (60 * 60 * 1000))) };
+  }
+  return { status: "ok", hoursRemaining: 0 };
+}
+
+/** @deprecated Use getOnlineCheckStatus instead */
+export async function needsOnlineCheck(): Promise<boolean> {
+  const { status } = await getOnlineCheckStatus();
+  return status === "blocked";
 }
