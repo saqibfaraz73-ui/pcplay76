@@ -13,12 +13,12 @@ The NetworkPrinter plugin enables printing to thermal receipt printers connected
 ### 1. Copy the Plugin
 Copy `NetworkPrinterPlugin.java` to:
 ```
-android/app/src/main/java/app/lovable/sangipos/NetworkPrinterPlugin.java
+android/app/src/main/java/app/lovable/a89517294eb14219b1dd14af0464d470/NetworkPrinterPlugin.java
 ```
 
 ### 2. Register in MainActivity
 ```java
-import app.lovable.sangipos.NetworkPrinterPlugin;
+import app.lovable.a89517294eb14219b1dd14af0464d470.NetworkPrinterPlugin;
 
 public class MainActivity extends BridgeActivity {
     @Override
