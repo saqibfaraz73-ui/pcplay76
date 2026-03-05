@@ -108,37 +108,33 @@ export async function getLicense(): Promise<LicenseRecord & { isPremium: boolean
   if (needsUpdate) await (db as any).license.put(rec);
 
   // ── Premium status: Play Store → DB cache fallback → dev override ──
+  let playStoreChecked = false;
   try {
     const status = await checkPlayStorePremium();
+    playStoreChecked = true;
     _isPremiumCache = status.isPremium;
-    // Update DB cache if Play Store confirms premium
-    if (status.isPremium && !(rec as any).premiumCached) {
+    // Update DB cache based on Play Store result
+    if (status.isPremium) {
       await (db as any).license.put({ ...rec, premiumCached: true, premiumCachedAt: Date.now(), lastOnlineVerifiedAt: Date.now() });
     } else {
-      // Record successful online verification timestamp
-      await (db as any).license.put({ ...rec, lastOnlineVerifiedAt: Date.now() });
+      // Play Store explicitly says not premium — clear cache
+      await (db as any).license.put({ ...rec, premiumCached: false, premiumCachedAt: 0, lastOnlineVerifiedAt: Date.now() });
     }
   } catch {
-    // Play Store check failed — use DB-persisted cache as fallback
+    // Play Store check failed (offline) — use DB-persisted cache as fallback
     if ((rec as any).premiumCached === true) {
-      console.log("[Licensing] Using DB-cached premium status (Play Store unavailable)");
-      _isPremiumCache = true;
+      const cachedAt = (rec as any).premiumCachedAt || 0;
+      const THIRTY_DAYS = 30 * 24 * 60 * 60 * 1000;
+      if (Date.now() - cachedAt < THIRTY_DAYS) {
+        console.log("[Licensing] Using DB-cached premium status (Play Store unavailable, cache valid)");
+        _isPremiumCache = true;
+      }
     }
   }
 
   // Dev override via 7-tap About page gesture
   if (!_isPremiumCache && (rec as any).devPremiumOverride === true) {
     _isPremiumCache = true;
-  }
-
-  // DB-cached premium fallback (even when Play Store returns false temporarily)
-  if (!_isPremiumCache && (rec as any).premiumCached === true) {
-    const cachedAt = (rec as any).premiumCachedAt || 0;
-    const THIRTY_DAYS = 30 * 24 * 60 * 60 * 1000;
-    if (Date.now() - cachedAt < THIRTY_DAYS) {
-      console.log("[Licensing] Using DB-cached premium (Play Store returned false, cache still valid)");
-      _isPremiumCache = true;
-    }
   }
 
   return { ...rec, isPremium: _isPremiumCache, deviceId: "" };
