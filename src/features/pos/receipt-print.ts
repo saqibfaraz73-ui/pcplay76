@@ -282,7 +282,6 @@ async function buildSalesKotSlip(order: Order, settings: Settings): Promise<stri
   out.push("ORDER SLIP");
   out.push(`Order #: ${order.receiptNo}`);
   out.push(`${dateStr}  ${timeStr}`);
-  out.push(`${dateStr}  ${timeStr}`);
   out.push(LEFT_ON);
   out.push(hr);
 
