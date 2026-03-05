@@ -156,6 +156,7 @@ export function AdminPrinter() {
         defaultPrinterType,
         kotPrinterType: kotPrinterType === "none" ? undefined : kotPrinterType,
         salesDashboardPrinterType: salesDashboardPrinterType === "none" ? undefined : salesDashboardPrinterType,
+        salesKotEnabled: settings.salesKotEnabled,
         // Custom section routing
         printerSections,
         sectionPrinterMap,
@@ -473,6 +474,20 @@ export function AdminPrinter() {
                 <option key={o.value} value={o.value}>{o.label}</option>
               ))}
             </select>
+          </div>
+
+          {/* Sales KOT toggle */}
+          <div className="flex items-center justify-between gap-2 border-t pt-3">
+            <div>
+              <Label className="font-semibold">Print KOT with Sales Receipt</Label>
+              <p className="text-xs text-muted-foreground">
+                Also print a simplified KOT slip (items, qty, date &amp; time only) alongside each Sales Dashboard receipt. Sent to KOT Printer.
+              </p>
+            </div>
+            <Switch
+              checked={settings?.salesKotEnabled ?? false}
+              onCheckedChange={(v) => setSettings(prev => prev ? { ...prev, salesKotEnabled: v } : prev)}
+            />
           </div>
 
           {/* Section Overrides */}

@@ -265,6 +265,43 @@ async function buildEscPosReceipt(
   return receipt;
 }
 
+/* ---------- Simplified Sales KOT (items + qty + date/time only) ---------- */
+
+async function buildSalesKotSlip(order: Order, settings: Settings): Promise<string> {
+  const WIDTH = settings.paperSize === "80" ? 48 : 32;
+  const hr = "-".repeat(WIDTH);
+  const CENTER_ON = "\x1ba\x01";
+  const LEFT_ON = "\x1ba\x00";
+
+  const now = new Date(order.createdAt);
+  const dateStr = format(now, "dd/MM/yyyy");
+  const timeStr = fmtTime12(format(now, "HH:mm"));
+
+  const out: string[] = [];
+  out.push("\x1b@\x1b3\x14" + CENTER_ON);
+  out.push("ORDER SLIP");
+  out.push(`Bill #: ${order.receiptNo}`);
+  out.push(`${dateStr}  ${timeStr}`);
+  out.push(LEFT_ON);
+  out.push(hr);
+
+  const nameW = WIDTH - 6;
+  out.push("Item".padEnd(nameW) + "Qty".padStart(5));
+  out.push(hr);
+  for (const item of order.lines) {
+    if (item.itemId.includes("__ao_")) continue; // skip add-ons
+    out.push(
+      item.name.slice(0, nameW).padEnd(nameW) +
+      String(item.qty).padStart(5)
+    );
+  }
+  out.push(hr);
+  out.push("");
+  out.push("");
+  out.push("\x1dV\x41\x03"); // partial cut
+  return out.join("\n");
+}
+
 /* ---------- Centered KOT receipt (for KOT button) ---------- */
 
 async function buildKotReceipt(order: Order, settings: Settings): Promise<string> {
@@ -450,6 +487,16 @@ export async function printReceiptFromOrder(
         }
       }
       throw new Error(printErr?.message || "Printing failed. Check printer connection.");
+    }
+
+    // Print sales KOT slip if enabled (send to KOT printer)
+    if (settings.salesKotEnabled && resolvedSection !== "tables") {
+      try {
+        const kotSlip = await buildSalesKotSlip(order, settings);
+        await sendToKotPrinter(settings, kotSlip);
+      } catch (kotErr) {
+        console.warn("Sales KOT slip print failed:", kotErr);
+      }
     }
     return;
   }
