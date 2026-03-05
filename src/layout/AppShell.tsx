@@ -14,14 +14,14 @@ import {
 } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/auth/AuthProvider";
-import { Menu, Printer, BarChart3, Settings, ShoppingCart, ClipboardList, Users, DollarSign, Truck, UtensilsCrossed, CalendarCheck, Wifi, Shield, Home, Info, HelpCircle, Tags, FileText } from "lucide-react";
+import { Menu, Printer, BarChart3, Settings, ShoppingCart, ClipboardList, Users, DollarSign, Truck, UtensilsCrossed, CalendarCheck, Wifi, Shield, Home, Info, HelpCircle, Tags, FileText, WifiOff, AlertTriangle } from "lucide-react";
 import { useAndroidBackExitConfirm } from "@/hooks/useAndroidBackExitConfirm";
 import appLogo from "@/assets/app-logo.jpg";
 import { db } from "@/db/appDb";
 import { BackupReminder } from "@/features/admin/backup/BackupReminder";
 import { SyncStatusIndicator } from "@/features/sync/SyncStatusIndicator";
 import { showInterstitialAd } from "@/features/licensing/admob-ads";
-import { getLicense } from "@/features/licensing/licensing-db";
+import { getLicense, getOnlineCheckStatus } from "@/features/licensing/licensing-db";
 
 const navItems = [
   { to: "/home", label: "Dashboard", icon: Home },
@@ -54,6 +54,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [recoveryEnabled, setRecoveryEnabled] = React.useState(false);
   const [pendingTableCount, setPendingTableCount] = React.useState(0);
   const [isPremium, setIsPremium] = React.useState(false);
+  const [onlineWarningHours, setOnlineWarningHours] = React.useState<number | null>(null);
 
   const loadTableSetting = React.useCallback(async () => {
     const s = await db.settings.get("app");
@@ -70,8 +71,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     // Count open (pending) table orders
     const openCount = await db.tableOrders.where("status").equals("open").count();
     setPendingTableCount(openCount);
-    // Check premium status
+    // Check premium status + online warning
     getLicense().then((lic) => setIsPremium(lic.isPremium)).catch(() => {});
+    getOnlineCheckStatus().then(({ status, hoursRemaining }) => {
+      setOnlineWarningHours(status === "warning" ? hoursRemaining : null);
+    }).catch(() => {});
   }, []);
 
   // Also reload when route changes (e.g. navigating away from settings)
@@ -392,8 +396,21 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       </header>
 
+      {/* Online verification warning banner */}
+      {onlineWarningHours !== null && (
+        <div className="mx-auto max-w-6xl px-4 mt-16" style={{ marginTop: 'calc(4rem + env(safe-area-inset-top, 0px))' }}>
+          <div className="flex items-center gap-2 rounded-md border border-yellow-500/40 bg-yellow-500/10 p-3 text-sm text-yellow-700 dark:text-yellow-400">
+            <AlertTriangle className="h-4 w-4 shrink-0" />
+            <span>
+              <strong>Internet verification needed!</strong> Please connect to the internet within{" "}
+              <strong>{onlineWarningHours} hour{onlineWarningHours !== 1 ? "s" : ""}</strong> to verify your subscription. The app will be paused after this time.
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* Main content */}
-      <main className="mx-auto max-w-6xl px-4 py-6 mt-16 overflow-x-hidden" style={{ marginTop: 'calc(4rem + env(safe-area-inset-top, 0px))' }}>{children}</main>
+      <main className={cn("mx-auto max-w-6xl px-4 py-6 overflow-x-hidden", onlineWarningHours !== null ? "mt-4" : "mt-16")} style={onlineWarningHours !== null ? {} : { marginTop: 'calc(4rem + env(safe-area-inset-top, 0px))' }}>{children}</main>
 
       <BackupReminder />
 
