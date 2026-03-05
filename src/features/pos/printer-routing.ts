@@ -45,7 +45,7 @@ async function sendViaPrinterType(settings: Settings, printerType: PrinterType, 
   if (printerType === "network") {
     const ip = settings.networkPrinterIp ?? "";
     const port = settings.networkPrinterPort ?? 9100;
-    if (!ip) throw new Error("Network printer IP not configured. Go to Printer Settings and set up a Network/WiFi printer.");
+    if (!ip) throw new Error("WiFi printer IP not configured. Go to Printer Settings and set up a WiFi printer.");
     await netConnect(ip, port);
     await netSend(data);
     return;
@@ -118,7 +118,7 @@ export async function sendToLabelPrinter(settings: Settings, data: string): Prom
   if (printerType === "network") {
     const ip = settings.networkPrinterIp ?? "";
     const port = settings.networkPrinterPort ?? 9100;
-    if (!ip) throw new Error("Network printer IP not configured for label printer.");
+    if (!ip) throw new Error("WiFi printer IP not configured for label printer.");
     await netConnect(ip, port);
     await netSend(data);
     return;

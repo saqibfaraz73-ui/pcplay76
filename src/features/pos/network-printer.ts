@@ -1,7 +1,7 @@
 import { Capacitor, registerPlugin } from "@capacitor/core";
 
 /**
- * Native Android plugin for Network/WiFi thermal printer communication.
+ * Native Android plugin for WiFi thermal printer communication.
  * Sends raw ESC/POS data over TCP to printer's port 9100.
  * The native implementation must be added in:
  *   android/app/src/main/java/.../NetworkPrinterPlugin.java
@@ -37,7 +37,7 @@ function base64FromRawBytes(text: string): string {
  * Test if a network printer is reachable at the given IP and port.
  */
 export async function netTestConnection(ip: string, port = 9100): Promise<{ reachable: boolean; error?: string }> {
-  if (!isNativeAndroid()) return { reachable: false, error: "Network printing requires the Android app." };
+  if (!isNativeAndroid()) return { reachable: false, error: "WiFi printing requires the Android app." };
   try {
     return await NetworkPrinter.testConnection({ ip, port, timeout: 3000 });
   } catch (e: any) {
@@ -49,7 +49,7 @@ export async function netTestConnection(ip: string, port = 9100): Promise<{ reac
  * Connect to a network printer.
  */
 export async function netConnect(ip: string, port = 9100): Promise<void> {
-  if (!isNativeAndroid()) throw new Error("Network printing requires the Android app build.");
+  if (!isNativeAndroid()) throw new Error("WiFi printing requires the Android app build.");
 
   // Skip if already connected to the same printer
   if (currentConnectedIp === ip && currentConnectedPort === port) {
@@ -70,7 +70,7 @@ export async function netConnect(ip: string, port = 9100): Promise<void> {
  * Disconnect from the network printer.
  */
 export async function netDisconnect(): Promise<void> {
-  if (!isNativeAndroid()) throw new Error("Network printing requires the Android app build.");
+  if (!isNativeAndroid()) throw new Error("WiFi printing requires the Android app build.");
   currentConnectedIp = null;
   await NetworkPrinter.disconnect();
 }
@@ -79,7 +79,7 @@ export async function netDisconnect(): Promise<void> {
  * Send ESC/POS data to the connected network printer.
  */
 export async function netSend(text: string): Promise<void> {
-  if (!isNativeAndroid()) throw new Error("Network printing requires the Android app build.");
+  if (!isNativeAndroid()) throw new Error("WiFi printing requires the Android app build.");
 
   const connected = await NetworkPrinter.isConnected();
   if (!connected?.connected) {
@@ -87,7 +87,7 @@ export async function netSend(text: string): Promise<void> {
     if (currentConnectedIp) {
       await netConnect(currentConnectedIp, currentConnectedPort);
     } else {
-      throw new Error("Network printer disconnected. Please reconnect in Admin > Printer.");
+      throw new Error("WiFi printer disconnected. Please reconnect in Admin > Printer.");
     }
   }
 

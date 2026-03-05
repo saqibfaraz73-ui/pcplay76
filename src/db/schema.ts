@@ -341,10 +341,10 @@ export type Settings = {
   // Section-based printer routing (replaces salesPrinterType/tablePrinterType)
   printerSections?: string[]; // user-defined section names (e.g. ["A", "B", "Kitchen"])
   sectionPrinterMap?: Record<string, "bluetooth" | "usb" | "network" | "none">; // section → printer type
-  // Network/WiFi printer support
-  networkPrinterIp?: string; // IP address of network printer
+  // WiFi printer support
+  networkPrinterIp?: string; // IP address of WiFi printer
   networkPrinterPort?: number; // TCP port (default 9100)
-  networkPrinterLabel?: string; // friendly name for the network printer
+  networkPrinterLabel?: string; // friendly name for the WiFi printer
   // Dedicated label printer (separate from receipt printer)
   labelPrinterType?: "bluetooth" | "usb" | "network" | "none"; // connection type for label printer
   labelPrinterLanguage?: "zpl" | "tspl" | "escpos"; // command language
