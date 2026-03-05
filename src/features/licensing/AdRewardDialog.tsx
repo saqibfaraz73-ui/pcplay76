@@ -2,6 +2,7 @@
  * AdRewardDialog — shown when a free limit is reached.
  * User can watch a rewarded ad to get +5 entries, or upgrade to Premium.
  * When offline, the dialog is non-dismissable until they go online or upgrade.
+ * Also handles periodic online verification requirement.
  */
 import React from "react";
 import {
@@ -16,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { showRewardedAd } from "./admob-ads";
 import { grantAdBonus, AD_BONUS, type SalesModule } from "./licensing-db";
 import { purchasePremium, restorePlayStorePurchase } from "./play-store-billing";
+import { OnlineCheckDialog } from "./OnlineCheckDialog";
 import { PlayCircle, Crown, Loader2, WifiOff, ShieldCheck, RotateCcw } from "lucide-react";
 
 interface AdRewardDialogProps {
@@ -24,6 +26,8 @@ interface AdRewardDialogProps {
   module: SalesModule;
   message: string;
   onRewarded: () => void;
+  /** When true, shows the online verification dialog instead of ad dialog */
+  needsOnlineVerification?: boolean;
 }
 
 function useIsOnline() {
@@ -44,6 +48,7 @@ export function AdRewardDialog({
   module,
   message,
   onRewarded,
+  needsOnlineVerification = false,
 }: AdRewardDialogProps) {
   const [loading, setLoading] = React.useState(false);
   const [upgradeVisible, setUpgradeVisible] = React.useState(false);
@@ -108,6 +113,17 @@ export function AdRewardDialog({
   const handleOpenChange = (val: boolean) => {
     onOpenChange(val);
   };
+
+  // Show online verification dialog instead of ad dialog
+  if (needsOnlineVerification) {
+    return (
+      <OnlineCheckDialog
+        open={open}
+        onOpenChange={onOpenChange}
+        onVerified={onRewarded}
+      />
+    );
+  }
 
   if (upgradeVisible) {
     return (

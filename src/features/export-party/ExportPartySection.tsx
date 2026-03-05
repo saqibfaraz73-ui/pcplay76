@@ -74,6 +74,7 @@ export function ExportPartySection() {
 
   const [adOpen, setAdOpen] = React.useState(false);
   const [adMsg, setAdMsg] = React.useState("");
+  const [adNeedsOnlineCheck, setAdNeedsOnlineCheck] = React.useState(false);
 
   // Customer form
   const [cName, setCName] = React.useState("");
@@ -164,7 +165,7 @@ export function ExportPartySection() {
 
       if (!isEdit) {
         const check = await canMakeSale("partyLodge");
-        if (!check.allowed) { setAdMsg(check.message); setAdOpen(true); return; }
+        if (!check.allowed) { setAdMsg(check.message); setAdNeedsOnlineCheck(!!check.needsOnlineVerification); setAdOpen(true); return; }
       }
 
       const now = Date.now();
@@ -1499,7 +1500,7 @@ export function ExportPartySection() {
         </AlertDialogContent>
       </AlertDialog>
 
-      <AdRewardDialog open={adOpen} onOpenChange={setAdOpen} module="partyLodge" message={adMsg} onRewarded={() => {}} />
+      <AdRewardDialog open={adOpen} onOpenChange={setAdOpen} module="partyLodge" message={adMsg} onRewarded={() => {}} needsOnlineVerification={adNeedsOnlineCheck} />
     </div>
   );
 }
