@@ -17,7 +17,7 @@ export default function AdminDashboard() {
         <p className="text-sm text-muted-foreground">Manage products, inventory, customers, and backups.</p>
       </header>
       <Tabs defaultValue={defaultTab}>
-        <TabsList className="flex w-full flex-wrap justify-start gap-1">
+        <TabsList className="flex w-full overflow-x-auto justify-start gap-1 no-scrollbar">
           <TabsTrigger value="products">Products</TabsTrigger>
           <TabsTrigger value="inventory">Inventory</TabsTrigger>
           <TabsTrigger value="customers">Customers</TabsTrigger>
