@@ -2,11 +2,14 @@ import React from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { db } from "@/db/appDb";
 import type { ReceiptSize, Settings } from "@/db/schema";
+import { Capacitor } from "@capacitor/core";
+import { Filesystem, Directory } from "@capacitor/filesystem";
 import { ensureSeedData } from "@/db/seed";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -92,6 +95,18 @@ export function AdminPrinter() {
   const [subPrinterMode, setSubPrinterMode] = React.useState<"own" | "main">("own");
   const [subKotOnly, setSubKotOnly] = React.useState(false);
 
+  // Receipt content settings (moved from AdminSettings)
+  const [receiptLogoPath, setReceiptLogoPath] = React.useState<string | undefined>();
+  const [showLogo, setShowLogo] = React.useState(false);
+  const [showAddress, setShowAddress] = React.useState(false);
+  const [showPhone, setShowPhone] = React.useState(false);
+  const [showBusinessName, setShowBusinessName] = React.useState(true);
+  const [receiptQrEnabled, setReceiptQrEnabled] = React.useState(false);
+  const [posAutoPrintReceipt, setPosAutoPrintReceipt] = React.useState(false);
+  const [receiptStyle, setReceiptStyle] = React.useState<"classic" | "centered">("classic");
+
+  const logoFileRef = React.useRef<HTMLInputElement>(null);
+
   const [paired, setPaired] = React.useState<PairedBluetoothDevice[]>([]);
   const [btBusy, setBtBusy] = React.useState(false);
 
@@ -125,6 +140,15 @@ export function AdminPrinter() {
     setPaperSize(s.paperSize ?? "58");
     setSubPrinterMode(s.subPrinterMode ?? "own");
     setSubKotOnly(s.subKotOnly ?? false);
+    // Receipt content
+    setReceiptLogoPath(s.receiptLogoPath);
+    setShowLogo(!!s.showLogo);
+    setShowAddress(!!s.showAddress);
+    setShowPhone(!!s.showPhone);
+    setShowBusinessName(s.showBusinessNameOnReceipt !== false);
+    setReceiptQrEnabled(!!s.receiptQrEnabled);
+    setPosAutoPrintReceipt(!!s.posAutoPrintReceipt);
+    setReceiptStyle(s.receiptStyle ?? "classic");
   }, []);
 
   React.useEffect(() => {
@@ -171,6 +195,15 @@ export function AdminPrinter() {
         paperSize,
         subPrinterMode,
         subKotOnly,
+        // Receipt content settings
+        receiptLogoPath,
+        showLogo,
+        showAddress,
+        showPhone,
+        showBusinessNameOnReceipt: showBusinessName,
+        receiptQrEnabled,
+        posAutoPrintReceipt,
+        receiptStyle,
         updatedAt: Date.now(),
       };
       await db.settings.put(next);
@@ -273,6 +306,28 @@ export function AdminPrinter() {
       toast({ title: "Could not disconnect", description: e?.message ?? String(e), variant: "destructive" });
     } finally {
       setUsbBusy(false);
+    }
+  };
+
+  // Logo upload handler
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const reader = new FileReader();
+      reader.onload = async () => {
+        const base64 = (reader.result as string).split(",")[1];
+        const fileName = `logo_${Date.now()}.${file.name.split(".").pop()}`;
+        const path = `Sangi Pos/Images/${fileName}`;
+        if (Capacitor.isNativePlatform()) {
+          await Filesystem.writeFile({ directory: Directory.Documents, path, data: base64, recursive: true });
+        }
+        setReceiptLogoPath(path);
+        toast({ title: "Logo uploaded" });
+      };
+      reader.readAsDataURL(file);
+    } catch (err: any) {
+      toast({ title: "Upload failed", description: err?.message ?? String(err), variant: "destructive" });
     }
   };
 
@@ -637,6 +692,85 @@ export function AdminPrinter() {
           <Button onClick={() => void save()} disabled={!settings} size="sm">
             Save
           </Button>
+        </CardContent>
+      </Card>
+
+      {/* ── Receipt Content Settings ── */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Receipt Content</CardTitle>
+          <CardDescription>Configure what appears on your printed receipts.</CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-4">
+          <div className="space-y-2">
+            <Label>Receipt Logo</Label>
+            <div className="flex items-center gap-3">
+              <input ref={logoFileRef} type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" />
+              <Button variant="outline" onClick={() => logoFileRef.current?.click()}>
+                {receiptLogoPath ? "Change Logo" : "Upload Logo"}
+              </Button>
+              {receiptLogoPath && <span className="text-sm text-muted-foreground truncate max-w-48">{receiptLogoPath.split("/").pop()}</span>}
+            </div>
+          </div>
+          <div className="grid gap-2">
+            <div className="flex items-center justify-between gap-3 rounded-md border p-3">
+              <div>
+                <div className="text-sm font-medium">Show logo on receipt</div>
+                <div className="text-xs text-muted-foreground">If enabled, browser receipts will display the logo.</div>
+              </div>
+              <Switch checked={showLogo} onCheckedChange={setShowLogo} />
+            </div>
+            <div className="flex items-center justify-between gap-3 rounded-md border p-3">
+              <div>
+                <div className="text-sm font-medium">Show business name on receipt</div>
+                <div className="text-xs text-muted-foreground">Display your business/restaurant name at the top of printed receipts.</div>
+              </div>
+              <Switch checked={showBusinessName} onCheckedChange={setShowBusinessName} />
+            </div>
+            <div className="flex items-center justify-between gap-3 rounded-md border p-3">
+              <div>
+                <div className="text-sm font-medium">Show address on receipt</div>
+                <div className="text-xs text-muted-foreground">If enabled, receipts will print the address line.</div>
+              </div>
+              <Switch checked={showAddress} onCheckedChange={setShowAddress} />
+            </div>
+            <div className="flex items-center justify-between gap-3 rounded-md border p-3">
+              <div>
+                <div className="text-sm font-medium">Show phone on receipt</div>
+                <div className="text-xs text-muted-foreground">If enabled, receipts will print the phone line.</div>
+              </div>
+              <Switch checked={showPhone} onCheckedChange={setShowPhone} />
+            </div>
+            <div className="flex items-center justify-between gap-3 rounded-md border p-3">
+              <div>
+                <div className="text-sm font-medium">Print barcode on receipt</div>
+                <div className="text-xs text-muted-foreground">Print a scannable barcode with receipt number. Scan it from POS to look up order details.</div>
+              </div>
+              <Switch checked={receiptQrEnabled} onCheckedChange={setReceiptQrEnabled} />
+            </div>
+            <div className="flex items-center justify-between gap-3 rounded-md border p-3">
+              <div>
+                <div className="text-sm font-medium">Print receipt automatically</div>
+                <div className="text-xs text-muted-foreground">After saving a sale, the app will ask to print immediately.</div>
+              </div>
+              <Switch checked={posAutoPrintReceipt} onCheckedChange={setPosAutoPrintReceipt} />
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="receiptStyle">Receipt Style</Label>
+            <select
+              id="receiptStyle"
+              value={receiptStyle}
+              onChange={(e) => setReceiptStyle(e.target.value as "classic" | "centered")}
+              className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+            >
+              <option value="classic">Classic (left-aligned)</option>
+              <option value="centered">Centered (kitchen-style)</option>
+            </select>
+          </div>
+          <div className="flex justify-end">
+            <Button onClick={() => void save()} disabled={!settings}>Save</Button>
+          </div>
         </CardContent>
       </Card>
 

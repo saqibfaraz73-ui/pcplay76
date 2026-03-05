@@ -8,8 +8,6 @@ import { db } from "@/db/appDb";
 import type { AdminAccount, ChargeType, Settings, StaffAccount } from "@/db/schema";
 import { useToast } from "@/hooks/use-toast";
 import { ensureSeedData } from "@/db/seed";
-import { Filesystem, Directory } from "@capacitor/filesystem";
-import { Capacitor } from "@capacitor/core";
 import { AdminTablesWaiters } from "@/features/admin/tables/AdminTablesWaiters";
 import { Trash2, Plus } from "lucide-react";
 import { getLicense } from "@/features/licensing/licensing-db";
@@ -39,9 +37,7 @@ export function AdminSettings() {
   const [phone, setPhone] = React.useState("");
   const [showAddress, setShowAddress] = React.useState(false);
   const [showPhone, setShowPhone] = React.useState(false);
-  const [showLogo, setShowLogo] = React.useState(false);
   const [posShowItemImages, setPosShowItemImages] = React.useState(true);
-  const [posAutoPrintReceipt, setPosAutoPrintReceipt] = React.useState(false);
 
   // Tax settings
   const [taxEnabled, setTaxEnabled] = React.useState(false);
@@ -84,8 +80,6 @@ export function AdminSettings() {
   const [recoveryAgentAddCustomerEnabled, setRecoveryAgentAddCustomerEnabled] = React.useState(false);
   const [salesDashboardEnabled, setSalesDashboardEnabled] = React.useState(true);
   const [skuSearchEnabled, setSkuSearchEnabled] = React.useState(false);
-  const [receiptQrEnabled, setReceiptQrEnabled] = React.useState(false);
-  const [showBusinessName, setShowBusinessName] = React.useState(true);
   const [currencySymbol, setCurrencySymbolState] = React.useState("");
   const [deliveryEnabled, setDeliveryEnabled] = React.useState(false);
   const [recoveryEnabled, setRecoveryEnabled] = React.useState(false);
@@ -105,9 +99,9 @@ export function AdminSettings() {
   const [newStaffPin, setNewStaffPin] = React.useState("");
   const [deleteStaffId, setDeleteStaffId] = React.useState<string | null>(null);
 
-  const [logoPath, setLogoPath] = React.useState<string | undefined>();
+  
   const [isPremium, setIsPremium] = React.useState(false);
-  const fileInputRef = React.useRef<HTMLInputElement>(null);
+  
 
   const load = React.useCallback(async () => {
     await ensureSeedData();
@@ -119,9 +113,7 @@ export function AdminSettings() {
     setPhone(s.phone ?? "");
     setShowAddress(!!s.showAddress);
     setShowPhone(!!s.showPhone);
-    setShowLogo(!!s.showLogo);
     setPosShowItemImages(s.posShowItemImages ?? true);
-    setPosAutoPrintReceipt(!!s.posAutoPrintReceipt);
     setTaxEnabled(!!s.taxEnabled);
     setTaxType(s.taxType ?? "percent");
     setTaxValue(s.taxValue ?? 0);
@@ -152,12 +144,9 @@ export function AdminSettings() {
     setRecoveryAgentAddCustomerEnabled(!!s?.recoveryAgentAddCustomerEnabled);
     setSalesDashboardEnabled(s?.salesDashboardEnabled !== false); // default true
     setSkuSearchEnabled(!!s?.skuSearchEnabled);
-    setReceiptQrEnabled(!!s?.receiptQrEnabled);
-    setShowBusinessName(s?.showBusinessNameOnReceipt !== false);
     setCurrencySymbolState(s?.currencySymbol ?? "");
     setDeliveryEnabled(!!s?.deliveryEnabled);
     setRecoveryEnabled(!!s?.recoveryEnabled);
-    setLogoPath(s.receiptLogoPath);
 
     // Load admin account
     const admin = await db.adminAccount.get("admin");
@@ -179,26 +168,7 @@ export function AdminSettings() {
     void load();
   }, [load]);
 
-  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    try {
-      const reader = new FileReader();
-      reader.onload = async () => {
-        const base64 = (reader.result as string).split(",")[1];
-        const fileName = `logo_${Date.now()}.${file.name.split(".").pop()}`;
-        const path = `Sangi Pos/Images/${fileName}`;
-        if (Capacitor.isNativePlatform()) {
-          await Filesystem.writeFile({ directory: Directory.Documents, path, data: base64, recursive: true });
-        }
-        setLogoPath(path);
-        toast({ title: "Logo uploaded" });
-      };
-      reader.readAsDataURL(file);
-    } catch (err: any) {
-      toast({ title: "Upload failed", description: err?.message ?? String(err), variant: "destructive" });
-    }
-  };
+
 
   const save = async () => {
     try {
@@ -208,11 +178,7 @@ export function AdminSettings() {
         restaurantName: restaurantName.trim() || "SANGI POS",
         address: address.trim() || undefined,
         phone: phone.trim() || undefined,
-        showAddress,
-        showPhone,
-        showLogo,
         posShowItemImages,
-        posAutoPrintReceipt,
         taxEnabled,
         taxType,
         taxValue,
@@ -243,12 +209,9 @@ export function AdminSettings() {
         recoveryAgentAddCustomerEnabled,
         salesDashboardEnabled,
         skuSearchEnabled,
-        receiptQrEnabled,
-        showBusinessNameOnReceipt: showBusinessName,
         currencySymbol: currencySymbol.trim(),
         deliveryEnabled,
         recoveryEnabled,
-        receiptLogoPath: logoPath,
         updatedAt: Date.now(),
       };
       await db.settings.put(next);
@@ -328,8 +291,8 @@ export function AdminSettings() {
     <div className="space-y-4">
       <Card>
         <CardHeader>
-          <CardTitle>Business & Receipt Settings</CardTitle>
-          <CardDescription>Basic settings used for receipts and reports.</CardDescription>
+          <CardTitle>Business Settings</CardTitle>
+          <CardDescription>Basic settings for your business.</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4">
           <div className="grid gap-3 sm:grid-cols-2">
@@ -376,39 +339,7 @@ export function AdminSettings() {
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label>Receipt Logo</Label>
-            <div className="flex items-center gap-3">
-              <input ref={fileInputRef} type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" />
-              <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
-                {logoPath ? "Change Logo" : "Upload Logo"}
-              </Button>
-              {logoPath && <span className="text-sm text-muted-foreground truncate max-w-48">{logoPath.split("/").pop()}</span>}
-            </div>
-          </div>
-
           <div className="grid gap-2">
-            <div className="flex items-center justify-between gap-3 rounded-md border p-3">
-              <div>
-                <div className="text-sm font-medium">Show address on receipt</div>
-                <div className="text-xs text-muted-foreground">If enabled, receipts will print the address line.</div>
-              </div>
-              <Switch checked={showAddress} onCheckedChange={setShowAddress} />
-            </div>
-            <div className="flex items-center justify-between gap-3 rounded-md border p-3">
-              <div>
-                <div className="text-sm font-medium">Show phone on receipt</div>
-                <div className="text-xs text-muted-foreground">If enabled, receipts will print the phone line.</div>
-              </div>
-              <Switch checked={showPhone} onCheckedChange={setShowPhone} />
-            </div>
-            <div className="flex items-center justify-between gap-3 rounded-md border p-3">
-              <div>
-                <div className="text-sm font-medium">Show logo on receipt</div>
-                <div className="text-xs text-muted-foreground">If enabled, browser receipts will display the logo.</div>
-              </div>
-              <Switch checked={showLogo} onCheckedChange={setShowLogo} />
-            </div>
             <div className="flex items-center justify-between gap-3 rounded-md border p-3">
               <div>
                 <div className="text-sm font-medium">Show item images in POS</div>
@@ -422,27 +353,6 @@ export function AdminSettings() {
                 <div className="text-xs text-muted-foreground">Show SKU on POS items and allow searching by SKU/barcode.</div>
               </div>
               <Switch checked={skuSearchEnabled} onCheckedChange={setSkuSearchEnabled} />
-            </div>
-            <div className="flex items-center justify-between gap-3 rounded-md border p-3">
-              <div>
-                <div className="text-sm font-medium">Print barcode on receipt</div>
-                <div className="text-xs text-muted-foreground">Print a scannable barcode with receipt number. Scan it from POS to look up order details.</div>
-              </div>
-              <Switch checked={receiptQrEnabled} onCheckedChange={setReceiptQrEnabled} />
-            </div>
-            <div className="flex items-center justify-between gap-3 rounded-md border p-3">
-              <div>
-                <div className="text-sm font-medium">Show business name on receipt</div>
-                <div className="text-xs text-muted-foreground">Display your business/restaurant name at the top of printed receipts.</div>
-              </div>
-              <Switch checked={showBusinessName} onCheckedChange={setShowBusinessName} />
-            </div>
-            <div className="flex items-center justify-between gap-3 rounded-md border p-3">
-              <div>
-                <div className="text-sm font-medium">Print receipt automatically</div>
-                <div className="text-xs text-muted-foreground">After saving a sale, the app will ask to print immediately.</div>
-              </div>
-              <Switch checked={posAutoPrintReceipt} onCheckedChange={setPosAutoPrintReceipt} />
             </div>
           </div>
 
