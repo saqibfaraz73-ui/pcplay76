@@ -458,6 +458,7 @@ export function PosTablesManager() {
   // Ad reward dialog
   const [adOpen, setAdOpen] = React.useState(false);
   const [adMsg, setAdMsg] = React.useState("");
+  const [adNeedsOnlineCheck, setAdNeedsOnlineCheck] = React.useState(false);
 
   const completeCheckout = async (paymentMethod: "cash" | "credit", shouldPrint: boolean) => {
     if (!currentTableOrder) return;
@@ -482,6 +483,7 @@ export function PosTablesManager() {
     const limitCheck = await canMakeSale("table");
     if (!limitCheck.allowed) {
       setAdMsg(limitCheck.message);
+      setAdNeedsOnlineCheck(!!limitCheck.needsOnlineVerification);
       setAdOpen(true);
       return;
     }
@@ -1480,6 +1482,7 @@ export function PosTablesManager() {
         module="table"
         message={adMsg}
         onRewarded={() => {}}
+        needsOnlineVerification={adNeedsOnlineCheck}
       />
     </div>
   );

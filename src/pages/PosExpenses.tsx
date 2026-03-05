@@ -45,6 +45,7 @@ export default function PosExpenses() {
   // Ad reward dialog
   const [adOpen, setAdOpen] = React.useState(false);
   const [adMsg, setAdMsg] = React.useState("");
+  const [adNeedsOnlineCheck, setAdNeedsOnlineCheck] = React.useState(false);
   const [pendingSave, setPendingSave] = React.useState(false);
 
   // Form state
@@ -205,6 +206,7 @@ export default function PosExpenses() {
       const check = await canMakeSale("expenses");
       if (!check.allowed) {
         setAdMsg(check.message);
+        setAdNeedsOnlineCheck(!!check.needsOnlineVerification);
         setPendingSave(true);
         setAdOpen(true);
         return;
@@ -446,6 +448,7 @@ export default function PosExpenses() {
         module="expenses"
         message={adMsg}
         onRewarded={() => { if (pendingSave) void saveExpense(); }}
+        needsOnlineVerification={adNeedsOnlineCheck}
       />
     </div>
   );

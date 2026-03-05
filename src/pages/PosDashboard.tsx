@@ -89,6 +89,7 @@ export default function PosDashboard() {
   const [adOpen, setAdOpen] = React.useState(false);
   const [adMsg, setAdMsg] = React.useState("");
   const [adModule, setAdModule] = React.useState<"cash" | "credit" | "delivery">("cash");
+  const [adNeedsOnlineCheck, setAdNeedsOnlineCheck] = React.useState(false);
 
   const [creditOpen, setCreditOpen] = React.useState(false);
   const [creditCustomerId, setCreditCustomerId] = React.useState<string>("");
@@ -683,9 +684,15 @@ export default function PosDashboard() {
   /** Handle createOrder errors – show ad dialog if limit hit */
   const handleSaleError = (e: any, fallbackTitle: string) => {
     const msg = e?.message ?? String(e);
-    if (msg.startsWith("__UPGRADE__")) {
+    if (msg.startsWith("__ONLINE_CHECK__")) {
+      setAdMsg(msg.replace("__ONLINE_CHECK__", ""));
+      setAdModule("cash");
+      setAdNeedsOnlineCheck(true);
+      setAdOpen(true);
+    } else if (msg.startsWith("__UPGRADE__")) {
       setAdMsg(msg.replace("__UPGRADE__", ""));
       setAdModule("cash");
+      setAdNeedsOnlineCheck(false);
       setAdOpen(true);
     } else {
       toast({ title: fallbackTitle, description: msg, variant: "destructive" });
@@ -1565,6 +1572,7 @@ export default function PosDashboard() {
         module={adModule}
         message={adMsg}
         onRewarded={() => {}}
+        needsOnlineVerification={adNeedsOnlineCheck}
       />
 
       {/* Cancel pending table order dialog */}

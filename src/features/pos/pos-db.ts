@@ -41,7 +41,8 @@ export async function createOrder(args: {
   const saleModule = moduleMap[args.paymentMethod] ?? "cash";
   const limitCheck = await canMakeSale(saleModule);
   if (!limitCheck.allowed) {
-    throw new Error(`__UPGRADE__${limitCheck.message}`);
+    const prefix = limitCheck.needsOnlineVerification ? "__ONLINE_CHECK__" : "__UPGRADE__";
+    throw new Error(`${prefix}${limitCheck.message}`);
   }
 
   // Build lines (include expiry date and buying price from item/variant)

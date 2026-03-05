@@ -60,6 +60,7 @@ export default function CustomPrintPage({ embedded }: { embedded?: boolean }) {
   const [showPreview, setShowPreview] = useState(false);
   const [adOpen, setAdOpen] = useState(false);
   const [adMsg, setAdMsg] = useState("");
+  const [adNeedsOnlineCheck, setAdNeedsOnlineCheck] = useState(false);
   const [pendingPrintAction, setPendingPrintAction] = useState<"print" | "share" | "uploadPrint" | null>(null);
 
   /* ---------- Custom receipt helpers ---------- */
@@ -279,7 +280,7 @@ export default function CustomPrintPage({ embedded }: { embedded?: boolean }) {
   const printReceipt = async () => {
     try {
       const check = await canMakeSale("customPrint");
-      if (!check.allowed) { setAdMsg(check.message); setPendingPrintAction("print"); setAdOpen(true); return; }
+      if (!check.allowed) { setAdMsg(check.message); setAdNeedsOnlineCheck(!!check.needsOnlineVerification); setPendingPrintAction("print"); setAdOpen(true); return; }
       if (isNativeAndroid()) {
         const settings = await db.settings.get("app");
         if (!settings) { toast.error("No printer configured. Go to Admin > Printer to set up."); return; }
@@ -309,7 +310,7 @@ export default function CustomPrintPage({ embedded }: { embedded?: boolean }) {
   const saveReceipt = async () => {
     try {
       const check = await canMakeSale("customPrint");
-      if (!check.allowed) { setAdMsg(check.message); setPendingPrintAction("share"); setAdOpen(true); return; }
+      if (!check.allowed) { setAdMsg(check.message); setAdNeedsOnlineCheck(!!check.needsOnlineVerification); setPendingPrintAction("share"); setAdOpen(true); return; }
       const doc = await buildReceiptPdf();
       const blob = doc.output("blob");
       await savePdfBlob(blob, title || "receipt");
@@ -322,7 +323,7 @@ export default function CustomPrintPage({ embedded }: { embedded?: boolean }) {
   const shareReceipt = async () => {
     try {
       const check = await canMakeSale("customPrint");
-      if (!check.allowed) { setAdMsg(check.message); setPendingPrintAction("share"); setAdOpen(true); return; }
+      if (!check.allowed) { setAdMsg(check.message); setAdNeedsOnlineCheck(!!check.needsOnlineVerification); setPendingPrintAction("share"); setAdOpen(true); return; }
       const doc = await buildReceiptPdf();
       const blob = doc.output("blob");
       await sharePdfBlob(blob, title || "receipt");
@@ -361,7 +362,7 @@ export default function CustomPrintPage({ embedded }: { embedded?: boolean }) {
   const printUploadedFile = async () => {
     if (!uploadedFileUrl) return;
     const check = await canMakeSale("customPrint");
-    if (!check.allowed) { setAdMsg(check.message); setPendingPrintAction("uploadPrint"); setAdOpen(true); return; }
+    if (!check.allowed) { setAdMsg(check.message); setAdNeedsOnlineCheck(!!check.needsOnlineVerification); setPendingPrintAction("uploadPrint"); setAdOpen(true); return; }
     await incrementSaleCount("customPrint");
 
     // On native Android, print via thermal printer (USB/Bluetooth)
@@ -680,6 +681,7 @@ export default function CustomPrintPage({ embedded }: { embedded?: boolean }) {
           else if (pendingPrintAction === "share") void shareReceipt();
           else if (pendingPrintAction === "uploadPrint") void printUploadedFile();
         }}
+        needsOnlineVerification={adNeedsOnlineCheck}
       />
     </div>
   );

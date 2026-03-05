@@ -65,6 +65,7 @@ export default function PosPartyLodge() {
   // Ad reward dialog
   const [adOpen, setAdOpen] = React.useState(false);
   const [adMsg, setAdMsg] = React.useState("");
+  const [adNeedsOnlineCheck, setAdNeedsOnlineCheck] = React.useState(false);
   const [pendingPartySave, setPendingPartySave] = React.useState(false);
 
   // Arrival form - multi-item
@@ -181,6 +182,7 @@ export default function PosPartyLodge() {
         const check = await canMakeSale("partyLodge");
         if (!check.allowed) {
           setAdMsg(check.message);
+          setAdNeedsOnlineCheck(!!check.needsOnlineVerification);
           setPendingPartySave(true);
           setAdOpen(true);
           return;
@@ -1572,6 +1574,7 @@ export default function PosPartyLodge() {
         module="partyLodge"
         message={adMsg}
         onRewarded={() => { if (pendingPartySave) { setPendingPartySave(false); } }}
+        needsOnlineVerification={adNeedsOnlineCheck}
       />
 
       {/* Export Party Section */}

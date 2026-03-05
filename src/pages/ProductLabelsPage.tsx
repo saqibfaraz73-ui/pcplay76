@@ -77,6 +77,7 @@ export default function ProductLabelsPage() {
   const [printing, setPrinting] = React.useState(false);
   const [adOpen, setAdOpen] = React.useState(false);
   const [adMsg, setAdMsg] = React.useState("");
+  const [adNeedsOnlineCheck, setAdNeedsOnlineCheck] = React.useState(false);
   const [pendingAction, setPendingAction] = React.useState<"print" | "pdf" | "direct" | null>(null);
   const [usageInfo, setUsageInfo] = React.useState<{ count: number; limit: number; premium: boolean } | null>(null);
 
@@ -307,7 +308,7 @@ export default function ProductLabelsPage() {
     }
     const check = await canMakeSale("labelPrint", totalLabels);
     if (!check.allowed) {
-      setAdMsg(check.message); setPendingAction("print"); setAdOpen(true);
+      setAdMsg(check.message); setAdNeedsOnlineCheck(!!check.needsOnlineVerification); setPendingAction("print"); setAdOpen(true);
       return;
     }
     const labels = buildLabels();
@@ -383,7 +384,7 @@ export default function ProductLabelsPage() {
     }
     const check = await canMakeSale("labelPrint", totalLabels);
     if (!check.allowed) {
-      setAdMsg(check.message); setPendingAction("pdf"); setAdOpen(true);
+      setAdMsg(check.message); setAdNeedsOnlineCheck(!!check.needsOnlineVerification); setPendingAction("pdf"); setAdOpen(true);
       return;
     }
     try {
@@ -403,7 +404,7 @@ export default function ProductLabelsPage() {
     }
     const check = await canMakeSale("labelPrint", totalLabels);
     if (!check.allowed) {
-      setAdMsg(check.message); setPendingAction("direct"); setAdOpen(true);
+      setAdMsg(check.message); setAdNeedsOnlineCheck(!!check.needsOnlineVerification); setPendingAction("direct"); setAdOpen(true);
       return;
     }
     if (!settings) {
@@ -699,7 +700,7 @@ export default function ProductLabelsPage() {
                 onSave={async (fn) => {
                   if (labelItems.length === 0) return;
                   const check = await canMakeSale("labelPrint", totalLabels);
-                  if (!check.allowed) { setAdMsg(check.message); setPendingAction("pdf"); setAdOpen(true); return; }
+                  if (!check.allowed) { setAdMsg(check.message); setAdNeedsOnlineCheck(!!check.needsOnlineVerification); setPendingAction("pdf"); setAdOpen(true); return; }
                   const blob = generateLabelPdfBlob(buildLabels());
                   await savePdfBlob(blob, fn ?? "product-labels");
                   await incrementSaleCount("labelPrint", totalLabels); refreshUsage();
@@ -715,7 +716,7 @@ export default function ProductLabelsPage() {
                 onSave={async (fn) => {
                   if (labelItems.length === 0) return;
                   const check = await canMakeSale("labelPrint", totalLabels);
-                  if (!check.allowed) { setAdMsg(check.message); setPendingAction(null); setAdOpen(true); return; }
+                  if (!check.allowed) { setAdMsg(check.message); setAdNeedsOnlineCheck(!!check.needsOnlineVerification); setPendingAction(null); setAdOpen(true); return; }
                   const labels = buildLabels();
                   const zpl = generateLabelsZpl(labels);
                   await saveTextFile(zpl, fn ?? `labels-${labels.length}.zpl`);
@@ -724,7 +725,7 @@ export default function ProductLabelsPage() {
                 onShare={async () => {
                   if (labelItems.length === 0) return;
                   const check = await canMakeSale("labelPrint", totalLabels);
-                  if (!check.allowed) { setAdMsg(check.message); setPendingAction(null); setAdOpen(true); return; }
+                  if (!check.allowed) { setAdMsg(check.message); setAdNeedsOnlineCheck(!!check.needsOnlineVerification); setPendingAction(null); setAdOpen(true); return; }
                   const labels = buildLabels();
                   const zpl = generateLabelsZpl(labels);
                   await shareTextFile(zpl, `labels-${labels.length}.zpl`);
@@ -738,7 +739,7 @@ export default function ProductLabelsPage() {
                 onSave={async (fn) => {
                   if (labelItems.length === 0) return;
                   const check = await canMakeSale("labelPrint", totalLabels);
-                  if (!check.allowed) { setAdMsg(check.message); setPendingAction(null); setAdOpen(true); return; }
+                  if (!check.allowed) { setAdMsg(check.message); setAdNeedsOnlineCheck(!!check.needsOnlineVerification); setPendingAction(null); setAdOpen(true); return; }
                   const labels = buildLabels();
                   const tspl = generateLabelsTspl(labels);
                   await saveTextFile(tspl, fn ?? `labels-${labels.length}.prn`);
@@ -747,7 +748,7 @@ export default function ProductLabelsPage() {
                 onShare={async () => {
                   if (labelItems.length === 0) return;
                   const check = await canMakeSale("labelPrint", totalLabels);
-                  if (!check.allowed) { setAdMsg(check.message); setPendingAction(null); setAdOpen(true); return; }
+                  if (!check.allowed) { setAdMsg(check.message); setAdNeedsOnlineCheck(!!check.needsOnlineVerification); setPendingAction(null); setAdOpen(true); return; }
                   const labels = buildLabels();
                   const tspl = generateLabelsTspl(labels);
                   await shareTextFile(tspl, `labels-${labels.length}.prn`);
@@ -786,6 +787,7 @@ export default function ProductLabelsPage() {
         if (pendingAction === "print") void handlePrintLabels();
         else if (pendingAction === "pdf") void handlePdfDownload();
       }}
+      needsOnlineVerification={adNeedsOnlineCheck}
     />
     </>
   );

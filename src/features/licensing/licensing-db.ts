@@ -53,6 +53,8 @@ export async function setPremiumCache(val: boolean) {
 export const FREE_LIMIT = 5;
 /** Entries granted after watching a rewarded ad */
 export const AD_BONUS = 5;
+/** How often (ms) the user must go online to verify subscription — 7 days */
+export const ONLINE_CHECK_INTERVAL = 7 * 24 * 60 * 60 * 1000;
 
 function defaultRecord(): LicenseRecord {
   return {
@@ -109,7 +111,10 @@ export async function getLicense(): Promise<LicenseRecord & { isPremium: boolean
     _isPremiumCache = status.isPremium;
     // Update DB cache if Play Store confirms premium
     if (status.isPremium && !(rec as any).premiumCached) {
-      await (db as any).license.put({ ...rec, premiumCached: true, premiumCachedAt: Date.now() });
+      await (db as any).license.put({ ...rec, premiumCached: true, premiumCachedAt: Date.now(), lastOnlineVerifiedAt: Date.now() });
+    } else {
+      // Record successful online verification timestamp
+      await (db as any).license.put({ ...rec, lastOnlineVerifiedAt: Date.now() });
     }
   } catch {
     // Play Store check failed — use DB-persisted cache as fallback
@@ -177,6 +182,7 @@ export type CanSaleResult = {
   message: string;
   remaining?: number;
   needsAd?: boolean;
+  needsOnlineVerification?: boolean;
 };
 
 /**
@@ -189,6 +195,16 @@ export async function canMakeSale(
   module: SalesModule,
   count: number = 1
 ): Promise<CanSaleResult> {
+  // Check if periodic online verification is needed
+  const onlineCheckNeeded = await needsOnlineCheck();
+  if (onlineCheckNeeded) {
+    return {
+      allowed: false,
+      message: "Periodic internet verification required. Please connect to the internet to verify your subscription status (required every 7 days).",
+      needsOnlineVerification: true,
+    };
+  }
+
   const lic = await getLicense();
   if (lic.isPremium) return { allowed: true, message: "" };
 
@@ -238,4 +254,16 @@ export async function incrementSaleCount(
     ...rec,
     [key]: ((rec[key] as number) ?? 0) + count,
   });
+}
+
+/**
+ * Check if the user needs to connect to internet for periodic verification.
+ * Returns true if more than 7 days have passed since last online check.
+ */
+export async function needsOnlineCheck(): Promise<boolean> {
+  const rec = (await (db as any).license.get("license")) as any;
+  if (!rec) return false;
+  const lastVerified = rec.lastOnlineVerifiedAt || 0;
+  if (lastVerified === 0) return false; // Never verified = fresh install, don't block
+  return Date.now() - lastVerified > ONLINE_CHECK_INTERVAL;
 }
