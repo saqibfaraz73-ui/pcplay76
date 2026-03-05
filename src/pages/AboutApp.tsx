@@ -133,7 +133,7 @@ export default function AboutApp() {
       </Card>
 
       <div className="text-center text-xs text-muted-foreground select-none cursor-default space-y-1">
-        <p>SANGI POS &mdash; Offline POS System &mdash; v2.5</p>
+        <p>SANGI POS &mdash; Offline POS System &mdash; v2.6</p>
         <a href="/privacy-policy" className="text-primary underline">Privacy Policy</a>
         <span className="mx-1">•</span>
         <a href="/delete-data" className="text-primary underline">Delete Your Data</a>
