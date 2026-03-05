@@ -337,6 +337,7 @@ export type Settings = {
   kotPrinterType?: "bluetooth" | "usb" | "none"; // overrides default for KOT printing
   // Dedicated Sales printer (for Sales Dashboard receipts)
   salesDashboardPrinterType?: "bluetooth" | "usb" | "none"; // overrides default for sales receipts
+  salesKotEnabled?: boolean; // if true, print a simplified KOT slip alongside sales receipt
   // Section-based printer routing (replaces salesPrinterType/tablePrinterType)
   printerSections?: string[]; // user-defined section names (e.g. ["A", "B", "Kitchen"])
   sectionPrinterMap?: Record<string, "bluetooth" | "usb" | "none">; // section → printer type
