@@ -4,6 +4,7 @@ import { AdminProducts } from "@/features/admin/products/AdminProducts";
 import { AdminInventory } from "@/features/admin/inventory/AdminInventory";
 import { AdminCustomers } from "@/features/admin/customers/AdminCustomers";
 import { AdminBackupRestore } from "@/features/admin/backup/AdminBackupRestore";
+import { DataCleanup } from "@/features/admin/settings/DataCleanup";
 
 export default function AdminDashboard() {
   const [searchParams] = useSearchParams();
@@ -21,11 +22,13 @@ export default function AdminDashboard() {
           <TabsTrigger value="inventory">Inventory</TabsTrigger>
           <TabsTrigger value="customers">Customers</TabsTrigger>
           <TabsTrigger value="backup">Backup</TabsTrigger>
+          <TabsTrigger value="cleanup">Cleanup</TabsTrigger>
         </TabsList>
         <TabsContent value="products"><AdminProducts /></TabsContent>
         <TabsContent value="inventory"><AdminInventory /></TabsContent>
         <TabsContent value="customers"><AdminCustomers /></TabsContent>
         <TabsContent value="backup"><AdminBackupRestore /></TabsContent>
+        <TabsContent value="cleanup"><DataCleanup /></TabsContent>
       </Tabs>
     </div>
   );
