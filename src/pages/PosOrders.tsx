@@ -243,6 +243,7 @@ export default function PosOrders() {
           creditCustomerName: custName,
           deliveryPersonName: dpName,
           section: o.source === "table" ? "tables" : "sales",
+          reprint: true,
         });
       }
       toast({ title: "Reprinted" });
