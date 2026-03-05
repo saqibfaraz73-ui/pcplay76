@@ -73,6 +73,8 @@ export function AdminPrinter() {
 
   // Default printer & section routing
   const [defaultPrinterType, setDefaultPrinterType] = React.useState<PrinterType>("none");
+  const [kotPrinterType, setKotPrinterType] = React.useState<PrinterType>("none");
+  const [salesDashboardPrinterType, setSalesDashboardPrinterType] = React.useState<PrinterType>("none");
   const [printerSections, setPrinterSections] = React.useState<string[]>([]);
   const [sectionPrinterMap, setSectionPrinterMap] = React.useState<Record<string, PrinterType>>({});
 
@@ -109,6 +111,8 @@ export function AdminPrinter() {
     setUsbDeviceName(s.usbDeviceName ?? "");
     setUsbPrinterLabel(s.usbPrinterLabel ?? "");
     setDefaultPrinterType(s.defaultPrinterType ?? s.printerConnection ?? "none");
+    setKotPrinterType(s.kotPrinterType ?? "none");
+    setSalesDashboardPrinterType(s.salesDashboardPrinterType ?? "none");
     setPrinterSections(s.printerSections ?? []);
     setSectionPrinterMap(s.sectionPrinterMap ?? {});
     setLabelPrinterType(s.labelPrinterType ?? "none");
@@ -150,6 +154,8 @@ export function AdminPrinter() {
         usbPrinterLabel: usbPrinterLabel.trim() || undefined,
         // Default & section routing
         defaultPrinterType,
+        kotPrinterType: kotPrinterType === "none" ? undefined : kotPrinterType,
+        salesDashboardPrinterType: salesDashboardPrinterType === "none" ? undefined : salesDashboardPrinterType,
         // Custom section routing
         printerSections,
         sectionPrinterMap,
@@ -426,6 +432,44 @@ export function AdminPrinter() {
               className="h-10 w-full rounded-md border bg-background px-3 text-sm"
             >
               {sectionOptions.map((o) => (
+                <option key={o.value} value={o.value}>{o.label}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* KOT Printer */}
+          <div className="space-y-2 border-t pt-3">
+            <Label htmlFor="kotPrinter" className="font-semibold">KOT Printer (Kitchen Orders)</Label>
+            <p className="text-xs text-muted-foreground">
+              Dedicated printer for Kitchen Order Tickets (Table Management). If set to "Default", uses the Default Printer above.
+            </p>
+            <select
+              id="kotPrinter"
+              value={kotPrinterType}
+              onChange={(e) => setKotPrinterType(e.target.value as PrinterType)}
+              className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+            >
+              <option value="none">Default Printer</option>
+              {sectionOptions.filter(o => o.value !== "none").map((o) => (
+                <option key={o.value} value={o.value}>{o.label}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Sales Dashboard Printer */}
+          <div className="space-y-2">
+            <Label htmlFor="salesPrinter" className="font-semibold">Sales Printer (Sales Dashboard)</Label>
+            <p className="text-xs text-muted-foreground">
+              Dedicated printer for Sales Dashboard receipts. If set to "Default", uses the Default Printer above.
+            </p>
+            <select
+              id="salesPrinter"
+              value={salesDashboardPrinterType}
+              onChange={(e) => setSalesDashboardPrinterType(e.target.value as PrinterType)}
+              className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+            >
+              <option value="none">Default Printer</option>
+              {sectionOptions.filter(o => o.value !== "none").map((o) => (
                 <option key={o.value} value={o.value}>{o.label}</option>
               ))}
             </select>

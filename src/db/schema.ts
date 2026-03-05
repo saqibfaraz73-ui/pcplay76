@@ -333,6 +333,10 @@ export type Settings = {
   currencySymbol?: string; // e.g. "Rs", "$", "€", "£", "₹"
   // Default printer (universal fallback for all prints)
   defaultPrinterType?: "bluetooth" | "usb" | "none"; // dashboard default printer
+  // Dedicated KOT printer (for Table Management / Kitchen orders)
+  kotPrinterType?: "bluetooth" | "usb" | "none"; // overrides default for KOT printing
+  // Dedicated Sales printer (for Sales Dashboard receipts)
+  salesDashboardPrinterType?: "bluetooth" | "usb" | "none"; // overrides default for sales receipts
   // Section-based printer routing (replaces salesPrinterType/tablePrinterType)
   printerSections?: string[]; // user-defined section names (e.g. ["A", "B", "Kitchen"])
   sectionPrinterMap?: Record<string, "bluetooth" | "usb" | "none">; // section → printer type

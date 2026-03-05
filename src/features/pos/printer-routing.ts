@@ -34,6 +34,82 @@ export function getDefaultPrinterType(settings: Settings): "bluetooth" | "usb" |
 }
 
 /**
+ * Get the KOT (Kitchen Order Ticket) printer type.
+ * Falls back to default printer if not specifically configured.
+ */
+export function getKotPrinterType(settings: Settings): "bluetooth" | "usb" | "none" {
+  return settings.kotPrinterType && settings.kotPrinterType !== "none"
+    ? settings.kotPrinterType
+    : getDefaultPrinterType(settings);
+}
+
+/**
+ * Get the Sales Dashboard printer type.
+ * Falls back to default printer if not specifically configured.
+ */
+export function getSalesPrinterType(settings: Settings): "bluetooth" | "usb" | "none" {
+  return settings.salesDashboardPrinterType && settings.salesDashboardPrinterType !== "none"
+    ? settings.salesDashboardPrinterType
+    : getDefaultPrinterType(settings);
+}
+
+/**
+ * Send ESC/POS data to the KOT printer.
+ */
+export async function sendToKotPrinter(
+  settings: Settings,
+  escPos: string
+): Promise<void> {
+  const printerType = getKotPrinterType(settings);
+
+  if (printerType === "none") {
+    throw new Error(
+      "No KOT printer configured. Go to Printer Settings and set a KOT Printer or Default Printer."
+    );
+  }
+
+  if (printerType === "usb") {
+    const device = getUsbDevice(settings);
+    if (!device) throw new Error("USB printer not configured.");
+    await usbSend(escPos);
+    return;
+  }
+
+  const address = getBtAddress(settings);
+  if (!address) throw new Error("Bluetooth printer not configured.");
+  await btConnect(address);
+  await btSend(escPos);
+}
+
+/**
+ * Send ESC/POS data to the Sales Dashboard printer.
+ */
+export async function sendToSalesPrinter(
+  settings: Settings,
+  escPos: string
+): Promise<void> {
+  const printerType = getSalesPrinterType(settings);
+
+  if (printerType === "none") {
+    throw new Error(
+      "No Sales printer configured. Go to Printer Settings and set a Sales Printer or Default Printer."
+    );
+  }
+
+  if (printerType === "usb") {
+    const device = getUsbDevice(settings);
+    if (!device) throw new Error("USB printer not configured.");
+    await usbSend(escPos);
+    return;
+  }
+
+  const address = getBtAddress(settings);
+  if (!address) throw new Error("Bluetooth printer not configured.");
+  await btConnect(address);
+  await btSend(escPos);
+}
+
+/**
  * Send ESC/POS data to the default printer.
  * Used for features that don't have section-based routing (advance, booking, recovery, labels, custom print, etc.)
  */
