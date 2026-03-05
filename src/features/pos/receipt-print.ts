@@ -404,7 +404,7 @@ async function sendPrintToMain(text: string, section: "sales" | "tables" = "sale
 
 export async function printReceiptFromOrder(
   order: Order,
-  opts?: { creditCustomerName?: string; deliveryPersonName?: string; deliveryCustomerName?: string; section?: PrintSection }
+  opts?: { creditCustomerName?: string; deliveryPersonName?: string; deliveryCustomerName?: string; section?: PrintSection; reprint?: boolean }
 ) {
   let settings: Settings | null = null;
 
@@ -488,8 +488,8 @@ export async function printReceiptFromOrder(
       throw new Error(printErr?.message || "Printing failed. Check printer connection.");
     }
 
-    // Print sales KOT slip if enabled (send to KOT printer)
-    if (settings.salesKotEnabled && resolvedSection !== "tables") {
+    // Print sales KOT slip if enabled (send to KOT printer) — skip on reprints
+    if (settings.salesKotEnabled && resolvedSection !== "tables" && !opts?.reprint) {
       try {
         const kotSlip = await buildSalesKotSlip(order, settings);
         await sendToKotPrinter(settings, kotSlip);
