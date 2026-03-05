@@ -110,7 +110,7 @@ export function AdminPrinter() {
   const [posAutoPrintReceipt, setPosAutoPrintReceipt] = React.useState(false);
   const [receiptStyle, setReceiptStyle] = React.useState<"classic" | "centered">("classic");
 
-  // Network/WiFi printer
+  // WiFi printer
   const [networkIp, setNetworkIp] = React.useState("");
   const [networkPort, setNetworkPort] = React.useState("9100");
   const [networkLabel, setNetworkLabel] = React.useState("");
@@ -354,7 +354,7 @@ export function AdminPrinter() {
     { value: "none", label: "None (No Printing)" },
     { value: "bluetooth", label: `Bluetooth${hasBt ? ` (${btPrinterName || btPrinterAddress})` : ""}` },
     { value: "usb", label: `USB${hasUsb ? ` (${usbPrinterLabel || usbDeviceName})` : ""}` },
-    { value: "network", label: `Network/WiFi${hasNet ? ` (${networkLabel || networkIp})` : ""}` },
+    { value: "network", label: `WiFi${hasNet ? ` (${networkLabel || networkIp})` : ""}` },
   ];
 
   return (
@@ -485,15 +485,15 @@ export function AdminPrinter() {
         </CardContent>
       </Card>
 
-      {/* ── Network / WiFi Printer ── */}
+      {/* ── WiFi Printer ── */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            Network / WiFi Printer
+            WiFi Printer
             {hasNet && <Badge variant="outline" className="text-xs">Configured</Badge>}
           </CardTitle>
           <CardDescription>
-            Connect to a thermal printer via WiFi or Ethernet (LAN). The printer must be on the same network and support RAW printing (port 9100).
+            Connect to a thermal printer via WiFi. The printer must be on the same WiFi network and support RAW printing (port 9100).
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -558,7 +558,7 @@ export function AdminPrinter() {
                 setNetBusy(true);
                 try {
                   await netConnect(networkIp.trim(), parseInt(networkPort) || 9100);
-                  toast({ title: "Network printer connected" });
+                  toast({ title: "WiFi printer connected" });
                 } catch (e: any) {
                   toast({ title: "Could not connect", description: e?.message ?? String(e), variant: "destructive" });
                 } finally {
@@ -576,7 +576,7 @@ export function AdminPrinter() {
                 setNetBusy(true);
                 try {
                   await netDisconnect();
-                  toast({ title: "Network printer disconnected" });
+                  toast({ title: "WiFi printer disconnected" });
                 } catch (e: any) {
                   toast({ title: "Could not disconnect", description: e?.message ?? String(e), variant: "destructive" });
                 } finally {
@@ -593,7 +593,7 @@ export function AdminPrinter() {
 
           {!isNativeAndroid() && (
             <p className="text-xs text-muted-foreground">
-              Network printing works only in the installed Android app.
+              WiFi printing works only in the installed Android app.
             </p>
           )}
         </CardContent>
