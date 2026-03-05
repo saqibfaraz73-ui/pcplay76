@@ -27,6 +27,11 @@ import {
   usbDisconnect,
   type UsbDevice,
 } from "@/features/pos/usb-printer";
+import {
+  netTestConnection,
+  netConnect,
+  netDisconnect,
+} from "@/features/pos/network-printer";
 
 const RECEIPT_SIZES: { value: ReceiptSize; label: string }[] = [
   { value: "2x2", label: '2×2 inch' },
@@ -57,7 +62,7 @@ function receiptPreviewText(args: { paperSize: "58" | "80" }) {
   ].join("\n");
 }
 
-type PrinterType = "bluetooth" | "usb" | "none";
+type PrinterType = "bluetooth" | "usb" | "network" | "none";
 type LabelLanguage = "zpl" | "tspl" | "escpos";
 export function AdminPrinter() {
   const { toast } = useToast();
@@ -105,7 +110,11 @@ export function AdminPrinter() {
   const [posAutoPrintReceipt, setPosAutoPrintReceipt] = React.useState(false);
   const [receiptStyle, setReceiptStyle] = React.useState<"classic" | "centered">("classic");
 
-  const logoFileRef = React.useRef<HTMLInputElement>(null);
+  // Network/WiFi printer
+  const [networkIp, setNetworkIp] = React.useState("");
+  const [networkPort, setNetworkPort] = React.useState("9100");
+  const [networkLabel, setNetworkLabel] = React.useState("");
+  const [netBusy, setNetBusy] = React.useState(false);
 
   const [paired, setPaired] = React.useState<PairedBluetoothDevice[]>([]);
   const [btBusy, setBtBusy] = React.useState(false);
@@ -149,6 +158,10 @@ export function AdminPrinter() {
     setReceiptQrEnabled(!!s.receiptQrEnabled);
     setPosAutoPrintReceipt(!!s.posAutoPrintReceipt);
     setReceiptStyle(s.receiptStyle ?? "classic");
+    // Network printer
+    setNetworkIp(s.networkPrinterIp ?? "");
+    setNetworkPort(String(s.networkPrinterPort ?? 9100));
+    setNetworkLabel(s.networkPrinterLabel ?? "");
   }, []);
 
   React.useEffect(() => {
@@ -158,9 +171,10 @@ export function AdminPrinter() {
   // Derive which printers are configured
   const hasBt = !!btPrinterAddress.trim();
   const hasUsb = !!usbDeviceName.trim();
+  const hasNet = !!networkIp.trim();
 
   // Auto-set legacy connection field for backward compat
-  const derivedConnection: PrinterType = hasBt && hasUsb ? "usb" : hasBt ? "bluetooth" : hasUsb ? "usb" : "none";
+  const derivedConnection: PrinterType = hasBt && hasUsb ? "usb" : hasBt ? "bluetooth" : hasUsb ? "usb" : hasNet ? "network" : "none";
 
   const save = async () => {
     try {
@@ -176,6 +190,10 @@ export function AdminPrinter() {
         btPrinterName: btPrinterName.trim() || undefined,
         usbDeviceName: usbDeviceName.trim() || undefined,
         usbPrinterLabel: usbPrinterLabel.trim() || undefined,
+        // Network/WiFi printer
+        networkPrinterIp: networkIp.trim() || undefined,
+        networkPrinterPort: parseInt(networkPort) || 9100,
+        networkPrinterLabel: networkLabel.trim() || undefined,
         // Default & section routing
         defaultPrinterType,
         kotPrinterType: kotPrinterType === "none" ? undefined : kotPrinterType,
@@ -336,6 +354,7 @@ export function AdminPrinter() {
     { value: "none", label: "None (No Printing)" },
     { value: "bluetooth", label: `Bluetooth${hasBt ? ` (${btPrinterName || btPrinterAddress})` : ""}` },
     { value: "usb", label: `USB${hasUsb ? ` (${usbPrinterLabel || usbDeviceName})` : ""}` },
+    { value: "network", label: `Network/WiFi${hasNet ? ` (${networkLabel || networkIp})` : ""}` },
   ];
 
   return (
@@ -466,6 +485,120 @@ export function AdminPrinter() {
         </CardContent>
       </Card>
 
+      {/* ── Network / WiFi Printer ── */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            Network / WiFi Printer
+            {hasNet && <Badge variant="outline" className="text-xs">Configured</Badge>}
+          </CardTitle>
+          <CardDescription>
+            Connect to a thermal printer via WiFi or Ethernet (LAN). The printer must be on the same network and support RAW printing (port 9100).
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label>Printer IP Address</Label>
+              <input
+                value={networkIp}
+                onChange={(e) => setNetworkIp(e.target.value)}
+                className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+                placeholder="e.g. 192.168.1.100"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Port (default: 9100)</Label>
+              <input
+                value={networkPort}
+                onChange={(e) => setNetworkPort(e.target.value)}
+                className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+                placeholder="9100"
+                type="number"
+              />
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label>Printer name (optional)</Label>
+            <input
+              value={networkLabel}
+              onChange={(e) => setNetworkLabel(e.target.value)}
+              className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+              placeholder="e.g. Kitchen WiFi Printer"
+            />
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={netBusy || !networkIp.trim()}
+              onClick={async () => {
+                setNetBusy(true);
+                try {
+                  const result = await netTestConnection(networkIp.trim(), parseInt(networkPort) || 9100);
+                  if (result.reachable) {
+                    toast({ title: "Printer reachable!", description: `Successfully connected to ${networkIp}:${networkPort}` });
+                  } else {
+                    toast({ title: "Cannot reach printer", description: result.error || "Check IP, port, and network connection.", variant: "destructive" });
+                  }
+                } catch (e: any) {
+                  toast({ title: "Test failed", description: e?.message ?? String(e), variant: "destructive" });
+                } finally {
+                  setNetBusy(false);
+                }
+              }}
+            >
+              Test Connection
+            </Button>
+            <Button
+              size="sm"
+              disabled={netBusy || !networkIp.trim() || !isNativeAndroid()}
+              onClick={async () => {
+                setNetBusy(true);
+                try {
+                  await netConnect(networkIp.trim(), parseInt(networkPort) || 9100);
+                  toast({ title: "Network printer connected" });
+                } catch (e: any) {
+                  toast({ title: "Could not connect", description: e?.message ?? String(e), variant: "destructive" });
+                } finally {
+                  setNetBusy(false);
+                }
+              }}
+            >
+              Connect
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={netBusy || !isNativeAndroid()}
+              onClick={async () => {
+                setNetBusy(true);
+                try {
+                  await netDisconnect();
+                  toast({ title: "Network printer disconnected" });
+                } catch (e: any) {
+                  toast({ title: "Could not disconnect", description: e?.message ?? String(e), variant: "destructive" });
+                } finally {
+                  setNetBusy(false);
+                }
+              }}
+            >
+              Disconnect
+            </Button>
+            <Button size="sm" variant="default" onClick={() => void save()} disabled={!settings}>
+              Save
+            </Button>
+          </div>
+
+          {!isNativeAndroid() && (
+            <p className="text-xs text-muted-foreground">
+              Network printing works only in the installed Android app.
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
       {/* ── Default Printer & Section Routing ── */}
       <Card>
         <CardHeader>
@@ -575,7 +708,7 @@ export function AdminPrinter() {
             </>
           )}
 
-          {!hasBt && !hasUsb && (
+          {!hasBt && !hasUsb && !hasNet && (
             <p className="text-xs text-muted-foreground">
               Configure at least one printer above to assign it.
             </p>
@@ -608,6 +741,7 @@ export function AdminPrinter() {
                 <option value="none">None (use Default Printer)</option>
                 <option value="bluetooth">Bluetooth</option>
                 <option value="usb">USB</option>
+                <option value="network">Network/WiFi</option>
               </select>
             </div>
             <div className="space-y-2">

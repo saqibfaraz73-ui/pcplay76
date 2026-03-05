@@ -264,7 +264,7 @@ export type Settings = {
   showLogo: boolean;
   posShowItemImages?: boolean; // optional; default true
   posAutoPrintReceipt?: boolean; // optional; default false
-  printerConnection?: "bluetooth" | "usb" | "none";
+  printerConnection?: "bluetooth" | "usb" | "network" | "none";
   printerName?: string;
   printerAddress?: string; // Bluetooth MAC address for classic SPP printers
   subPrinterMode?: "own" | "main"; // "own" = sub prints locally, "main" = send to main device's printer
@@ -275,8 +275,8 @@ export type Settings = {
   usbDeviceName?: string; // USB device name/path
   usbPrinterLabel?: string; // USB printer friendly label
   // Section-based printer routing
-  salesPrinterType?: "bluetooth" | "usb" | "none"; // which printer for Sales Dashboard
-  tablePrinterType?: "bluetooth" | "usb" | "none"; // which printer for Table Management
+  salesPrinterType?: "bluetooth" | "usb" | "network" | "none"; // which printer for Sales Dashboard
+  tablePrinterType?: "bluetooth" | "usb" | "network" | "none"; // which printer for Table Management
   // Tax settings
   taxEnabled?: boolean;
   taxType?: ChargeType;
@@ -332,17 +332,21 @@ export type Settings = {
   showBusinessNameOnReceipt?: boolean; // if false, hide business name on receipt (default true)
   currencySymbol?: string; // e.g. "Rs", "$", "€", "£", "₹"
   // Default printer (universal fallback for all prints)
-  defaultPrinterType?: "bluetooth" | "usb" | "none"; // dashboard default printer
+  defaultPrinterType?: "bluetooth" | "usb" | "network" | "none"; // dashboard default printer
   // Dedicated KOT printer (for Table Management / Kitchen orders)
-  kotPrinterType?: "bluetooth" | "usb" | "none"; // overrides default for KOT printing
+  kotPrinterType?: "bluetooth" | "usb" | "network" | "none"; // overrides default for KOT printing
   // Dedicated Sales printer (for Sales Dashboard receipts)
-  salesDashboardPrinterType?: "bluetooth" | "usb" | "none"; // overrides default for sales receipts
+  salesDashboardPrinterType?: "bluetooth" | "usb" | "network" | "none"; // overrides default for sales receipts
   salesKotEnabled?: boolean; // if true, print a simplified KOT slip alongside sales receipt
   // Section-based printer routing (replaces salesPrinterType/tablePrinterType)
   printerSections?: string[]; // user-defined section names (e.g. ["A", "B", "Kitchen"])
-  sectionPrinterMap?: Record<string, "bluetooth" | "usb" | "none">; // section → printer type
+  sectionPrinterMap?: Record<string, "bluetooth" | "usb" | "network" | "none">; // section → printer type
+  // Network/WiFi printer support
+  networkPrinterIp?: string; // IP address of network printer
+  networkPrinterPort?: number; // TCP port (default 9100)
+  networkPrinterLabel?: string; // friendly name for the network printer
   // Dedicated label printer (separate from receipt printer)
-  labelPrinterType?: "bluetooth" | "usb" | "none"; // connection type for label printer
+  labelPrinterType?: "bluetooth" | "usb" | "network" | "none"; // connection type for label printer
   labelPrinterLanguage?: "zpl" | "tspl" | "escpos"; // command language
   labelBtAddress?: string; // Bluetooth MAC address for label printer
   labelBtName?: string; // Bluetooth friendly name for label printer

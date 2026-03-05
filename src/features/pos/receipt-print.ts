@@ -441,13 +441,14 @@ export async function printReceiptFromOrder(
       throw new Error("Settings not loaded. Please configure printer in Admin > Printer.");
     }
 
-    const isUsb = opts?.reprint
-      ? getDefaultPrinterType(settings) === "usb"
+    const resolvedPrinterType = opts?.reprint
+      ? getDefaultPrinterType(settings)
       : useDefault
         ? (resolvedSection === "tables"
-          ? getKotPrinterType(settings) === "usb"
-          : getSalesPrinterType(settings) === "usb")
-        : getPrinterForSection(settings, resolvedSection) === "usb";
+          ? getKotPrinterType(settings)
+          : getSalesPrinterType(settings))
+        : getPrinterForSection(settings, resolvedSection);
+    const isUsb = resolvedPrinterType === "usb" || resolvedPrinterType === "network";
     const skipBarcode = resolvedSection === "tables";
     const text = await buildEscPosReceipt(order, settings, { ...opts, forUsb: isUsb, skipBarcode });
 
