@@ -8,7 +8,7 @@ import { format } from "date-fns";
 import { getSyncConfig } from "@/features/sync/sync-utils";
 import { sendPrintJob } from "@/features/sync/sync-client";
 import { isDuplicatePrint } from "@/features/pos/print-dedup";
-import { sendToSectionPrinter, sendToDefaultPrinter, sendToSalesPrinter, sendToKotPrinter, getPrinterForSection, getSalesPrinterType, getKotPrinterType, type PrintSection } from "@/features/pos/printer-routing";
+import { sendToSectionPrinter, sendToDefaultPrinter, sendToSalesPrinter, sendToKotPrinter, getPrinterForSection, getSalesPrinterType, getKotPrinterType, getDefaultPrinterType, type PrintSection } from "@/features/pos/printer-routing";
 
 /**
  * Resolve the printer section for an order.
@@ -441,11 +441,13 @@ export async function printReceiptFromOrder(
       throw new Error("Settings not loaded. Please configure printer in Admin > Printer.");
     }
 
-    const isUsb = useDefault
-      ? (resolvedSection === "tables"
-        ? getKotPrinterType(settings) === "usb"
-        : getSalesPrinterType(settings) === "usb")
-      : getPrinterForSection(settings, resolvedSection) === "usb";
+    const isUsb = opts?.reprint
+      ? getDefaultPrinterType(settings) === "usb"
+      : useDefault
+        ? (resolvedSection === "tables"
+          ? getKotPrinterType(settings) === "usb"
+          : getSalesPrinterType(settings) === "usb")
+        : getPrinterForSection(settings, resolvedSection) === "usb";
     const skipBarcode = resolvedSection === "tables";
     const text = await buildEscPosReceipt(order, settings, { ...opts, forUsb: isUsb, skipBarcode });
 
@@ -457,7 +459,10 @@ export async function printReceiptFromOrder(
     if (isDuplicatePrint(text)) return;
 
     const sendPrint = async (s: Settings, data: string) => {
-      if (useDefault) {
+      if (opts?.reprint) {
+        // Reprints always use the default printer
+        await sendToDefaultPrinter(s, data);
+      } else if (useDefault) {
         // Use dedicated Sales or KOT printer based on context
         if (resolvedSection === "tables") {
           await sendToKotPrinter(s, data);
