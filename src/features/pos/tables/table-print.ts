@@ -5,7 +5,7 @@ import { fmtDateTime, fmtTime12 } from "@/features/pos/format";
 import { getSyncConfig } from "@/features/sync/sync-utils";
 import { sendPrintJob } from "@/features/sync/sync-client";
 import { isDuplicatePrint } from "@/features/pos/print-dedup";
-import { sendToDefaultPrinter } from "@/features/pos/printer-routing";
+import { sendToKotPrinter } from "@/features/pos/printer-routing";
 
 type KotItem = {
   name: string;
@@ -81,9 +81,9 @@ export async function printTableKot(args: {
     return;
   }
 
-  // Use default printer for table KOT
+  // Use dedicated KOT printer (falls back to default if not configured)
   try {
-    await sendToDefaultPrinter(settings!, escPos);
+    await sendToKotPrinter(settings!, escPos);
   } catch (printErr: any) {
     console.error("Table KOT print error:", printErr);
     throw new Error(printErr?.message || "Table KOT printing failed. Check printer connection.");

@@ -8,7 +8,7 @@ import { format } from "date-fns";
 import { getSyncConfig } from "@/features/sync/sync-utils";
 import { sendPrintJob } from "@/features/sync/sync-client";
 import { isDuplicatePrint } from "@/features/pos/print-dedup";
-import { sendToSectionPrinter, sendToDefaultPrinter, getPrinterForSection, type PrintSection } from "@/features/pos/printer-routing";
+import { sendToSectionPrinter, sendToDefaultPrinter, sendToSalesPrinter, sendToKotPrinter, getPrinterForSection, getSalesPrinterType, getKotPrinterType, type PrintSection } from "@/features/pos/printer-routing";
 
 /**
  * Resolve the printer section for an order.
@@ -406,7 +406,9 @@ export async function printReceiptFromOrder(
     }
 
     const isUsb = useDefault
-      ? (settings.defaultPrinterType === "usb")
+      ? (resolvedSection === "tables"
+        ? getKotPrinterType(settings) === "usb"
+        : getSalesPrinterType(settings) === "usb")
       : getPrinterForSection(settings, resolvedSection) === "usb";
     const skipBarcode = resolvedSection === "tables";
     const text = await buildEscPosReceipt(order, settings, { ...opts, forUsb: isUsb, skipBarcode });
@@ -420,7 +422,12 @@ export async function printReceiptFromOrder(
 
     const sendPrint = async (s: Settings, data: string) => {
       if (useDefault) {
-        await sendToDefaultPrinter(s, data);
+        // Use dedicated Sales or KOT printer based on context
+        if (resolvedSection === "tables") {
+          await sendToKotPrinter(s, data);
+        } else {
+          await sendToSalesPrinter(s, data);
+        }
       } else {
         await sendToSectionPrinter(s, resolvedSection, data);
       }
