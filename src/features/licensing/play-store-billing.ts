@@ -110,21 +110,57 @@ export async function checkPlayStorePremium(): Promise<PremiumStatus> {
   }
 }
 
+export type SubscriptionPackage = {
+  id: string;
+  label: string;
+  priceString: string;
+  packageType: string;
+  /** raw RevenueCat package object for purchasing */
+  _raw: any;
+};
+
 /**
  * Get the localized price string for the premium subscription.
  */
 export async function getSubscriptionPrice(): Promise<string | null> {
-  if (!Capacitor.isNativePlatform()) return null;
+  const pkgs = await getAvailablePackages();
+  return pkgs[0]?.priceString ?? null;
+}
+
+/**
+ * Get all available subscription packages (monthly, yearly, etc.)
+ */
+export async function getAvailablePackages(): Promise<SubscriptionPackage[]> {
+  if (!Capacitor.isNativePlatform()) return [];
   if (!_initialized) await initBilling();
-  if (!_initialized) return null;
+  if (!_initialized) return [];
 
   try {
     const { Purchases } = await import("@revenuecat/purchases-capacitor");
     const offerings = await Purchases.getOfferings();
-    const pkg = offerings.current?.availablePackages?.[0];
-    return pkg?.product?.priceString ?? null;
+    const packages = offerings.current?.availablePackages ?? [];
+    return packages.map((pkg: any) => ({
+      id: pkg.identifier,
+      label: getPackageLabel(pkg.packageType),
+      priceString: pkg.product?.priceString ?? "",
+      packageType: pkg.packageType,
+      _raw: pkg,
+    }));
   } catch {
-    return null;
+    return [];
+  }
+}
+
+function getPackageLabel(type: string): string {
+  switch (type) {
+    case "MONTHLY": return "Monthly";
+    case "ANNUAL": return "Yearly";
+    case "TWO_MONTH": return "2 Months";
+    case "THREE_MONTH": return "3 Months";
+    case "SIX_MONTH": return "6 Months";
+    case "WEEKLY": return "Weekly";
+    case "LIFETIME": return "Lifetime";
+    default: return type;
   }
 }
 
@@ -132,7 +168,7 @@ export async function getSubscriptionPrice(): Promise<string | null> {
  * Launch the Play Store in-app purchase flow for premium subscription.
  * Returns true if purchase was successful.
  */
-export async function purchasePremium(): Promise<boolean> {
+export async function purchasePremium(packageToPurchase?: SubscriptionPackage): Promise<boolean> {
   const PLAY_STORE_URL = `https://play.google.com/store/apps/details?id=app.lovable.a89517294eb14219b1dd14af0464d470`;
 
   if (!Capacitor.isNativePlatform()) {
@@ -151,7 +187,6 @@ export async function purchasePremium(): Promise<boolean> {
       await Browser.open({ url: PLAY_STORE_URL });
     } catch (browserErr) {
       console.error("[PlayBilling] Browser fallback failed:", browserErr);
-      // Last resort: try App Store intent
       try {
         window.open(`market://details?id=app.lovable.a89517294eb14219b1dd14af0464d470`, "_system");
       } catch {}
@@ -161,10 +196,16 @@ export async function purchasePremium(): Promise<boolean> {
 
   try {
     const { Purchases } = await import("@revenuecat/purchases-capacitor");
-    console.log("[PlayBilling] Fetching offerings...");
-    const offerings = await Purchases.getOfferings();
-    console.log("[PlayBilling] Offerings:", JSON.stringify(offerings));
-    const pkg = offerings.current?.availablePackages?.[0];
+    let pkg: any;
+
+    if (packageToPurchase) {
+      pkg = packageToPurchase._raw;
+    } else {
+      console.log("[PlayBilling] Fetching offerings...");
+      const offerings = await Purchases.getOfferings();
+      pkg = offerings.current?.availablePackages?.[0];
+    }
+
     if (!pkg) {
       throw new Error("No subscription packages found. Please try again later or contact support.");
     }
@@ -173,7 +214,6 @@ export async function purchasePremium(): Promise<boolean> {
     const success = result.customerInfo.entitlements.active[ENTITLEMENT_ID] !== undefined;
     console.log("[PlayBilling] Purchase result, premium:", success);
     if (success) {
-      // Immediately update the cached premium status (persists to DB)
       const { setPremiumCache } = await import("./licensing-db");
       await setPremiumCache(true);
     }

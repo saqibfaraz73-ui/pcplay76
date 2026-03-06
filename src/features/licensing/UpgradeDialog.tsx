@@ -9,8 +9,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { Crown, Loader2, ShieldCheck } from "lucide-react";
-import { purchasePremium, restorePlayStorePurchase } from "./play-store-billing";
+import { Crown, Loader2, ShieldCheck, Check } from "lucide-react";
+import { purchasePremium, restorePlayStorePurchase, getAvailablePackages, type SubscriptionPackage } from "./play-store-billing";
 
 interface UpgradeDialogProps {
   open: boolean;
@@ -22,16 +22,21 @@ export function UpgradeDialog({ open, onOpenChange, message }: UpgradeDialogProp
   const [purchasing, setPurchasing] = React.useState(false);
   const [restoring, setRestoring] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
-  const [priceLabel, setPriceLabel] = React.useState<string | null>(null);
+  const [packages, setPackages] = React.useState<SubscriptionPackage[]>([]);
+  const [selectedIdx, setSelectedIdx] = React.useState(0);
 
   React.useEffect(() => {
     if (!open) return;
     let cancelled = false;
     (async () => {
       try {
-        const { getSubscriptionPrice } = await import("./play-store-billing");
-        const price = await getSubscriptionPrice();
-        if (!cancelled && price) setPriceLabel(price);
+        const pkgs = await getAvailablePackages();
+        if (!cancelled && pkgs.length > 0) {
+          setPackages(pkgs);
+          // Default to yearly if available, otherwise first
+          const yearlyIdx = pkgs.findIndex(p => p.packageType === "ANNUAL");
+          setSelectedIdx(yearlyIdx >= 0 ? yearlyIdx : 0);
+        }
       } catch {}
     })();
     return () => { cancelled = true; };
@@ -41,10 +46,10 @@ export function UpgradeDialog({ open, onOpenChange, message }: UpgradeDialogProp
     setPurchasing(true);
     setError(null);
     try {
-      const success = await purchasePremium();
+      const pkg = packages[selectedIdx];
+      const success = await purchasePremium(pkg);
       if (success) {
         onOpenChange(false);
-        // Reload to ensure all components recognize premium status
         window.location.reload();
       } else {
         setError("Purchase was not completed. Please try again.");
@@ -74,6 +79,8 @@ export function UpgradeDialog({ open, onOpenChange, message }: UpgradeDialogProp
     }
   };
 
+  const selectedPkg = packages[selectedIdx];
+
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent>
@@ -98,6 +105,36 @@ export function UpgradeDialog({ open, onOpenChange, message }: UpgradeDialogProp
             </div>
           </div>
         </div>
+
+        {/* Plan selector */}
+        {packages.length > 1 && (
+          <div className="grid grid-cols-2 gap-2">
+            {packages.map((pkg, idx) => (
+              <button
+                key={pkg.id}
+                type="button"
+                onClick={() => setSelectedIdx(idx)}
+                className={`relative rounded-lg border-2 p-3 text-left transition-all ${
+                  selectedIdx === idx
+                    ? "border-primary bg-primary/5"
+                    : "border-border hover:border-muted-foreground/40"
+                }`}
+              >
+                {selectedIdx === idx && (
+                  <Check className="absolute top-2 right-2 h-4 w-4 text-primary" />
+                )}
+                <p className="text-sm font-semibold">{pkg.label}</p>
+                <p className="text-lg font-bold text-foreground">{pkg.priceString}</p>
+                {pkg.packageType === "ANNUAL" && (
+                  <span className="mt-1 inline-block rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-medium text-green-800 dark:bg-green-900/40 dark:text-green-300">
+                    Best Value
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+        )}
+
         {error && (
           <p className="text-xs text-destructive text-center rounded-md border border-destructive/40 bg-destructive/10 p-2">{error}</p>
         )}
@@ -110,7 +147,9 @@ export function UpgradeDialog({ open, onOpenChange, message }: UpgradeDialogProp
             {purchasing ? (
               <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Processing...</>
             ) : (
-              <><Crown className="h-4 w-4 mr-2 text-amber-500" />Subscribe{priceLabel ? ` — ${priceLabel}/month` : " via Google Play"}</>
+              <><Crown className="h-4 w-4 mr-2 text-amber-500" />
+                Subscribe{selectedPkg ? ` — ${selectedPkg.priceString}/${selectedPkg.packageType === "ANNUAL" ? "year" : "month"}` : " via Google Play"}
+              </>
             )}
           </Button>
           <Button
