@@ -1,10 +1,9 @@
 /**
- * SKU Import: detect barcodes from images, PDFs, ZPL, and TSPL files.
- * Multi-strategy scanning: Native BarcodeDetector → Custom Code128 decoder → html5-qrcode fallback.
+ * SKU Import: detect barcodes from images, ZPL, and TSPL files.
+ * Multi-strategy scanning: Custom Code128 decoder → Native BarcodeDetector → html5-qrcode fallback.
  */
 import { Html5Qrcode } from "html5-qrcode";
 import { decodeAppGeneratedCode128FromCanvas } from "@/features/labels/code128-canvas-decode";
-import { findSkusFromAppLabelPdfTextChunks } from "@/features/labels/pdf-item-name-sku-fallback";
 
 /* ──────────────── Helpers ──────────────── */
 
@@ -125,6 +124,13 @@ async function scanWithHtml5Qrcode(file: File): Promise<string | null> {
   }
 }
 
+/** Convert a canvas to a File for html5-qrcode */
+async function canvasToFile(canvas: HTMLCanvasElement, name: string): Promise<File | null> {
+  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob((b) => resolve(b), "image/png"));
+  if (!blob) return null;
+  return new File([blob], name, { type: "image/png" });
+}
+
 /* ──────────────── Image barcode scanning (multi-strategy) ──────────────── */
 
 async function scanBarcodesFromImageFile(file: File): Promise<string[]> {
@@ -138,42 +144,58 @@ async function scanBarcodesFromImageFile(file: File): Promise<string[]> {
     const ctx = base.getContext("2d");
     if (ctx) ctx.drawImage(bitmap, 0, 0);
 
-    // Upscale small images for better detection
+    // Upscale small images with nearest-neighbor for crisp bars
     const needsUpscale = base.width < 800;
-    const upscaled = needsUpscale ? upscaleCanvas(base, Math.ceil(800 / base.width)) : base;
+    const scaleFactor = needsUpscale ? Math.ceil(800 / base.width) : 1;
+    const upscaled = needsUpscale ? upscaleCanvas(base, scaleFactor) : base;
 
     const threshold = makeThresholdCanvas(upscaled);
-    const variants = [upscaled, threshold, rotateCanvas(upscaled, 90), rotateCanvas(upscaled, 270)];
+    const thresholdBase = makeThresholdCanvas(base);
+
+    // Build variants: original, threshold, rotated
+    const allVariants = [
+      upscaled, threshold, thresholdBase,
+      rotateCanvas(upscaled, 90), rotateCanvas(upscaled, 270),
+      rotateCanvas(threshold, 90), rotateCanvas(threshold, 270),
+    ];
+    // Also try higher upscale for very small images
+    if (base.width < 400) {
+      const bigUpscale = upscaleCanvas(base, Math.ceil(1200 / base.width));
+      allVariants.push(bigUpscale, makeThresholdCanvas(bigUpscale));
+    }
 
     // Strategy 1: Custom Code128 decoder (best for our own barcodes)
-    for (const variant of variants) {
+    for (const variant of allVariants) {
       const directCode = decodeAppGeneratedCode128FromCanvas(variant);
       if (directCode && isLikelyBarcode(directCode)) {
         found.add(directCode);
-      }
-    }
-    // Also try threshold variant
-    if (found.size === 0) {
-      const threshVariants = [makeThresholdCanvas(base)];
-      if (needsUpscale) threshVariants.push(threshold);
-      for (const v of threshVariants) {
-        const code = decodeAppGeneratedCode128FromCanvas(v);
-        if (code && isLikelyBarcode(code)) found.add(code);
+        break; // our decoder matched — high confidence
       }
     }
 
     // Strategy 2: Native BarcodeDetector API
     if (found.size === 0) {
-      for (const variant of variants) {
+      for (const variant of allVariants) {
         const codes = await scanWithNativeBarcodeDetector(variant);
         for (const code of codes) found.add(code);
+        if (found.size > 0) break;
+      }
+    }
+
+    // Strategy 3: html5-qrcode on upscaled canvas (works better than raw file for small images)
+    if (found.size === 0) {
+      // Try upscaled threshold canvas first
+      const upscaledFile = await canvasToFile(threshold, "scan.png");
+      if (upscaledFile) {
+        const legacy = await scanWithHtml5Qrcode(upscaledFile);
+        if (legacy && isLikelyBarcode(legacy)) found.add(legacy);
       }
     }
   } catch {
     // fallback below
   }
 
-  // Strategy 3: html5-qrcode fallback
+  // Strategy 4: html5-qrcode on original file
   if (found.size === 0) {
     const legacy = await scanWithHtml5Qrcode(file);
     if (legacy && isLikelyBarcode(legacy)) found.add(legacy);
@@ -215,181 +237,54 @@ export function extractBarcodeFromZpl(content: string): string | null {
 /* ──────────────── TSPL parser ──────────────── */
 
 export function extractBarcodeFromTspl(content: string): string | null {
-  const barcodeMatch = content.match(
-    /BARCODE\s+\d+\s*,\s*\d+\s*,\s*"[^"]*"\s*,\s*\d+\s*,\s*\d+\s*,\s*\d+\s*,\s*\d+\s*,\s*\d+\s*,\s*"([^"]+)"/i
-  );
-  if (barcodeMatch?.[1]) return barcodeMatch[1].trim();
-
-  const simpleMatch = content.match(/BARCODE[^"]*"([^"]+)"/i);
-  if (simpleMatch?.[1]) return simpleMatch[1].trim();
-
-  return null;
-}
-
-/* ──────────────── PDF barcode scanning ──────────────── */
-
-function extractLikelyBarcodesFromText(rawText: string): string[] {
   const results: string[] = [];
-  const tokens = rawText.split(/\s+/).map((t) => t.trim()).filter(Boolean);
-  for (const token of tokens) {
-    if (!isLikelyBarcode(token)) continue;
-    if (/^[A-Za-z]+$/.test(token)) continue;
-    if (/^\d{1,4}$/.test(token)) continue;
-    if (/[A-Za-z]/.test(token) && /\d/.test(token)) { results.push(token); continue; }
-    if (/^\d{8,14}$/.test(token)) { results.push(token); continue; }
-  }
   let m: RegExpExecArray | null;
-  const labelled = /(?:barcode|sku|ean|upc|code)\s*[:#-]?\s*([A-Za-z0-9\-_.]{3,64})/gi;
-  while ((m = labelled.exec(rawText)) !== null) {
-    const t = m[1]?.trim();
-    if (t && /\d/.test(t) && isLikelyBarcode(t) && !results.includes(t)) results.push(t);
+
+  // Flexible pattern: BARCODE followed by params and quoted content
+  // Matches: BARCODE 60,80,"128",70,1,0,2,4,"SKU-VALUE"
+  // Also: BARCODE x,y,"type",h,r,rot,n,w,"content"
+  const pattern = /BARCODE\s+[^"]*"[^"]*"[^"]*"([^"]+)"/gi;
+  while ((m = pattern.exec(content)) !== null) {
+    const val = m[1]?.trim();
+    if (val && val.length >= 1) results.push(val);
   }
-  return sortBarcodeCandidates(results);
-}
 
-function cropCanvasRegion(src: HTMLCanvasElement, x: number, y: number, w: number, h: number): HTMLCanvasElement | null {
-  const sx = Math.max(0, Math.floor(x));
-  const sy = Math.max(0, Math.floor(y));
-  const sw = Math.floor(Math.min(w, src.width - sx));
-  const sh = Math.floor(Math.min(h, src.height - sy));
-  if (sw <= 0 || sh <= 0) return null;
-  const out = document.createElement("canvas");
-  out.width = sw; out.height = sh;
-  const ctx = out.getContext("2d");
-  if (!ctx) return null;
-  ctx.drawImage(src, sx, sy, sw, sh, 0, 0, sw, sh);
-  return out;
-}
-
-async function renderPdfPageToCanvas(page: any, scale: number): Promise<HTMLCanvasElement | null> {
-  const viewport = page.getViewport({ scale });
-  const canvas = document.createElement("canvas");
-  canvas.width = Math.ceil(viewport.width);
-  canvas.height = Math.ceil(viewport.height);
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return null;
-  ctx.fillStyle = "#ffffff";
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-  await page.render({ canvasContext: ctx, viewport }).promise;
-  return canvas;
-}
-
-/** Scan known A4 label layout regions for barcodes */
-async function scanBarcodesFromKnownA4LabelLayout(
-  pageCanvas: HTMLCanvasElement,
-  pageNum: number,
-): Promise<string[]> {
-  const found = new Set<string>();
-  const pageWmm = 210, pageHmm = 297;
-  const cols = 3, labelW = 60, labelH = 35;
-  const marginX = (pageWmm - cols * labelW) / (cols + 1);
-  const marginY = 10, gapY = 5;
-  const maxRows = Math.floor((pageHmm - marginY * 2) / (labelH + gapY));
-  const pxPerMmX = pageCanvas.width / pageWmm;
-  const pxPerMmY = pageCanvas.height / pageHmm;
-
-  for (let row = 0; row < maxRows; row++) {
-    for (let col = 0; col < cols; col++) {
-      const x = marginX + col * (labelW + marginX);
-      const y = marginY + row * (labelH + gapY);
-
-      for (const barcodeTopMm of [y + 11, y + 8]) {
-        const regionX = (x + 4.5) * pxPerMmX;
-        const regionW = (labelW - 9) * pxPerMmX;
-        const regionY = barcodeTopMm * pxPerMmY;
-        const regionH = 20 * pxPerMmY;
-
-        const crop = cropCanvasRegion(pageCanvas, regionX, regionY, regionW, regionH);
-        if (!crop) continue;
-
-        const upscaled = upscaleCanvas(crop, 2.2);
-        const threshold = makeThresholdCanvas(upscaled);
-
-        // Try custom decoder first
-        const directCode = decodeAppGeneratedCode128FromCanvas(threshold);
-        if (directCode && isLikelyBarcode(directCode)) {
-          found.add(directCode);
-          continue;
-        }
-
-        // Try native BarcodeDetector
-        const nativeCodes = await scanWithNativeBarcodeDetector(threshold);
-        for (const code of nativeCodes) {
-          if (isLikelyBarcode(code)) found.add(code);
-        }
+  // Fallback: grab the last quoted string after BARCODE keyword
+  if (results.length === 0) {
+    const lines = content.split(/\r?\n/);
+    for (const line of lines) {
+      if (!/BARCODE/i.test(line)) continue;
+      // Find all quoted strings in the line
+      const quotes = [...line.matchAll(/"([^"]+)"/g)].map((q) => q[1]);
+      // The last quoted string is typically the barcode content
+      if (quotes.length >= 2) {
+        const last = quotes[quotes.length - 1].trim();
+        if (last.length >= 1) results.push(last);
       }
     }
   }
-  return sortBarcodeCandidates([...found]);
-}
 
-async function scanBarcodesFromPdf(file: File): Promise<string[]> {
-  const pdfjsLib = await import("pdfjs-dist");
-  pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
-
-  const arrayBuffer = await file.arrayBuffer();
-  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-  const results: string[] = [];
-  const textChunks: string[] = [];
-  const maxPages = Math.min(pdf.numPages, 4);
-
-  // Pass 1: text extraction
-  for (let pageNum = 1; pageNum <= maxPages; pageNum++) {
-    const page = await pdf.getPage(pageNum);
-    try {
-      const textContent = await page.getTextContent();
-      const pageStrings = (textContent.items || [])
-        .map((item: any) => String(item?.str || "").trim())
-        .filter(Boolean);
-      textChunks.push(...pageStrings);
-      const text = pageStrings.join(" ");
-      const candidates = extractLikelyBarcodesFromText(text);
-      for (const code of candidates) {
-        if (!results.includes(code)) results.push(code);
-      }
-    } catch { /* ignore */ }
-  }
-  if (results.length > 0) return sortBarcodeCandidates(results);
-
-  // Pass 1.5: match text chunks to known menu items
-  const knownSkuMatches = await findSkusFromAppLabelPdfTextChunks(textChunks);
-  for (const sku of knownSkuMatches) {
-    if (!results.includes(sku)) results.push(sku);
-  }
-  if (results.length > 0) return sortBarcodeCandidates(results);
-
-  // Pass 2: scan barcode image regions from known A4 layout
-  for (let pageNum = 1; pageNum <= maxPages; pageNum++) {
-    const page = await pdf.getPage(pageNum);
-    const canvas = await renderPdfPageToCanvas(page, 4.0);
-    if (!canvas) continue;
-    const templateCodes = await scanBarcodesFromKnownA4LabelLayout(canvas, pageNum);
-    for (const code of templateCodes) {
-      if (!results.includes(code)) results.push(code);
-    }
-  }
-
-  return sortBarcodeCandidates(results);
+  return results[0] ?? null;
 }
 
 /* ──────────────── Main entry point ──────────────── */
 
 /**
  * Import a file and extract barcode/SKU from it.
- * Supports: images (png, jpg, webp, bmp), PDF, ZPL, TSPL text files.
+ * Supports: images (png, jpg, webp, bmp), ZPL, TSPL text files.
  */
 export async function importSkuFromFile(file: File): Promise<string | null> {
   const name = file.name.toLowerCase();
   const type = file.type;
 
   // ZPL files
-  if (name.endsWith(".zpl")) {
+  if (name.endsWith(".zpl") || name.endsWith(".zpl.txt")) {
     const text = await file.text();
     return extractBarcodeFromZpl(text);
   }
 
-  // TSPL files
-  if (name.endsWith(".tspl") || name.endsWith(".tsc")) {
+  // TSPL files (.tspl, .tsc, .prn)
+  if (name.endsWith(".tspl") || name.endsWith(".tsc") || name.endsWith(".prn") || name.endsWith(".tspl.txt")) {
     const text = await file.text();
     return extractBarcodeFromTspl(text);
   }
@@ -397,21 +292,22 @@ export async function importSkuFromFile(file: File): Promise<string | null> {
   // Plain text that might be ZPL or TSPL
   if (type === "text/plain" || name.endsWith(".txt")) {
     const text = await file.text();
+    // Auto-detect ZPL
+    if (text.includes("^XA") || text.includes("^FD")) {
+      const zpl = extractBarcodeFromZpl(text);
+      if (zpl) return zpl;
+    }
+    // Auto-detect TSPL
+    if (/BARCODE\s/i.test(text)) {
+      const tspl = extractBarcodeFromTspl(text);
+      if (tspl) return tspl;
+    }
+    // Try both anyway
     const zpl = extractBarcodeFromZpl(text);
     if (zpl) return zpl;
     const tspl = extractBarcodeFromTspl(text);
     if (tspl) return tspl;
     return null;
-  }
-
-  // PDF files - multi-strategy scan
-  if (type === "application/pdf" || name.endsWith(".pdf")) {
-    try {
-      const barcodes = await scanBarcodesFromPdf(file);
-      return barcodes[0] ?? null;
-    } catch {
-      return null;
-    }
   }
 
   // Image files - multi-strategy scan
