@@ -27,7 +27,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/hooks/use-toast";
 import {
   Printer, Download, Search, Tags, CheckSquare, Square,
-  Upload, Plus, Trash2, Pencil, Save, Share2,
+  Upload, Plus, Trash2, Pencil, Save, Share2, Image,
 } from "lucide-react";
 
 /* ── Label item type used across all tabs ── */
