@@ -63,6 +63,7 @@ function countModules(values: number[]): number {
 /**
  * Render a Code128B barcode to a canvas element.
  * Uses integer module widths for crisp, scannable output.
+ * Minimal quiet zone (5 modules) to maximize barcode size within canvas.
  */
 export function renderBarcodeToCanvas(
   text: string,
@@ -71,16 +72,17 @@ export function renderBarcodeToCanvas(
   const { width = 300, height = 80, showText = true } = opts ?? {};
   const values = encodeCode128B(text);
 
-  const quietZoneModules = 10;
+  // Small quiet zone — just enough for scanners (5 modules each side)
+  const quietZoneModules = 5;
   const dataModules = countModules(values);
   const totalModules = dataModules + quietZoneModules * 2;
 
-  // Calculate module width — use integer pixels, minimum 1px per module
-  const moduleWidth = Math.max(1, Math.floor(width / totalModules));
+  // Calculate module width — use integer pixels, minimum 2px per module for thick bars
+  const moduleWidth = Math.max(2, Math.floor(width / totalModules));
   const actualWidth = totalModules * moduleWidth;
 
   const canvas = document.createElement("canvas");
-  const textH = showText ? 20 : 0;
+  const textH = showText ? 18 : 0;
   canvas.width = actualWidth;
   canvas.height = height + textH;
   const ctx = canvas.getContext("2d")!;
@@ -109,17 +111,21 @@ export function renderBarcodeToCanvas(
     ctx.fillStyle = "#000";
     ctx.font = "bold 12px monospace";
     ctx.textAlign = "center";
-    ctx.fillText(text, actualWidth / 2, height + 15);
+    ctx.fillText(text, actualWidth / 2, height + 14);
   }
 
   return canvas;
 }
 
-/** Convert barcode canvas to base64 PNG data URL */
+/**
+ * Convert barcode to base64 PNG data URL.
+ * Renders at native resolution (no 2x upscale) to match the compact
+ * output of the working reference app (≈400×100px).
+ */
 export function barcodeToDataUrl(text: string, opts?: { width?: number; height?: number }): string {
-  // Render at 2x the requested width for crisp output, then let CSS/img scale down
-  const renderWidth = (opts?.width ?? 300) * 2;
-  const renderHeight = (opts?.height ?? 80) * 2;
-  const canvas = renderBarcodeToCanvas(text, { width: renderWidth, height: renderHeight });
+  const canvas = renderBarcodeToCanvas(text, {
+    width: opts?.width ?? 300,
+    height: opts?.height ?? 80,
+  });
   return canvas.toDataURL("image/png");
 }
