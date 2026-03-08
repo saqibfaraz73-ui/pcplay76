@@ -1,5 +1,6 @@
 import React from "react";
 import { db } from "@/db/appDb";
+import { ensureSeedData } from "@/db/seed";
 import { canMakeSale, incrementSaleCount, getLicense, FREE_LIMIT, type SalesModule } from "@/features/licensing/licensing-db";
 import { AdRewardDialog } from "@/features/licensing/AdRewardDialog";
 import type { MenuItem, Category, Settings } from "@/db/schema";
