@@ -11,6 +11,7 @@
 
 import { db } from "@/db/appDb";
 import { checkPlayStorePremium } from "./play-store-billing";
+import { getCachedConfig } from "./remote-config";
 
 export type LicenseRecord = {
   id: "license";
@@ -49,10 +50,20 @@ export async function setPremiumCache(val: boolean) {
   } catch {}
 }
 
-/** Free entries per section before watching an ad */
+/** Free entries per section before watching an ad (overridden by remote config) */
 export const FREE_LIMIT = 5;
-/** Entries granted after watching a rewarded ad */
+/** Entries granted after watching a rewarded ad (overridden by remote config) */
 export const AD_BONUS = 5;
+
+/** Get current free limit (uses remote config if available) */
+export function getFreeLimitValue(): number {
+  return getCachedConfig().free_limit ?? FREE_LIMIT;
+}
+
+/** Get current ad bonus (uses remote config if available) */
+export function getAdBonusValue(): number {
+  return getCachedConfig().ad_bonus ?? AD_BONUS;
+}
 /** Warning threshold — show warning after 7 days */
 export const ONLINE_WARNING_INTERVAL = 7 * 24 * 60 * 60 * 1000;
 /** Hard block — force verification after 8 days (7 + 24hr grace) */
@@ -208,9 +219,11 @@ export async function canMakeSale(
   const lic = await getLicense();
   if (lic.isPremium) return { allowed: true, message: "" };
 
+  const freeLimit = getFreeLimitValue();
+  const adBonus = getAdBonusValue();
   const used = (lic[countKey[module]] as number) ?? 0;
   const bonus = (lic[bonusKey[module]] as number) ?? 0;
-  const totalAllowed = FREE_LIMIT + bonus;
+  const totalAllowed = freeLimit + bonus;
   const remaining = totalAllowed - used;
 
   if (used + count > totalAllowed) {
@@ -220,8 +233,8 @@ export async function canMakeSale(
       needsAd: true,
       message:
         remaining > 0
-          ? `You have ${remaining} free ${module} entr${remaining === 1 ? "y" : "ies"} left. Watch an ad to get ${AD_BONUS} more.`
-          : `Free limit reached (${FREE_LIMIT} entries). Watch a short ad to get ${AD_BONUS} more entries.`,
+          ? `You have ${remaining} free ${module} entr${remaining === 1 ? "y" : "ies"} left. Watch an ad to get ${adBonus} more.`
+          : `Free limit reached (${freeLimit} entries). Watch a short ad to get ${adBonus} more entries.`,
     };
   }
 
@@ -236,7 +249,7 @@ export async function grantAdBonus(module: SalesModule): Promise<void> {
   if (!rec) return;
   const key = bonusKey[module];
   const current = (rec[key] as number) ?? 0;
-  await (db as any).license.put({ ...rec, [key]: current + AD_BONUS });
+  await (db as any).license.put({ ...rec, [key]: current + getAdBonusValue() });
 }
 
 /**

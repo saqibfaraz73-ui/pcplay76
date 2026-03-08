@@ -12,24 +12,10 @@
  */
 
 import { Capacitor } from "@capacitor/core";
+import { getRemoteConfig, getCachedConfig } from "./remote-config";
 
-// ─── TOGGLE THIS BEFORE PUBLISHING ───────────────────────────────────────────
-const IS_TESTING = false; // ← production mode: real ads
-// ─────────────────────────────────────────────────────────────────────────────
-
-// Production IDs (your real AdMob IDs)
-const PROD_APP_ID        = "ca-app-pub-4619723552746870~3003839065";
-const PROD_REWARDED_ID   = "ca-app-pub-4619723552746870/5875321081";
-const PROD_INTERSTITIAL_ID = "ca-app-pub-4619723552746870/8350167538";
-
-// Google's official demo test ad unit IDs (safe for testing)
-const TEST_APP_ID          = "ca-app-pub-3940256099942544~3347511713";
-const TEST_REWARDED_ID     = "ca-app-pub-3940256099942544/5224354917";
-const TEST_INTERSTITIAL_ID = "ca-app-pub-3940256099942544/1033173712";
-
-export const ADMOB_APP_ID       = IS_TESTING ? TEST_APP_ID          : PROD_APP_ID;
-export const REWARDED_AD_ID     = IS_TESTING ? TEST_REWARDED_ID     : PROD_REWARDED_ID;
-export const INTERSTITIAL_AD_ID = IS_TESTING ? TEST_INTERSTITIAL_ID : PROD_INTERSTITIAL_ID;
+// App ID (not changeable remotely — used only at init)
+const ADMOB_APP_ID = "ca-app-pub-4619723552746870~3003839065";
 
 let admobModule: any = null;
 
@@ -50,15 +36,16 @@ export async function initAdMob(): Promise<void> {
   if (!Capacitor.isNativePlatform()) return;
   if (admobInitialized) return;
   try {
+    const config = await getRemoteConfig();
     const { AdMob } = (await getAdMob()) ?? {};
     if (!AdMob) return;
     await AdMob.initialize({
       requestTrackingAuthorization: false,
       testingDevices: [],
-      initializeForTesting: IS_TESTING,
+      initializeForTesting: config.is_testing,
     });
     admobInitialized = true;
-    console.log(`[AdMob] Initialized (${IS_TESTING ? "TEST MODE" : "PRODUCTION"})`);
+    console.log(`[AdMob] Initialized (${config.is_testing ? "TEST MODE" : "PRODUCTION"}, rewarded: ${config.rewarded_ad_id})`);
   } catch (e) {
     console.warn("[AdMob] Init failed:", e);
   }
@@ -80,6 +67,7 @@ export async function showRewardedAd(): Promise<boolean> {
   }
 
   try {
+    const config = getCachedConfig();
     const { AdMob, RewardAdPluginEvents } = (await getAdMob()) ?? {};
     if (!AdMob) return false;
 
@@ -93,9 +81,10 @@ export async function showRewardedAd(): Promise<boolean> {
       () => { earned = true; }
     );
 
+    console.log(`[AdMob] Loading rewarded ad: ${config.rewarded_ad_id} (testing: ${config.is_testing})`);
     await AdMob.prepareRewardVideoAd({
-      adId: REWARDED_AD_ID,
-      isTesting: IS_TESTING,
+      adId: config.rewarded_ad_id,
+      isTesting: config.is_testing,
     });
 
     await new Promise<void>((resolve, reject) => {
@@ -142,7 +131,8 @@ export async function showInterstitialAd(): Promise<void> {
 
     await initAdMob();
 
-    await AdMob.prepareInterstitial({ adId: INTERSTITIAL_AD_ID, isTesting: IS_TESTING });
+    const config = getCachedConfig();
+    await AdMob.prepareInterstitial({ adId: config.interstitial_ad_id, isTesting: config.is_testing });
 
     await new Promise<void>((resolve) => {
       let done = false;

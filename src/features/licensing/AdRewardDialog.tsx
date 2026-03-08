@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { showRewardedAd } from "./admob-ads";
-import { grantAdBonus, AD_BONUS, type SalesModule } from "./licensing-db";
+import { grantAdBonus, getAdBonusValue, type SalesModule } from "./licensing-db";
 import { purchasePremium, restorePlayStorePurchase } from "./play-store-billing";
 import { OnlineCheckDialog } from "./OnlineCheckDialog";
 import { PlayCircle, Crown, Loader2, WifiOff, ShieldCheck, RotateCcw } from "lucide-react";
@@ -198,7 +198,7 @@ export function AdRewardDialog({
         {isOnline && (
           <div className="rounded-md border bg-primary/5 p-4 text-sm text-center space-y-1">
             <p className="font-semibold text-primary">Watch a short ad</p>
-            <p className="text-muted-foreground">Earn <strong>+{AD_BONUS} free entries</strong> for this section</p>
+            <p className="text-muted-foreground">Earn <strong>+{getAdBonusValue()} free entries</strong> for this section</p>
           </div>
         )}
 
@@ -217,7 +217,7 @@ export function AdRewardDialog({
             ) : !isOnline ? (
               <><WifiOff className="h-4 w-4 mr-2" />Connect to Internet to Watch Ad</>
             ) : (
-              <><PlayCircle className="h-4 w-4 mr-2" />Watch Ad → Get +{AD_BONUS} Entries</>
+              <><PlayCircle className="h-4 w-4 mr-2" />Watch Ad → Get +{getAdBonusValue()} Entries</>
             )}
           </Button>
           <Button
