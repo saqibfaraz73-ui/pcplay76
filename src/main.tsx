@@ -17,6 +17,8 @@ if (typeof window !== "undefined") {
 }
 
 ensureSangiFolders().catch(() => {});
+// Pre-fetch remote config (ad IDs, free limits) from GitHub Gist
+getRemoteConfig().catch(() => {});
 
 // Load currency symbol early so formatIntMoney works everywhere
 db.settings.get("app").then((s) => {
