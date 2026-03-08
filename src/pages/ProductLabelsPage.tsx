@@ -6,14 +6,14 @@ import { AdRewardDialog } from "@/features/licensing/AdRewardDialog";
 import type { MenuItem, Category, Settings } from "@/db/schema";
 import { makeId } from "@/features/admin/id";
 import { formatIntMoney } from "@/features/pos/format";
-import { barcodeToDataUrl } from "@/features/labels/barcode-generator";
+import { barcodeToDataUrl, renderBarcodeToCanvas } from "@/features/labels/barcode-generator";
 import { generateLabelPdf, generateLabelPdfBlob } from "@/features/labels/label-pdf";
 import { jsPDF } from "jspdf";
 import { printLabelsEscPos } from "@/features/labels/label-escpos";
 import { generateLabelsZpl } from "@/features/labels/label-zpl";
 import { generateLabelsTspl } from "@/features/labels/label-tspl";
 import { isNativeAndroid } from "@/features/pos/bluetooth-printer";
-import { sharePdfBlob, shareTextFile, savePdfBlob, saveTextFile } from "@/features/pos/share-utils";
+import { sharePdfBlob, shareTextFile, savePdfBlob, saveTextFile, shareFileBlob, saveFileBlob } from "@/features/pos/share-utils";
 import { sendToLabelPrinter, getLabelPrinterLanguage } from "@/features/pos/printer-routing";
 import { SaveShareMenu } from "@/components/SaveShareMenu";
 import * as XLSX from "xlsx";
@@ -27,7 +27,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/hooks/use-toast";
 import {
   Printer, Download, Search, Tags, CheckSquare, Square,
-  Upload, Plus, Trash2, Pencil, Save, Share2,
+  Upload, Plus, Trash2, Pencil, Save, Share2, Image,
 } from "lucide-react";
 
 /* ── Label item type used across all tabs ── */
@@ -456,7 +456,105 @@ export default function ProductLabelsPage() {
     }
   };
 
-  const isInList = (id: string) => labelItems.some((l) => l.id === id);
+  /** Generate barcode labels as a single PNG image and share/save */
+  const generateLabelsImage = (): Blob => {
+    const labels = buildLabels();
+    const cols = 3;
+    const cellW = 260;
+    const cellH = 120;
+    const padding = 16;
+    const rows = Math.ceil(labels.length / cols);
+    const canvasW = cols * cellW + padding * 2;
+    const canvasH = rows * cellH + padding * 2;
+
+    const canvas = document.createElement("canvas");
+    canvas.width = canvasW;
+    canvas.height = canvasH;
+    const ctx = canvas.getContext("2d")!;
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, canvasW, canvasH);
+
+    for (let i = 0; i < labels.length; i++) {
+      const l = labels[i];
+      const col = i % cols;
+      const row = Math.floor(i / cols);
+      const x = padding + col * cellW;
+      const y = padding + row * cellH;
+
+      // Border
+      ctx.strokeStyle = "#e0e0e0";
+      ctx.lineWidth = 1;
+      ctx.strokeRect(x, y, cellW, cellH);
+
+      // Name
+      ctx.fillStyle = "#000000";
+      ctx.font = "bold 13px sans-serif";
+      ctx.textAlign = "center";
+      const nameText = l.name.length > 28 ? l.name.slice(0, 26) + "…" : l.name;
+      ctx.fillText(nameText, x + cellW / 2, y + 18);
+
+      // Price
+      if (l.price !== "Rs 0") {
+        ctx.font = "11px sans-serif";
+        ctx.fillStyle = "#666666";
+        ctx.fillText(l.price, x + cellW / 2, y + 32);
+      }
+
+      // Barcode
+      const bcCanvas = renderBarcodeToCanvas(l.sku, { width: 200, height: 45 });
+      ctx.drawImage(bcCanvas, x + (cellW - 200) / 2, y + 38, 200, 45);
+
+      // SKU text
+      ctx.font = "9px monospace";
+      ctx.fillStyle = "#999999";
+      ctx.textAlign = "center";
+      ctx.fillText(l.sku, x + cellW / 2, y + 100);
+    }
+
+    // Convert to blob synchronously via toDataURL
+    const dataUrl = canvas.toDataURL("image/png");
+    const byteString = atob(dataUrl.split(",")[1]);
+    const mimeString = dataUrl.split(",")[0].split(":")[1].split(";")[0];
+    const ab = new ArrayBuffer(byteString.length);
+    const ia = new Uint8Array(ab);
+    for (let i = 0; i < byteString.length; i++) ia[i] = byteString.charCodeAt(i);
+    return new Blob([ab], { type: mimeString });
+  };
+
+  const handleShareImage = async () => {
+    if (labelItems.length === 0) {
+      toast({ title: "No items", description: "Add items to generate labels.", variant: "destructive" });
+      return;
+    }
+    const check = await canMakeSale("labelPrint", totalLabels);
+    if (!check.allowed) {
+      setAdMsg(check.message); setAdNeedsOnlineCheck(!!check.needsOnlineVerification); setPendingAction(null); setAdOpen(true);
+      return;
+    }
+    try {
+      const blob = generateLabelsImage();
+      await shareFileBlob(blob, `barcode-labels-${labelItems.length}.png`);
+      await incrementSaleCount("labelPrint", totalLabels); refreshUsage();
+    } catch (e: any) {
+      toast({ title: "Image Error", description: e.message, variant: "destructive" });
+    }
+  };
+
+  const handleSaveImage = async (fn?: string) => {
+    if (labelItems.length === 0) return;
+    const check = await canMakeSale("labelPrint", totalLabels);
+    if (!check.allowed) {
+      setAdMsg(check.message); setAdNeedsOnlineCheck(!!check.needsOnlineVerification); setPendingAction(null); setAdOpen(true);
+      return;
+    }
+    try {
+      const blob = generateLabelsImage();
+      await saveFileBlob(blob, fn ?? `barcode-labels-${labelItems.length}.png`);
+      await incrementSaleCount("labelPrint", totalLabels); refreshUsage();
+    } catch (e: any) {
+      toast({ title: "Image Error", description: e.message, variant: "destructive" });
+    }
+  };
 
   return (
     <>
@@ -724,6 +822,13 @@ export default function ProductLabelsPage() {
                   await incrementSaleCount("labelPrint", totalLabels); refreshUsage();
                 }}
                 onShare={handlePdfDownload}
+              />
+              <SaveShareMenu
+                label="Image (PNG)"
+                size="default"
+                getDefaultFileName={() => `barcode-labels-${labelItems.length}.png`}
+                onSave={async (fn) => handleSaveImage(fn)}
+                onShare={handleShareImage}
               />
             </div>
             <div className="flex flex-wrap gap-3">
