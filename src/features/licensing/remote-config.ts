@@ -27,7 +27,7 @@
  */
 
 // ─── YOUR GIST RAW URL HERE ─────────────────────────────────────────────────
-const GIST_RAW_URL = "";
+const GIST_RAW_URL = "https://gist.githubusercontent.com/saqibfaraz73-ui/bf2741c5006374a08ed48c89671c756b/raw/sangi_config.json";
 // ─────────────────────────────────────────────────────────────────────────────
 
 export interface RemoteConfig {
