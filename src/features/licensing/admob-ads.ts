@@ -36,15 +36,16 @@ export async function initAdMob(): Promise<void> {
   if (!Capacitor.isNativePlatform()) return;
   if (admobInitialized) return;
   try {
+    const config = await getRemoteConfig();
     const { AdMob } = (await getAdMob()) ?? {};
     if (!AdMob) return;
     await AdMob.initialize({
       requestTrackingAuthorization: false,
       testingDevices: [],
-      initializeForTesting: IS_TESTING,
+      initializeForTesting: config.is_testing,
     });
     admobInitialized = true;
-    console.log(`[AdMob] Initialized (${IS_TESTING ? "TEST MODE" : "PRODUCTION"})`);
+    console.log(`[AdMob] Initialized (${config.is_testing ? "TEST MODE" : "PRODUCTION"}, rewarded: ${config.rewarded_ad_id})`);
   } catch (e) {
     console.warn("[AdMob] Init failed:", e);
   }
