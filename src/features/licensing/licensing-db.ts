@@ -219,9 +219,11 @@ export async function canMakeSale(
   const lic = await getLicense();
   if (lic.isPremium) return { allowed: true, message: "" };
 
+  const freeLimit = getFreeLimitValue();
+  const adBonus = getAdBonusValue();
   const used = (lic[countKey[module]] as number) ?? 0;
   const bonus = (lic[bonusKey[module]] as number) ?? 0;
-  const totalAllowed = FREE_LIMIT + bonus;
+  const totalAllowed = freeLimit + bonus;
   const remaining = totalAllowed - used;
 
   if (used + count > totalAllowed) {
@@ -231,8 +233,8 @@ export async function canMakeSale(
       needsAd: true,
       message:
         remaining > 0
-          ? `You have ${remaining} free ${module} entr${remaining === 1 ? "y" : "ies"} left. Watch an ad to get ${AD_BONUS} more.`
-          : `Free limit reached (${FREE_LIMIT} entries). Watch a short ad to get ${AD_BONUS} more entries.`,
+          ? `You have ${remaining} free ${module} entr${remaining === 1 ? "y" : "ies"} left. Watch an ad to get ${adBonus} more.`
+          : `Free limit reached (${freeLimit} entries). Watch a short ad to get ${adBonus} more entries.`,
     };
   }
 
