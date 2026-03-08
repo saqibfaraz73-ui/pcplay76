@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { showRewardedAd } from "./admob-ads";
-import { grantAdBonus, AD_BONUS, type SalesModule } from "./licensing-db";
+import { grantAdBonus, getAdBonusValue, type SalesModule } from "./licensing-db";
 import { purchasePremium, restorePlayStorePurchase } from "./play-store-billing";
 import { OnlineCheckDialog } from "./OnlineCheckDialog";
 import { PlayCircle, Crown, Loader2, WifiOff, ShieldCheck, RotateCcw } from "lucide-react";
