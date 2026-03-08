@@ -131,7 +131,8 @@ export async function showInterstitialAd(): Promise<void> {
 
     await initAdMob();
 
-    await AdMob.prepareInterstitial({ adId: INTERSTITIAL_AD_ID, isTesting: IS_TESTING });
+    const config = getCachedConfig();
+    await AdMob.prepareInterstitial({ adId: config.interstitial_ad_id, isTesting: config.is_testing });
 
     await new Promise<void>((resolve) => {
       let done = false;
