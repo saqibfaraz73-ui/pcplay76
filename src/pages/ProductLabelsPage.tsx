@@ -88,18 +88,35 @@ export default function ProductLabelsPage() {
   }, []);
 
   React.useEffect(() => {
+    let ignore = false;
+
     (async () => {
-      const [cats, items, s] = await Promise.all([
-        db.categories.toArray(),
-        db.items.toArray(),
-        db.settings.get("app"),
-      ]);
-      setCategories(cats);
-      setAllItems(items);
-      setSettings(s ?? null);
-      refreshUsage();
+      try {
+        await ensureSeedData();
+        const [cats, items, s] = await Promise.all([
+          db.categories.toArray(),
+          db.items.toArray(),
+          db.settings.get("app"),
+        ]);
+        if (ignore) return;
+        setCategories(cats);
+        setAllItems(items);
+        setSettings(s ?? null);
+        await refreshUsage();
+      } catch (err: any) {
+        if (ignore) return;
+        toast({
+          title: "Failed to load products",
+          description: err?.message ?? "Please try again.",
+          variant: "destructive",
+        });
+      }
     })();
-  }, []);
+
+    return () => {
+      ignore = true;
+    };
+  }, [refreshUsage]);
 
   /* ── Menu tab: filtered items ── */
   const menuFiltered = React.useMemo(() => {
