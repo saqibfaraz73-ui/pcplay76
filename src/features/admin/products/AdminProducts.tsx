@@ -325,7 +325,7 @@ export function AdminProducts() {
     html5QrRef.current = qr;
     qr.start(
       { facingMode: "environment" },
-      { fps: 10, qrbox: { width: 250, height: 100 }, videoConstraints: { facingMode: "environment", advanced: [{ focusMode: "continuous" } as any] } },
+      { fps: 15, qrbox: { width: 280, height: 120 }, videoConstraints: { facingMode: "environment", width: { ideal: 1920 }, height: { ideal: 1080 }, advanced: [{ focusMode: "continuous" } as any] } },
       (decodedText) => {
         playScanBeep();
         setItemSku(decodedText);
@@ -334,6 +334,28 @@ export function AdminProducts() {
       () => {},
     ).catch(() => setSkuScanning(false));
   }, [skuScanning, stopSkuScanner]);
+
+  // Handle SKU import from file
+  const handleSkuImport = React.useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setSkuImporting(true);
+    try {
+      const result = await importSkuFromFile(file);
+      if (result) {
+        playScanBeep();
+        setItemSku(result);
+        toast({ title: "Barcode detected", description: result });
+      } else {
+        toast({ title: "No barcode found", description: "Could not detect a barcode in the selected file.", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Import failed", description: "Error reading the file.", variant: "destructive" });
+    } finally {
+      setSkuImporting(false);
+      if (skuImportRef.current) skuImportRef.current.value = "";
+    }
+  }, [toast]);
 
   // Stop scanner when dialog closes
   React.useEffect(() => {
