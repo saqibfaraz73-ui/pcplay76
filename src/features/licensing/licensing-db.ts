@@ -50,10 +50,20 @@ export async function setPremiumCache(val: boolean) {
   } catch {}
 }
 
-/** Free entries per section before watching an ad */
+/** Free entries per section before watching an ad (overridden by remote config) */
 export const FREE_LIMIT = 5;
-/** Entries granted after watching a rewarded ad */
+/** Entries granted after watching a rewarded ad (overridden by remote config) */
 export const AD_BONUS = 5;
+
+/** Get current free limit (uses remote config if available) */
+export function getFreeLimitValue(): number {
+  return getCachedConfig().free_limit ?? FREE_LIMIT;
+}
+
+/** Get current ad bonus (uses remote config if available) */
+export function getAdBonusValue(): number {
+  return getCachedConfig().ad_bonus ?? AD_BONUS;
+}
 /** Warning threshold — show warning after 7 days */
 export const ONLINE_WARNING_INTERVAL = 7 * 24 * 60 * 60 * 1000;
 /** Hard block — force verification after 8 days (7 + 24hr grace) */
