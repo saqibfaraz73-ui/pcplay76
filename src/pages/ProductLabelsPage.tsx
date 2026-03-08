@@ -6,7 +6,7 @@ import { AdRewardDialog } from "@/features/licensing/AdRewardDialog";
 import type { MenuItem, Category, Settings } from "@/db/schema";
 import { makeId } from "@/features/admin/id";
 import { formatIntMoney } from "@/features/pos/format";
-import { barcodeToDataUrl } from "@/features/labels/barcode-generator";
+import { barcodeToDataUrl, renderBarcodeToCanvas } from "@/features/labels/barcode-generator";
 import { generateLabelPdf, generateLabelPdfBlob } from "@/features/labels/label-pdf";
 import { jsPDF } from "jspdf";
 import { printLabelsEscPos } from "@/features/labels/label-escpos";
