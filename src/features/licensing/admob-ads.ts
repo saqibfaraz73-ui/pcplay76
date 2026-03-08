@@ -67,6 +67,7 @@ export async function showRewardedAd(): Promise<boolean> {
   }
 
   try {
+    const config = getCachedConfig();
     const { AdMob, RewardAdPluginEvents } = (await getAdMob()) ?? {};
     if (!AdMob) return false;
 
@@ -80,9 +81,10 @@ export async function showRewardedAd(): Promise<boolean> {
       () => { earned = true; }
     );
 
+    console.log(`[AdMob] Loading rewarded ad: ${config.rewarded_ad_id} (testing: ${config.is_testing})`);
     await AdMob.prepareRewardVideoAd({
-      adId: REWARDED_AD_ID,
-      isTesting: IS_TESTING,
+      adId: config.rewarded_ad_id,
+      isTesting: config.is_testing,
     });
 
     await new Promise<void>((resolve, reject) => {
