@@ -249,7 +249,7 @@ export async function grantAdBonus(module: SalesModule): Promise<void> {
   if (!rec) return;
   const key = bonusKey[module];
   const current = (rec[key] as number) ?? 0;
-  await (db as any).license.put({ ...rec, [key]: current + AD_BONUS });
+  await (db as any).license.put({ ...rec, [key]: current + getAdBonusValue() });
 }
 
 /**
