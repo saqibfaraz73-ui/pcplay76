@@ -198,7 +198,7 @@ export function AdRewardDialog({
         {isOnline && (
           <div className="rounded-md border bg-primary/5 p-4 text-sm text-center space-y-1">
             <p className="font-semibold text-primary">Watch a short ad</p>
-            <p className="text-muted-foreground">Earn <strong>+{AD_BONUS} free entries</strong> for this section</p>
+            <p className="text-muted-foreground">Earn <strong>+{getAdBonusValue()} free entries</strong> for this section</p>
           </div>
         )}
 
