@@ -12,24 +12,10 @@
  */
 
 import { Capacitor } from "@capacitor/core";
+import { getRemoteConfig, getCachedConfig } from "./remote-config";
 
-// ─── TOGGLE THIS BEFORE PUBLISHING ───────────────────────────────────────────
-const IS_TESTING = false; // ← production mode: real ads
-// ─────────────────────────────────────────────────────────────────────────────
-
-// Production IDs (your real AdMob IDs)
-const PROD_APP_ID        = "ca-app-pub-4619723552746870~3003839065";
-const PROD_REWARDED_ID   = "ca-app-pub-4619723552746870/5875321081";
-const PROD_INTERSTITIAL_ID = "ca-app-pub-4619723552746870/8350167538";
-
-// Google's official demo test ad unit IDs (safe for testing)
-const TEST_APP_ID          = "ca-app-pub-3940256099942544~3347511713";
-const TEST_REWARDED_ID     = "ca-app-pub-3940256099942544/5224354917";
-const TEST_INTERSTITIAL_ID = "ca-app-pub-3940256099942544/1033173712";
-
-export const ADMOB_APP_ID       = IS_TESTING ? TEST_APP_ID          : PROD_APP_ID;
-export const REWARDED_AD_ID     = IS_TESTING ? TEST_REWARDED_ID     : PROD_REWARDED_ID;
-export const INTERSTITIAL_AD_ID = IS_TESTING ? TEST_INTERSTITIAL_ID : PROD_INTERSTITIAL_ID;
+// App ID (not changeable remotely — used only at init)
+const ADMOB_APP_ID = "ca-app-pub-4619723552746870~3003839065";
 
 let admobModule: any = null;
 
