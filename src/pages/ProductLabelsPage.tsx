@@ -13,7 +13,7 @@ import { printLabelsEscPos } from "@/features/labels/label-escpos";
 import { generateLabelsZpl } from "@/features/labels/label-zpl";
 import { generateLabelsTspl } from "@/features/labels/label-tspl";
 import { isNativeAndroid } from "@/features/pos/bluetooth-printer";
-import { sharePdfBlob, shareTextFile, savePdfBlob, saveTextFile } from "@/features/pos/share-utils";
+import { sharePdfBlob, shareTextFile, savePdfBlob, saveTextFile, shareFileBlob, saveFileBlob } from "@/features/pos/share-utils";
 import { sendToLabelPrinter, getLabelPrinterLanguage } from "@/features/pos/printer-routing";
 import { SaveShareMenu } from "@/components/SaveShareMenu";
 import * as XLSX from "xlsx";
