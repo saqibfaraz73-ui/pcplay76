@@ -217,7 +217,7 @@ export function AdRewardDialog({
             ) : !isOnline ? (
               <><WifiOff className="h-4 w-4 mr-2" />Connect to Internet to Watch Ad</>
             ) : (
-              <><PlayCircle className="h-4 w-4 mr-2" />Watch Ad → Get +{AD_BONUS} Entries</>
+              <><PlayCircle className="h-4 w-4 mr-2" />Watch Ad → Get +{getAdBonusValue()} Entries</>
             )}
           </Button>
           <Button
