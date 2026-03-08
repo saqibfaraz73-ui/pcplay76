@@ -578,7 +578,7 @@ export function AdminProducts() {
                     id="itemSku"
                     value={itemSku}
                     onChange={(e) => setItemSku(e.target.value)}
-                    placeholder="Enter or scan"
+                    placeholder="Enter, scan or import"
                     className="flex-1"
                   />
                   <Button
@@ -586,11 +586,29 @@ export function AdminProducts() {
                     variant={skuScanning ? "destructive" : "outline"}
                     size="icon"
                     onClick={() => (skuScanning ? stopSkuScanner() : startSkuScanner())}
-                    title="Scan barcode"
+                    title="Scan barcode with camera"
                   >
                     <ScanBarcode className="h-4 w-4" />
                   </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={() => skuImportRef.current?.click()}
+                    disabled={skuImporting}
+                    title="Import barcode from file (image, PDF, ZPL, TSPL)"
+                  >
+                    <FileUp className="h-4 w-4" />
+                  </Button>
+                  <input
+                    ref={skuImportRef}
+                    type="file"
+                    accept="image/*,.pdf,.zpl,.tspl,.tsc,.txt"
+                    className="hidden"
+                    onChange={handleSkuImport}
+                  />
                 </div>
+                {skuImporting && <p className="text-xs text-muted-foreground">Detecting barcode…</p>}
                 <div ref={skuScannerRef} className={skuScanning ? "mt-2 rounded-md overflow-hidden [&_img]:!hidden" : "hidden"} />
               </div>
 
