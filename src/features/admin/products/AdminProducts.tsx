@@ -26,7 +26,8 @@ import { useToast } from "@/hooks/use-toast";
 import { parseNonDecimalInt, formatIntMoney } from "@/features/pos/format";
 import { makeId } from "@/features/admin/id";
 import { ItemImagePicker } from "@/features/admin/products/ItemImagePicker";
-import { CalendarIcon, Download, Upload, ScanBarcode } from "lucide-react";
+import { CalendarIcon, Download, Upload, ScanBarcode, FileUp } from "lucide-react";
+import { importSkuFromFile } from "@/features/admin/products/sku-import";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { exportMenuItemsToExcel, importMenuItemsFromCSV, downloadExcel } from "./menu-import-export";
@@ -75,6 +76,8 @@ export function AdminProducts() {
   const skuScannerRef = React.useRef<HTMLDivElement>(null);
   const html5QrRef = React.useRef<Html5Qrcode | null>(null);
   const importInputRef = React.useRef<HTMLInputElement>(null);
+  const skuImportRef = React.useRef<HTMLInputElement>(null);
+  const [skuImporting, setSkuImporting] = React.useState(false);
 
   const refresh = React.useCallback(async () => {
     const [cats, its, s] = await Promise.all([
@@ -322,7 +325,7 @@ export function AdminProducts() {
     html5QrRef.current = qr;
     qr.start(
       { facingMode: "environment" },
-      { fps: 10, qrbox: { width: 250, height: 100 }, videoConstraints: { facingMode: "environment", advanced: [{ focusMode: "continuous" } as any] } },
+      { fps: 15, qrbox: { width: 280, height: 120 }, videoConstraints: { facingMode: "environment", width: { ideal: 1920 }, height: { ideal: 1080 }, advanced: [{ focusMode: "continuous" } as any] } },
       (decodedText) => {
         playScanBeep();
         setItemSku(decodedText);
@@ -331,6 +334,28 @@ export function AdminProducts() {
       () => {},
     ).catch(() => setSkuScanning(false));
   }, [skuScanning, stopSkuScanner]);
+
+  // Handle SKU import from file
+  const handleSkuImport = React.useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setSkuImporting(true);
+    try {
+      const result = await importSkuFromFile(file);
+      if (result) {
+        playScanBeep();
+        setItemSku(result);
+        toast({ title: "Barcode detected", description: result });
+      } else {
+        toast({ title: "No barcode found", description: "Could not detect a barcode in the selected file.", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Import failed", description: "Error reading the file.", variant: "destructive" });
+    } finally {
+      setSkuImporting(false);
+      if (skuImportRef.current) skuImportRef.current.value = "";
+    }
+  }, [toast]);
 
   // Stop scanner when dialog closes
   React.useEffect(() => {
@@ -553,7 +578,7 @@ export function AdminProducts() {
                     id="itemSku"
                     value={itemSku}
                     onChange={(e) => setItemSku(e.target.value)}
-                    placeholder="Enter or scan"
+                    placeholder="Enter, scan or import"
                     className="flex-1"
                   />
                   <Button
@@ -561,11 +586,29 @@ export function AdminProducts() {
                     variant={skuScanning ? "destructive" : "outline"}
                     size="icon"
                     onClick={() => (skuScanning ? stopSkuScanner() : startSkuScanner())}
-                    title="Scan barcode"
+                    title="Scan barcode with camera"
                   >
                     <ScanBarcode className="h-4 w-4" />
                   </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={() => skuImportRef.current?.click()}
+                    disabled={skuImporting}
+                    title="Import barcode from file (image, PDF, ZPL, TSPL)"
+                  >
+                    <FileUp className="h-4 w-4" />
+                  </Button>
+                  <input
+                    ref={skuImportRef}
+                    type="file"
+                    accept="image/*,.pdf,.zpl,.tspl,.tsc,.txt"
+                    className="hidden"
+                    onChange={handleSkuImport}
+                  />
                 </div>
+                {skuImporting && <p className="text-xs text-muted-foreground">Detecting barcode…</p>}
                 <div ref={skuScannerRef} className={skuScanning ? "mt-2 rounded-md overflow-hidden [&_img]:!hidden" : "hidden"} />
               </div>
 
