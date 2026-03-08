@@ -823,6 +823,13 @@ export default function ProductLabelsPage() {
                 }}
                 onShare={handlePdfDownload}
               />
+              <SaveShareMenu
+                label="Image (PNG)"
+                size="default"
+                getDefaultFileName={() => `barcode-labels-${labelItems.length}.png`}
+                onSave={async (fn) => handleSaveImage(fn)}
+                onShare={handleShareImage}
+              />
             </div>
             <div className="flex flex-wrap gap-3">
               <SaveShareMenu
