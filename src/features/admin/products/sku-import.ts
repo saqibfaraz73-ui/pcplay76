@@ -3,8 +3,46 @@
  */
 import { Html5Qrcode } from "html5-qrcode";
 
+/**
+ * Upscale an image file to ensure minimum resolution for barcode detection.
+ * Small or blurry barcodes often fail to scan — rendering at higher res helps.
+ */
+async function upscaleImageIfNeeded(file: File, minWidth = 800): Promise<File> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      if (img.width >= minWidth) {
+        URL.revokeObjectURL(img.src);
+        resolve(file);
+        return;
+      }
+      const scale = Math.ceil(minWidth / img.width);
+      const canvas = document.createElement("canvas");
+      canvas.width = img.width * scale;
+      canvas.height = img.height * scale;
+      const ctx = canvas.getContext("2d")!;
+      // Use pixelated rendering to keep barcode bars crisp
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      URL.revokeObjectURL(img.src);
+      canvas.toBlob((blob) => {
+        if (!blob) { resolve(file); return; }
+        resolve(new File([blob], file.name, { type: "image/png" }));
+      }, "image/png");
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(img.src);
+      resolve(file);
+    };
+    img.src = URL.createObjectURL(file);
+  });
+}
+
 /** Extract barcode from an image file using html5-qrcode */
 export async function detectBarcodeFromImage(file: File): Promise<string | null> {
+  // Upscale small images for better detection
+  const processedFile = await upscaleImageIfNeeded(file);
+  
   const containerId = "sku-import-hidden-" + Date.now();
   const div = document.createElement("div");
   div.id = containerId;
@@ -12,7 +50,7 @@ export async function detectBarcodeFromImage(file: File): Promise<string | null>
   document.body.appendChild(div);
   try {
     const qr = new Html5Qrcode(containerId);
-    const result = await qr.scanFileV2(file, /* showImage */ false);
+    const result = await qr.scanFileV2(processedFile, /* showImage */ false);
     try { qr.clear(); } catch {}
     return result?.decodedText || null;
   } catch {
