@@ -20,7 +20,6 @@ export async function detectBarcodeFromImage(file: File): Promise<string | null>
   } finally {
     div.remove();
   }
-  }
 }
 
 /** Extract barcode data from ZPL content */
