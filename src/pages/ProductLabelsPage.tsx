@@ -556,6 +556,8 @@ export default function ProductLabelsPage() {
     }
   };
 
+  const isInList = (id: string) => labelItems.some((l) => l.id === id);
+
   return (
     <>
     <div className="space-y-4">
