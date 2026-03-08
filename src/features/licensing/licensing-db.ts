@@ -11,6 +11,7 @@
 
 import { db } from "@/db/appDb";
 import { checkPlayStorePremium } from "./play-store-billing";
+import { getCachedConfig } from "./remote-config";
 
 export type LicenseRecord = {
   id: "license";
