@@ -5,13 +5,21 @@ import { Html5Qrcode } from "html5-qrcode";
 
 /** Extract barcode from an image file using html5-qrcode */
 export async function detectBarcodeFromImage(file: File): Promise<string | null> {
+  const containerId = "sku-import-hidden-" + Date.now();
+  const div = document.createElement("div");
+  div.id = containerId;
+  div.style.display = "none";
+  document.body.appendChild(div);
   try {
-    const qr = new Html5Qrcode("sku-import-hidden");
+    const qr = new Html5Qrcode(containerId);
     const result = await qr.scanFileV2(file, /* showImage */ false);
     try { qr.clear(); } catch {}
     return result?.decodedText || null;
   } catch {
     return null;
+  } finally {
+    div.remove();
+  }
   }
 }
 
