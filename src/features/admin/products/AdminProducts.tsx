@@ -76,6 +76,8 @@ export function AdminProducts() {
   const skuScannerRef = React.useRef<HTMLDivElement>(null);
   const html5QrRef = React.useRef<Html5Qrcode | null>(null);
   const importInputRef = React.useRef<HTMLInputElement>(null);
+  const skuImportRef = React.useRef<HTMLInputElement>(null);
+  const [skuImporting, setSkuImporting] = React.useState(false);
 
   const refresh = React.useCallback(async () => {
     const [cats, its, s] = await Promise.all([
