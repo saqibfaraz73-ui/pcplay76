@@ -175,7 +175,7 @@ export function AdminProducts() {
           if (section) {
             newMap[section] = catSectionPrinter;
           }
-          await db.settings.put({ ...s, printerSections: newSections, sectionPrinterMap: newMap, updatedAt: Date.now() });
+          await db.settings.put({ ...s, printerSections: newSections, sectionPrinterMap: newMap as Settings["sectionPrinterMap"], updatedAt: Date.now() });
           setPrinterSections(newSections);
           setSectionPrinterMap(newMap);
         }
