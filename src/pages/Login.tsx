@@ -344,7 +344,45 @@ export default function Login() {
         </Card>
       )}
 
-      {/* MASTER RESET */}
+      {/* FORGOT USERNAME */}
+      {screen === "forgot-username" && (
+        <Card className="w-full">
+          <CardHeader>
+            <CardTitle>Recover Username</CardTitle>
+            <CardDescription>Answer your security question to see your admin name.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {!recoveredUsername ? (
+              <form onSubmit={onVerifyUsernameAnswer} className="space-y-4">
+                <div className="rounded-md border bg-muted/50 p-3">
+                  <p className="text-sm font-medium">{forgotUsernameQuestion}</p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="forgotUsernameAnswer">Your Answer</Label>
+                  <Input id="forgotUsernameAnswer" value={forgotUsernameAnswer} onChange={(e) => setForgotUsernameAnswer(e.target.value)} autoComplete="off" />
+                </div>
+                <Button type="submit" className="w-full" disabled={loading}>
+                  {loading ? "Checking..." : "Verify"}
+                </Button>
+                <Button type="button" variant="link" className="w-full text-xs" onClick={() => setScreen("login")}>
+                  Back to login
+                </Button>
+              </form>
+            ) : (
+              <div className="space-y-4">
+                <div className="rounded-md border border-primary/30 bg-primary/5 p-4 text-center">
+                  <p className="text-sm text-muted-foreground mb-1">Your admin username is:</p>
+                  <p className="text-2xl font-bold font-mono tracking-wider">{recoveredUsername}</p>
+                </div>
+                <Button className="w-full" onClick={() => { setRecoveredUsername(null); setScreen("login"); }}>
+                  Back to Login
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {screen === "master-reset" && (
         <Card className="w-full">
           <CardHeader>
