@@ -19,7 +19,7 @@ const SECURITY_QUESTIONS = [
   "What was your childhood nickname?",
 ];
 
-type Screen = "checking" | "register" | "login" | "forgot" | "master-reset";
+type Screen = "checking" | "register" | "login" | "forgot" | "forgot-username" | "master-reset";
 
 export default function Login() {
   const { toast } = useToast();
