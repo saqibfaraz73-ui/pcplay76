@@ -401,12 +401,12 @@ export function AdminProducts() {
       </Card>
 
       <Card>
-        <CardHeader className="flex flex-row items-start justify-between gap-3">
-          <div>
+        <CardHeader className="space-y-2">
+          <div className="min-w-0">
             <CardTitle>Menu Items</CardTitle>
             <CardDescription>Create, edit, and delete items. Prices are integers (no decimals).</CardDescription>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <input
               ref={importInputRef}
               type="file"
@@ -422,8 +422,8 @@ export function AdminProducts() {
               <Download className="h-4 w-4 mr-1" />
               Export
             </Button>
-            <Button onClick={openNewItem} disabled={categories.length === 0}>
-              New
+            <Button size="sm" onClick={openNewItem} disabled={categories.length === 0}>
+              New Item
             </Button>
           </div>
         </CardHeader>
