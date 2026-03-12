@@ -30,6 +30,7 @@ export default function Login() {
   const [screen, setScreen] = React.useState<Screen>("checking");
   const [loading, setLoading] = React.useState(false);
   const [isPremium, setIsPremium] = React.useState(false);
+  const [adminExists, setAdminExists] = React.useState(false);
 
   React.useEffect(() => {
     getLicense().then((lic) => setIsPremium(lic.isPremium)).catch(() => {});
@@ -60,6 +61,7 @@ export default function Login() {
   React.useEffect(() => {
     (async () => {
       const registered = await isAdminRegistered();
+      setAdminExists(registered);
       setScreen(registered ? "login" : "register");
     })();
   }, []);
@@ -74,6 +76,14 @@ export default function Login() {
 
   const onRegister = async (e: React.FormEvent) => {
     e.preventDefault();
+    // Prevent registration if admin already exists
+    const alreadyExists = await isAdminRegistered();
+    if (alreadyExists) {
+      toast({ title: "Admin account already exists", description: "Please login with your existing admin credentials.", variant: "destructive" });
+      setAdminExists(true);
+      setScreen("login");
+      return;
+    }
     if (!regName.trim() || !regPassword.trim()) {
       toast({ title: "Name and password are required", variant: "destructive" });
       return;
@@ -93,6 +103,7 @@ export default function Login() {
     setLoading(true);
     try {
       await registerAdmin(regName, "", regPassword, regQuestion, regAnswer);
+      setAdminExists(true);
       const result = await login({ identifier: regName.trim(), credential: regPassword.trim() });
       if (result.ok) {
         toast({ title: "Welcome!", description: "Admin account created successfully." });
@@ -184,7 +195,8 @@ export default function Login() {
       if (!ok) {
         toast({ title: "Wrong PIN", description: "Master reset PIN is incorrect.", variant: "destructive" });
       } else {
-        toast({ title: "App reset", description: "Admin account cleared. Please register again." });
+      toast({ title: "App reset", description: "Admin account cleared. Please register again." });
+        setAdminExists(false);
         setScreen("register");
       }
     } finally {
@@ -285,9 +297,11 @@ export default function Login() {
                 {loading ? "Logging in..." : "Enter"}
               </Button>
               <div className="flex justify-between flex-wrap gap-1">
-                <Button type="button" variant="link" className="text-xs" onClick={() => setScreen("register")}>
-                  New? Register
-                </Button>
+                {!adminExists && (
+                  <Button type="button" variant="link" className="text-xs" onClick={() => setScreen("register")}>
+                    New? Register
+                  </Button>
+                )}
                 <Button type="button" variant="link" className="text-xs" onClick={openForgotUsername}>
                   Forgot username?
                 </Button>
