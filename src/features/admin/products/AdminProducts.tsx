@@ -365,12 +365,14 @@ export function AdminProducts() {
   return (
     <div className="grid gap-4 lg:grid-cols-2">
       <Card>
-        <CardHeader className="flex flex-row items-start justify-between gap-3">
-          <div>
-            <CardTitle>Categories</CardTitle>
-            <CardDescription>Create, edit, and delete menu categories.</CardDescription>
+        <CardHeader className="space-y-2">
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <div className="min-w-0">
+              <CardTitle>Categories</CardTitle>
+              <CardDescription>Create, edit, and delete menu categories.</CardDescription>
+            </div>
+            <Button size="sm" onClick={openNewCategory}>New Category</Button>
           </div>
-          <Button onClick={openNewCategory}>New</Button>
         </CardHeader>
         <CardContent className="space-y-2">
           {categories.length === 0 ? (
@@ -399,12 +401,12 @@ export function AdminProducts() {
       </Card>
 
       <Card>
-        <CardHeader className="flex flex-row items-start justify-between gap-3">
-          <div>
+        <CardHeader className="space-y-2">
+          <div className="min-w-0">
             <CardTitle>Menu Items</CardTitle>
             <CardDescription>Create, edit, and delete items. Prices are integers (no decimals).</CardDescription>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <input
               ref={importInputRef}
               type="file"
@@ -420,8 +422,8 @@ export function AdminProducts() {
               <Download className="h-4 w-4 mr-1" />
               Export
             </Button>
-            <Button onClick={openNewItem} disabled={categories.length === 0}>
-              New
+            <Button size="sm" onClick={openNewItem} disabled={categories.length === 0}>
+              New Item
             </Button>
           </div>
         </CardHeader>
@@ -436,8 +438,8 @@ export function AdminProducts() {
               const expiryStr = i.expiryDate ? format(new Date(i.expiryDate), "dd MMM yyyy") : null;
               const isExpired = i.expiryDate && i.expiryDate < Date.now();
               return (
-                <div key={i.id} className="flex items-center justify-between gap-2 rounded-md border p-2">
-                  <div className="min-w-0">
+                <div key={i.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md border p-2">
+                  <div className="min-w-0 flex-1">
                     <div className="truncate text-sm font-medium">{i.name}</div>
                     <div className="text-xs text-muted-foreground">
                       {cat} • Sell {formatIntMoney(i.price)}
@@ -455,12 +457,12 @@ export function AdminProducts() {
                       ) : null}
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1 shrink-0">
                     <Button variant="outline" size="sm" onClick={() => openEditItem(i)}>
                       Edit
                     </Button>
                     <Button variant="destructive" size="sm" onClick={() => setDeleteConfirm({ type: "item", item: i })}>
-                      Delete
+                      Del
                     </Button>
                   </div>
                 </div>
