@@ -33,7 +33,7 @@ let _initialized = false;
  */
 export async function initBilling(): Promise<void> {
   if (_initialized || !Capacitor.isNativePlatform()) return;
-  if (REVENUECAT_API_KEY === "YOUR_REVENUECAT_API_KEY_HERE") {
+  if ((REVENUECAT_API_KEY as string) === "YOUR_REVENUECAT_API_KEY_HERE") {
     console.warn("[PlayBilling] RevenueCat API key not set. Billing disabled.");
     return;
   }
