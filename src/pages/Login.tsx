@@ -61,6 +61,7 @@ export default function Login() {
   React.useEffect(() => {
     (async () => {
       const registered = await isAdminRegistered();
+      setAdminExists(registered);
       setScreen(registered ? "login" : "register");
     })();
   }, []);
