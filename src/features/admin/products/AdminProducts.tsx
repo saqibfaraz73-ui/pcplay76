@@ -438,8 +438,8 @@ export function AdminProducts() {
               const expiryStr = i.expiryDate ? format(new Date(i.expiryDate), "dd MMM yyyy") : null;
               const isExpired = i.expiryDate && i.expiryDate < Date.now();
               return (
-                <div key={i.id} className="flex items-center justify-between gap-2 rounded-md border p-2">
-                  <div className="min-w-0">
+                <div key={i.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md border p-2">
+                  <div className="min-w-0 flex-1">
                     <div className="truncate text-sm font-medium">{i.name}</div>
                     <div className="text-xs text-muted-foreground">
                       {cat} • Sell {formatIntMoney(i.price)}
@@ -457,12 +457,12 @@ export function AdminProducts() {
                       ) : null}
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1 shrink-0">
                     <Button variant="outline" size="sm" onClick={() => openEditItem(i)}>
                       Edit
                     </Button>
                     <Button variant="destructive" size="sm" onClick={() => setDeleteConfirm({ type: "item", item: i })}>
-                      Delete
+                      Del
                     </Button>
                   </div>
                 </div>
