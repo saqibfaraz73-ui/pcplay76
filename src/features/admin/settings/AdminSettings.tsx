@@ -90,6 +90,8 @@ export function AdminSettings() {
   const [adminPhone, setAdminPhone] = React.useState("");
   const [adminPassword, setAdminPassword] = React.useState("");
   const [confirmAdminPassword, setConfirmAdminPassword] = React.useState("");
+  const [adminSecurityQuestion, setAdminSecurityQuestion] = React.useState("");
+  const [adminSecurityAnswer, setAdminSecurityAnswer] = React.useState("");
 
   // Staff accounts
   const [staffAccounts, setStaffAccounts] = React.useState<StaffAccount[]>([]);
@@ -154,6 +156,8 @@ export function AdminSettings() {
       setAdminAccount(admin);
       setAdminName(admin.name);
       setAdminPhone(admin.phone);
+      setAdminSecurityQuestion(admin.securityQuestion || "");
+      setAdminSecurityAnswer("");
     }
 
     // Load staff accounts
@@ -238,14 +242,15 @@ export function AdminSettings() {
       name: adminName.trim(),
       phone: adminPhone.trim(),
       password: adminPassword.trim() || adminAccount?.password || "",
-      securityQuestion: adminAccount?.securityQuestion || "",
-      securityAnswer: adminAccount?.securityAnswer || "",
+      securityQuestion: adminSecurityQuestion.trim() || adminAccount?.securityQuestion || "",
+      securityAnswer: adminSecurityAnswer.trim().toLowerCase() || adminAccount?.securityAnswer || "",
       createdAt: adminAccount?.createdAt || Date.now(),
     };
     await db.adminAccount.put(updated);
     setAdminAccount(updated);
     setAdminPassword("");
     setConfirmAdminPassword("");
+    setAdminSecurityAnswer("");
     toast({ title: "Admin account updated" });
   };
 
@@ -707,6 +712,16 @@ export function AdminSettings() {
           {adminPassword && confirmAdminPassword && adminPassword !== confirmAdminPassword && (
             <p className="text-xs text-destructive">Passwords do not match.</p>
           )}
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="adminSecQ">Security Question</Label>
+              <Input id="adminSecQ" value={adminSecurityQuestion} onChange={(e) => setAdminSecurityQuestion(e.target.value)} placeholder="e.g. Your pet's name?" />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="adminSecA">New Security Answer</Label>
+              <Input id="adminSecA" value={adminSecurityAnswer} onChange={(e) => setAdminSecurityAnswer(e.target.value)} placeholder="Leave empty to keep current" />
+            </div>
+          </div>
           <div className="flex justify-end">
             <Button onClick={() => void saveAdminAccount()} disabled={adminPassword !== "" && adminPassword !== confirmAdminPassword}>
               Update Admin
