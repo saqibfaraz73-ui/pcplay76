@@ -50,6 +50,9 @@ export default function Login() {
   const [securityQuestion, setSecurityQuestion] = React.useState("");
   const [forgotAnswer, setForgotAnswer] = React.useState("");
   const [recoveredPassword, setRecoveredPassword] = React.useState<string | null>(null);
+  const [recoveredUsername, setRecoveredUsername] = React.useState<string | null>(null);
+  const [forgotUsernameQuestion, setForgotUsernameQuestion] = React.useState("");
+  const [forgotUsernameAnswer, setForgotUsernameAnswer] = React.useState("");
 
   // Master reset
   const [masterPin, setMasterPin] = React.useState("");
