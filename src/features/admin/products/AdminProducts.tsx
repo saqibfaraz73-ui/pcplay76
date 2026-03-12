@@ -365,12 +365,14 @@ export function AdminProducts() {
   return (
     <div className="grid gap-4 lg:grid-cols-2">
       <Card>
-        <CardHeader className="flex flex-row items-start justify-between gap-3">
-          <div>
-            <CardTitle>Categories</CardTitle>
-            <CardDescription>Create, edit, and delete menu categories.</CardDescription>
+        <CardHeader className="space-y-2">
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <div className="min-w-0">
+              <CardTitle>Categories</CardTitle>
+              <CardDescription>Create, edit, and delete menu categories.</CardDescription>
+            </div>
+            <Button size="sm" onClick={openNewCategory}>New Category</Button>
           </div>
-          <Button onClick={openNewCategory}>New</Button>
         </CardHeader>
         <CardContent className="space-y-2">
           {categories.length === 0 ? (
