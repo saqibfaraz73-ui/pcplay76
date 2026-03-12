@@ -712,6 +712,16 @@ export function AdminSettings() {
           {adminPassword && confirmAdminPassword && adminPassword !== confirmAdminPassword && (
             <p className="text-xs text-destructive">Passwords do not match.</p>
           )}
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="adminSecQ">Security Question</Label>
+              <Input id="adminSecQ" value={adminSecurityQuestion} onChange={(e) => setAdminSecurityQuestion(e.target.value)} placeholder="e.g. Your pet's name?" />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="adminSecA">New Security Answer</Label>
+              <Input id="adminSecA" value={adminSecurityAnswer} onChange={(e) => setAdminSecurityAnswer(e.target.value)} placeholder="Leave empty to keep current" />
+            </div>
+          </div>
           <div className="flex justify-end">
             <Button onClick={() => void saveAdminAccount()} disabled={adminPassword !== "" && adminPassword !== confirmAdminPassword}>
               Update Admin
