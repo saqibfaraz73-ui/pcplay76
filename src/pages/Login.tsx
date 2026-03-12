@@ -296,9 +296,11 @@ export default function Login() {
                 {loading ? "Logging in..." : "Enter"}
               </Button>
               <div className="flex justify-between flex-wrap gap-1">
-                <Button type="button" variant="link" className="text-xs" onClick={() => setScreen("register")}>
-                  New? Register
-                </Button>
+                {!adminExists && (
+                  <Button type="button" variant="link" className="text-xs" onClick={() => setScreen("register")}>
+                    New? Register
+                  </Button>
+                )}
                 <Button type="button" variant="link" className="text-xs" onClick={openForgotUsername}>
                   Forgot username?
                 </Button>
