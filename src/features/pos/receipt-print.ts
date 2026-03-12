@@ -381,7 +381,7 @@ async function shouldPrintViaMain(): Promise<boolean> {
   }
 }
 
-async function sendPrintToMain(text: string, section: "sales" | "tables" = "sales"): Promise<void> {
+async function sendPrintToMain(text: string, section: string = "sales"): Promise<void> {
   // Dedup: prevent duplicate prints when Main is slow or connection drops
   if (isDuplicatePrint(text)) return;
 
