@@ -54,7 +54,7 @@ export type PrintJobPayload = {
   /** "bluetooth" | "usb" — legacy, Main now auto-detects via section routing */
   printerType: "bluetooth" | "usb";
   /** Which section originated this print job */
-  section?: "sales" | "tables";
+  section?: string;
 };
 
 /** Connection configuration stored locally on each device */
