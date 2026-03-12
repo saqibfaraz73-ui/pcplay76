@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/auth/AuthProvider";
-import { isAdminRegistered, registerAdmin, getSecurityQuestion, verifySecurityAnswer, masterReset } from "@/auth/auth";
+import { isAdminRegistered, registerAdmin, getSecurityQuestion, verifySecurityAnswer, verifySecurityAnswerForUsername, masterReset } from "@/auth/auth";
 import appLogo from "@/assets/app-logo.jpg";
 import { getLicense } from "@/features/licensing/licensing-db";
 
