@@ -240,7 +240,10 @@ export function AdminBackupRestore() {
       const parsed = JSON.parse(text) as BackupPayloadV1;
       if (parsed.version !== 1) throw new Error("Unsupported backup version.");
       await restoreFromPayload(parsed);
-      toast({ title: "Restore complete", description: "Data replaced from backup." });
+      toast({ title: "Restore complete", description: "Data restored. Please log in with your restored admin credentials." });
+      // Clear current session and reload so user logs in with restored admin account
+      try { localStorage.removeItem("sangi_pos.auth.session.v1"); } catch {}
+      setTimeout(() => window.location.replace("/login"), 1200);
     } catch (e: any) {
       toast({ title: "Restore failed", description: e?.message ?? String(e), variant: "destructive" });
     }
