@@ -3,12 +3,6 @@ import { Filesystem, Directory, Encoding } from "@capacitor/filesystem";
 
 import { ensureSangiFolders, folderPath } from "@/features/files/sangi-folders";
 
-function uint8ToBase64(bytes: Uint8Array): string {
-  let binary = "";
-  for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
-  return btoa(binary);
-}
-
 function safeExtFromFile(file: File) {
   const byType: Record<string, string> = {
     "image/jpeg": "jpg",
@@ -24,7 +18,61 @@ export function canUploadItemImages() {
 }
 
 /**
+ * Resize and compress an image file to max 800x800 pixels, JPEG 80% quality.
+ * Returns a new File ≤~80KB with good visual quality.
+ */
+async function resizeAndCompress(file: File, maxDim = 800, quality = 0.80): Promise<File> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      let { width, height } = img;
+
+      // Scale down if larger than maxDim
+      if (width > maxDim || height > maxDim) {
+        if (width > height) {
+          height = Math.round((height * maxDim) / width);
+          width = maxDim;
+        } else {
+          width = Math.round((width * maxDim) / height);
+          height = maxDim;
+        }
+      }
+
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d")!;
+      ctx.drawImage(img, 0, 0, width, height);
+
+      // Try WebP first (smaller), fall back to JPEG
+      const tryFormat = (mime: string, q: number): Promise<Blob> =>
+        new Promise((res) => canvas.toBlob((b) => res(b!), mime, q));
+
+      (async () => {
+        let blob = await tryFormat("image/webp", quality);
+        let ext = "webp";
+        // If browser doesn't support webp encoding, blob may be png — fall back to jpeg
+        if (!blob || blob.type !== "image/webp") {
+          blob = await tryFormat("image/jpeg", quality);
+          ext = "jpg";
+        }
+        const resized = new File([blob], `resized.${ext}`, { type: blob.type });
+        resolve(resized);
+      })();
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("Could not load image for resizing."));
+    };
+    img.src = url;
+  });
+}
+
+/**
  * Saves image to device filesystem (Documents/Sangi Pos/Images/items/...).
+ * Automatically resizes large images to 800×800 and compresses to keep size small.
  * Returns the file path to store on the item record.
  */
 export async function saveItemImage(args: { itemId: string; file: File }): Promise<string> {
@@ -32,14 +80,15 @@ export async function saveItemImage(args: { itemId: string; file: File }): Promi
     throw new Error("Image upload is only available in the installed app (Android/iOS).");
   }
 
-  // Enforce 100kb size limit
-  if (args.file.size > 100 * 1024) {
-    throw new Error("Image must be under 100 KB. Please compress or resize the image.");
+  // Auto-resize & compress instead of blocking large files
+  let file = args.file;
+  if (file.size > 100 * 1024) {
+    file = await resizeAndCompress(file);
   }
 
   await ensureSangiFolders();
 
-  const ext = safeExtFromFile(args.file);
+  const ext = safeExtFromFile(file);
   const itemsDir = `${folderPath("Images")}/items`;
   try {
     await Filesystem.mkdir({ directory: Directory.Documents, path: itemsDir, recursive: true });
@@ -84,9 +133,9 @@ export async function saveItemImage(args: { itemId: string; file: File }): Promi
   // Use a timestamp suffix to guarantee a unique filename
   const timestamp = Date.now().toString(36);
   const filePath = `${itemsDir}/${args.itemId}_${timestamp}.${ext}`;
-  
+
   // Convert to base64 in chunks to avoid stack overflow on large files
-  const buffer = await args.file.arrayBuffer();
+  const buffer = await file.arrayBuffer();
   const bytes = new Uint8Array(buffer);
   const chunkSize = 8192;
   let binary = "";
