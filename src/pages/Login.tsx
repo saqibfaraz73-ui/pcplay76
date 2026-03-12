@@ -76,6 +76,14 @@ export default function Login() {
 
   const onRegister = async (e: React.FormEvent) => {
     e.preventDefault();
+    // Prevent registration if admin already exists
+    const alreadyExists = await isAdminRegistered();
+    if (alreadyExists) {
+      toast({ title: "Admin account already exists", description: "Please login with your existing admin credentials.", variant: "destructive" });
+      setAdminExists(true);
+      setScreen("login");
+      return;
+    }
     if (!regName.trim() || !regPassword.trim()) {
       toast({ title: "Name and password are required", variant: "destructive" });
       return;
@@ -95,6 +103,7 @@ export default function Login() {
     setLoading(true);
     try {
       await registerAdmin(regName, "", regPassword, regQuestion, regAnswer);
+      setAdminExists(true);
       const result = await login({ identifier: regName.trim(), credential: regPassword.trim() });
       if (result.ok) {
         toast({ title: "Welcome!", description: "Admin account created successfully." });
