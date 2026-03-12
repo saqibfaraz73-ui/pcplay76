@@ -90,6 +90,8 @@ export function AdminSettings() {
   const [adminPhone, setAdminPhone] = React.useState("");
   const [adminPassword, setAdminPassword] = React.useState("");
   const [confirmAdminPassword, setConfirmAdminPassword] = React.useState("");
+  const [adminSecurityQuestion, setAdminSecurityQuestion] = React.useState("");
+  const [adminSecurityAnswer, setAdminSecurityAnswer] = React.useState("");
 
   // Staff accounts
   const [staffAccounts, setStaffAccounts] = React.useState<StaffAccount[]>([]);
