@@ -242,8 +242,8 @@ export function AdminSettings() {
       name: adminName.trim(),
       phone: adminPhone.trim(),
       password: adminPassword.trim() || adminAccount?.password || "",
-      securityQuestion: adminAccount?.securityQuestion || "",
-      securityAnswer: adminAccount?.securityAnswer || "",
+      securityQuestion: adminSecurityQuestion.trim() || adminAccount?.securityQuestion || "",
+      securityAnswer: adminSecurityAnswer.trim().toLowerCase() || adminAccount?.securityAnswer || "",
       createdAt: adminAccount?.createdAt || Date.now(),
     };
     await db.adminAccount.put(updated);
