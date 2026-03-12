@@ -250,6 +250,7 @@ export function AdminSettings() {
     setAdminAccount(updated);
     setAdminPassword("");
     setConfirmAdminPassword("");
+    setAdminSecurityAnswer("");
     toast({ title: "Admin account updated" });
   };
 
