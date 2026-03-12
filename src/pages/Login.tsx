@@ -195,7 +195,8 @@ export default function Login() {
       if (!ok) {
         toast({ title: "Wrong PIN", description: "Master reset PIN is incorrect.", variant: "destructive" });
       } else {
-        toast({ title: "App reset", description: "Admin account cleared. Please register again." });
+      toast({ title: "App reset", description: "Admin account cleared. Please register again." });
+        setAdminExists(false);
         setScreen("register");
       }
     } finally {
