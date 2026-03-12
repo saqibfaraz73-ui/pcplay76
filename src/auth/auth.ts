@@ -37,6 +37,18 @@ export async function verifySecurityAnswer(answer: string): Promise<{ ok: true; 
 }
 
 /**
+ * Verify security answer to recover username (admin name)
+ */
+export async function verifySecurityAnswerForUsername(answer: string): Promise<{ ok: true; name: string } | { ok: false }> {
+  const admin = await db.adminAccount.get("admin");
+  if (!admin) return { ok: false };
+  if (answer.trim().toLowerCase() === admin.securityAnswer) {
+    return { ok: true, name: admin.name };
+  }
+  return { ok: false };
+}
+
+/**
  * Get the security question (to display on forgot password screen)
  */
 export async function getSecurityQuestion(): Promise<string | null> {

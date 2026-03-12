@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/auth/AuthProvider";
-import { isAdminRegistered, registerAdmin, getSecurityQuestion, verifySecurityAnswer, masterReset } from "@/auth/auth";
+import { isAdminRegistered, registerAdmin, getSecurityQuestion, verifySecurityAnswer, verifySecurityAnswerForUsername, masterReset } from "@/auth/auth";
 import appLogo from "@/assets/app-logo.jpg";
 import { getLicense } from "@/features/licensing/licensing-db";
 
@@ -19,7 +19,7 @@ const SECURITY_QUESTIONS = [
   "What was your childhood nickname?",
 ];
 
-type Screen = "checking" | "register" | "login" | "forgot" | "master-reset";
+type Screen = "checking" | "register" | "login" | "forgot" | "forgot-username" | "master-reset";
 
 export default function Login() {
   const { toast } = useToast();
@@ -50,6 +50,9 @@ export default function Login() {
   const [securityQuestion, setSecurityQuestion] = React.useState("");
   const [forgotAnswer, setForgotAnswer] = React.useState("");
   const [recoveredPassword, setRecoveredPassword] = React.useState<string | null>(null);
+  const [recoveredUsername, setRecoveredUsername] = React.useState<string | null>(null);
+  const [forgotUsernameQuestion, setForgotUsernameQuestion] = React.useState("");
+  const [forgotUsernameAnswer, setForgotUsernameAnswer] = React.useState("");
 
   // Master reset
   const [masterPin, setMasterPin] = React.useState("");
@@ -140,6 +143,33 @@ export default function Login() {
         toast({ title: "Wrong answer", description: "Security answer does not match.", variant: "destructive" });
       } else {
         setRecoveredPassword(result.password);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const openForgotUsername = async () => {
+    const q = await getSecurityQuestion();
+    if (!q) {
+      toast({ title: "No security question set", variant: "destructive" });
+      return;
+    }
+    setForgotUsernameQuestion(q);
+    setForgotUsernameAnswer("");
+    setRecoveredUsername(null);
+    setScreen("forgot-username");
+  };
+
+  const onVerifyUsernameAnswer = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      const result = await verifySecurityAnswerForUsername(forgotUsernameAnswer);
+      if (!result.ok) {
+        toast({ title: "Wrong answer", description: "Security answer does not match.", variant: "destructive" });
+      } else {
+        setRecoveredUsername(result.name);
       }
     } finally {
       setLoading(false);
@@ -254,9 +284,12 @@ export default function Login() {
               <Button type="submit" className="w-full" disabled={loading}>
                 {loading ? "Logging in..." : "Enter"}
               </Button>
-              <div className="flex justify-between">
+              <div className="flex justify-between flex-wrap gap-1">
                 <Button type="button" variant="link" className="text-xs" onClick={() => setScreen("register")}>
                   New? Register
+                </Button>
+                <Button type="button" variant="link" className="text-xs" onClick={openForgotUsername}>
+                  Forgot username?
                 </Button>
                 <Button type="button" variant="link" className="text-xs" onClick={openForgot}>
                   Forgot password?
@@ -311,7 +344,45 @@ export default function Login() {
         </Card>
       )}
 
-      {/* MASTER RESET */}
+      {/* FORGOT USERNAME */}
+      {screen === "forgot-username" && (
+        <Card className="w-full">
+          <CardHeader>
+            <CardTitle>Recover Username</CardTitle>
+            <CardDescription>Answer your security question to see your admin name.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {!recoveredUsername ? (
+              <form onSubmit={onVerifyUsernameAnswer} className="space-y-4">
+                <div className="rounded-md border bg-muted/50 p-3">
+                  <p className="text-sm font-medium">{forgotUsernameQuestion}</p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="forgotUsernameAnswer">Your Answer</Label>
+                  <Input id="forgotUsernameAnswer" value={forgotUsernameAnswer} onChange={(e) => setForgotUsernameAnswer(e.target.value)} autoComplete="off" />
+                </div>
+                <Button type="submit" className="w-full" disabled={loading}>
+                  {loading ? "Checking..." : "Verify"}
+                </Button>
+                <Button type="button" variant="link" className="w-full text-xs" onClick={() => setScreen("login")}>
+                  Back to login
+                </Button>
+              </form>
+            ) : (
+              <div className="space-y-4">
+                <div className="rounded-md border border-primary/30 bg-primary/5 p-4 text-center">
+                  <p className="text-sm text-muted-foreground mb-1">Your admin username is:</p>
+                  <p className="text-2xl font-bold font-mono tracking-wider">{recoveredUsername}</p>
+                </div>
+                <Button className="w-full" onClick={() => { setRecoveredUsername(null); setScreen("login"); }}>
+                  Back to Login
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {screen === "master-reset" && (
         <Card className="w-full">
           <CardHeader>
