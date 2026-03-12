@@ -149,6 +149,33 @@ export default function Login() {
     }
   };
 
+  const openForgotUsername = async () => {
+    const q = await getSecurityQuestion();
+    if (!q) {
+      toast({ title: "No security question set", variant: "destructive" });
+      return;
+    }
+    setForgotUsernameQuestion(q);
+    setForgotUsernameAnswer("");
+    setRecoveredUsername(null);
+    setScreen("forgot-username");
+  };
+
+  const onVerifyUsernameAnswer = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      const result = await verifySecurityAnswerForUsername(forgotUsernameAnswer);
+      if (!result.ok) {
+        toast({ title: "Wrong answer", description: "Security answer does not match.", variant: "destructive" });
+      } else {
+        setRecoveredUsername(result.name);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const onMasterReset = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
