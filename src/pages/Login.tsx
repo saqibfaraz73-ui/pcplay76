@@ -257,9 +257,12 @@ export default function Login() {
               <Button type="submit" className="w-full" disabled={loading}>
                 {loading ? "Logging in..." : "Enter"}
               </Button>
-              <div className="flex justify-between">
+              <div className="flex justify-between flex-wrap gap-1">
                 <Button type="button" variant="link" className="text-xs" onClick={() => setScreen("register")}>
                   New? Register
+                </Button>
+                <Button type="button" variant="link" className="text-xs" onClick={openForgotUsername}>
+                  Forgot username?
                 </Button>
                 <Button type="button" variant="link" className="text-xs" onClick={openForgot}>
                   Forgot password?
