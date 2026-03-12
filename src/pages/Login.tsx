@@ -30,6 +30,7 @@ export default function Login() {
   const [screen, setScreen] = React.useState<Screen>("checking");
   const [loading, setLoading] = React.useState(false);
   const [isPremium, setIsPremium] = React.useState(false);
+  const [adminExists, setAdminExists] = React.useState(false);
 
   React.useEffect(() => {
     getLicense().then((lic) => setIsPremium(lic.isPremium)).catch(() => {});
