@@ -1,6 +1,7 @@
 import React from "react";
 import { authenticate } from "./auth";
 import type { AuthSession, UserRole } from "./auth-types";
+import { readSession, writeSession } from "./auth-storage";
 
 type AuthContextValue = {
   session: AuthSession | null;
@@ -11,7 +12,7 @@ type AuthContextValue = {
 const AuthContext = React.createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [session, setSession] = React.useState<AuthSession | null>(null);
+  const [session, setSession] = React.useState<AuthSession | null>(() => readSession());
 
   const login = React.useCallback<AuthContextValue["login"]>(async ({ identifier, credential }) => {
     const result = await authenticate(identifier, credential);
@@ -23,11 +24,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       createdAt: Date.now(),
     };
     setSession(next);
+    writeSession(next);
     return result;
   }, []);
 
   const logout = React.useCallback(() => {
     setSession(null);
+    writeSession(null);
   }, []);
 
   const value = React.useMemo<AuthContextValue>(() => ({ session, login, logout }), [session, login, logout]);
