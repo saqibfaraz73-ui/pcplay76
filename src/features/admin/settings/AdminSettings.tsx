@@ -156,6 +156,8 @@ export function AdminSettings() {
       setAdminAccount(admin);
       setAdminName(admin.name);
       setAdminPhone(admin.phone);
+      setAdminSecurityQuestion(admin.securityQuestion || "");
+      setAdminSecurityAnswer("");
     }
 
     // Load staff accounts
