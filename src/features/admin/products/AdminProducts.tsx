@@ -457,14 +457,17 @@ export function AdminProducts() {
             <div className="text-sm text-muted-foreground">No categories yet.</div>
           ) : (
             categories.map((c) => (
-              <div key={c.id} className="flex items-center justify-between gap-2 rounded-md border p-2">
+              <div key={c.id} className={cn("flex items-center justify-between gap-2 rounded-md border p-2", c.isActive === false && "opacity-50")}>
                 <div className="flex items-center gap-2 min-w-0 flex-1">
                   <Checkbox
                     checked={selectedCategoryIds.has(c.id)}
                     onCheckedChange={() => toggleCategorySelect(c.id)}
                   />
                   <div className="min-w-0">
-                    <div className="truncate text-sm font-medium">{c.name}</div>
+                    <div className="truncate text-sm font-medium">
+                      {c.name}
+                      {c.isActive === false && <span className="ml-1 text-xs text-muted-foreground">(Inactive)</span>}
+                    </div>
                     {c.printerSection && (
                       <div className="text-xs text-muted-foreground">Section: {c.printerSection}</div>
                     )}
