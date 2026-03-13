@@ -419,27 +419,56 @@ export function AdminProducts() {
               <CardTitle>Categories</CardTitle>
               <CardDescription>Create, edit, and delete menu categories.</CardDescription>
             </div>
-            <Button size="sm" onClick={openNewCategory}>New Category</Button>
+            <div className="flex flex-wrap items-center gap-2">
+              {selectedCategoryIds.size > 0 && (
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => setDeleteConfirm({ type: "bulk-categories", ids: Array.from(selectedCategoryIds) })}
+                >
+                  <Trash2 className="h-4 w-4 mr-1" />
+                  Delete ({selectedCategoryIds.size})
+                </Button>
+              )}
+              <Button size="sm" onClick={openNewCategory}>New Category</Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-2">
+          {categories.length > 0 && (
+            <div className="flex items-center gap-2 pb-1">
+              <Checkbox
+                checked={selectedCategoryIds.size === categories.length && categories.length > 0}
+                onCheckedChange={(checked) => {
+                  setSelectedCategoryIds(checked ? new Set(categories.map(c => c.id)) : new Set());
+                }}
+              />
+              <span className="text-xs text-muted-foreground">Select all</span>
+            </div>
+          )}
           {categories.length === 0 ? (
             <div className="text-sm text-muted-foreground">No categories yet.</div>
           ) : (
             categories.map((c) => (
               <div key={c.id} className="flex items-center justify-between gap-2 rounded-md border p-2">
-                <div className="min-w-0">
-                  <div className="truncate text-sm font-medium">{c.name}</div>
-                  {c.printerSection && (
-                    <div className="text-xs text-muted-foreground">Section: {c.printerSection}</div>
-                  )}
+                <div className="flex items-center gap-2 min-w-0 flex-1">
+                  <Checkbox
+                    checked={selectedCategoryIds.has(c.id)}
+                    onCheckedChange={() => toggleCategorySelect(c.id)}
+                  />
+                  <div className="min-w-0">
+                    <div className="truncate text-sm font-medium">{c.name}</div>
+                    {c.printerSection && (
+                      <div className="text-xs text-muted-foreground">Section: {c.printerSection}</div>
+                    )}
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1 shrink-0">
                   <Button variant="outline" size="sm" onClick={() => openEditCategory(c)}>
                     Edit
                   </Button>
                   <Button variant="destructive" size="sm" onClick={() => setDeleteConfirm({ type: "category", category: c })}>
-                    Delete
+                    Del
                   </Button>
                 </div>
               </div>
