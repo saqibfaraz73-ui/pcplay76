@@ -60,6 +60,7 @@ export function AdminProducts() {
   const [selectedItemIds, setSelectedItemIds] = React.useState<Set<string>>(new Set());
 
   const [catName, setCatName] = React.useState("");
+  const [catIsActive, setCatIsActive] = React.useState(true);
   const [catPrinterSection, setCatPrinterSection] = React.useState("");
   const [catSectionPrinter, setCatSectionPrinter] = React.useState<"bluetooth" | "usb" | "none">("none");
   const [newSectionName, setNewSectionName] = React.useState("");
@@ -79,6 +80,7 @@ export function AdminProducts() {
   const [itemVariations, setItemVariations] = React.useState<ItemVariation[]>([]);
   const [itemAddOns, setItemAddOns] = React.useState<ItemAddOn[]>([]);
   const [itemSku, setItemSku] = React.useState("");
+  const [itemIsActive, setItemIsActive] = React.useState(true);
   const [skuScanning, setSkuScanning] = React.useState(false);
   const skuScannerRef = React.useRef<HTMLDivElement>(null);
   const html5QrRef = React.useRef<Html5Qrcode | null>(null);
@@ -107,6 +109,7 @@ export function AdminProducts() {
   const openNewCategory = () => {
     setMode({ type: "category" });
     setCatName("");
+    setCatIsActive(true);
     setCatPrinterSection("");
     setCatSectionPrinter("none");
     setNewSectionName("");
@@ -116,6 +119,7 @@ export function AdminProducts() {
   const openEditCategory = (category: Category) => {
     setMode({ type: "category", category });
     setCatName(category.name);
+    setCatIsActive(category.isActive !== false);
     setCatPrinterSection(category.printerSection ?? "");
     setCatSectionPrinter(category.printerSection ? (sectionPrinterMap[category.printerSection] as any ?? "none") : "none");
     setNewSectionName("");
@@ -137,6 +141,7 @@ export function AdminProducts() {
     setItemVariations([]);
     setItemAddOns([]);
     setItemSku("");
+    setItemIsActive(true);
     setItemCategoryId(categories[0]?.id ?? "");
     setOpen(true);
   };
@@ -155,6 +160,7 @@ export function AdminProducts() {
     setItemVariations(item.variations ?? []);
     setItemAddOns(item.addOns ?? []);
     setItemSku(item.sku ?? "");
+    setItemIsActive(item.isActive !== false);
     const inv = await db.inventory.get(item.id);
     setItemInitialStock(inv?.quantity ?? 0);
     setOpen(true);
@@ -168,9 +174,9 @@ export function AdminProducts() {
         const now = Date.now();
         const section = catPrinterSection.trim() || undefined;
         if (mode.category) {
-          await db.categories.put({ ...mode.category, name, printerSection: section });
+          await db.categories.put({ ...mode.category, name, isActive: catIsActive, printerSection: section });
         } else {
-          await db.categories.put({ id: makeId("cat"), name, printerSection: section, createdAt: now });
+          await db.categories.put({ id: makeId("cat"), name, isActive: catIsActive, printerSection: section, createdAt: now });
         }
         // Save section and its printer mapping to settings
         const s = await db.settings.get("app");
@@ -204,6 +210,7 @@ export function AdminProducts() {
           id,
           categoryId: itemCategoryId,
           name,
+          isActive: itemIsActive,
           sku: itemSku.trim() || undefined,
           price: Math.round(itemPrice),
           buyingPrice: itemBuyingPrice > 0 ? Math.round(itemBuyingPrice) : undefined,
@@ -450,14 +457,17 @@ export function AdminProducts() {
             <div className="text-sm text-muted-foreground">No categories yet.</div>
           ) : (
             categories.map((c) => (
-              <div key={c.id} className="flex items-center justify-between gap-2 rounded-md border p-2">
+              <div key={c.id} className={cn("flex items-center justify-between gap-2 rounded-md border p-2", c.isActive === false && "opacity-50")}>
                 <div className="flex items-center gap-2 min-w-0 flex-1">
                   <Checkbox
                     checked={selectedCategoryIds.has(c.id)}
                     onCheckedChange={() => toggleCategorySelect(c.id)}
                   />
                   <div className="min-w-0">
-                    <div className="truncate text-sm font-medium">{c.name}</div>
+                    <div className="truncate text-sm font-medium">
+                      {c.name}
+                      {c.isActive === false && <span className="ml-1 text-xs text-muted-foreground">(Inactive)</span>}
+                    </div>
                     {c.printerSection && (
                       <div className="text-xs text-muted-foreground">Section: {c.printerSection}</div>
                     )}
@@ -536,14 +546,17 @@ export function AdminProducts() {
               const expiryStr = i.expiryDate ? format(new Date(i.expiryDate), "dd MMM yyyy") : null;
               const isExpired = i.expiryDate && i.expiryDate < Date.now();
               return (
-                <div key={i.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md border p-2">
+                <div key={i.id} className={cn("flex flex-wrap items-center justify-between gap-2 rounded-md border p-2", i.isActive === false && "opacity-50")}>
                   <div className="flex items-center gap-2 min-w-0 flex-1">
                     <Checkbox
                       checked={selectedItemIds.has(i.id)}
                       onCheckedChange={() => toggleItemSelect(i.id)}
                     />
                     <div className="min-w-0">
-                      <div className="truncate text-sm font-medium">{i.name}</div>
+                      <div className="truncate text-sm font-medium">
+                        {i.name}
+                        {i.isActive === false && <span className="ml-1 text-xs text-muted-foreground">(Inactive)</span>}
+                      </div>
                       <div className="text-xs text-muted-foreground">
                         {cat} • Sell {formatIntMoney(i.price)}
                         {i.sku ? <> • SKU: {i.sku}</> : null}
@@ -599,6 +612,13 @@ export function AdminProducts() {
               <div className="space-y-2">
                 <Label htmlFor="catName">Category name</Label>
                 <Input id="catName" value={catName} onChange={(e) => setCatName(e.target.value)} />
+              </div>
+              <div className="flex items-center justify-between gap-3 rounded-md border p-3">
+                <div>
+                  <div className="text-sm font-medium">Active</div>
+                  <div className="text-xs text-muted-foreground">If disabled, this category and its items won't show on Sales/Tables.</div>
+                </div>
+                <Switch checked={catIsActive} onCheckedChange={setCatIsActive} />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="catSection">Printer Section</Label>
@@ -675,6 +695,14 @@ export function AdminProducts() {
               <div className="space-y-2">
                 <Label htmlFor="itemName">Item name</Label>
                 <Input id="itemName" value={itemName} onChange={(e) => setItemName(e.target.value)} />
+              </div>
+
+              <div className="flex items-center justify-between gap-3 rounded-md border p-3">
+                <div>
+                  <div className="text-sm font-medium">Active</div>
+                  <div className="text-xs text-muted-foreground">If disabled, this item won't show on Sales/Tables dashboards.</div>
+                </div>
+                <Switch checked={itemIsActive} onCheckedChange={setItemIsActive} />
               </div>
 
               <div className="space-y-2">

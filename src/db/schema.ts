@@ -1,6 +1,7 @@
 export type Category = {
   id: string;
   name: string;
+  isActive?: boolean; // default true; if false, hidden from POS/Tables dashboards
   printerSection?: string; // custom printer section (e.g. "A", "B", "Kitchen")
   createdAt: number;
 };
@@ -32,6 +33,7 @@ export type MenuItem = {
   id: string;
   categoryId: string;
   name: string;
+  isActive?: boolean; // default true; if false, hidden from POS/Tables dashboards
   sku?: string; // optional SKU / barcode
   price: number;
   buyingPrice?: number; // optional cost/buying price (integers)
