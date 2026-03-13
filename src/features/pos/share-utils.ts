@@ -1,13 +1,14 @@
 /**
  * Shared utility for sharing AND saving files.
  *
- * save*  → writes to app-private storage (native) or browser download (web)
+ * save*  → SAF folder picker on Android (user chooses folder), browser download on web
  * share* → opens native share sheet (native) or Web Share API (web)
  */
 import { toast } from "sonner";
 import { Capacitor } from "@capacitor/core";
 import { Filesystem, Directory } from "@capacitor/filesystem";
 import { Share } from "@capacitor/share";
+import { isSafAvailable, ensureSafAccess, SafStorage, uint8ToBase64 as safUint8ToBase64 } from "@/features/files/saf-storage";
 
 function uint8ToBase64(bytes: Uint8Array): string {
   let binary = "";
@@ -26,7 +27,7 @@ async function blobToUint8(blob: Blob): Promise<Uint8Array> {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SAVE TO DEVICE — writes to app-private storage on native, browser download on web
+// SAVE TO DEVICE — SAF folder picker on Android, browser download on web
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** Browser download fallback */
@@ -42,9 +43,27 @@ function browserDownload(blob: Blob, fileName: string) {
 }
 
 /**
- * Save file by opening the native share sheet so the user can choose
- * where to save (Downloads, Drive, WhatsApp, etc.).
- * Files saved this way are visible in the device's file manager.
+ * Save file using SAF (Storage Access Framework) on Android.
+ * Opens the folder picker so the user can choose exactly where to save.
+ * The file will be visible in the device's file manager.
+ */
+async function nativeSaveViaSaf(bytes: Uint8Array, fileName: string, mimeType = "application/octet-stream"): Promise<boolean> {
+  if (!isSafAvailable()) return false;
+  try {
+    const ok = await ensureSafAccess();
+    if (!ok) return false;
+    const base64Data = safUint8ToBase64(bytes);
+    await SafStorage.writeBinaryFile({ relativePath: fileName, base64Data, mimeType });
+    toast.success(`File saved: ${fileName}`);
+    return true;
+  } catch (e: any) {
+    console.error("SAF save failed:", e);
+    return false;
+  }
+}
+
+/**
+ * Fallback: save via share sheet (for non-SAF devices or if SAF fails)
  */
 async function nativeSaveViaShareSheet(bytes: Uint8Array, fileName: string, mimeType = "application/octet-stream"): Promise<void> {
   const tmpPath = `__save_tmp__/${fileName}`;
@@ -62,22 +81,33 @@ async function nativeSaveViaShareSheet(bytes: Uint8Array, fileName: string, mime
   }
 }
 
-/** Save a PDF blob to device — opens share sheet so user picks visible location */
+/**
+ * Save bytes to device: tries SAF folder picker first, falls back to share sheet.
+ */
+async function nativeSaveFile(bytes: Uint8Array, fileName: string, mimeType = "application/octet-stream"): Promise<void> {
+  // Try SAF first (shows folder picker)
+  const saved = await nativeSaveViaSaf(bytes, fileName, mimeType);
+  if (saved) return;
+  // Fallback to share sheet
+  await nativeSaveViaShareSheet(bytes, fileName, mimeType);
+}
+
+/** Save a PDF blob to device — opens folder picker to choose save location */
 export async function savePdfBlob(blob: Blob, name: string): Promise<void> {
   const fileName = `${name}.pdf`;
   if (Capacitor.isNativePlatform()) {
     const bytes = await blobToUint8(blob);
-    await nativeSaveViaShareSheet(bytes, fileName, "application/pdf");
+    await nativeSaveFile(bytes, fileName, "application/pdf");
     return;
   }
   browserDownload(blob, fileName);
   toast.success("File downloaded");
 }
 
-/** Save raw PDF bytes — opens share sheet so user picks visible location */
+/** Save raw PDF bytes — opens folder picker to choose save location */
 export async function savePdfBytes(bytes: Uint8Array, fileName: string): Promise<void> {
   if (Capacitor.isNativePlatform()) {
-    await nativeSaveViaShareSheet(bytes, fileName, "application/pdf");
+    await nativeSaveFile(bytes, fileName, "application/pdf");
     return;
   }
   const blob = new Blob([bytes.buffer as ArrayBuffer], { type: "application/pdf" });
@@ -85,23 +115,23 @@ export async function savePdfBytes(bytes: Uint8Array, fileName: string): Promise
   toast.success("File downloaded");
 }
 
-/** Save any file blob — opens share sheet so user picks visible location */
+/** Save any file blob — opens folder picker to choose save location */
 export async function saveFileBlob(blob: Blob, fileName: string): Promise<void> {
   if (Capacitor.isNativePlatform()) {
     const bytes = await blobToUint8(blob);
-    await nativeSaveViaShareSheet(bytes, fileName, blob.type || "application/octet-stream");
+    await nativeSaveFile(bytes, fileName, blob.type || "application/octet-stream");
     return;
   }
   browserDownload(blob, fileName);
   toast.success("File downloaded");
 }
 
-/** Save text file — opens share sheet so user picks visible location */
+/** Save text file — opens folder picker to choose save location */
 export async function saveTextFile(content: string, fileName: string): Promise<void> {
   const blob = new Blob([content], { type: "application/octet-stream" });
   if (Capacitor.isNativePlatform()) {
     const bytes = await blobToUint8(blob);
-    await nativeSaveViaShareSheet(bytes, fileName);
+    await nativeSaveFile(bytes, fileName);
     return;
   }
   browserDownload(blob, fileName);
