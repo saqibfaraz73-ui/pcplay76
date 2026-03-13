@@ -257,6 +257,47 @@ export function AdminProducts() {
     await refresh();
   };
 
+  const confirmBulkDeleteCategories = async (ids: string[]) => {
+    for (const catId of ids) {
+      const count = await db.items.where("categoryId").equals(catId).count();
+      if (count > 0) {
+        const cat = categories.find(c => c.id === catId);
+        toast({ title: "Cannot delete", description: `"${cat?.name}" still has items. Move/delete items first.`, variant: "destructive" });
+        return;
+      }
+    }
+    await db.categories.bulkDelete(ids);
+    toast({ title: `Deleted ${ids.length} categories` });
+    setDeleteConfirm(null);
+    setSelectedCategoryIds(new Set());
+    await refresh();
+  };
+
+  const confirmBulkDeleteItems = async (ids: string[]) => {
+    await db.items.bulkDelete(ids);
+    await db.inventory.bulkDelete(ids);
+    toast({ title: `Deleted ${ids.length} items` });
+    setDeleteConfirm(null);
+    setSelectedItemIds(new Set());
+    await refresh();
+  };
+
+  const toggleCategorySelect = (id: string) => {
+    setSelectedCategoryIds(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
+  const toggleItemSelect = (id: string) => {
+    setSelectedItemIds(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
   const handleExport = async () => {
     try {
       const blob = await exportMenuItemsToExcel();
