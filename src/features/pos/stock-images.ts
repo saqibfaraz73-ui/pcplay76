@@ -30,6 +30,18 @@ import soapImg from "@/assets/stock-images/soap.jpg";
 import toothpasteImg from "@/assets/stock-images/toothpaste.jpg";
 import cookingOilImg from "@/assets/stock-images/cooking-oil.jpg";
 import dishwashImg from "@/assets/stock-images/dishwash.jpg";
+import tshirtImg from "@/assets/stock-images/tshirt.jpg";
+import jeansImg from "@/assets/stock-images/jeans.jpg";
+import smartphoneImg from "@/assets/stock-images/smartphone.jpg";
+import earbudsImg from "@/assets/stock-images/earbuds.jpg";
+import medicineTabletsImg from "@/assets/stock-images/medicine-tablets.jpg";
+import coughSyrupImg from "@/assets/stock-images/cough-syrup.jpg";
+import cakeImg from "@/assets/stock-images/cake.jpg";
+import croissantImg from "@/assets/stock-images/croissant.jpg";
+import notebookImg from "@/assets/stock-images/notebook.jpg";
+import pensImg from "@/assets/stock-images/pens.jpg";
+import shoesImg from "@/assets/stock-images/shoes.jpg";
+import handbagImg from "@/assets/stock-images/handbag.jpg";
 
 export type StockImage = { key: string; label: string; src: string };
 
