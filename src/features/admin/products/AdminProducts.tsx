@@ -479,7 +479,7 @@ export function AdminProducts() {
                     Edit
                   </Button>
                   <Button variant="destructive" size="sm" onClick={() => setDeleteConfirm({ type: "category", category: c })}>
-                    Del
+                    <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
               </div>
