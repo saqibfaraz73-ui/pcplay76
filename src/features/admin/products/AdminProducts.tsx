@@ -491,6 +491,16 @@ export function AdminProducts() {
               onChange={handleImportFile}
               className="hidden"
             />
+            {selectedItemIds.size > 0 && (
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => setDeleteConfirm({ type: "bulk-items", ids: Array.from(selectedItemIds) })}
+              >
+                <Trash2 className="h-4 w-4 mr-1" />
+                Delete ({selectedItemIds.size})
+              </Button>
+            )}
             <Button variant="outline" size="sm" onClick={() => importInputRef.current?.click()}>
               <Upload className="h-4 w-4 mr-1" />
               Import
@@ -505,6 +515,17 @@ export function AdminProducts() {
           </div>
         </CardHeader>
         <CardContent className="space-y-2">
+          {items.length > 0 && (
+            <div className="flex items-center gap-2 pb-1">
+              <Checkbox
+                checked={selectedItemIds.size === items.length && items.length > 0}
+                onCheckedChange={(checked) => {
+                  setSelectedItemIds(checked ? new Set(items.map(i => i.id)) : new Set());
+                }}
+              />
+              <span className="text-xs text-muted-foreground">Select all</span>
+            </div>
+          )}
           {items.length === 0 ? (
             <div className="text-sm text-muted-foreground">No items yet.</div>
           ) : (
@@ -516,22 +537,28 @@ export function AdminProducts() {
               const isExpired = i.expiryDate && i.expiryDate < Date.now();
               return (
                 <div key={i.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md border p-2">
-                  <div className="min-w-0 flex-1">
-                    <div className="truncate text-sm font-medium">{i.name}</div>
-                    <div className="text-xs text-muted-foreground">
-                      {cat} • Sell {formatIntMoney(i.price)}
-                      {i.sku ? <> • SKU: {i.sku}</> : null}
-                      {typeof i.buyingPrice === "number" && i.buyingPrice > 0 ? (
-                        <> • Buy {formatIntMoney(i.buyingPrice)}</>
-                      ) : null}
-                      {profit !== null ? <> • Profit {formatIntMoney(profit)}</> : null} •{" "}
-                      {i.trackInventory ? `Stock tracked${i.stockUnit && i.stockUnit !== "pcs" ? ` (${i.stockUnit})` : ""}` : "No stock"}
-                      {i.variations && i.variations.length > 0 ? (
-                        <> • {i.variations.length} variant{i.variations.length > 1 ? "s" : ""}</>
-                      ) : null}
-                      {expiryStr ? (
-                        <span className={cn(isExpired && "text-destructive")}> • Exp: {expiryStr}</span>
-                      ) : null}
+                  <div className="flex items-center gap-2 min-w-0 flex-1">
+                    <Checkbox
+                      checked={selectedItemIds.has(i.id)}
+                      onCheckedChange={() => toggleItemSelect(i.id)}
+                    />
+                    <div className="min-w-0">
+                      <div className="truncate text-sm font-medium">{i.name}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {cat} • Sell {formatIntMoney(i.price)}
+                        {i.sku ? <> • SKU: {i.sku}</> : null}
+                        {typeof i.buyingPrice === "number" && i.buyingPrice > 0 ? (
+                          <> • Buy {formatIntMoney(i.buyingPrice)}</>
+                        ) : null}
+                        {profit !== null ? <> • Profit {formatIntMoney(profit)}</> : null} •{" "}
+                        {i.trackInventory ? `Stock tracked${i.stockUnit && i.stockUnit !== "pcs" ? ` (${i.stockUnit})` : ""}` : "No stock"}
+                        {i.variations && i.variations.length > 0 ? (
+                          <> • {i.variations.length} variant{i.variations.length > 1 ? "s" : ""}</>
+                        ) : null}
+                        {expiryStr ? (
+                          <span className={cn(isExpired && "text-destructive")}> • Exp: {expiryStr}</span>
+                        ) : null}
+                      </div>
                     </div>
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
