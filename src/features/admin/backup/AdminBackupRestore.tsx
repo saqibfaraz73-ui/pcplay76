@@ -174,6 +174,10 @@ export function AdminBackupRestore() {
 
   const restoreFromPayload = async (payload: BackupPayloadV1) => {
     if (!payload?.data) throw new Error("Invalid backup file.");
+
+    // Preserve current admin account so user doesn't get locked out
+    const currentAdmin = await db.adminAccount.toArray();
+
     await db.transaction(
       "rw",
       [
@@ -218,7 +222,12 @@ export function AdminBackupRestore() {
         if (payload.data.waiters?.length) await db.waiters.bulkAdd(payload.data.waiters);
         if (payload.data.restaurantTables?.length) await db.restaurantTables.bulkAdd(payload.data.restaurantTables);
         if (payload.data.tableOrders?.length) await db.tableOrders.bulkAdd(payload.data.tableOrders);
-        if (payload.data.adminAccount?.length) await db.adminAccount.bulkAdd(payload.data.adminAccount);
+        // Restore current admin account instead of backup's admin — prevents lockout
+        if (currentAdmin.length) {
+          await db.adminAccount.bulkAdd(currentAdmin);
+        } else if (payload.data.adminAccount?.length) {
+          await db.adminAccount.bulkAdd(payload.data.adminAccount);
+        }
         if (payload.data.staffAccounts?.length) await db.staffAccounts.bulkAdd(payload.data.staffAccounts);
         if (payload.data.exportCustomers?.length) await db.exportCustomers.bulkAdd(payload.data.exportCustomers);
         if (payload.data.exportSales?.length) await db.exportSales.bulkAdd(payload.data.exportSales);
@@ -232,6 +241,9 @@ export function AdminBackupRestore() {
         await db.counters.bulkAdd(payload.data.counters);
       },
     );
+
+    // Mark seed as done so sample data doesn't reappear
+    localStorage.setItem("sangi_pos.seed_done", "1");
   };
 
   const onRestoreFile = async (file: File) => {
@@ -240,10 +252,7 @@ export function AdminBackupRestore() {
       const parsed = JSON.parse(text) as BackupPayloadV1;
       if (parsed.version !== 1) throw new Error("Unsupported backup version.");
       await restoreFromPayload(parsed);
-      toast({ title: "Restore complete", description: "Data restored. Please log in with your restored admin credentials." });
-      // Clear current session and reload so user logs in with restored admin account
-      try { localStorage.removeItem("sangi_pos.auth.session.v1"); } catch {}
-      setTimeout(() => window.location.replace("/login"), 1200);
+      toast({ title: "Restore complete", description: "All data restored. You remain logged in with your current admin account." });
     } catch (e: any) {
       toast({ title: "Restore failed", description: e?.message ?? String(e), variant: "destructive" });
     }
