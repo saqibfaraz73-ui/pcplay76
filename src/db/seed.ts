@@ -20,7 +20,13 @@ export async function ensureSeedData() {
     const catFastFood: Category = { id: id("cat"), name: "Fast Food", createdAt: now };
     const catGrocery: Category = { id: id("cat"), name: "Grocery", createdAt: now };
     const catDrinks: Category = { id: id("cat"), name: "Drinks", createdAt: now };
-    await db.categories.bulkAdd([catFastFood, catGrocery, catDrinks]);
+    const catClothing: Category = { id: id("cat"), name: "Clothing", createdAt: now };
+    const catElectronics: Category = { id: id("cat"), name: "Electronics", createdAt: now };
+    const catPharmacy: Category = { id: id("cat"), name: "Pharmacy", createdAt: now };
+    const catBakery: Category = { id: id("cat"), name: "Bakery", createdAt: now };
+    const catStationery: Category = { id: id("cat"), name: "Stationery", createdAt: now };
+    const catFootwear: Category = { id: id("cat"), name: "Footwear & Accessories", createdAt: now };
+    await db.categories.bulkAdd([catFastFood, catGrocery, catDrinks, catClothing, catElectronics, catPharmacy, catBakery, catStationery, catFootwear]);
 
     const itemsWithStock: { item: MenuItem; stock: number }[] = [
       // Fast Food (6)
@@ -39,6 +45,25 @@ export async function ensureSeedData() {
       { item: { id: id("item"), categoryId: catGrocery.id, name: "Dish Wash", price: 200, buyingPrice: 130, trackInventory: true, imagePath: "stock://dishwash.jpg", createdAt: now }, stock: 40 },
       // Drinks
       { item: { id: id("item"), categoryId: catDrinks.id, name: "Cola", price: 200, buyingPrice: 120, trackInventory: true, imagePath: "stock://coca-cola-bottle.jpg", createdAt: now }, stock: 70 },
+      { item: { id: id("item"), categoryId: catDrinks.id, name: "Juice", price: 150, buyingPrice: 80, trackInventory: true, imagePath: "stock://juice.jpg", createdAt: now }, stock: 60 },
+      // Clothing
+      { item: { id: id("item"), categoryId: catClothing.id, name: "T-Shirt", price: 1500, buyingPrice: 800, trackInventory: true, imagePath: "stock://tshirt.jpg", createdAt: now }, stock: 30 },
+      { item: { id: id("item"), categoryId: catClothing.id, name: "Jeans", price: 3500, buyingPrice: 2000, trackInventory: true, imagePath: "stock://jeans.jpg", createdAt: now }, stock: 20 },
+      // Electronics
+      { item: { id: id("item"), categoryId: catElectronics.id, name: "Smartphone", price: 45000, buyingPrice: 35000, trackInventory: true, imagePath: "stock://smartphone.jpg", createdAt: now }, stock: 10 },
+      { item: { id: id("item"), categoryId: catElectronics.id, name: "Earbuds", price: 5000, buyingPrice: 3000, trackInventory: true, imagePath: "stock://earbuds.jpg", createdAt: now }, stock: 25 },
+      // Pharmacy
+      { item: { id: id("item"), categoryId: catPharmacy.id, name: "Medicine Tablets", price: 150, buyingPrice: 80, trackInventory: true, imagePath: "stock://medicine-tablets.jpg", createdAt: now }, stock: 200 },
+      { item: { id: id("item"), categoryId: catPharmacy.id, name: "Cough Syrup", price: 300, buyingPrice: 180, trackInventory: true, imagePath: "stock://cough-syrup.jpg", createdAt: now }, stock: 50 },
+      // Bakery
+      { item: { id: id("item"), categoryId: catBakery.id, name: "Chocolate Cake", price: 2500, buyingPrice: 1200, trackInventory: true, imagePath: "stock://cake.jpg", createdAt: now }, stock: 10 },
+      { item: { id: id("item"), categoryId: catBakery.id, name: "Croissant", price: 250, buyingPrice: 120, trackInventory: true, imagePath: "stock://croissant.jpg", createdAt: now }, stock: 40 },
+      // Stationery
+      { item: { id: id("item"), categoryId: catStationery.id, name: "Notebook", price: 200, buyingPrice: 100, trackInventory: true, imagePath: "stock://notebook.jpg", createdAt: now }, stock: 100 },
+      { item: { id: id("item"), categoryId: catStationery.id, name: "Pen Pack", price: 150, buyingPrice: 70, trackInventory: true, imagePath: "stock://pens.jpg", createdAt: now }, stock: 80 },
+      // Footwear & Accessories
+      { item: { id: id("item"), categoryId: catFootwear.id, name: "Sports Shoes", price: 4500, buyingPrice: 2500, trackInventory: true, imagePath: "stock://shoes.jpg", createdAt: now }, stock: 15 },
+      { item: { id: id("item"), categoryId: catFootwear.id, name: "Handbag", price: 3000, buyingPrice: 1500, trackInventory: true, imagePath: "stock://handbag.jpg", createdAt: now }, stock: 20 },
     ];
     const items = itemsWithStock.map((x) => x.item);
     await db.items.bulkAdd(items);
