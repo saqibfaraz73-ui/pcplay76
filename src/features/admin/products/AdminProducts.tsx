@@ -50,8 +50,14 @@ export function AdminProducts() {
   const [deleteConfirm, setDeleteConfirm] = React.useState<
     | { type: "category"; category: Category }
     | { type: "item"; item: MenuItem }
+    | { type: "bulk-categories"; ids: string[] }
+    | { type: "bulk-items"; ids: string[] }
     | null
   >(null);
+
+  // Bulk selection state
+  const [selectedCategoryIds, setSelectedCategoryIds] = React.useState<Set<string>>(new Set());
+  const [selectedItemIds, setSelectedItemIds] = React.useState<Set<string>>(new Set());
 
   const [catName, setCatName] = React.useState("");
   const [catPrinterSection, setCatPrinterSection] = React.useState("");
