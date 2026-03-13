@@ -691,6 +691,14 @@ export function AdminProducts() {
                 <Input id="itemName" value={itemName} onChange={(e) => setItemName(e.target.value)} />
               </div>
 
+              <div className="flex items-center justify-between gap-3 rounded-md border p-3">
+                <div>
+                  <div className="text-sm font-medium">Active</div>
+                  <div className="text-xs text-muted-foreground">If disabled, this item won't show on Sales/Tables dashboards.</div>
+                </div>
+                <Switch checked={itemIsActive} onCheckedChange={setItemIsActive} />
+              </div>
+
               <div className="space-y-2">
                 <Label htmlFor="itemSku">SKU / Barcode (optional)</Label>
                 <div className="flex gap-2">
