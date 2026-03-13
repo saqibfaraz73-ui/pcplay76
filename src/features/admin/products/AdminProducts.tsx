@@ -87,6 +87,7 @@ export function AdminProducts() {
   const importInputRef = React.useRef<HTMLInputElement>(null);
   const skuImportRef = React.useRef<HTMLInputElement>(null);
   const [skuImporting, setSkuImporting] = React.useState(false);
+  const [itemSearchQuery, setItemSearchQuery] = React.useState("");
 
   const refresh = React.useCallback(async () => {
     const [cats, its, s] = await Promise.all([
