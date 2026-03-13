@@ -141,6 +141,7 @@ export function AdminProducts() {
     setItemVariations([]);
     setItemAddOns([]);
     setItemSku("");
+    setItemIsActive(true);
     setItemCategoryId(categories[0]?.id ?? "");
     setOpen(true);
   };
