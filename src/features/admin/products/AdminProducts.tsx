@@ -556,7 +556,7 @@ export function AdminProducts() {
             return filtered.length === 0 ? (
               <div className="text-sm text-muted-foreground py-2">No items match "{itemSearchQuery.trim()}"</div>
             ) : (
-            items.map((i) => {
+            filtered.map((i) => {
               const cat = categories.find((c) => c.id === i.categoryId)?.name ?? "—";
               const profit =
                 typeof i.buyingPrice === "number" && i.buyingPrice > 0 ? Math.round(i.price - i.buyingPrice) : null;
