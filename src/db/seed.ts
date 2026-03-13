@@ -48,6 +48,10 @@ export async function ensureSeedData() {
   // Mark seed as done so it never runs again
   localStorage.setItem("sangi_pos.seed_done", "1");
 
+  await ensureSettingsAndCounter();
+}
+
+async function ensureSettingsAndCounter() {
   const hasSettings = (await db.settings.count()) > 0;
   if (!hasSettings) {
     const now = Date.now();
@@ -64,7 +68,6 @@ export async function ensureSeedData() {
       printerConnection: "none",
       printerName: undefined,
       printerAddress: undefined,
-      // All sections enabled by default — user can disable from Settings
       deliveryEnabled: true,
       tableManagementEnabled: true,
       advanceBookingEnabled: true,
