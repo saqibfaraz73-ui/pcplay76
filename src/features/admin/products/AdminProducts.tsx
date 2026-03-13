@@ -26,7 +26,7 @@ import { useToast } from "@/hooks/use-toast";
 import { parseNonDecimalInt, formatIntMoney } from "@/features/pos/format";
 import { makeId } from "@/features/admin/id";
 import { ItemImagePicker } from "@/features/admin/products/ItemImagePicker";
-import { CalendarIcon, Download, Upload, ScanBarcode, FileUp, Trash2 } from "lucide-react";
+import { CalendarIcon, Download, Upload, ScanBarcode, FileUp, Trash2, Search } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { importSkuFromFile } from "@/features/admin/products/sku-import";
 import { format } from "date-fns";
@@ -87,6 +87,7 @@ export function AdminProducts() {
   const importInputRef = React.useRef<HTMLInputElement>(null);
   const skuImportRef = React.useRef<HTMLInputElement>(null);
   const [skuImporting, setSkuImporting] = React.useState(false);
+  const [itemSearchQuery, setItemSearchQuery] = React.useState("");
 
   const refresh = React.useCallback(async () => {
     const [cats, its, s] = await Promise.all([
@@ -526,6 +527,17 @@ export function AdminProducts() {
         </CardHeader>
         <CardContent className="space-y-2">
           {items.length > 0 && (
+            <div className="relative mb-2">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search items..."
+                value={itemSearchQuery}
+                onChange={(e) => setItemSearchQuery(e.target.value)}
+                className="pl-8 h-9"
+              />
+            </div>
+          )}
+          {items.length > 0 && (
             <div className="flex items-center gap-2 pb-1">
               <Checkbox
                 checked={selectedItemIds.size === items.length && items.length > 0}
@@ -538,7 +550,12 @@ export function AdminProducts() {
           )}
           {items.length === 0 ? (
             <div className="text-sm text-muted-foreground">No items yet.</div>
-          ) : (
+          ) : (() => {
+            const q = itemSearchQuery.trim().toLowerCase();
+            const filtered = q ? items.filter(i => i.name.toLowerCase().includes(q) || (i.sku && i.sku.toLowerCase().includes(q))) : items;
+            return filtered.length === 0 ? (
+              <div className="text-sm text-muted-foreground py-2">No items match "{itemSearchQuery.trim()}"</div>
+            ) : (
             items.map((i) => {
               const cat = categories.find((c) => c.id === i.categoryId)?.name ?? "—";
               const profit =
@@ -585,7 +602,8 @@ export function AdminProducts() {
                 </div>
               );
             })
-          )}
+            );
+          })()}
         </CardContent>
       </Card>
 
