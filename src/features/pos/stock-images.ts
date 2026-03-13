@@ -78,6 +78,24 @@ export const STOCK_IMAGES: StockImage[] = [
   { key: "stock://toothpaste.jpg", label: "Toothpaste", src: toothpasteImg },
   { key: "stock://washing-powder.jpg", label: "Washing Powder", src: washingPowderImg },
   { key: "stock://water.jpg", label: "Water Bottle", src: waterImg },
+  // Clothing
+  { key: "stock://tshirt.jpg", label: "T-Shirt", src: tshirtImg },
+  { key: "stock://jeans.jpg", label: "Jeans", src: jeansImg },
+  // Electronics
+  { key: "stock://smartphone.jpg", label: "Smartphone", src: smartphoneImg },
+  { key: "stock://earbuds.jpg", label: "Earbuds", src: earbudsImg },
+  // Pharmacy
+  { key: "stock://medicine-tablets.jpg", label: "Medicine Tablets", src: medicineTabletsImg },
+  { key: "stock://cough-syrup.jpg", label: "Cough Syrup", src: coughSyrupImg },
+  // Bakery
+  { key: "stock://cake.jpg", label: "Cake", src: cakeImg },
+  { key: "stock://croissant.jpg", label: "Croissant", src: croissantImg },
+  // Stationery
+  { key: "stock://notebook.jpg", label: "Notebook", src: notebookImg },
+  { key: "stock://pens.jpg", label: "Pens", src: pensImg },
+  // Footwear & Accessories
+  { key: "stock://shoes.jpg", label: "Shoes", src: shoesImg },
+  { key: "stock://handbag.jpg", label: "Handbag", src: handbagImg },
 ];
 
 /** Resolve a stock:// path to an importable src URL */
