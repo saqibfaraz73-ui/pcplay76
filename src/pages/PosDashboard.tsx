@@ -287,53 +287,50 @@ export default function PosDashboard() {
 
   const canCreateCustomers = session?.role === "admin";
 
-  React.useEffect(() => {
-    let ignore = false;
-    (async () => {
-      await ensureSeedData();
-      await loadPosSettings();
-      const [cats, its, inv, custs, delPersons, openTableOrders, allTables, allWaiters] = await Promise.all([
-        db.categories.orderBy("createdAt").toArray(),
-        db.items.orderBy("createdAt").toArray(),
-        db.inventory.toArray(),
-        db.customers.orderBy("createdAt").toArray(),
-        db.deliveryPersons.orderBy("createdAt").toArray(),
-        db.tableOrders.where("status").equals("open").toArray(),
-        db.restaurantTables.toArray(),
-        db.waiters.toArray(),
-      ]);
-      if (ignore) return;
-      // Filter out inactive categories and items
-      const activeCats = cats.filter(c => c.isActive !== false);
-      const activeCatIds = new Set(activeCats.map(c => c.id));
-      const activeItems = its.filter(i => i.isActive !== false && activeCatIds.has(i.categoryId));
-      setCategories(activeCats);
-      setItems(activeItems);
-      setInventory(Object.fromEntries(inv.map((r) => [r.itemId, r.quantity])));
-      setActiveCategoryId(null);
-      setCustomers(custs);
-      setDeliveryPersons(delPersons);
-      setPendingTableOrders(openTableOrders);
-      setTableMap(Object.fromEntries(allTables.map((t) => [t.id, t])));
-      setWaiterMap(Object.fromEntries(allWaiters.map((w) => [w.id, w])));
-      if (session?.username) {
-        await refreshWorkPeriod(session.username);
-      }
-    })();
-    return () => {
-      ignore = true;
-    };
+  const loadAllData = React.useCallback(async () => {
+    await ensureSeedData();
+    await loadPosSettings();
+    const [cats, its, inv, custs, delPersons, openTableOrders, allTables, allWaiters] = await Promise.all([
+      db.categories.orderBy("createdAt").toArray(),
+      db.items.orderBy("createdAt").toArray(),
+      db.inventory.toArray(),
+      db.customers.orderBy("createdAt").toArray(),
+      db.deliveryPersons.orderBy("createdAt").toArray(),
+      db.tableOrders.where("status").equals("open").toArray(),
+      db.restaurantTables.toArray(),
+      db.waiters.toArray(),
+    ]);
+    // Filter out inactive categories and items
+    const activeCats = cats.filter(c => c.isActive !== false);
+    const activeCatIds = new Set(activeCats.map(c => c.id));
+    const activeItems = its.filter(i => i.isActive !== false && activeCatIds.has(i.categoryId));
+    setCategories(activeCats);
+    setItems(activeItems);
+    setInventory(Object.fromEntries(inv.map((r) => [r.itemId, r.quantity])));
+    setActiveCategoryId(null);
+    setCustomers(custs);
+    setDeliveryPersons(delPersons);
+    setPendingTableOrders(openTableOrders);
+    setTableMap(Object.fromEntries(allTables.map((t) => [t.id, t])));
+    setWaiterMap(Object.fromEntries(allWaiters.map((w) => [w.id, w])));
+    if (session?.username) {
+      await refreshWorkPeriod(session.username);
+    }
   }, [loadPosSettings, refreshWorkPeriod, session?.username]);
 
   React.useEffect(() => {
-    const onFocus = () => void loadPosSettings();
+    void loadAllData();
+  }, [loadAllData]);
+
+  React.useEffect(() => {
+    const onFocus = () => void loadAllData();
     window.addEventListener("focus", onFocus);
     document.addEventListener("visibilitychange", onFocus);
     return () => {
       window.removeEventListener("focus", onFocus);
       document.removeEventListener("visibilitychange", onFocus);
     };
-  }, [loadPosSettings]);
+  }, [loadAllData]);
 
   const refreshAfterMutation = React.useCallback(async () => {
     const [inv, custs, delPersons, openTableOrders] = await Promise.all([
