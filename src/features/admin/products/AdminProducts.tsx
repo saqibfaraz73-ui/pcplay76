@@ -60,6 +60,7 @@ export function AdminProducts() {
   const [selectedItemIds, setSelectedItemIds] = React.useState<Set<string>>(new Set());
 
   const [catName, setCatName] = React.useState("");
+  const [catIsActive, setCatIsActive] = React.useState(true);
   const [catPrinterSection, setCatPrinterSection] = React.useState("");
   const [catSectionPrinter, setCatSectionPrinter] = React.useState<"bluetooth" | "usb" | "none">("none");
   const [newSectionName, setNewSectionName] = React.useState("");
