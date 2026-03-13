@@ -160,6 +160,7 @@ export function AdminProducts() {
     setItemVariations(item.variations ?? []);
     setItemAddOns(item.addOns ?? []);
     setItemSku(item.sku ?? "");
+    setItemIsActive(item.isActive !== false);
     const inv = await db.inventory.get(item.id);
     setItemInitialStock(inv?.quantity ?? 0);
     setOpen(true);
