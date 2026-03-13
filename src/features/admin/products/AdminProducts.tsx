@@ -995,18 +995,27 @@ export function AdminProducts() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              Delete {deleteConfirm?.type === "category" ? "Category" : "Item"}?
+              {deleteConfirm?.type === "bulk-categories"
+                ? `Delete ${deleteConfirm.ids.length} Categories?`
+                : deleteConfirm?.type === "bulk-items"
+                  ? `Delete ${deleteConfirm.ids.length} Items?`
+                  : `Delete ${deleteConfirm?.type === "category" ? "Category" : "Item"}?`}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete{" "}
-              <strong>
-                {deleteConfirm?.type === "category"
-                  ? deleteConfirm.category.name
-                  : deleteConfirm?.type === "item"
-                    ? deleteConfirm.item.name
-                    : ""}
-              </strong>
-              ? This action cannot be undone.
+              {deleteConfirm?.type === "bulk-categories"
+                ? `Are you sure you want to delete ${deleteConfirm.ids.length} selected categories? This cannot be undone.`
+                : deleteConfirm?.type === "bulk-items"
+                  ? `Are you sure you want to delete ${deleteConfirm.ids.length} selected items? This cannot be undone.`
+                  : <>Are you sure you want to delete{" "}
+                      <strong>
+                        {deleteConfirm?.type === "category"
+                          ? deleteConfirm.category.name
+                          : deleteConfirm?.type === "item"
+                            ? deleteConfirm.item.name
+                            : ""}
+                      </strong>
+                      ? This action cannot be undone.
+                    </>}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -1018,6 +1027,10 @@ export function AdminProducts() {
                   void confirmDeleteCategory(deleteConfirm.category);
                 } else if (deleteConfirm?.type === "item") {
                   void confirmDeleteItem(deleteConfirm.item);
+                } else if (deleteConfirm?.type === "bulk-categories") {
+                  void confirmBulkDeleteCategories(deleteConfirm.ids);
+                } else if (deleteConfirm?.type === "bulk-items") {
+                  void confirmBulkDeleteItems(deleteConfirm.ids);
                 }
               }}
             >
