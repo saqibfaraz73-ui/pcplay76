@@ -6,10 +6,19 @@ function id(prefix: string) {
 }
 
 export async function ensureSeedData() {
-  // Once seed has run at least once, never re-seed — even if user deletes all data
-  const seedDone = localStorage.getItem("sangi_pos.seed_done");
-  if (seedDone === "1") {
-    // Still ensure settings & counter exist (they're essential)
+  const seedVersion = localStorage.getItem("sangi_pos.seed_version");
+  const CURRENT_SEED_VERSION = "2"; // bump this when adding new seed data
+
+  if (seedVersion === CURRENT_SEED_VERSION) {
+    await ensureSettingsAndCounter();
+    return;
+  }
+
+  // If v1 was done but not v2, add only the new categories/items
+  if (seedVersion === "1" || localStorage.getItem("sangi_pos.seed_done") === "1") {
+    await addV2SeedData();
+    localStorage.setItem("sangi_pos.seed_version", CURRENT_SEED_VERSION);
+    localStorage.setItem("sangi_pos.seed_done", "1");
     await ensureSettingsAndCounter();
     return;
   }
@@ -70,10 +79,81 @@ export async function ensureSeedData() {
     await db.inventory.bulkAdd(itemsWithStock.map((x) => ({ itemId: x.item.id, quantity: x.stock, updatedAt: now })));
   }
 
-  // Mark seed as done so it never runs again
+  // Mark seed as done
   localStorage.setItem("sangi_pos.seed_done", "1");
+  localStorage.setItem("sangi_pos.seed_version", CURRENT_SEED_VERSION);
 
   await ensureSettingsAndCounter();
+}
+
+/** Add new categories/items introduced in seed v2 for existing users */
+async function addV2SeedData() {
+  const now = Date.now();
+  const existingCatNames = new Set((await db.categories.toArray()).map(c => c.name));
+
+  const newCats: { cat: Category; items: { item: Omit<MenuItem, "categoryId">; stock: number }[] }[] = [
+    {
+      cat: { id: id("cat"), name: "Clothing", createdAt: now },
+      items: [
+        { item: { id: id("item"), name: "T-Shirt", price: 1500, buyingPrice: 800, trackInventory: true, imagePath: "stock://tshirt.jpg", createdAt: now }, stock: 30 },
+        { item: { id: id("item"), name: "Jeans", price: 3500, buyingPrice: 2000, trackInventory: true, imagePath: "stock://jeans.jpg", createdAt: now }, stock: 20 },
+      ],
+    },
+    {
+      cat: { id: id("cat"), name: "Electronics", createdAt: now },
+      items: [
+        { item: { id: id("item"), name: "Smartphone", price: 45000, buyingPrice: 35000, trackInventory: true, imagePath: "stock://smartphone.jpg", createdAt: now }, stock: 10 },
+        { item: { id: id("item"), name: "Earbuds", price: 5000, buyingPrice: 3000, trackInventory: true, imagePath: "stock://earbuds.jpg", createdAt: now }, stock: 25 },
+      ],
+    },
+    {
+      cat: { id: id("cat"), name: "Pharmacy", createdAt: now },
+      items: [
+        { item: { id: id("item"), name: "Medicine Tablets", price: 150, buyingPrice: 80, trackInventory: true, imagePath: "stock://medicine-tablets.jpg", createdAt: now }, stock: 200 },
+        { item: { id: id("item"), name: "Cough Syrup", price: 300, buyingPrice: 180, trackInventory: true, imagePath: "stock://cough-syrup.jpg", createdAt: now }, stock: 50 },
+      ],
+    },
+    {
+      cat: { id: id("cat"), name: "Bakery", createdAt: now },
+      items: [
+        { item: { id: id("item"), name: "Chocolate Cake", price: 2500, buyingPrice: 1200, trackInventory: true, imagePath: "stock://cake.jpg", createdAt: now }, stock: 10 },
+        { item: { id: id("item"), name: "Croissant", price: 250, buyingPrice: 120, trackInventory: true, imagePath: "stock://croissant.jpg", createdAt: now }, stock: 40 },
+      ],
+    },
+    {
+      cat: { id: id("cat"), name: "Stationery", createdAt: now },
+      items: [
+        { item: { id: id("item"), name: "Notebook", price: 200, buyingPrice: 100, trackInventory: true, imagePath: "stock://notebook.jpg", createdAt: now }, stock: 100 },
+        { item: { id: id("item"), name: "Pen Pack", price: 150, buyingPrice: 70, trackInventory: true, imagePath: "stock://pens.jpg", createdAt: now }, stock: 80 },
+      ],
+    },
+    {
+      cat: { id: id("cat"), name: "Footwear & Accessories", createdAt: now },
+      items: [
+        { item: { id: id("item"), name: "Sports Shoes", price: 4500, buyingPrice: 2500, trackInventory: true, imagePath: "stock://shoes.jpg", createdAt: now }, stock: 15 },
+        { item: { id: id("item"), name: "Handbag", price: 3000, buyingPrice: 1500, trackInventory: true, imagePath: "stock://handbag.jpg", createdAt: now }, stock: 20 },
+      ],
+    },
+  ];
+
+  for (const { cat, items } of newCats) {
+    if (existingCatNames.has(cat.name)) continue; // skip if already exists
+    await db.categories.add(cat);
+    const menuItems: MenuItem[] = items.map(x => ({ ...x.item, categoryId: cat.id }));
+    await db.items.bulkAdd(menuItems);
+    await db.inventory.bulkAdd(items.map((x, i) => ({ itemId: menuItems[i].id, quantity: x.stock, updatedAt: now })));
+  }
+
+  // Also add Juice to Drinks if missing
+  const drinksCat = (await db.categories.toArray()).find(c => c.name === "Drinks");
+  if (drinksCat) {
+    const existingItems = await db.items.where("categoryId").equals(drinksCat.id).toArray();
+    if (!existingItems.some(i => i.name === "Juice")) {
+      const juiceItem: MenuItem = { id: id("item"), categoryId: drinksCat.id, name: "Juice", price: 150, buyingPrice: 80, trackInventory: true, imagePath: "stock://juice.jpg", createdAt: now };
+      await db.items.add(juiceItem);
+      await db.inventory.add({ itemId: juiceItem.id, quantity: 60, updatedAt: now });
+    }
+  }
 }
 
 async function ensureSettingsAndCounter() {
