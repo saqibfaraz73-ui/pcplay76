@@ -1,3 +1,4 @@
+import React from "react";
 import { useSearchParams } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AdminProducts } from "@/features/admin/products/AdminProducts";
@@ -5,10 +6,13 @@ import { AdminInventory } from "@/features/admin/inventory/AdminInventory";
 import { AdminCustomers } from "@/features/admin/customers/AdminCustomers";
 import { AdminBackupRestore } from "@/features/admin/backup/AdminBackupRestore";
 import { DataCleanup } from "@/features/admin/settings/DataCleanup";
+import { ensureSeedData } from "@/db/seed";
 
 export default function AdminDashboard() {
   const [searchParams] = useSearchParams();
   const defaultTab = searchParams.get("tab") || "products";
+
+  React.useEffect(() => { void ensureSeedData(); }, []);
 
   return (
     <div className="space-y-4">
