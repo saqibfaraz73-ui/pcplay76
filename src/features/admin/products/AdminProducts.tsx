@@ -602,7 +602,8 @@ export function AdminProducts() {
                 </div>
               );
             })
-          )}
+            );
+          })()}
         </CardContent>
       </Card>
 
