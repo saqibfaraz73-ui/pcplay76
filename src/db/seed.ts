@@ -6,10 +6,19 @@ function id(prefix: string) {
 }
 
 export async function ensureSeedData() {
-  // Once seed has run at least once, never re-seed — even if user deletes all data
-  const seedDone = localStorage.getItem("sangi_pos.seed_done");
-  if (seedDone === "1") {
-    // Still ensure settings & counter exist (they're essential)
+  const seedVersion = localStorage.getItem("sangi_pos.seed_version");
+  const CURRENT_SEED_VERSION = "2"; // bump this when adding new seed data
+
+  if (seedVersion === CURRENT_SEED_VERSION) {
+    await ensureSettingsAndCounter();
+    return;
+  }
+
+  // If v1 was done but not v2, add only the new categories/items
+  if (seedVersion === "1" || localStorage.getItem("sangi_pos.seed_done") === "1") {
+    await addV2SeedData();
+    localStorage.setItem("sangi_pos.seed_version", CURRENT_SEED_VERSION);
+    localStorage.setItem("sangi_pos.seed_done", "1");
     await ensureSettingsAndCounter();
     return;
   }
