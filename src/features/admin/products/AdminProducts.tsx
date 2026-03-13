@@ -607,6 +607,13 @@ export function AdminProducts() {
                 <Label htmlFor="catName">Category name</Label>
                 <Input id="catName" value={catName} onChange={(e) => setCatName(e.target.value)} />
               </div>
+              <div className="flex items-center justify-between gap-3 rounded-md border p-3">
+                <div>
+                  <div className="text-sm font-medium">Active</div>
+                  <div className="text-xs text-muted-foreground">If disabled, this category and its items won't show on Sales/Tables.</div>
+                </div>
+                <Switch checked={catIsActive} onCheckedChange={setCatIsActive} />
+              </div>
               <div className="space-y-2">
                 <Label htmlFor="catSection">Printer Section</Label>
                 <div className="flex gap-2">
