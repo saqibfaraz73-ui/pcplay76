@@ -914,7 +914,7 @@ export function PosTablesManager() {
 
       {/* Category Tabs */}
       <Tabs value={activeCategoryId ?? "all"} onValueChange={(v) => setActiveCategoryId(v === "all" ? null : v)}>
-        <TabsList className="flex overflow-x-auto w-full justify-start">
+        <TabsList className="flex overflow-x-auto no-scrollbar w-full justify-start flex-nowrap h-auto">
           <TabsTrigger value="all" className="shrink-0">All</TabsTrigger>
           {categories.map((c) => (
             <TabsTrigger key={c.id} value={c.id} className="shrink-0">{c.name}</TabsTrigger>
