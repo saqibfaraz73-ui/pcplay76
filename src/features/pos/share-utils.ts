@@ -62,22 +62,22 @@ async function nativeSaveViaShareSheet(bytes: Uint8Array, fileName: string, mime
   }
 }
 
-/** Save a PDF blob to device storage */
+/** Save a PDF blob to device — opens share sheet so user picks visible location */
 export async function savePdfBlob(blob: Blob, name: string): Promise<void> {
   const fileName = `${name}.pdf`;
   if (Capacitor.isNativePlatform()) {
     const bytes = await blobToUint8(blob);
-    await nativeSaveToAppStorage(bytes, fileName);
+    await nativeSaveViaShareSheet(bytes, fileName, "application/pdf");
     return;
   }
   browserDownload(blob, fileName);
   toast.success("File downloaded");
 }
 
-/** Save raw PDF bytes to device storage */
+/** Save raw PDF bytes — opens share sheet so user picks visible location */
 export async function savePdfBytes(bytes: Uint8Array, fileName: string): Promise<void> {
   if (Capacitor.isNativePlatform()) {
-    await nativeSaveToAppStorage(bytes, fileName);
+    await nativeSaveViaShareSheet(bytes, fileName, "application/pdf");
     return;
   }
   const blob = new Blob([bytes.buffer as ArrayBuffer], { type: "application/pdf" });
@@ -85,23 +85,23 @@ export async function savePdfBytes(bytes: Uint8Array, fileName: string): Promise
   toast.success("File downloaded");
 }
 
-/** Save any file blob to device storage */
+/** Save any file blob — opens share sheet so user picks visible location */
 export async function saveFileBlob(blob: Blob, fileName: string): Promise<void> {
   if (Capacitor.isNativePlatform()) {
     const bytes = await blobToUint8(blob);
-    await nativeSaveToAppStorage(bytes, fileName);
+    await nativeSaveViaShareSheet(bytes, fileName, blob.type || "application/octet-stream");
     return;
   }
   browserDownload(blob, fileName);
   toast.success("File downloaded");
 }
 
-/** Save text file to device storage */
+/** Save text file — opens share sheet so user picks visible location */
 export async function saveTextFile(content: string, fileName: string): Promise<void> {
   const blob = new Blob([content], { type: "application/octet-stream" });
   if (Capacitor.isNativePlatform()) {
     const bytes = await blobToUint8(blob);
-    await nativeSaveToAppStorage(bytes, fileName);
+    await nativeSaveViaShareSheet(bytes, fileName);
     return;
   }
   browserDownload(blob, fileName);
