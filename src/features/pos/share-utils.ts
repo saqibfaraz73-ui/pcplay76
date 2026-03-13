@@ -41,37 +41,43 @@ function browserDownload(blob: Blob, fileName: string) {
   URL.revokeObjectURL(url);
 }
 
-/** Save raw bytes to app-private storage (no storage permission needed on any Android) */
-async function nativeSaveToAppStorage(bytes: Uint8Array, fileName: string): Promise<void> {
-  const dir = "SangiPOS";
+/**
+ * Save file by opening the native share sheet so the user can choose
+ * where to save (Downloads, Drive, WhatsApp, etc.).
+ * Files saved this way are visible in the device's file manager.
+ */
+async function nativeSaveViaShareSheet(bytes: Uint8Array, fileName: string, mimeType = "application/octet-stream"): Promise<void> {
+  const tmpPath = `__save_tmp__/${fileName}`;
   try {
-    await Filesystem.mkdir({ directory: Directory.Data, path: dir, recursive: true });
-  } catch { /* exists */ }
-  await Filesystem.writeFile({
-    directory: Directory.Data,
-    path: `${dir}/${fileName}`,
-    data: uint8ToBase64(bytes),
-    recursive: true,
-  });
-  toast.success(`File saved: ${fileName}`);
+    await Filesystem.writeFile({
+      directory: Directory.Cache,
+      path: tmpPath,
+      data: uint8ToBase64(bytes),
+      recursive: true,
+    });
+    const { uri } = await Filesystem.getUri({ directory: Directory.Cache, path: tmpPath });
+    await Share.share({ title: fileName, url: uri, dialogTitle: `Save ${fileName}` });
+  } finally {
+    try { await Filesystem.deleteFile({ directory: Directory.Cache, path: tmpPath }); } catch { /* ignore */ }
+  }
 }
 
-/** Save a PDF blob to device storage */
+/** Save a PDF blob to device — opens share sheet so user picks visible location */
 export async function savePdfBlob(blob: Blob, name: string): Promise<void> {
   const fileName = `${name}.pdf`;
   if (Capacitor.isNativePlatform()) {
     const bytes = await blobToUint8(blob);
-    await nativeSaveToAppStorage(bytes, fileName);
+    await nativeSaveViaShareSheet(bytes, fileName, "application/pdf");
     return;
   }
   browserDownload(blob, fileName);
   toast.success("File downloaded");
 }
 
-/** Save raw PDF bytes to device storage */
+/** Save raw PDF bytes — opens share sheet so user picks visible location */
 export async function savePdfBytes(bytes: Uint8Array, fileName: string): Promise<void> {
   if (Capacitor.isNativePlatform()) {
-    await nativeSaveToAppStorage(bytes, fileName);
+    await nativeSaveViaShareSheet(bytes, fileName, "application/pdf");
     return;
   }
   const blob = new Blob([bytes.buffer as ArrayBuffer], { type: "application/pdf" });
@@ -79,23 +85,23 @@ export async function savePdfBytes(bytes: Uint8Array, fileName: string): Promise
   toast.success("File downloaded");
 }
 
-/** Save any file blob to device storage */
+/** Save any file blob — opens share sheet so user picks visible location */
 export async function saveFileBlob(blob: Blob, fileName: string): Promise<void> {
   if (Capacitor.isNativePlatform()) {
     const bytes = await blobToUint8(blob);
-    await nativeSaveToAppStorage(bytes, fileName);
+    await nativeSaveViaShareSheet(bytes, fileName, blob.type || "application/octet-stream");
     return;
   }
   browserDownload(blob, fileName);
   toast.success("File downloaded");
 }
 
-/** Save text file to device storage */
+/** Save text file — opens share sheet so user picks visible location */
 export async function saveTextFile(content: string, fileName: string): Promise<void> {
   const blob = new Blob([content], { type: "application/octet-stream" });
   if (Capacitor.isNativePlatform()) {
     const bytes = await blobToUint8(blob);
-    await nativeSaveToAppStorage(bytes, fileName);
+    await nativeSaveViaShareSheet(bytes, fileName);
     return;
   }
   browserDownload(blob, fileName);
