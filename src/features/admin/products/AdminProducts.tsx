@@ -210,6 +210,7 @@ export function AdminProducts() {
           id,
           categoryId: itemCategoryId,
           name,
+          isActive: itemIsActive,
           sku: itemSku.trim() || undefined,
           price: Math.round(itemPrice),
           buyingPrice: itemBuyingPrice > 0 ? Math.round(itemBuyingPrice) : undefined,
