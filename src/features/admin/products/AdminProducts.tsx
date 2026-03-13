@@ -26,7 +26,8 @@ import { useToast } from "@/hooks/use-toast";
 import { parseNonDecimalInt, formatIntMoney } from "@/features/pos/format";
 import { makeId } from "@/features/admin/id";
 import { ItemImagePicker } from "@/features/admin/products/ItemImagePicker";
-import { CalendarIcon, Download, Upload, ScanBarcode, FileUp } from "lucide-react";
+import { CalendarIcon, Download, Upload, ScanBarcode, FileUp, Trash2 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { importSkuFromFile } from "@/features/admin/products/sku-import";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -49,8 +50,14 @@ export function AdminProducts() {
   const [deleteConfirm, setDeleteConfirm] = React.useState<
     | { type: "category"; category: Category }
     | { type: "item"; item: MenuItem }
+    | { type: "bulk-categories"; ids: string[] }
+    | { type: "bulk-items"; ids: string[] }
     | null
   >(null);
+
+  // Bulk selection state
+  const [selectedCategoryIds, setSelectedCategoryIds] = React.useState<Set<string>>(new Set());
+  const [selectedItemIds, setSelectedItemIds] = React.useState<Set<string>>(new Set());
 
   const [catName, setCatName] = React.useState("");
   const [catPrinterSection, setCatPrinterSection] = React.useState("");
@@ -250,6 +257,47 @@ export function AdminProducts() {
     await refresh();
   };
 
+  const confirmBulkDeleteCategories = async (ids: string[]) => {
+    for (const catId of ids) {
+      const count = await db.items.where("categoryId").equals(catId).count();
+      if (count > 0) {
+        const cat = categories.find(c => c.id === catId);
+        toast({ title: "Cannot delete", description: `"${cat?.name}" still has items. Move/delete items first.`, variant: "destructive" });
+        return;
+      }
+    }
+    await db.categories.bulkDelete(ids);
+    toast({ title: `Deleted ${ids.length} categories` });
+    setDeleteConfirm(null);
+    setSelectedCategoryIds(new Set());
+    await refresh();
+  };
+
+  const confirmBulkDeleteItems = async (ids: string[]) => {
+    await db.items.bulkDelete(ids);
+    await db.inventory.bulkDelete(ids);
+    toast({ title: `Deleted ${ids.length} items` });
+    setDeleteConfirm(null);
+    setSelectedItemIds(new Set());
+    await refresh();
+  };
+
+  const toggleCategorySelect = (id: string) => {
+    setSelectedCategoryIds(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
+  const toggleItemSelect = (id: string) => {
+    setSelectedItemIds(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
   const handleExport = async () => {
     try {
       const blob = await exportMenuItemsToExcel();
@@ -371,27 +419,56 @@ export function AdminProducts() {
               <CardTitle>Categories</CardTitle>
               <CardDescription>Create, edit, and delete menu categories.</CardDescription>
             </div>
-            <Button size="sm" onClick={openNewCategory}>New Category</Button>
+            <div className="flex flex-wrap items-center gap-2">
+              {selectedCategoryIds.size > 0 && (
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => setDeleteConfirm({ type: "bulk-categories", ids: Array.from(selectedCategoryIds) })}
+                >
+                  <Trash2 className="h-4 w-4 mr-1" />
+                  Delete ({selectedCategoryIds.size})
+                </Button>
+              )}
+              <Button size="sm" onClick={openNewCategory}>New Category</Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-2">
+          {categories.length > 0 && (
+            <div className="flex items-center gap-2 pb-1">
+              <Checkbox
+                checked={selectedCategoryIds.size === categories.length && categories.length > 0}
+                onCheckedChange={(checked) => {
+                  setSelectedCategoryIds(checked ? new Set(categories.map(c => c.id)) : new Set());
+                }}
+              />
+              <span className="text-xs text-muted-foreground">Select all</span>
+            </div>
+          )}
           {categories.length === 0 ? (
             <div className="text-sm text-muted-foreground">No categories yet.</div>
           ) : (
             categories.map((c) => (
               <div key={c.id} className="flex items-center justify-between gap-2 rounded-md border p-2">
-                <div className="min-w-0">
-                  <div className="truncate text-sm font-medium">{c.name}</div>
-                  {c.printerSection && (
-                    <div className="text-xs text-muted-foreground">Section: {c.printerSection}</div>
-                  )}
+                <div className="flex items-center gap-2 min-w-0 flex-1">
+                  <Checkbox
+                    checked={selectedCategoryIds.has(c.id)}
+                    onCheckedChange={() => toggleCategorySelect(c.id)}
+                  />
+                  <div className="min-w-0">
+                    <div className="truncate text-sm font-medium">{c.name}</div>
+                    {c.printerSection && (
+                      <div className="text-xs text-muted-foreground">Section: {c.printerSection}</div>
+                    )}
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1 shrink-0">
                   <Button variant="outline" size="sm" onClick={() => openEditCategory(c)}>
                     Edit
                   </Button>
                   <Button variant="destructive" size="sm" onClick={() => setDeleteConfirm({ type: "category", category: c })}>
-                    Delete
+                    Del
                   </Button>
                 </div>
               </div>
@@ -414,6 +491,16 @@ export function AdminProducts() {
               onChange={handleImportFile}
               className="hidden"
             />
+            {selectedItemIds.size > 0 && (
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => setDeleteConfirm({ type: "bulk-items", ids: Array.from(selectedItemIds) })}
+              >
+                <Trash2 className="h-4 w-4 mr-1" />
+                Delete ({selectedItemIds.size})
+              </Button>
+            )}
             <Button variant="outline" size="sm" onClick={() => importInputRef.current?.click()}>
               <Upload className="h-4 w-4 mr-1" />
               Import
@@ -428,6 +515,17 @@ export function AdminProducts() {
           </div>
         </CardHeader>
         <CardContent className="space-y-2">
+          {items.length > 0 && (
+            <div className="flex items-center gap-2 pb-1">
+              <Checkbox
+                checked={selectedItemIds.size === items.length && items.length > 0}
+                onCheckedChange={(checked) => {
+                  setSelectedItemIds(checked ? new Set(items.map(i => i.id)) : new Set());
+                }}
+              />
+              <span className="text-xs text-muted-foreground">Select all</span>
+            </div>
+          )}
           {items.length === 0 ? (
             <div className="text-sm text-muted-foreground">No items yet.</div>
           ) : (
@@ -439,22 +537,28 @@ export function AdminProducts() {
               const isExpired = i.expiryDate && i.expiryDate < Date.now();
               return (
                 <div key={i.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md border p-2">
-                  <div className="min-w-0 flex-1">
-                    <div className="truncate text-sm font-medium">{i.name}</div>
-                    <div className="text-xs text-muted-foreground">
-                      {cat} • Sell {formatIntMoney(i.price)}
-                      {i.sku ? <> • SKU: {i.sku}</> : null}
-                      {typeof i.buyingPrice === "number" && i.buyingPrice > 0 ? (
-                        <> • Buy {formatIntMoney(i.buyingPrice)}</>
-                      ) : null}
-                      {profit !== null ? <> • Profit {formatIntMoney(profit)}</> : null} •{" "}
-                      {i.trackInventory ? `Stock tracked${i.stockUnit && i.stockUnit !== "pcs" ? ` (${i.stockUnit})` : ""}` : "No stock"}
-                      {i.variations && i.variations.length > 0 ? (
-                        <> • {i.variations.length} variant{i.variations.length > 1 ? "s" : ""}</>
-                      ) : null}
-                      {expiryStr ? (
-                        <span className={cn(isExpired && "text-destructive")}> • Exp: {expiryStr}</span>
-                      ) : null}
+                  <div className="flex items-center gap-2 min-w-0 flex-1">
+                    <Checkbox
+                      checked={selectedItemIds.has(i.id)}
+                      onCheckedChange={() => toggleItemSelect(i.id)}
+                    />
+                    <div className="min-w-0">
+                      <div className="truncate text-sm font-medium">{i.name}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {cat} • Sell {formatIntMoney(i.price)}
+                        {i.sku ? <> • SKU: {i.sku}</> : null}
+                        {typeof i.buyingPrice === "number" && i.buyingPrice > 0 ? (
+                          <> • Buy {formatIntMoney(i.buyingPrice)}</>
+                        ) : null}
+                        {profit !== null ? <> • Profit {formatIntMoney(profit)}</> : null} •{" "}
+                        {i.trackInventory ? `Stock tracked${i.stockUnit && i.stockUnit !== "pcs" ? ` (${i.stockUnit})` : ""}` : "No stock"}
+                        {i.variations && i.variations.length > 0 ? (
+                          <> • {i.variations.length} variant{i.variations.length > 1 ? "s" : ""}</>
+                        ) : null}
+                        {expiryStr ? (
+                          <span className={cn(isExpired && "text-destructive")}> • Exp: {expiryStr}</span>
+                        ) : null}
+                      </div>
                     </div>
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
@@ -891,18 +995,27 @@ export function AdminProducts() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              Delete {deleteConfirm?.type === "category" ? "Category" : "Item"}?
+              {deleteConfirm?.type === "bulk-categories"
+                ? `Delete ${deleteConfirm.ids.length} Categories?`
+                : deleteConfirm?.type === "bulk-items"
+                  ? `Delete ${deleteConfirm.ids.length} Items?`
+                  : `Delete ${deleteConfirm?.type === "category" ? "Category" : "Item"}?`}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete{" "}
-              <strong>
-                {deleteConfirm?.type === "category"
-                  ? deleteConfirm.category.name
-                  : deleteConfirm?.type === "item"
-                    ? deleteConfirm.item.name
-                    : ""}
-              </strong>
-              ? This action cannot be undone.
+              {deleteConfirm?.type === "bulk-categories"
+                ? `Are you sure you want to delete ${deleteConfirm.ids.length} selected categories? This cannot be undone.`
+                : deleteConfirm?.type === "bulk-items"
+                  ? `Are you sure you want to delete ${deleteConfirm.ids.length} selected items? This cannot be undone.`
+                  : <>Are you sure you want to delete{" "}
+                      <strong>
+                        {deleteConfirm?.type === "category"
+                          ? deleteConfirm.category.name
+                          : deleteConfirm?.type === "item"
+                            ? deleteConfirm.item.name
+                            : ""}
+                      </strong>
+                      ? This action cannot be undone.
+                    </>}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -914,6 +1027,10 @@ export function AdminProducts() {
                   void confirmDeleteCategory(deleteConfirm.category);
                 } else if (deleteConfirm?.type === "item") {
                   void confirmDeleteItem(deleteConfirm.item);
+                } else if (deleteConfirm?.type === "bulk-categories") {
+                  void confirmBulkDeleteCategories(deleteConfirm.ids);
+                } else if (deleteConfirm?.type === "bulk-items") {
+                  void confirmBulkDeleteItems(deleteConfirm.ids);
                 }
               }}
             >

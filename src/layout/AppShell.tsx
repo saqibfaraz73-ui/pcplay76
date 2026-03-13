@@ -410,7 +410,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       )}
 
       {/* Main content */}
-      <main className={cn("mx-auto max-w-6xl px-4 py-6 overflow-x-hidden", onlineWarningHours !== null ? "mt-4" : "mt-16")} style={onlineWarningHours !== null ? {} : { marginTop: 'calc(4rem + env(safe-area-inset-top, 0px))' }}>{children}</main>
+      <main className={cn("mx-auto max-w-6xl px-4 py-6 overflow-x-hidden", onlineWarningHours !== null ? "mt-4" : "mt-16")} style={onlineWarningHours !== null ? { paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))' } : { marginTop: 'calc(4rem + env(safe-area-inset-top, 0px))', paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))' }}>{children}</main>
 
       <BackupReminder />
 

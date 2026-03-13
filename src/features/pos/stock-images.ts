@@ -30,6 +30,18 @@ import soapImg from "@/assets/stock-images/soap.jpg";
 import toothpasteImg from "@/assets/stock-images/toothpaste.jpg";
 import cookingOilImg from "@/assets/stock-images/cooking-oil.jpg";
 import dishwashImg from "@/assets/stock-images/dishwash.jpg";
+import tshirtImg from "@/assets/stock-images/tshirt.jpg";
+import jeansImg from "@/assets/stock-images/jeans.jpg";
+import smartphoneImg from "@/assets/stock-images/smartphone.jpg";
+import earbudsImg from "@/assets/stock-images/earbuds.jpg";
+import medicineTabletsImg from "@/assets/stock-images/medicine-tablets.jpg";
+import coughSyrupImg from "@/assets/stock-images/cough-syrup.jpg";
+import cakeImg from "@/assets/stock-images/cake.jpg";
+import croissantImg from "@/assets/stock-images/croissant.jpg";
+import notebookImg from "@/assets/stock-images/notebook.jpg";
+import pensImg from "@/assets/stock-images/pens.jpg";
+import shoesImg from "@/assets/stock-images/shoes.jpg";
+import handbagImg from "@/assets/stock-images/handbag.jpg";
 
 export type StockImage = { key: string; label: string; src: string };
 
@@ -66,6 +78,24 @@ export const STOCK_IMAGES: StockImage[] = [
   { key: "stock://toothpaste.jpg", label: "Toothpaste", src: toothpasteImg },
   { key: "stock://washing-powder.jpg", label: "Washing Powder", src: washingPowderImg },
   { key: "stock://water.jpg", label: "Water Bottle", src: waterImg },
+  // Clothing
+  { key: "stock://tshirt.jpg", label: "T-Shirt", src: tshirtImg },
+  { key: "stock://jeans.jpg", label: "Jeans", src: jeansImg },
+  // Electronics
+  { key: "stock://smartphone.jpg", label: "Smartphone", src: smartphoneImg },
+  { key: "stock://earbuds.jpg", label: "Earbuds", src: earbudsImg },
+  // Pharmacy
+  { key: "stock://medicine-tablets.jpg", label: "Medicine Tablets", src: medicineTabletsImg },
+  { key: "stock://cough-syrup.jpg", label: "Cough Syrup", src: coughSyrupImg },
+  // Bakery
+  { key: "stock://cake.jpg", label: "Cake", src: cakeImg },
+  { key: "stock://croissant.jpg", label: "Croissant", src: croissantImg },
+  // Stationery
+  { key: "stock://notebook.jpg", label: "Notebook", src: notebookImg },
+  { key: "stock://pens.jpg", label: "Pens", src: pensImg },
+  // Footwear & Accessories
+  { key: "stock://shoes.jpg", label: "Shoes", src: shoesImg },
+  { key: "stock://handbag.jpg", label: "Handbag", src: handbagImg },
 ];
 
 /** Resolve a stock:// path to an importable src URL */
