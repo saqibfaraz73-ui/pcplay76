@@ -41,19 +41,25 @@ function browserDownload(blob: Blob, fileName: string) {
   URL.revokeObjectURL(url);
 }
 
-/** Save raw bytes to app-private storage (no storage permission needed on any Android) */
-async function nativeSaveToAppStorage(bytes: Uint8Array, fileName: string): Promise<void> {
-  const dir = "SangiPOS";
+/**
+ * Save file by opening the native share sheet so the user can choose
+ * where to save (Downloads, Drive, WhatsApp, etc.).
+ * Files saved this way are visible in the device's file manager.
+ */
+async function nativeSaveViaShareSheet(bytes: Uint8Array, fileName: string, mimeType = "application/octet-stream"): Promise<void> {
+  const tmpPath = `__save_tmp__/${fileName}`;
   try {
-    await Filesystem.mkdir({ directory: Directory.Data, path: dir, recursive: true });
-  } catch { /* exists */ }
-  await Filesystem.writeFile({
-    directory: Directory.Data,
-    path: `${dir}/${fileName}`,
-    data: uint8ToBase64(bytes),
-    recursive: true,
-  });
-  toast.success(`File saved: ${fileName}`);
+    await Filesystem.writeFile({
+      directory: Directory.Cache,
+      path: tmpPath,
+      data: uint8ToBase64(bytes),
+      recursive: true,
+    });
+    const { uri } = await Filesystem.getUri({ directory: Directory.Cache, path: tmpPath });
+    await Share.share({ title: fileName, url: uri, dialogTitle: `Save ${fileName}` });
+  } finally {
+    try { await Filesystem.deleteFile({ directory: Directory.Cache, path: tmpPath }); } catch { /* ignore */ }
+  }
 }
 
 /** Save a PDF blob to device storage */

@@ -289,7 +289,7 @@ export function AdminBackupRestore() {
             <Input
               id="restoreFile"
               type="file"
-              accept="application/json,.json"
+              accept="application/json,.json,*/*"
               onChange={(e) => {
                 const f = e.target.files?.[0];
                 if (f) void onRestoreFile(f);
