@@ -109,6 +109,7 @@ export function AdminProducts() {
   const openNewCategory = () => {
     setMode({ type: "category" });
     setCatName("");
+    setCatIsActive(true);
     setCatPrinterSection("");
     setCatSectionPrinter("none");
     setNewSectionName("");
