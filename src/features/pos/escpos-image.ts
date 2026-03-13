@@ -13,12 +13,15 @@ async function loadImageAsCanvas(
 ): Promise<HTMLCanvasElement> {
   return new Promise(async (resolve, reject) => {
     try {
-      // Load from device filesystem
-      const uri = await Filesystem.getUri({
-        directory: Directory.Documents,
-        path: imagePath,
-      });
-      const src = Capacitor.convertFileSrc(uri.uri);
+      // Try app-private storage first, then legacy Documents
+      let src: string;
+      try {
+        const uri = await Filesystem.getUri({ directory: Directory.Data, path: imagePath });
+        src = Capacitor.convertFileSrc(uri.uri);
+      } catch {
+        const uri = await Filesystem.getUri({ directory: Directory.Documents, path: imagePath });
+        src = Capacitor.convertFileSrc(uri.uri);
+      }
 
       const img = new Image();
       img.crossOrigin = "anonymous";

@@ -339,7 +339,7 @@ export function AdminPrinter() {
         const fileName = `logo_${Date.now()}.${file.name.split(".").pop()}`;
         const path = `Sangi Pos/Images/${fileName}`;
         if (Capacitor.isNativePlatform()) {
-          await Filesystem.writeFile({ directory: Directory.Documents, path, data: base64, recursive: true });
+          await Filesystem.writeFile({ directory: Directory.Data, path, data: base64, recursive: true });
         }
         setReceiptLogoPath(path);
         toast({ title: "Logo uploaded" });

@@ -1,7 +1,7 @@
 /**
  * Shared utility for sharing AND saving files.
  *
- * save*  → writes to device Documents folder (native) or browser download (web)
+ * save*  → writes to app-private storage (native) or browser download (web)
  * share* → opens native share sheet (native) or Web Share API (web)
  */
 import { toast } from "sonner";
@@ -26,7 +26,7 @@ async function blobToUint8(blob: Blob): Promise<Uint8Array> {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SAVE TO DEVICE — writes to Documents folder on native, browser download on web
+// SAVE TO DEVICE — writes to app-private storage on native, browser download on web
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** Browser download fallback */
@@ -41,19 +41,19 @@ function browserDownload(blob: Blob, fileName: string) {
   URL.revokeObjectURL(url);
 }
 
-/** Save raw bytes to device Documents folder */
-async function nativeSaveToDocuments(bytes: Uint8Array, fileName: string): Promise<void> {
+/** Save raw bytes to app-private storage (no storage permission needed on any Android) */
+async function nativeSaveToAppStorage(bytes: Uint8Array, fileName: string): Promise<void> {
   const dir = "SangiPOS";
   try {
-    await Filesystem.mkdir({ directory: Directory.Documents, path: dir, recursive: true });
+    await Filesystem.mkdir({ directory: Directory.Data, path: dir, recursive: true });
   } catch { /* exists */ }
   await Filesystem.writeFile({
-    directory: Directory.Documents,
+    directory: Directory.Data,
     path: `${dir}/${fileName}`,
     data: uint8ToBase64(bytes),
     recursive: true,
   });
-  toast.success(`Saved to Documents/SangiPOS/${fileName}`);
+  toast.success(`File saved: ${fileName}`);
 }
 
 /** Save a PDF blob to device storage */
@@ -61,7 +61,7 @@ export async function savePdfBlob(blob: Blob, name: string): Promise<void> {
   const fileName = `${name}.pdf`;
   if (Capacitor.isNativePlatform()) {
     const bytes = await blobToUint8(blob);
-    await nativeSaveToDocuments(bytes, fileName);
+    await nativeSaveToAppStorage(bytes, fileName);
     return;
   }
   browserDownload(blob, fileName);
@@ -71,7 +71,7 @@ export async function savePdfBlob(blob: Blob, name: string): Promise<void> {
 /** Save raw PDF bytes to device storage */
 export async function savePdfBytes(bytes: Uint8Array, fileName: string): Promise<void> {
   if (Capacitor.isNativePlatform()) {
-    await nativeSaveToDocuments(bytes, fileName);
+    await nativeSaveToAppStorage(bytes, fileName);
     return;
   }
   const blob = new Blob([bytes.buffer as ArrayBuffer], { type: "application/pdf" });
@@ -83,7 +83,7 @@ export async function savePdfBytes(bytes: Uint8Array, fileName: string): Promise
 export async function saveFileBlob(blob: Blob, fileName: string): Promise<void> {
   if (Capacitor.isNativePlatform()) {
     const bytes = await blobToUint8(blob);
-    await nativeSaveToDocuments(bytes, fileName);
+    await nativeSaveToAppStorage(bytes, fileName);
     return;
   }
   browserDownload(blob, fileName);
@@ -95,7 +95,7 @@ export async function saveTextFile(content: string, fileName: string): Promise<v
   const blob = new Blob([content], { type: "application/octet-stream" });
   if (Capacitor.isNativePlatform()) {
     const bytes = await blobToUint8(blob);
-    await nativeSaveToDocuments(bytes, fileName);
+    await nativeSaveToAppStorage(bytes, fileName);
     return;
   }
   browserDownload(blob, fileName);

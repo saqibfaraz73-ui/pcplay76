@@ -12,6 +12,9 @@
  *  - Zero storage permissions required in AndroidManifest.xml
  *  - User picks a folder ONCE; the app gets a permanent URI
  *  - Files are saved directly to that folder forever
+ *
+ * Non-SAF fallback uses Directory.Data (app-private storage)
+ * which requires ZERO storage permissions on Android 6–16.
  */
 
 import { Filesystem, Directory, Encoding } from "@capacitor/filesystem";
@@ -35,11 +38,11 @@ export async function ensureSangiFolders(): Promise<void> {
     // SAF creates intermediate directories automatically when writing files.
     return;
   }
-  // Web / iOS: use Capacitor Filesystem
+  // Web / iOS / non-SAF Android: use app-private storage (no permissions needed)
   const targets: SangiFolder[] = ["Backup", "Sales Report", "Credit", "Images"];
   for (const f of targets) {
     try {
-      await Filesystem.mkdir({ directory: Directory.Documents, path: folderPath(f), recursive: true });
+      await Filesystem.mkdir({ directory: Directory.Data, path: folderPath(f), recursive: true });
     } catch {
       // ignore if already exists or unsupported
     }
@@ -72,8 +75,13 @@ export async function readPdfBlobUrl(args: { path: string }): Promise<{ url: str
     return { url, revoke: () => URL.revokeObjectURL(url) };
   }
 
-  // Web / iOS path
-  const res = await Filesystem.readFile({ directory: Directory.Documents, path: args.path });
+  // Web / iOS / non-SAF Android: try app-private first, then legacy Documents
+  let res: any;
+  try {
+    res = await Filesystem.readFile({ directory: Directory.Data, path: args.path });
+  } catch {
+    res = await Filesystem.readFile({ directory: Directory.Documents, path: args.path });
+  }
   const blob =
     typeof res.data === "string"
       ? (() => {
@@ -104,16 +112,16 @@ export async function writeTextFile(args: {
     return { path: relativePath, uri };
   }
 
-  // Web / iOS
+  // Web / iOS / non-SAF Android: use app-private storage
   await ensureSangiFolders();
   await Filesystem.writeFile({
-    directory: Directory.Documents,
+    directory: Directory.Data,
     path: relativePath,
     data: args.contents,
     encoding: Encoding.UTF8,
     recursive: true,
   });
-  const uriResult = await Filesystem.getUri({ directory: Directory.Documents, path: relativePath });
+  const uriResult = await Filesystem.getUri({ directory: Directory.Data, path: relativePath });
   return { path: relativePath, uri: uriResult.uri };
 }
 
@@ -136,15 +144,15 @@ export async function writePdfFile(args: {
     return { path: relativePath, uri };
   }
 
-  // Web / iOS
+  // Web / iOS / non-SAF Android: use app-private storage
   await ensureSangiFolders();
   await Filesystem.writeFile({
-    directory: Directory.Documents,
+    directory: Directory.Data,
     path: relativePath,
     data: uint8ToBase64(args.pdfBytes),
     recursive: true,
   });
-  const uriResult = await Filesystem.getUri({ directory: Directory.Documents, path: relativePath });
+  const uriResult = await Filesystem.getUri({ directory: Directory.Data, path: relativePath });
   return { path: relativePath, uri: uriResult.uri };
 }
 
