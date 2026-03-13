@@ -527,6 +527,17 @@ export function AdminProducts() {
         </CardHeader>
         <CardContent className="space-y-2">
           {items.length > 0 && (
+            <div className="relative mb-2">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search items..."
+                value={itemSearchQuery}
+                onChange={(e) => setItemSearchQuery(e.target.value)}
+                className="pl-8 h-9"
+              />
+            </div>
+          )}
+          {items.length > 0 && (
             <div className="flex items-center gap-2 pb-1">
               <Checkbox
                 checked={selectedItemIds.size === items.length && items.length > 0}
@@ -539,7 +550,12 @@ export function AdminProducts() {
           )}
           {items.length === 0 ? (
             <div className="text-sm text-muted-foreground">No items yet.</div>
-          ) : (
+          ) : (() => {
+            const q = itemSearchQuery.trim().toLowerCase();
+            const filtered = q ? items.filter(i => i.name.toLowerCase().includes(q) || (i.sku && i.sku.toLowerCase().includes(q))) : items;
+            return filtered.length === 0 ? (
+              <div className="text-sm text-muted-foreground py-2">No items match "{itemSearchQuery.trim()}"</div>
+            ) : (
             items.map((i) => {
               const cat = categories.find((c) => c.id === i.categoryId)?.name ?? "—";
               const profit =
