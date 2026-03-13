@@ -303,8 +303,12 @@ export default function PosDashboard() {
         db.waiters.toArray(),
       ]);
       if (ignore) return;
-      setCategories(cats);
-      setItems(its);
+      // Filter out inactive categories and items
+      const activeCats = cats.filter(c => c.isActive !== false);
+      const activeCatIds = new Set(activeCats.map(c => c.id));
+      const activeItems = its.filter(i => i.isActive !== false && activeCatIds.has(i.categoryId));
+      setCategories(activeCats);
+      setItems(activeItems);
       setInventory(Object.fromEntries(inv.map((r) => [r.itemId, r.quantity])));
       setActiveCategoryId(null);
       setCustomers(custs);
