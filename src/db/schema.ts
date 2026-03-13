@@ -1,6 +1,7 @@
 export type Category = {
   id: string;
   name: string;
+  isActive?: boolean; // default true; if false, hidden from POS/Tables dashboards
   printerSection?: string; // custom printer section (e.g. "A", "B", "Kitchen")
   createdAt: number;
 };
