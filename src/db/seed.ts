@@ -6,19 +6,16 @@ function id(prefix: string) {
 }
 
 export async function ensureSeedData() {
+  // Once seed has run at least once, never re-seed — even if user deletes all data
+  const seedDone = localStorage.getItem("sangi_pos.seed_done");
+  if (seedDone === "1") {
+    // Still ensure settings & counter exist (they're essential)
+    await ensureSettingsAndCounter();
+    return;
+  }
+
   const hasAnyCategory = (await db.categories.count()) > 0;
-  const hasNewSeed = hasAnyCategory
-    ? !!(await db.categories.where("name").equals("Fast Food").first())
-    : false;
-
-  if (!hasAnyCategory || !hasNewSeed) {
-    // Clear old seed data if present
-    if (hasAnyCategory && !hasNewSeed) {
-      await db.items.clear();
-      await db.categories.clear();
-      await db.inventory.clear();
-    }
-
+  if (!hasAnyCategory) {
     const now = Date.now();
     const catFastFood: Category = { id: id("cat"), name: "Fast Food", createdAt: now };
     const catGrocery: Category = { id: id("cat"), name: "Grocery", createdAt: now };
@@ -47,6 +44,9 @@ export async function ensureSeedData() {
     await db.items.bulkAdd(items);
     await db.inventory.bulkAdd(itemsWithStock.map((x) => ({ itemId: x.item.id, quantity: x.stock, updatedAt: now })));
   }
+
+  // Mark seed as done so it never runs again
+  localStorage.setItem("sangi_pos.seed_done", "1");
 
   const hasSettings = (await db.settings.count()) > 0;
   if (!hasSettings) {
