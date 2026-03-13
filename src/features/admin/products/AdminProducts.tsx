@@ -174,9 +174,9 @@ export function AdminProducts() {
         const now = Date.now();
         const section = catPrinterSection.trim() || undefined;
         if (mode.category) {
-          await db.categories.put({ ...mode.category, name, printerSection: section });
+          await db.categories.put({ ...mode.category, name, isActive: catIsActive, printerSection: section });
         } else {
-          await db.categories.put({ id: makeId("cat"), name, printerSection: section, createdAt: now });
+          await db.categories.put({ id: makeId("cat"), name, isActive: catIsActive, printerSection: section, createdAt: now });
         }
         // Save section and its printer mapping to settings
         const s = await db.settings.get("app");
