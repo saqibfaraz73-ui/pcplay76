@@ -119,6 +119,7 @@ export function AdminProducts() {
   const openEditCategory = (category: Category) => {
     setMode({ type: "category", category });
     setCatName(category.name);
+    setCatIsActive(category.isActive !== false);
     setCatPrinterSection(category.printerSection ?? "");
     setCatSectionPrinter(category.printerSection ? (sectionPrinterMap[category.printerSection] as any ?? "none") : "none");
     setNewSectionName("");
