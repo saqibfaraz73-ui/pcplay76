@@ -80,6 +80,7 @@ export function AdminProducts() {
   const [itemVariations, setItemVariations] = React.useState<ItemVariation[]>([]);
   const [itemAddOns, setItemAddOns] = React.useState<ItemAddOn[]>([]);
   const [itemSku, setItemSku] = React.useState("");
+  const [itemIsActive, setItemIsActive] = React.useState(true);
   const [skuScanning, setSkuScanning] = React.useState(false);
   const skuScannerRef = React.useRef<HTMLDivElement>(null);
   const html5QrRef = React.useRef<Html5Qrcode | null>(null);
