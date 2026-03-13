@@ -73,15 +73,16 @@ export async function generateLicenseFile(deviceId: string, validUntil?: string)
   const encrypted = xorCipher(json, ENCRYPTION_KEY);
   const base64 = btoa(encrypted);
 
-  // Try Documents first, then Cache as fallback (avoids permission issues on newer Android)
+  // Try app-private Data first, then Documents (legacy), then Cache as fallback
   const attempts: { directory: Directory; path: string }[] = [
+    { directory: Directory.Data, path: `${folderPath("Backup")}/${LICENSE_FILE_NAME}` },
     { directory: Directory.Documents, path: `${folderPath("Backup")}/${LICENSE_FILE_NAME}` },
     { directory: Directory.Cache, path: LICENSE_FILE_NAME },
   ];
 
   for (const attempt of attempts) {
     try {
-      if (attempt.directory === Directory.Documents) {
+      if (attempt.directory === Directory.Data || attempt.directory === Directory.Documents) {
         await ensureSangiFolders();
       }
       await Filesystem.writeFile({
@@ -135,8 +136,8 @@ export async function readLicenseFile(): Promise<{ deviceId: string; activatedAt
     LICENSE_FILE_NAME,
   ];
 
-  // Try both Documents (app-private) and ExternalStorage (user-visible) directories
-  const directories = [Directory.Documents, Directory.ExternalStorage];
+  // Try Data (app-private), Documents (legacy), and ExternalStorage
+  const directories = [Directory.Data, Directory.Documents, Directory.ExternalStorage];
 
   for (const dir of directories) {
     for (const path of possiblePaths) {
