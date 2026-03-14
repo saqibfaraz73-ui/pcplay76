@@ -465,6 +465,19 @@ export function InstallmentSection() {
         )}
       </TabsContent>
 
+      {isAgent && (
+        <TabsContent value="myreports">
+          <InstallmentReports
+            customers={customers}
+            payments={payments.filter(p => customers.some(c => c.id === p.customerId))}
+            agents={[]}
+            settings={settings}
+            agentMode
+            agentName={session?.username ?? "Agent"}
+          />
+        </TabsContent>
+      )}
+
       {canEdit && (
         <TabsContent value="reports">
           <InstallmentReports customers={customers} payments={payments} agents={agents} settings={settings} />
