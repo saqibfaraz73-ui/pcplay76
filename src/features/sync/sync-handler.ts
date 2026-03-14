@@ -8,6 +8,7 @@
 import { db } from "@/db/appDb";
 import type { Order, Expense, TableOrder, WorkPeriod, SupplierArrival, SupplierPayment } from "@/db/schema";
 import type { AdvanceOrder, BookingOrder } from "@/db/booking-schema";
+import type { KitchenOrder, KitchenOrderStatus } from "@/db/kitchen-schema";
 import type { SyncPayload, PrintJobPayload, SyncEndpoint } from "./sync-types";
 
 
