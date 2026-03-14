@@ -209,6 +209,7 @@ export function AdminBackupRestore() {
           db.settings.clear(), db.counters.clear(),
           db.advanceOrders.clear(), db.bookableItems.clear(), db.bookingOrders.clear(),
           db.recoveryCustomers.clear(), db.recoveryPayments.clear(),
+          db.installmentCustomers.clear(), db.installmentPayments.clear(),
         ]);
         await db.categories.bulkAdd(payload.data.categories);
         await db.items.bulkAdd(payload.data.items);
