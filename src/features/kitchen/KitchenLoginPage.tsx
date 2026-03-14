@@ -170,8 +170,8 @@ export function KitchenLoginPage({ onConnected }: KitchenLoginPageProps) {
               onClick={() => void handleConnect("kitchen")}
               disabled={loading}
             >
-              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ChefHat className="h-4 w-4" />}
-              Connect as Kitchen Staff
+              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Monitor className="h-4 w-4" />}
+              Connect as Staff Display
             </Button>
             <Button
               variant="outline"
