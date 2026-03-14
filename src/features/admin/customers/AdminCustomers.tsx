@@ -105,6 +105,8 @@ export function AdminCustomers() {
   const openNew = () => {
     setName("");
     setMobile("");
+    setWhatsapp("");
+    setEmail("");
     setMode({ open: true });
   };
 
