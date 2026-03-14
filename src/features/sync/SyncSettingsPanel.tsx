@@ -437,6 +437,68 @@ export function SyncSettingsPanel() {
         </Card>
       )}
 
+      {/* Optional Sync Modules (Sub device only) */}
+      {config.role === "sub" && status === "connected" && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg">Optional Data Sync</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-xs text-muted-foreground">
+              Enable these to also sync additional data from this Sub device to the Main device.
+            </p>
+
+            <div className="flex items-center justify-between gap-3 rounded-md border p-3">
+              <div>
+                <div className="text-sm font-medium">Sync Expenses</div>
+                <div className="text-xs text-muted-foreground">Send expense records to Main device.</div>
+              </div>
+              <Switch
+                checked={!!config.syncExpenses}
+                onCheckedChange={(checked) => {
+                  const next = { ...config, syncExpenses: checked };
+                  setConfig(next);
+                  saveConfig(next);
+                  toast({ title: checked ? "Expenses sync enabled" : "Expenses sync disabled" });
+                }}
+              />
+            </div>
+
+            <div className="flex items-center justify-between gap-3 rounded-md border p-3">
+              <div>
+                <div className="text-sm font-medium">Sync Party Lodge</div>
+                <div className="text-xs text-muted-foreground">Send supplier arrivals & payments to Main device.</div>
+              </div>
+              <Switch
+                checked={!!config.syncPartyLodge}
+                onCheckedChange={(checked) => {
+                  const next = { ...config, syncPartyLodge: checked };
+                  setConfig(next);
+                  saveConfig(next);
+                  toast({ title: checked ? "Party Lodge sync enabled" : "Party Lodge sync disabled" });
+                }}
+              />
+            </div>
+
+            <div className="flex items-center justify-between gap-3 rounded-md border p-3">
+              <div>
+                <div className="text-sm font-medium">Sync Advance Booking</div>
+                <div className="text-xs text-muted-foreground">Send advance orders & bookings to Main device.</div>
+              </div>
+              <Switch
+                checked={!!config.syncAdvanceBooking}
+                onCheckedChange={(checked) => {
+                  const next = { ...config, syncAdvanceBooking: checked };
+                  setConfig(next);
+                  saveConfig(next);
+                  toast({ title: checked ? "Advance Booking sync enabled" : "Advance Booking sync disabled" });
+                }}
+              />
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Reset */}
       {config.role !== "none" && (
         <>
