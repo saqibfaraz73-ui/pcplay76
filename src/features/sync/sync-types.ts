@@ -15,7 +15,11 @@ export type SyncEndpoint =
   | "expense"
   | "print"
   | "work-period"
-  | "bulk";
+  | "bulk"
+  | "party-lodge-arrival"
+  | "party-lodge-payment"
+  | "advance-order"
+  | "booking-order";
 
 /** Payload sent from Sub → Main for each sync endpoint */
 export type SyncPayload = {
