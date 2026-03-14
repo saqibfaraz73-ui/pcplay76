@@ -69,6 +69,8 @@ export type CreditCustomer = {
   id: string;
   name: string;
   mobile?: string;
+  whatsapp?: string;
+  email?: string;
   createdAt: number;
 };
 
@@ -179,6 +181,8 @@ export type Supplier = {
   id: string;
   name: string;
   contact?: string;
+  whatsapp?: string;
+  email?: string;
   itemName?: string;
   stockUnit?: StockUnit;
   unitPrice?: number;
@@ -218,6 +222,8 @@ export type ExportCustomer = {
   id: string;
   name: string;
   contact?: string;
+  whatsapp?: string;
+  email?: string;
   itemName?: string;
   stockUnit?: StockUnit;
   unitPrice?: number;

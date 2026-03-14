@@ -9,7 +9,7 @@ import { db } from "@/db/appDb";
 import type { Category, CreditCustomer, DeliveryPerson, Expense, ExportCustomer, ExportSale, MenuItem, Order, RestaurantTable, Settings, TableOrder, Waiter, WorkPeriod } from "@/db/schema";
 import type { AdvanceOrder, BookingOrder } from "@/db/booking-schema";
 import { useToast } from "@/hooks/use-toast";
-import { formatIntMoney, fmtDate, fmtDateTime, fmtTime12 } from "@/features/pos/format";
+import { formatIntMoney, fmtDate, fmtDateTime, fmtTime12, fmtDateShort, fmtDuration } from "@/features/pos/format";
 import { sharePdfBytes, savePdfBytes } from "@/features/pos/share-utils";
 import { SaveShareMenu } from "@/components/SaveShareMenu";
 import { SalesReportPreview } from "@/features/admin/reports/SalesReportPreview";
@@ -60,6 +60,7 @@ function buildSalesPdf(args: {
   exportCustomers?: ExportCustomer[];
   advanceOrders?: AdvanceOrder[];
   bookingOrders?: BookingOrder[];
+  workPeriod?: WorkPeriod;
 }) {
   const doc = new jsPDF({ unit: "pt", format: "a4" });
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -200,8 +201,32 @@ function buildSalesPdf(args: {
 
   doc.setFontSize(10);
   doc.setFont("helvetica", "normal");
-  doc.text(`${args.restaurantName} • ${toDateInputValue(args.from)} → ${toDateInputValue(args.to)}`, left, y);
-  y += 24;
+  doc.text(`${args.restaurantName} • ${fmtDateShort(args.from)} → ${fmtDateShort(args.to)}`, left, y);
+  y += 16;
+
+  // Work Period Info
+  if (args.workPeriod) {
+    const wp = args.workPeriod;
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "bold");
+    doc.text("Work Period:", left, y);
+    doc.setFont("helvetica", "normal");
+    doc.text(`${wp.cashier} • Started: ${fmtDateTime(wp.startedAt)}`, left + 70, y);
+    y += 12;
+    if (wp.isClosed && wp.endedAt) {
+      doc.text(`Closed: ${fmtDateTime(wp.endedAt)}`, left + 70, y);
+      const duration = fmtDuration(wp.endedAt - wp.startedAt);
+      doc.text(`Duration: ${duration}`, left + 250, y);
+    } else {
+      doc.setTextColor(0, 128, 0);
+      doc.text("Status: Active", left + 70, y);
+      const duration = fmtDuration(Date.now() - wp.startedAt);
+      doc.setTextColor(0);
+      doc.text(`Duration: ${duration}`, left + 200, y);
+    }
+    y += 16;
+  }
+  y += 8;
 
 
   const boxData: { label: string; value: string; color?: [number, number, number] }[] = [
@@ -883,6 +908,10 @@ export function AdminReports() {
     const advOrders = await fetchAdvanceOrdersInRange(fromTs, toTs);
     const bkOrders = await fetchBookingOrdersInRange(fromTs, toTs);
 
+    const selectedWp = (filterType === "workPeriod" && selectedWorkPeriodId) 
+      ? workPeriods.find((w) => w.id === selectedWorkPeriodId) 
+      : undefined;
+
     const doc = buildSalesPdf({
       restaurantName: settings?.restaurantName ?? "SANGI POS",
       from: fromTs,
@@ -901,6 +930,7 @@ export function AdminReports() {
       exportCustomers,
       advanceOrders: advOrders,
       bookingOrders: bkOrders,
+      workPeriod: selectedWp,
     });
     const bytes = doc.output("arraybuffer");
     const fileName = `sales_${toDateInputValue(fromTs)}_${toDateInputValue(toTs)}.pdf`;
@@ -1000,6 +1030,7 @@ export function AdminReports() {
         exportCustomers={exportCustomers}
         advanceOrders={salesPreview.advanceOrders}
         bookingOrders={salesPreview.bookingOrders}
+        workPeriod={filterType === "workPeriod" && selectedWorkPeriodId ? workPeriods.find(w => w.id === selectedWorkPeriodId) : undefined}
       />
 
       <Card>

@@ -92,6 +92,8 @@ export default function PosPartyLodge() {
   // Supplier form
   const [sName, setSName] = React.useState("");
   const [sContact, setSContact] = React.useState("");
+  const [sWhatsapp, setSWhatsapp] = React.useState("");
+  const [sEmail, setSEmail] = React.useState("");
   const [sItemName, setSItemName] = React.useState("");
   const [sUnit, setSUnit] = React.useState("");
   const [sUnitPrice, setSUnitPrice] = React.useState(0);
@@ -161,12 +163,12 @@ export default function PosPartyLodge() {
   // ─── Supplier CRUD ────────────────────────────────────
 
   const openNew = () => {
-    setSName(""); setSContact(""); setSItemName(""); setSUnit(""); setSUnitPrice(0); setSBalance(0); setSAddBalance(0);
+    setSName(""); setSContact(""); setSWhatsapp(""); setSEmail(""); setSItemName(""); setSUnit(""); setSUnitPrice(0); setSBalance(0); setSAddBalance(0);
     setSupplierMode({ open: true });
   };
 
   const openEdit = (s: Supplier) => {
-    setSName(s.name); setSContact(s.contact ?? ""); setSItemName(s.itemName ?? "");
+    setSName(s.name); setSContact(s.contact ?? ""); setSWhatsapp(s.whatsapp ?? ""); setSEmail(s.email ?? ""); setSItemName(s.itemName ?? "");
     setSUnit(s.stockUnit ?? ""); setSUnitPrice(s.unitPrice ?? 0); setSBalance(s.totalBalance); setSAddBalance(0);
     setSupplierMode({ open: true, supplier: s });
   };
@@ -196,6 +198,8 @@ export default function PosPartyLodge() {
         id: isEdit ? supplierMode.supplier!.id : makeId("sup"),
         name,
         contact: sContact.trim() || undefined,
+        whatsapp: sWhatsapp.trim() || undefined,
+        email: sEmail.trim() || undefined,
         itemName: sItemName.trim() || undefined,
         stockUnit: (sUnit as any) || undefined,
         unitPrice: sUnitPrice || undefined,
@@ -1174,6 +1178,8 @@ export default function PosPartyLodge() {
                     <div className="min-w-0">
                       <div className="text-sm font-semibold truncate">{sup.name}</div>
                       {sup.contact && <div className="text-xs text-muted-foreground">Contact: {sup.contact}</div>}
+                      {sup.whatsapp && <div className="text-xs text-muted-foreground">WhatsApp: {sup.whatsapp}</div>}
+                      {sup.email && <div className="text-xs text-muted-foreground">Email: {sup.email}</div>}
                       {sup.itemName && <div className="text-xs text-muted-foreground">Item: {sup.itemName}{sup.stockUnit ? ` (${sup.stockUnit})` : ""}{sup.unitPrice ? ` @ ${formatIntMoney(sup.unitPrice)}` : ""}</div>}
                     </div>
                     <div className="text-right shrink-0">
@@ -1368,6 +1374,14 @@ export default function PosPartyLodge() {
             <div className="space-y-2">
               <Label htmlFor="supContact">Contact (optional)</Label>
               <Input id="supContact" inputMode="tel" value={sContact} onChange={(e) => setSContact(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="supWhatsapp">WhatsApp Number (optional)</Label>
+              <Input id="supWhatsapp" inputMode="tel" value={sWhatsapp} onChange={(e) => setSWhatsapp(e.target.value)} placeholder="e.g., +923001234567" />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="supEmail">Email (optional)</Label>
+              <Input id="supEmail" type="email" value={sEmail} onChange={(e) => setSEmail(e.target.value)} placeholder="e.g., supplier@email.com" />
             </div>
             <div className="space-y-2">
               <Label htmlFor="supItem">Item Supply Name (optional)</Label>

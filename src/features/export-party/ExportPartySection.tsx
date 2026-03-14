@@ -79,6 +79,8 @@ export function ExportPartySection() {
   // Customer form
   const [cName, setCName] = React.useState("");
   const [cContact, setCContact] = React.useState("");
+  const [cWhatsapp, setCWhatsapp] = React.useState("");
+  const [cEmail, setCEmail] = React.useState("");
   const [cItemName, setCItemName] = React.useState("");
   const [cUnit, setCUnit] = React.useState("");
   const [cUnitPrice, setCUnitPrice] = React.useState(0);
@@ -147,12 +149,12 @@ export function ExportPartySection() {
 
   // ─── Customer CRUD ───
   const openNew = () => {
-    setCName(""); setCContact(""); setCItemName(""); setCUnit(""); setCUnitPrice(0); setCBalance(0); setCAddBalance(0);
+    setCName(""); setCContact(""); setCWhatsapp(""); setCEmail(""); setCItemName(""); setCUnit(""); setCUnitPrice(0); setCBalance(0); setCAddBalance(0);
     setCustomerMode({ open: true });
   };
 
   const openEdit = (c: ExportCustomer) => {
-    setCName(c.name); setCContact(c.contact ?? ""); setCItemName(c.itemName ?? "");
+    setCName(c.name); setCContact(c.contact ?? ""); setCWhatsapp(c.whatsapp ?? ""); setCEmail(c.email ?? ""); setCItemName(c.itemName ?? "");
     setCUnit(c.stockUnit ?? ""); setCUnitPrice(c.unitPrice ?? 0); setCBalance(c.totalBalance); setCAddBalance(0);
     setCustomerMode({ open: true, customer: c });
   };
@@ -175,6 +177,8 @@ export function ExportPartySection() {
         id: isEdit ? customerMode.customer!.id : makeId("exp"),
         name,
         contact: cContact.trim() || undefined,
+        whatsapp: cWhatsapp.trim() || undefined,
+        email: cEmail.trim() || undefined,
         itemName: cItemName.trim() || undefined,
         stockUnit: (cUnit as any) || undefined,
         unitPrice: cUnitPrice || undefined,
@@ -1073,6 +1077,8 @@ export function ExportPartySection() {
                     <div className="min-w-0">
                       <div className="text-sm font-semibold truncate">{cust.name}</div>
                       {cust.contact && <div className="text-xs text-muted-foreground">Contact: {cust.contact}</div>}
+                      {cust.whatsapp && <div className="text-xs text-muted-foreground">WhatsApp: {cust.whatsapp}</div>}
+                      {cust.email && <div className="text-xs text-muted-foreground">Email: {cust.email}</div>}
                       {cust.itemName && <div className="text-xs text-muted-foreground">Item: {cust.itemName}{cust.stockUnit ? ` (${cust.stockUnit})` : ""}{cust.unitPrice ? ` @ ${formatIntMoney(cust.unitPrice)}` : ""}</div>}
                     </div>
                     <div className={`text-sm font-bold whitespace-nowrap ${balance > 0 ? "text-destructive" : "text-green-600"}`}>
@@ -1263,6 +1269,14 @@ export function ExportPartySection() {
             <div className="space-y-2">
               <Label>Contact (optional)</Label>
               <Input inputMode="tel" value={cContact} onChange={(e) => setCContact(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label>WhatsApp Number (optional)</Label>
+              <Input inputMode="tel" value={cWhatsapp} onChange={(e) => setCWhatsapp(e.target.value)} placeholder="e.g., +923001234567" />
+            </div>
+            <div className="space-y-2">
+              <Label>Email (optional)</Label>
+              <Input type="email" value={cEmail} onChange={(e) => setCEmail(e.target.value)} placeholder="e.g., buyer@email.com" />
             </div>
             <div className="space-y-2">
               <Label>Item Name (optional)</Label>

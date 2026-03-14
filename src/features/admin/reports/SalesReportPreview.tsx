@@ -1,7 +1,7 @@
 import * as React from "react";
-import type { Category, CreditCustomer, DeliveryPerson, Expense, ExportCustomer, ExportSale, MenuItem, Order, RestaurantTable, Settings, TableOrder, Waiter } from "@/db/schema";
+import type { Category, CreditCustomer, DeliveryPerson, Expense, ExportCustomer, ExportSale, MenuItem, Order, RestaurantTable, Settings, TableOrder, Waiter, WorkPeriod } from "@/db/schema";
 import type { AdvanceOrder, BookingOrder } from "@/db/booking-schema";
-import { formatIntMoney, fmtDate } from "@/features/pos/format";
+import { formatIntMoney, fmtDate, fmtDateTime, fmtDuration } from "@/features/pos/format";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ReportOrderList } from "@/features/admin/reports/ReportOrderList";
 
@@ -23,6 +23,7 @@ type Props = {
   exportCustomers?: ExportCustomer[];
   advanceOrders?: AdvanceOrder[];
   bookingOrders?: BookingOrder[];
+  workPeriod?: WorkPeriod;
 };
 
 export function SalesReportPreview({ 
@@ -43,6 +44,7 @@ export function SalesReportPreview({
   exportCustomers = [],
   advanceOrders = [],
   bookingOrders = [],
+  workPeriod,
 }: Props) {
   const deliveryEnabled = settings?.deliveryEnabled ?? true;
   const tableEnabled = settings?.tableManagementEnabled ?? true;
@@ -242,7 +244,29 @@ export function SalesReportPreview({
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
-        {/* Summary */}
+        {/* Work Period Info */}
+        {workPeriod && (
+          <div className="rounded-md border p-3 bg-muted/30 space-y-1">
+            <div className="text-xs font-semibold">Work Period</div>
+            <div className="text-xs text-muted-foreground">
+              <span className="font-medium text-foreground">{workPeriod.cashier}</span>
+              {" • Started: "}{fmtDateTime(workPeriod.startedAt)}
+            </div>
+            <div className="text-xs text-muted-foreground">
+              {workPeriod.isClosed && workPeriod.endedAt ? (
+                <>
+                  Closed: {fmtDateTime(workPeriod.endedAt)}
+                  {" • Duration: "}{fmtDuration(workPeriod.endedAt - workPeriod.startedAt)}
+                </>
+              ) : (
+                <>
+                  <span className="text-green-600 font-medium">Active</span>
+                  {" • Duration: "}{fmtDuration(Date.now() - workPeriod.startedAt)}
+                </>
+              )}
+            </div>
+          </div>
+        )}
         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
           <div className="rounded-md border p-3">
             <div className="text-xs text-muted-foreground">Completed orders</div>

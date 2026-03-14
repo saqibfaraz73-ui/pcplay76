@@ -56,6 +56,8 @@ export function AdminCustomers() {
   const [mode, setMode] = React.useState<Mode>({ open: false });
   const [name, setName] = React.useState("");
   const [mobile, setMobile] = React.useState("");
+  const [whatsapp, setWhatsapp] = React.useState("");
+  const [email, setEmail] = React.useState("");
 
   // Payment dialog
   const [paymentMode, setPaymentMode] = React.useState<PaymentMode>({ open: false });
@@ -103,12 +105,16 @@ export function AdminCustomers() {
   const openNew = () => {
     setName("");
     setMobile("");
+    setWhatsapp("");
+    setEmail("");
     setMode({ open: true });
   };
 
   const openEdit = (c: CreditCustomer) => {
     setName(c.name);
     setMobile(c.mobile ?? "");
+    setWhatsapp(c.whatsapp ?? "");
+    setEmail(c.email ?? "");
     setMode({ open: true, customer: c });
   };
 
@@ -121,6 +127,8 @@ export function AdminCustomers() {
         id: mode.open && mode.customer ? mode.customer.id : makeId("cust"),
         name: n,
         mobile: mobile.trim() || undefined,
+        whatsapp: whatsapp.trim() || undefined,
+        email: email.trim() || undefined,
         createdAt: mode.open && mode.customer ? mode.customer.createdAt : now,
       };
       await db.customers.put(next);
@@ -226,6 +234,8 @@ export function AdminCustomers() {
                         <div className="min-w-0">
                           <div className="truncate text-sm font-medium">{c.name}</div>
                           <div className="text-xs text-muted-foreground">{c.mobile ? `Mobile: ${c.mobile}` : "Mobile: —"}</div>
+                          {c.whatsapp && <div className="text-xs text-muted-foreground">WhatsApp: {c.whatsapp}</div>}
+                          {c.email && <div className="text-xs text-muted-foreground">Email: {c.email}</div>}
                         </div>
                         <div className="flex items-center gap-2">
                           <Button variant="outline" size="sm" onClick={() => openEdit(c)}>
@@ -281,6 +291,14 @@ export function AdminCustomers() {
                 <div className="space-y-2">
                   <Label htmlFor="custMobile">Mobile (optional)</Label>
                   <Input id="custMobile" inputMode="tel" value={mobile} onChange={(e) => setMobile(e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="custWhatsapp">WhatsApp Number (optional)</Label>
+                  <Input id="custWhatsapp" inputMode="tel" value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} placeholder="e.g., +923001234567" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="custEmail">Email (optional)</Label>
+                  <Input id="custEmail" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="e.g., customer@email.com" />
                 </div>
               </div>
 
