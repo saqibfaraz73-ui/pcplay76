@@ -107,6 +107,24 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
           handleSyncData(payload, endpoint);
         });
         listenerRef.current = handle;
+
+        // Register kitchen GET query handler so kitchen/customer displays can poll
+        try {
+          const { getKitchenOrders, getKitchenDisplayOrders } = await import("@/features/kitchen/kitchen-handler");
+          await onSyncGetRequest(async (endpoint) => {
+            if (endpoint === "kitchen-orders") {
+              const orders = await getKitchenOrders();
+              return { orders };
+            }
+            if (endpoint === "kitchen-display") {
+              const orders = await getKitchenDisplayOrders();
+              return { orders };
+            }
+            return { error: "Unknown endpoint" };
+          });
+        } catch (e) {
+          console.warn("[Sync] Failed to register kitchen GET handler:", e);
+        }
       };
 
       getSyncServerStatus().then((s) => {
