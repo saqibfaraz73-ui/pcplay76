@@ -60,8 +60,8 @@ export function InstallmentReports({ customers, payments, agents, settings, agen
     <Card>
       <CardHeader className="flex flex-row items-start justify-between gap-3 flex-wrap">
         <div>
-          <CardTitle>Installment Reports</CardTitle>
-          <CardDescription>View recovery summaries by date range.</CardDescription>
+          <CardTitle>{agentMode ? `${agentName}'s Report` : "Installment Reports"}</CardTitle>
+          <CardDescription>{agentMode ? "Your assigned customers recovery summary." : "View recovery summaries by date range."}</CardDescription>
         </div>
         <SaveShareMenu
           label="Report PDF"
