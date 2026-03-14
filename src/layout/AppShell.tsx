@@ -167,12 +167,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                         <Menu className="h-4 w-4" />
                       </Button>
                     </SheetTrigger>
-                    <SheetContent side="left" className="w-72">
+                    <SheetContent side="left" className="w-72 flex flex-col">
                       <SheetHeader>
                         <SheetTitle>Menu</SheetTitle>
                       </SheetHeader>
-                      <div className="mt-4 space-y-4">
-                        <nav className="grid gap-1">
+                      <div className="mt-4 flex flex-col flex-1 min-h-0">
+                        <nav className="grid gap-1 flex-1 overflow-y-auto pb-2">
                           {/* Dashboard link for waiter/agent who have no main nav */}
                           {(isWaiter || isRecoveryAgent || isInstallmentAgent) && (
                             <Link
