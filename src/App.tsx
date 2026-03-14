@@ -145,6 +145,13 @@ const App = () => (
                   }
                 />
                 <Route
+                  path="/admin/kitchen"
+                  element={
+                    <ProtectedRoute allow={["admin", "cashier"]}>
+                      <AdminKitchenPage />
+                    </ProtectedRoute>
+                  }
+                <Route
                   path="/admin/sync"
                   element={
                 <ProtectedRoute allow={["admin", "cashier", "waiter", "supervisor"]}>
