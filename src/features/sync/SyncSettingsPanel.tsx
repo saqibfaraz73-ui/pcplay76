@@ -47,6 +47,28 @@ function saveConfig(config: SyncConfig) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
 }
 
+/** QR Code component for displaying IP address */
+function SyncQrCode({ ip }: { ip: string }) {
+  const [qrDataUrl, setQrDataUrl] = useState<string>("");
+  useEffect(() => {
+    QRCodeLib.toDataURL(ip, { width: 200, margin: 2, errorCorrectionLevel: "M" })
+      .then(setQrDataUrl)
+      .catch(() => {});
+  }, [ip]);
+
+  return (
+    <div className="flex flex-col items-center gap-2 rounded-md border p-3">
+      <div className="flex items-center gap-2 text-sm font-medium">
+        <QrCode className="h-4 w-4" /> Scan QR Code
+      </div>
+      {qrDataUrl && (
+        <img src={qrDataUrl} alt={`QR: ${ip}`} className="w-48 h-48" />
+      )}
+      <p className="text-xs text-muted-foreground">Sub/Kitchen device can scan this QR code to connect.</p>
+    </div>
+  );
+}
+
 function SubPrinterModeContent() {
   const { toast } = useToast();
   const [subPrinterMode, setSubPrinterMode] = React.useState<"own" | "main">("own");
