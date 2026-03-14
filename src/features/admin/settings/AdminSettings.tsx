@@ -98,7 +98,7 @@ export function AdminSettings() {
   const [staffAccounts, setStaffAccounts] = React.useState<StaffAccount[]>([]);
   const [newStaffName, setNewStaffName] = React.useState("");
   const [newStaffPhone, setNewStaffPhone] = React.useState("");
-  const [newStaffRole, setNewStaffRole] = React.useState<"cashier" | "waiter" | "supervisor" | "recovery">("cashier");
+  const [newStaffRole, setNewStaffRole] = React.useState<"cashier" | "waiter" | "supervisor" | "recovery" | "kitchen">("cashier");
   const [newStaffPin, setNewStaffPin] = React.useState("");
   const [deleteStaffId, setDeleteStaffId] = React.useState<string | null>(null);
 
