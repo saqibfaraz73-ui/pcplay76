@@ -416,7 +416,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </div>
 
               {/* Right: branding + sync indicator */}
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 shrink-0">
                 <SyncStatusIndicator />
                 <div className="text-right">
                   <div className="text-sm font-semibold leading-tight">
