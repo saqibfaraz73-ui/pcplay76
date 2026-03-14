@@ -166,7 +166,7 @@ export async function updateLicense(partial: Partial<Omit<LicenseRecord, "id">>)
 
 export type SalesModule =
   | "cash" | "credit" | "delivery" | "table"
-  | "partyLodge" | "expenses" | "customPrint" | "labelPrint";
+  | "partyLodge" | "expenses" | "customPrint" | "labelPrint" | "installment";
 
 const countKey: Record<SalesModule, keyof LicenseRecord> = {
   cash: "cashSalesCount",
@@ -177,6 +177,7 @@ const countKey: Record<SalesModule, keyof LicenseRecord> = {
   expenses: "expensesCount",
   customPrint: "customPrintCount",
   labelPrint: "labelPrintCount",
+  installment: "installmentCount",
 };
 
 const bonusKey: Record<SalesModule, keyof LicenseRecord> = {
