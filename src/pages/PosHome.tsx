@@ -46,7 +46,7 @@ export default function PosHome() {
   const { session } = useAuth();
   const { isWorkPeriodActive } = useWorkPeriod();
   const [stats, setStats] = React.useState<TodayStats | null>(null);
-  const [settings, setSettings] = React.useState<{ tableManagementEnabled?: boolean; advanceBookingEnabled?: boolean; deliveryEnabled?: boolean; recoveryEnabled?: boolean; syncEnabled?: boolean; kitchenDisplayEnabled?: boolean; businessName?: string } | null>(null);
+  const [settings, setSettings] = React.useState<{ tableManagementEnabled?: boolean; advanceBookingEnabled?: boolean; deliveryEnabled?: boolean; recoveryEnabled?: boolean; syncEnabled?: boolean; kitchenDisplayEnabled?: boolean; installmentEnabled?: boolean; businessName?: string } | null>(null);
 
   React.useEffect(() => {
     loadStats();
