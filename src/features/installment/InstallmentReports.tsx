@@ -101,8 +101,8 @@ export function InstallmentReports({ customers, payments, agents, settings, agen
           <SummaryCard label={`Recovered (${from} to ${to})`} value={totalRecoveredInRange} color="text-green-600" />
         </div>
 
-        {/* Per-agent breakdown */}
-        {agents.length > 0 && (
+        {/* Per-agent breakdown (hidden in agent mode) */}
+        {!agentMode && agents.length > 0 && (
           <div className="border-t pt-4">
             <h3 className="text-sm font-semibold mb-2">Agent Performance</h3>
             <div className="space-y-2">
