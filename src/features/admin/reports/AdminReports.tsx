@@ -635,6 +635,7 @@ export function AdminReports() {
         db.exportCustomers.orderBy("createdAt").toArray(),
       ]);
       setSettings(s ?? null);
+      setCategories(cats);
       setCustomers(cs);
       setDeliveryPersons(dps);
       setItems(its);
