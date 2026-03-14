@@ -204,7 +204,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                               </Link>
                             );
                           })}
-                          {!isWaiter && !isRecoveryAgent && (
+                          {!isWaiter && !isRecoveryAgent && !isInstallmentAgent && (
                             <Link to="/pos/orders" className={cn("flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors", isActive("/pos/orders") ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground")}>
                               <ClipboardList className="h-4 w-4" /> Orders
                             </Link>
