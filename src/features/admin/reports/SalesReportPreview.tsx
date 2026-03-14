@@ -1,5 +1,5 @@
 import * as React from "react";
-import type { CreditCustomer, DeliveryPerson, Expense, ExportCustomer, ExportSale, MenuItem, Order, RestaurantTable, Settings, TableOrder, Waiter } from "@/db/schema";
+import type { Category, CreditCustomer, DeliveryPerson, Expense, ExportCustomer, ExportSale, MenuItem, Order, RestaurantTable, Settings, TableOrder, Waiter } from "@/db/schema";
 import type { AdvanceOrder, BookingOrder } from "@/db/booking-schema";
 import { formatIntMoney, fmtDate } from "@/features/pos/format";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
