@@ -220,7 +220,7 @@ export function SyncSettingsPanel() {
       });
 
       // Listen for kitchen query requests (GET endpoints)
-      await onSyncQueryReceived(async (endpoint) => {
+      await onSyncGetRequest(async (endpoint) => {
         if (endpoint === "kitchen-orders") {
           const orders = await getKitchenOrders();
           return { orders };
