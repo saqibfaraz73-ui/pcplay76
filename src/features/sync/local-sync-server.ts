@@ -29,6 +29,11 @@ interface LocalSyncServerPlugin {
     eventName: "syncDataReceived",
     handler: (event: { endpoint: string; data: string; timestamp: number }) => void
   ): Promise<PluginListenerHandle>;
+  addListener(
+    eventName: "syncQueryReceived",
+    handler: (event: { endpoint: string; requestId: string }) => void
+  ): Promise<PluginListenerHandle>;
+  respondToQuery(options: { requestId: string; data: string }): Promise<void>;
 }
 
 const LocalSyncServer = registerPlugin<LocalSyncServerPlugin>("LocalSyncServer");
