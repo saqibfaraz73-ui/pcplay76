@@ -220,6 +220,7 @@ export function AdminSettings() {
         currencySymbol: currencySymbol.trim(),
         deliveryEnabled,
         recoveryEnabled,
+        installmentEnabled,
         kitchenDisplayEnabled,
         updatedAt: Date.now(),
       };
