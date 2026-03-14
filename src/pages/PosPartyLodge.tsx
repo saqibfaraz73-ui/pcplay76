@@ -92,6 +92,8 @@ export default function PosPartyLodge() {
   // Supplier form
   const [sName, setSName] = React.useState("");
   const [sContact, setSContact] = React.useState("");
+  const [sWhatsapp, setSWhatsapp] = React.useState("");
+  const [sEmail, setSEmail] = React.useState("");
   const [sItemName, setSItemName] = React.useState("");
   const [sUnit, setSUnit] = React.useState("");
   const [sUnitPrice, setSUnitPrice] = React.useState(0);
