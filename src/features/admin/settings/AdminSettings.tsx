@@ -710,6 +710,9 @@ export function AdminSettings() {
             <Button onClick={() => void save()} disabled={!settings}>Save</Button>
           </div>
         </CardContent>
+      </Card>
+
+      {/* General Permissions */}
       <Card>
         <CardHeader>
           <CardTitle>General Permissions</CardTitle>
