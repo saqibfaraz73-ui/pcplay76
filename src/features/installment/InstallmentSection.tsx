@@ -221,6 +221,7 @@ export function InstallmentSection() {
     <Tabs defaultValue="customers">
       <TabsList className="flex w-full flex-wrap justify-start gap-1">
         <TabsTrigger value="customers">Customers</TabsTrigger>
+        {isAgent && <TabsTrigger value="myreports">My Reports</TabsTrigger>}
         {canEdit && <TabsTrigger value="reports">Reports</TabsTrigger>}
         {isAdmin && <TabsTrigger value="agents">Agents</TabsTrigger>}
       </TabsList>
