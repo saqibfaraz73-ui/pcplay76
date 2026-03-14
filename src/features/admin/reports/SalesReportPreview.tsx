@@ -690,6 +690,80 @@ export function SalesReportPreview({
           )}
         </div>
 
+        {/* Category Sales Breakdown */}
+        {categorySales.length > 0 && (
+          <div className="space-y-2">
+            <div className="text-sm font-semibold">Sales by Category</div>
+            <div className="overflow-auto rounded-md border">
+              <table className="w-full text-sm">
+                <thead className="bg-muted/40">
+                  <tr className="text-left">
+                    <th className="px-3 py-2 font-medium">Category</th>
+                    <th className="whitespace-nowrap px-3 py-2 font-medium">Qty</th>
+                    <th className="whitespace-nowrap px-3 py-2 font-medium">Sales</th>
+                    <th className="whitespace-nowrap px-3 py-2 font-medium">Profit</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {categorySales.map((r) => (
+                    <tr key={r.catId} className="border-t">
+                      <td className="px-3 py-2">{r.name}</td>
+                      <td className="whitespace-nowrap px-3 py-2">{r.qty}</td>
+                      <td className="whitespace-nowrap px-3 py-2">{formatIntMoney(r.revenue)}</td>
+                      <td className="whitespace-nowrap px-3 py-2">{formatIntMoney(r.profit)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot className="bg-muted/40 font-semibold">
+                  <tr className="border-t">
+                    <td className="px-3 py-2">Total</td>
+                    <td className="whitespace-nowrap px-3 py-2">{categorySales.reduce((s, r) => s + r.qty, 0)}</td>
+                    <td className="whitespace-nowrap px-3 py-2">{formatIntMoney(categorySales.reduce((s, r) => s + r.revenue, 0))}</td>
+                    <td className="whitespace-nowrap px-3 py-2">{formatIntMoney(categorySales.reduce((s, r) => s + r.profit, 0))}</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* Section Sales Breakdown */}
+        {sectionSales.length > 0 && (
+          <div className="space-y-2">
+            <div className="text-sm font-semibold">Sales by Section</div>
+            <div className="overflow-auto rounded-md border">
+              <table className="w-full text-sm">
+                <thead className="bg-muted/40">
+                  <tr className="text-left">
+                    <th className="px-3 py-2 font-medium">Section</th>
+                    <th className="whitespace-nowrap px-3 py-2 font-medium">Qty</th>
+                    <th className="whitespace-nowrap px-3 py-2 font-medium">Sales</th>
+                    <th className="whitespace-nowrap px-3 py-2 font-medium">Profit</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sectionSales.map((r) => (
+                    <tr key={r.section} className="border-t">
+                      <td className="px-3 py-2">{r.section}</td>
+                      <td className="whitespace-nowrap px-3 py-2">{r.qty}</td>
+                      <td className="whitespace-nowrap px-3 py-2">{formatIntMoney(r.revenue)}</td>
+                      <td className="whitespace-nowrap px-3 py-2">{formatIntMoney(r.profit)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot className="bg-muted/40 font-semibold">
+                  <tr className="border-t">
+                    <td className="px-3 py-2">Total</td>
+                    <td className="whitespace-nowrap px-3 py-2">{sectionSales.reduce((s, r) => s + r.qty, 0)}</td>
+                    <td className="whitespace-nowrap px-3 py-2">{formatIntMoney(sectionSales.reduce((s, r) => s + r.revenue, 0))}</td>
+                    <td className="whitespace-nowrap px-3 py-2">{formatIntMoney(sectionSales.reduce((s, r) => s + r.profit, 0))}</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </div>
+        )}
+
         <ReportOrderList
           orders={orders}
           customersById={customersById}
