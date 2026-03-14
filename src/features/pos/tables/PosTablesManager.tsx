@@ -437,7 +437,7 @@ export function PosTablesManager() {
       clearCart();
       await refreshAfterMutation();
 
-      // Sync table order to Main device if in Sub mode (fire-and-forget)
+      // Sync table order + kitchen order to Main device if in Sub mode (fire-and-forget)
       try {
         const { getSyncConfig } = await import("@/features/sync/sync-utils");
         const config = getSyncConfig();
@@ -452,6 +452,23 @@ export function PosTablesManager() {
             sendToMainApp("table-order", { ...updatedOrder, _waiterName: waiter?.name, _tableNumber: table?.tableNumber }, lic.deviceId).catch((e) =>
               console.warn("[Sync] Failed to sync table order:", e)
             );
+
+            // Also send kitchen order to Main if KDS enabled
+            if (settings?.kitchenDisplayEnabled) {
+              const kitchenOrder = {
+                id: `ko_${Math.random().toString(16).slice(2)}_${Date.now().toString(16)}`,
+                sourceOrderId: updatedOrder.id,
+                sourceType: "table" as const,
+                orderNumber: updatedOrder.receiptNo ?? 0,
+                tableNumber: table?.tableNumber,
+                waiterName: waiter?.name,
+                items: cart.map(l => ({ name: l.name, qty: l.qty })),
+                status: "pending" as const,
+                createdAt: Date.now(),
+                updatedAt: Date.now(),
+              };
+              sendToMainApp("kitchen-order", kitchenOrder, lic.deviceId).catch(() => {});
+            }
           }
         }
       } catch {

@@ -122,9 +122,31 @@ async function handleOrderSync(order: Order): Promise<void> {
 
 /** Save a synced table order (keeps Sub's original workPeriodId). Only saves completed/cancelled orders to avoid "stuck" open orders on Main. */
 async function handleTableOrderSync(tableOrder: TableOrder & { _waiterName?: string; _tableNumber?: string }): Promise<void> {
-  // Don't save "open" table orders from Sub on Main — they'd get stuck in Main's table management
-  if (tableOrder.status === "open") {
-    console.log(`[Sync] Skipping open table order ${tableOrder.id} (only completed/cancelled are synced to Main)`);
+  const isOpenOrder = tableOrder.status === "open";
+
+  // For open table orders: don't save to Main's table management (they'd get stuck),
+  // but DO create kitchen orders so they appear on displays
+  if (isOpenOrder) {
+    console.log(`[Sync] Open table order ${tableOrder.id} — creating kitchen order only (not saving to Main tables)`);
+    try {
+      const settings = await db.settings.get("app");
+      if (settings?.kitchenDisplayEnabled) {
+        const existing_ko = await db.kitchenOrders.where("sourceOrderId").equals(tableOrder.id).first();
+        if (!existing_ko) {
+          const { createKitchenOrderFromOrder } = await import("@/features/kitchen/kitchen-handler");
+          await createKitchenOrderFromOrder(
+            tableOrder.id,
+            tableOrder.receiptNo ?? 0,
+            tableOrder.lines.map((l: any) => ({ name: l.name, qty: l.qty })),
+            "table",
+            { tableNumber: tableOrder._tableNumber, waiterName: tableOrder._waiterName }
+          );
+          console.log(`[Sync] Kitchen order created for open table order`);
+        }
+      }
+    } catch (e) {
+      console.warn("[Sync] Failed to create kitchen order for open table order:", e);
+    }
     return;
   }
 
@@ -204,30 +226,8 @@ async function handleTableOrderSync(tableOrder: TableOrder & { _waiterName?: str
   }
   await db.tableOrders.put(cleanOrder);
   console.log(`[Sync] Table order ${cleanOrder.id} saved (wp: ${cleanOrder.workPeriodId})`);
-
-  // Auto-create kitchen order for synced table orders if KDS enabled
-  if (cleanOrder.status === "open") {
-    try {
-      const settings = await db.settings.get("app");
-      if (settings?.kitchenDisplayEnabled) {
-        const existing_ko = await db.kitchenOrders.where("sourceOrderId").equals(cleanOrder.id).first();
-        if (!existing_ko) {
-          const { createKitchenOrderFromOrder } = await import("@/features/kitchen/kitchen-handler");
-          await createKitchenOrderFromOrder(
-            cleanOrder.id,
-            cleanOrder.receiptNo ?? 0,
-            cleanOrder.lines.map((l: any) => ({ name: l.name, qty: l.qty })),
-            "table",
-            { tableNumber: cleanOrder.tableNumber, waiterName: cleanOrder.waiterName }
-          );
-          console.log(`[Sync] Kitchen order auto-created for synced table order`);
-        }
-      }
-    } catch (e) {
-      console.warn("[Sync] Failed to auto-create kitchen order for table:", e);
-    }
-  }
 }
+
 
 /** Save a synced credit payment */
 async function handleCreditPaymentSync(data: unknown): Promise<void> {
