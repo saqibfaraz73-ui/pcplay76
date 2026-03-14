@@ -15,6 +15,8 @@ interface Props {
   payments: InstallmentPayment[];
   agents: StaffAccount[];
   settings: Settings | null;
+  agentMode?: boolean;
+  agentName?: string;
 }
 
 function toDateInputValue(ts: number) {
