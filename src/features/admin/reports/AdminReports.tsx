@@ -781,6 +781,7 @@ export function AdminReports() {
       from: fromTs,
       to: toTs,
       orders,
+      categories,
       customers,
       deliveryPersons,
       items,
