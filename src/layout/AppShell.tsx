@@ -212,6 +212,21 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                             </Link>
                           )}
 
+                          {installmentEnabled && (isAdmin || isCashier) && (
+                            <Link
+                              to="/installments"
+                              className={cn(
+                                "flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors",
+                                isActive("/installments")
+                                  ? "bg-accent text-accent-foreground"
+                                  : "text-muted-foreground hover:text-foreground",
+                              )}
+                            >
+                              <CreditCard className="h-4 w-4" />
+                              Installment
+                            </Link>
+                          )}
+
                           {/* Reports link for cashier when enabled */}
                           {isCashier && cashierReportsEnabled && (
                             <Link
