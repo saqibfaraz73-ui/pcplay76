@@ -26,6 +26,7 @@ import {
   Shield,
   Wifi,
   Trash2,
+  ChefHat,
   FileText,
 } from "lucide-react";
 import appLogo from "@/assets/app-logo.jpg";
