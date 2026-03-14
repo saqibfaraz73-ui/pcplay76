@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/auth/AuthProvider";
-import { Menu, Printer, BarChart3, Settings, ShoppingCart, ClipboardList, Users, DollarSign, Truck, UtensilsCrossed, CalendarCheck, Wifi, Shield, Home, Info, HelpCircle, Tags, FileText, WifiOff, AlertTriangle, ChefHat } from "lucide-react";
+import { Menu, Printer, BarChart3, Settings, ShoppingCart, ClipboardList, Users, DollarSign, Truck, UtensilsCrossed, CalendarCheck, Wifi, Shield, Home, Info, HelpCircle, Tags, FileText, WifiOff, AlertTriangle, ChefHat, CreditCard } from "lucide-react";
 import { useAndroidBackExitConfirm } from "@/hooks/useAndroidBackExitConfirm";
 import appLogo from "@/assets/app-logo.jpg";
 import { db } from "@/db/appDb";
@@ -53,6 +53,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [deliveryEnabled, setDeliveryEnabled] = React.useState(false);
   const [recoveryEnabled, setRecoveryEnabled] = React.useState(false);
   const [kitchenDisplayEnabled, setKitchenDisplayEnabled] = React.useState(false);
+  const [installmentEnabled, setInstallmentEnabled] = React.useState(false);
   const [pendingTableCount, setPendingTableCount] = React.useState(0);
   const [isPremium, setIsPremium] = React.useState(false);
   const [onlineWarningHours, setOnlineWarningHours] = React.useState<number | null>(null);
@@ -70,6 +71,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     setDeliveryEnabled(!!s?.deliveryEnabled);
     setRecoveryEnabled(!!s?.recoveryEnabled);
     setKitchenDisplayEnabled(!!s?.kitchenDisplayEnabled);
+    setInstallmentEnabled(!!s?.installmentEnabled);
     // Count open (pending) table orders
     const openCount = await db.tableOrders.where("status").equals("open").count();
     setPendingTableCount(openCount);
@@ -174,10 +176,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                           {/* Dashboard link for waiter/agent who have no main nav */}
                           {(isWaiter || isRecoveryAgent || isInstallmentAgent) && (
                             <Link
-                              to={isRecoveryAgent ? "/recovery" : isInstallmentAgent ? "/admin?tab=installment" : isWaiter ? "/pos/tables" : "/home"}
+                              to={isRecoveryAgent ? "/recovery" : isInstallmentAgent ? "/installments" : isWaiter ? "/pos/tables" : "/home"}
                               className={cn(
                                 "flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors",
-                                isActive(isRecoveryAgent ? "/recovery" : isInstallmentAgent ? "/admin" : isWaiter ? "/pos/tables" : "/home")
+                                isActive(isRecoveryAgent ? "/recovery" : isInstallmentAgent ? "/installments" : isWaiter ? "/pos/tables" : "/home")
                                   ? "bg-accent text-accent-foreground"
                                   : "text-muted-foreground hover:text-foreground",
                               )}
@@ -207,6 +209,21 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                           {!isWaiter && !isRecoveryAgent && !isInstallmentAgent && (
                             <Link to="/pos/orders" className={cn("flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors", isActive("/pos/orders") ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground")}>
                               <ClipboardList className="h-4 w-4" /> Orders
+                            </Link>
+                          )}
+
+                          {installmentEnabled && (isAdmin || isCashier) && (
+                            <Link
+                              to="/installments"
+                              className={cn(
+                                "flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors",
+                                isActive("/installments")
+                                  ? "bg-accent text-accent-foreground"
+                                  : "text-muted-foreground hover:text-foreground",
+                              )}
+                            >
+                              <CreditCard className="h-4 w-4" />
+                              Installment
                             </Link>
                           )}
 
@@ -314,10 +331,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   {/* Dashboard link for waiter/agent */}
                   {(isWaiter || isRecoveryAgent || isInstallmentAgent) && (
                     <Link
-                      to={isRecoveryAgent ? "/recovery" : isInstallmentAgent ? "/admin?tab=installment" : isWaiter ? "/pos/tables" : "/home"}
+                      to={isRecoveryAgent ? "/recovery" : isInstallmentAgent ? "/installments" : isWaiter ? "/pos/tables" : "/home"}
                       className={cn(
                         "rounded-md px-3 py-2 text-sm transition-colors",
-                        isActive(isRecoveryAgent ? "/recovery" : isInstallmentAgent ? "/admin" : isWaiter ? "/pos/tables" : "/home")
+                        isActive(isRecoveryAgent ? "/recovery" : isInstallmentAgent ? "/installments" : isWaiter ? "/pos/tables" : "/home")
                           ? "bg-accent text-accent-foreground"
                           : "text-muted-foreground hover:text-foreground",
                       )}
@@ -339,9 +356,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                       {n.label}
                     </Link>
                   ))}
-                  {!isWaiter && !isRecoveryAgent && !isInstallmentAgent && (
+                   {!isWaiter && !isRecoveryAgent && !isInstallmentAgent && (
                     <Link to="/pos/orders" className={cn("rounded-md px-3 py-2 text-sm transition-colors", isActive("/pos/orders") ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground")}>
                       Orders
+                    </Link>
+                  )}
+                  {installmentEnabled && (isAdmin || isCashier) && (
+                    <Link to="/installments" className={cn("rounded-md px-3 py-2 text-sm transition-colors", isActive("/installments") ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground")}>
+                      Installment
                     </Link>
                   )}
                   {isCashier && cashierReportsEnabled && (

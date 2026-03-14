@@ -14,6 +14,7 @@ import PosExpenses from "./pages/PosExpenses";
 import PosCreditLodge from "./pages/PosCreditLodge";
 import PosPartyLodge from "./pages/PosPartyLodge";
 import AdminDashboard from "./pages/AdminDashboard";
+import InstallmentPage from "./pages/InstallmentPage";
 import AdminKitchenPage from "./pages/AdminKitchenPage";
 import AdminPrinterPage from "./pages/AdminPrinterPage";
 import AdminReportsPage from "./pages/AdminReportsPage";
@@ -107,8 +108,16 @@ const App = () => (
                 <Route
                   path="/admin"
                   element={
-                    <ProtectedRoute allow={["admin", "installment_agent"]}>
+                    <ProtectedRoute allow={["admin"]}>
                       <AdminDashboard />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/installments"
+                  element={
+                    <ProtectedRoute allow={["admin", "cashier", "installment_agent"]}>
+                      <InstallmentPage />
                     </ProtectedRoute>
                   }
                 />
