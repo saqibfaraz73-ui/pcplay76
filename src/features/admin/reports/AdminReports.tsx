@@ -109,6 +109,7 @@ function buildSalesPdf(args: {
   const customersById = Object.fromEntries(args.customers.map((c) => [c.id, c]));
   const deliveryPersonsById = Object.fromEntries(args.deliveryPersons.map((p) => [p.id, p]));
   const itemsById = Object.fromEntries(args.items.map((i) => [i.id, i]));
+  const categoriesById = Object.fromEntries(args.categories.map((c) => [c.id, c]));
   const tablesById = Object.fromEntries(args.tables.map((t) => [t.id, t]));
   const waitersById = Object.fromEntries(args.waiters.map((w) => [w.id, w]));
 
