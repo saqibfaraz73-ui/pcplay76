@@ -15,6 +15,8 @@ interface Props {
   payments: InstallmentPayment[];
   agents: StaffAccount[];
   settings: Settings | null;
+  agentMode?: boolean;
+  agentName?: string;
 }
 
 function toDateInputValue(ts: number) {
@@ -34,7 +36,7 @@ function getCurrentMonth(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 }
 
-export function InstallmentReports({ customers, payments, agents, settings }: Props) {
+export function InstallmentReports({ customers, payments, agents, settings, agentMode, agentName }: Props) {
   const now = Date.now();
   const [from, setFrom] = React.useState(toDateInputValue(startOfDay(now - 30 * 24 * 60 * 60 * 1000)));
   const [to, setTo] = React.useState(toDateInputValue(endOfDay(now)));
@@ -58,8 +60,8 @@ export function InstallmentReports({ customers, payments, agents, settings }: Pr
     <Card>
       <CardHeader className="flex flex-row items-start justify-between gap-3 flex-wrap">
         <div>
-          <CardTitle>Installment Reports</CardTitle>
-          <CardDescription>View recovery summaries by date range.</CardDescription>
+          <CardTitle>{agentMode ? `${agentName}'s Report` : "Installment Reports"}</CardTitle>
+          <CardDescription>{agentMode ? "Your assigned customers recovery summary." : "View recovery summaries by date range."}</CardDescription>
         </div>
         <SaveShareMenu
           label="Report PDF"
@@ -99,8 +101,8 @@ export function InstallmentReports({ customers, payments, agents, settings }: Pr
           <SummaryCard label={`Recovered (${from} to ${to})`} value={totalRecoveredInRange} color="text-green-600" />
         </div>
 
-        {/* Per-agent breakdown */}
-        {agents.length > 0 && (
+        {/* Per-agent breakdown (hidden in agent mode) */}
+        {!agentMode && agents.length > 0 && (
           <div className="border-t pt-4">
             <h3 className="text-sm font-semibold mb-2">Agent Performance</h3>
             <div className="space-y-2">

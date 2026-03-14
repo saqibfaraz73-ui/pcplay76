@@ -221,6 +221,7 @@ export function InstallmentSection() {
     <Tabs defaultValue="customers">
       <TabsList className="flex w-full flex-wrap justify-start gap-1">
         <TabsTrigger value="customers">Customers</TabsTrigger>
+        {isAgent && <TabsTrigger value="myreports">My Reports</TabsTrigger>}
         {canEdit && <TabsTrigger value="reports">Reports</TabsTrigger>}
         {isAdmin && <TabsTrigger value="agents">Agents</TabsTrigger>}
       </TabsList>
@@ -358,8 +359,8 @@ export function InstallmentSection() {
                         </div>
                       )}
 
-                      {/* Images thumbnails - clickable */}
-                      {c.images && c.images.length > 0 && (
+                      {/* Images thumbnails - clickable (hidden from agents) */}
+                      {!isAgent && c.images && c.images.length > 0 && (
                         <div className="flex gap-1.5 overflow-x-auto">
                           {c.images.slice(0, 4).map((img, i) => (
                             <button
@@ -393,7 +394,7 @@ export function InstallmentSection() {
                         <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setHistoryCustomerId(c.id)}>
                           <History className="h-3 w-3 mr-1" /> History
                         </Button>
-                        {c.images && c.images.length > 0 && (
+                        {!isAgent && c.images && c.images.length > 0 && (
                           <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setImageViewer({ images: c.images!, index: 0, name: c.name })}>
                             <ImageIcon className="h-3 w-3 mr-1" /> {c.images.length}
                           </Button>
@@ -463,6 +464,19 @@ export function InstallmentSection() {
           />
         )}
       </TabsContent>
+
+      {isAgent && (
+        <TabsContent value="myreports">
+          <InstallmentReports
+            customers={customers}
+            payments={payments.filter(p => customers.some(c => c.id === p.customerId))}
+            agents={[]}
+            settings={settings}
+            agentMode
+            agentName={session?.username ?? "Agent"}
+          />
+        </TabsContent>
+      )}
 
       {canEdit && (
         <TabsContent value="reports">
