@@ -6,8 +6,10 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { makeId } from "@/features/admin/id";
 import { parseNonDecimalInt } from "@/features/pos/format";
+import { db } from "@/db/appDb";
+import type { MenuItem } from "@/db/schema";
 import type { InstallmentCustomer, InstallmentCustomerField, ProfitType } from "@/db/installment-schema";
-import { Plus, Trash2, ImagePlus } from "lucide-react";
+import { Plus, Trash2, ImagePlus, Search } from "lucide-react";
 
 interface Props {
   open: boolean;
