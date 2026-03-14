@@ -22,6 +22,13 @@ const SECURITY_QUESTIONS = [
 
 type Screen = "checking" | "register" | "login" | "forgot" | "forgot-username" | "master-reset";
 
+const getRoleHomeRoute = (role: UserRole) => {
+  if (role === "kitchen") return "/kitchen";
+  if (role === "recovery") return "/recovery";
+  if (role === "admin" || role === "cashier") return "/home";
+  return "/pos/tables";
+};
+
 export default function Login() {
   const { toast } = useToast();
   const { login, session } = useAuth();
