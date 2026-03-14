@@ -173,7 +173,7 @@ export function KitchenLoginPage({ onConnected }: KitchenLoginPageProps) {
           </div>
 
           <p className="text-xs text-muted-foreground text-center">
-            Scan the IP barcode shown on the Main device's Sync page, or enter the IP manually.
+            Scan the IP barcode shown on Main device Device Sync page, or enter IP manually. Set/update PIN on Main: Admin → Device Sync.
           </p>
         </CardContent>
       </Card>

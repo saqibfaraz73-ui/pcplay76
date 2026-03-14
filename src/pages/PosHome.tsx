@@ -190,11 +190,11 @@ export default function PosHome() {
 
     if (!isWaiter && settings?.kitchenDisplayEnabled) {
       actions.push({
-        to: "/admin/kitchen",
-        label: "Kitchen Orders",
+        to: "/kitchen",
+        label: "Kitchen Login",
         icon: ChefHat,
         color: "bg-rose-500/10 text-rose-600 border-rose-200",
-        description: "Kitchen order queue",
+        description: "Connect kitchen/display device",
       });
     }
 
