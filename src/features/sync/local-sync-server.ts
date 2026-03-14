@@ -25,15 +25,16 @@ interface LocalSyncServerPlugin {
     endpoint: string;
     timestamp: number;
   }>;
+  /** Respond to a pending GET request from the native server */
+  resolveGetRequest(options: { data: string }): Promise<{ success: boolean }>;
   addListener(
     eventName: "syncDataReceived",
     handler: (event: { endpoint: string; data: string; timestamp: number }) => void
   ): Promise<PluginListenerHandle>;
   addListener(
-    eventName: "syncQueryReceived",
-    handler: (event: { endpoint: string; requestId: string }) => void
+    eventName: "syncGetRequest",
+    handler: (event: { endpoint: string; timestamp: number }) => void
   ): Promise<PluginListenerHandle>;
-  respondToQuery(options: { requestId: string; data: string }): Promise<void>;
 }
 
 const LocalSyncServer = registerPlugin<LocalSyncServerPlugin>("LocalSyncServer");
@@ -65,7 +66,7 @@ export async function getSyncServerStatus() {
 }
 
 /**
- * Listen for incoming sync data from Sub devices.
+ * Listen for incoming sync data from Sub devices (POST requests).
  * The callback receives parsed SyncPayload objects.
  */
 export async function onSyncDataReceived(
@@ -84,25 +85,24 @@ export async function onSyncDataReceived(
 }
 
 /**
- * Listen for incoming GET query requests from Sub/Kitchen devices.
- * The callback should return data to respond with.
+ * Listen for incoming GET requests from Sub/Kitchen devices.
+ * When the native server receives a GET for kitchen-orders or kitchen-display,
+ * it fires this event. The callback should return the JSON data to send back.
  */
-export async function onSyncQueryReceived(
+export async function onSyncGetRequest(
   callback: (endpoint: string) => Promise<unknown>
 ): Promise<PluginListenerHandle | null> {
   if (!isNativeAndroid()) return null;
 
-  return LocalSyncServer.addListener("syncQueryReceived", async (event) => {
+  return LocalSyncServer.addListener("syncGetRequest", async (event) => {
     try {
       const data = await callback(event.endpoint);
-      await LocalSyncServer.respondToQuery({
-        requestId: event.requestId,
+      await LocalSyncServer.resolveGetRequest({
         data: JSON.stringify(data),
       });
     } catch (e) {
-      console.error("Failed to handle sync query:", e);
-      await LocalSyncServer.respondToQuery({
-        requestId: event.requestId,
+      console.error("Failed to handle sync GET request:", e);
+      await LocalSyncServer.resolveGetRequest({
         data: JSON.stringify({ error: "Internal error" }),
       });
     }
