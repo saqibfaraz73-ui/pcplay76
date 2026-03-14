@@ -290,6 +290,14 @@ export function AdminCustomers() {
                   <Label htmlFor="custMobile">Mobile (optional)</Label>
                   <Input id="custMobile" inputMode="tel" value={mobile} onChange={(e) => setMobile(e.target.value)} />
                 </div>
+                <div className="space-y-2">
+                  <Label htmlFor="custWhatsapp">WhatsApp Number (optional)</Label>
+                  <Input id="custWhatsapp" inputMode="tel" value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} placeholder="e.g., +923001234567" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="custEmail">Email (optional)</Label>
+                  <Input id="custEmail" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="e.g., customer@email.com" />
+                </div>
               </div>
 
               <DialogFooter>
