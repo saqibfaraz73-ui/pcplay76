@@ -98,7 +98,7 @@ export function AdminSettings() {
   const [staffAccounts, setStaffAccounts] = React.useState<StaffAccount[]>([]);
   const [newStaffName, setNewStaffName] = React.useState("");
   const [newStaffPhone, setNewStaffPhone] = React.useState("");
-  const [newStaffRole, setNewStaffRole] = React.useState<"cashier" | "waiter" | "supervisor" | "recovery">("cashier");
+  const [newStaffRole, setNewStaffRole] = React.useState<"cashier" | "waiter" | "supervisor" | "recovery" | "kitchen">("cashier");
   const [newStaffPin, setNewStaffPin] = React.useState("");
   const [deleteStaffId, setDeleteStaffId] = React.useState<string | null>(null);
 
@@ -285,7 +285,7 @@ export function AdminSettings() {
     setNewStaffName("");
     setNewStaffPhone("");
     setNewStaffPin("");
-    toast({ title: `${newStaffRole === "cashier" ? "Cashier" : newStaffRole === "supervisor" ? "Supervisor" : newStaffRole === "recovery" ? "Recovery Agent" : "Waiter"} added` });
+    toast({ title: `${newStaffRole === "cashier" ? "Cashier" : newStaffRole === "supervisor" ? "Supervisor" : newStaffRole === "recovery" ? "Recovery Agent" : newStaffRole === "kitchen" ? "Kitchen Staff" : "Waiter"} added` });
   };
 
   const deleteStaff = async (staffId: string) => {
@@ -783,11 +783,12 @@ export function AdminSettings() {
             </div>
             <div className="space-y-2">
               <Label>Role</Label>
-              <select value={newStaffRole} onChange={(e) => setNewStaffRole(e.target.value as "cashier" | "waiter" | "supervisor" | "recovery")} className="h-10 w-full rounded-md border bg-background px-3 text-sm">
+              <select value={newStaffRole} onChange={(e) => setNewStaffRole(e.target.value as "cashier" | "waiter" | "supervisor" | "recovery" | "kitchen")} className="h-10 w-full rounded-md border bg-background px-3 text-sm">
                 <option value="cashier">Cashier</option>
                 <option value="waiter">Waiter</option>
                 <option value="supervisor">Supervisor</option>
                 <option value="recovery">Recovery Agent</option>
+                {kitchenDisplayEnabled && <option value="kitchen">Kitchen Staff</option>}
               </select>
             </div>
             <div className="space-y-2">

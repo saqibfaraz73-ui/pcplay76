@@ -26,6 +26,7 @@ import {
   Shield,
   Wifi,
   Trash2,
+  ChefHat,
   FileText,
 } from "lucide-react";
 import appLogo from "@/assets/app-logo.jpg";
@@ -45,7 +46,7 @@ export default function PosHome() {
   const { session } = useAuth();
   const { isWorkPeriodActive } = useWorkPeriod();
   const [stats, setStats] = React.useState<TodayStats | null>(null);
-  const [settings, setSettings] = React.useState<{ tableManagementEnabled?: boolean; advanceBookingEnabled?: boolean; deliveryEnabled?: boolean; recoveryEnabled?: boolean; syncEnabled?: boolean; businessName?: string } | null>(null);
+  const [settings, setSettings] = React.useState<{ tableManagementEnabled?: boolean; advanceBookingEnabled?: boolean; deliveryEnabled?: boolean; recoveryEnabled?: boolean; syncEnabled?: boolean; kitchenDisplayEnabled?: boolean; businessName?: string } | null>(null);
 
   React.useEffect(() => {
     loadStats();
@@ -184,6 +185,16 @@ export default function PosHome() {
         icon: Truck,
         color: "bg-lime-500/10 text-lime-600 border-lime-200",
         description: "Delivery management",
+      });
+    }
+
+    if (!isWaiter && settings?.kitchenDisplayEnabled) {
+      actions.push({
+        to: "/kitchen",
+        label: "Kitchen Display",
+        icon: ChefHat,
+        color: "bg-rose-500/10 text-rose-600 border-rose-200",
+        description: "Kitchen order queue",
       });
     }
 
