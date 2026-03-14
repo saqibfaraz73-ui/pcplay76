@@ -678,7 +678,38 @@ export function AdminSettings() {
         </CardContent>
       </Card>
 
-      {/* General Permissions */}
+      {/* Installment Settings */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Installment Management</CardTitle>
+          <CardDescription>Configure installment sales for product financing with monthly payments.</CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-4">
+          <div className="flex items-center justify-between gap-3 rounded-md border p-3">
+            <div>
+              <div className="text-sm font-medium">Enable Installment</div>
+              <div className="text-xs text-muted-foreground">Show the Installment tab in Admin for managing customers, payments, and agents.</div>
+            </div>
+            <Switch checked={installmentEnabled} onCheckedChange={setInstallmentEnabled} />
+          </div>
+          {installmentEnabled && (
+            <div className="rounded-md bg-muted/50 p-3 text-sm text-muted-foreground space-y-1">
+              <p>✅ Installment enabled. Features:</p>
+              <ul className="list-disc pl-4 space-y-1 text-xs">
+                <li>Add customers with product details, profit calculation, and tenure</li>
+                <li>Record monthly installment payments with receipts</li>
+                <li>Track paid/unpaid customers with late fee support</li>
+                <li>Assign customers to Installment Agents for field collection</li>
+                <li>Agent data export/import for multi-device workflows</li>
+                <li>Import/export customers via Excel</li>
+                <li>Reports with recovery, late fee, and agent commission breakdowns</li>
+              </ul>
+            </div>
+          )}
+          <div className="flex justify-end">
+            <Button onClick={() => void save()} disabled={!settings}>Save</Button>
+          </div>
+        </CardContent>
       <Card>
         <CardHeader>
           <CardTitle>General Permissions</CardTitle>

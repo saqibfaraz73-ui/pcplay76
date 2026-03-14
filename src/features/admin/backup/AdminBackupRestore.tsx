@@ -243,6 +243,8 @@ export function AdminBackupRestore() {
         if (payload.data.bookingOrders?.length) await db.bookingOrders.bulkAdd(payload.data.bookingOrders);
         if (payload.data.recoveryCustomers?.length) await db.recoveryCustomers.bulkAdd(payload.data.recoveryCustomers);
         if (payload.data.recoveryPayments?.length) await db.recoveryPayments.bulkAdd(payload.data.recoveryPayments);
+        if (payload.data.installmentCustomers?.length) await db.installmentCustomers.bulkAdd(payload.data.installmentCustomers);
+        if (payload.data.installmentPayments?.length) await db.installmentPayments.bulkAdd(payload.data.installmentPayments);
         await db.settings.bulkAdd(payload.data.settings);
         await db.counters.bulkAdd(payload.data.counters);
       },
