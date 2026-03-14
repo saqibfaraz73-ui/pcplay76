@@ -70,6 +70,7 @@ export class SangiPosDb extends Dexie {
   labourTransactions!: Table<LabourTransaction, string>;
   labourAttendance!: Table<LabourAttendance, string>;
   labourProduction!: Table<LabourProduction, string>;
+  kitchenOrders!: Table<KitchenOrder, string>;
   
 
   constructor() {
