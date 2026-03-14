@@ -181,6 +181,8 @@ export type Supplier = {
   id: string;
   name: string;
   contact?: string;
+  whatsapp?: string;
+  email?: string;
   itemName?: string;
   stockUnit?: StockUnit;
   unitPrice?: number;
