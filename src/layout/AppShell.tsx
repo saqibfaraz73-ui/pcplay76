@@ -129,9 +129,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const isWaiter = session?.role === "waiter" || session?.role === "supervisor";
   const isSupervisor = session?.role === "supervisor";
   const isRecoveryAgent = session?.role === "recovery";
+  const isInstallmentAgent = session?.role === "installment_agent";
 
   const visibleNavItems = React.useMemo(() => {
-    if (isWaiter || isRecoveryAgent) return [];
+    if (isWaiter || isRecoveryAgent || isInstallmentAgent) return [];
     return navItems.filter((n) => {
       if (n.adminOnly && !isAdmin) return false;
       if ((n as any).salesOnly && !salesDashboardEnabled) return false;
