@@ -15,7 +15,11 @@ export type SyncEndpoint =
   | "expense"
   | "print"
   | "work-period"
-  | "bulk";
+  | "bulk"
+  | "party-lodge-arrival"
+  | "party-lodge-payment"
+  | "advance-order"
+  | "booking-order";
 
 /** Payload sent from Sub → Main for each sync endpoint */
 export type SyncPayload = {
@@ -66,6 +70,12 @@ export type SyncConfig = {
   port: number;
   /** Friendly device name */
   deviceName?: string;
+  /** Optional: sync expenses to Main (default false) */
+  syncExpenses?: boolean;
+  /** Optional: sync party lodge (supplier arrivals/payments) to Main (default false) */
+  syncPartyLodge?: boolean;
+  /** Optional: sync advance booking orders to Main (default false) */
+  syncAdvanceBooking?: boolean;
 };
 
 export const DEFAULT_SYNC_PORT = 8942;

@@ -6,7 +6,8 @@
  * and optionally forwards print jobs to the connected printer.
  */
 import { db } from "@/db/appDb";
-import type { Order, Expense, TableOrder, WorkPeriod } from "@/db/schema";
+import type { Order, Expense, TableOrder, WorkPeriod, SupplierArrival, SupplierPayment } from "@/db/schema";
+import type { AdvanceOrder, BookingOrder } from "@/db/booking-schema";
 import type { SyncPayload, PrintJobPayload, SyncEndpoint } from "./sync-types";
 
 
@@ -57,6 +58,18 @@ export async function handleSyncData(
       break;
     case "bulk":
       await handleBulkSync(payload.data as Array<{ endpoint: SyncEndpoint; data: unknown }>);
+      break;
+    case "party-lodge-arrival":
+      await handlePartyLodgeArrivalSync(payload.data as { supplier: any; arrival: SupplierArrival });
+      break;
+    case "party-lodge-payment":
+      await handlePartyLodgePaymentSync(payload.data as { supplier: any; payment: SupplierPayment; expense?: Expense });
+      break;
+    case "advance-order":
+      await handleAdvanceOrderSync(payload.data as AdvanceOrder);
+      break;
+    case "booking-order":
+      await handleBookingOrderSync(payload.data as BookingOrder);
       break;
     default:
       console.warn(`[Sync] Unknown endpoint: ${endpoint}`);
@@ -241,9 +254,78 @@ async function handlePrintJob(job: PrintJobPayload): Promise<void> {
 
 /** Save/update a synced work period — Sub work periods are stored but Main uses its own for reports */
 async function handleWorkPeriodSync(wp: WorkPeriod): Promise<void> {
-  // Don't save Sub's work periods — they'd clutter Main's work period dropdown
-  // Sub orders/expenses are already remapped to Main's active work period
   console.log(`[Sync] Work period sync from Sub ignored (Main uses its own work periods)`);
+}
+
+/** Save a synced supplier arrival (party lodge) */
+async function handlePartyLodgeArrivalSync(data: { supplier: any; arrival: SupplierArrival }): Promise<void> {
+  const { supplier, arrival } = data;
+  // Ensure supplier exists on Main
+  const existingSup = await db.suppliers.get(supplier.id);
+  if (!existingSup) {
+    await db.suppliers.put(supplier);
+    console.log(`[Sync] Created supplier: ${supplier.name}`);
+  } else {
+    // Update balance
+    await db.suppliers.update(supplier.id, { totalBalance: supplier.totalBalance });
+  }
+  const existingArr = await db.supplierArrivals.get(arrival.id);
+  if (existingArr) return;
+  await db.supplierArrivals.put(arrival);
+  console.log(`[Sync] Supplier arrival ${arrival.id} saved`);
+}
+
+/** Save a synced supplier payment (party lodge) */
+async function handlePartyLodgePaymentSync(data: { supplier: any; payment: SupplierPayment; expense?: Expense }): Promise<void> {
+  const { supplier, payment, expense } = data;
+  // Ensure supplier exists on Main
+  const existingSup = await db.suppliers.get(supplier.id);
+  if (!existingSup) {
+    await db.suppliers.put(supplier);
+    console.log(`[Sync] Created supplier: ${supplier.name}`);
+  }
+  const existingPay = await db.supplierPayments.get(payment.id);
+  if (existingPay) return;
+  await db.supplierPayments.put(payment);
+  console.log(`[Sync] Supplier payment ${payment.id} saved`);
+  // Also save linked expense if provided
+  if (expense) {
+    const existingExp = await db.expenses.get(expense.id);
+    if (!existingExp) {
+      const mainWp = await db.workPeriods.filter((wp) => !wp.isClosed).first();
+      if (mainWp) expense.workPeriodId = mainWp.id;
+      await db.expenses.put(expense);
+      console.log(`[Sync] Linked expense ${expense.id} saved`);
+    }
+  }
+}
+
+/** Save a synced advance order */
+async function handleAdvanceOrderSync(order: AdvanceOrder): Promise<void> {
+  const existing = await db.advanceOrders.get(order.id);
+  if (existing) {
+    if (order.updatedAt > existing.updatedAt) {
+      await db.advanceOrders.put(order);
+      console.log(`[Sync] Advance order ${order.id} updated`);
+    }
+    return;
+  }
+  await db.advanceOrders.put(order);
+  console.log(`[Sync] Advance order ${order.id} saved`);
+}
+
+/** Save a synced booking order */
+async function handleBookingOrderSync(order: BookingOrder): Promise<void> {
+  const existing = await db.bookingOrders.get(order.id);
+  if (existing) {
+    if (order.updatedAt > existing.updatedAt) {
+      await db.bookingOrders.put(order);
+      console.log(`[Sync] Booking order ${order.id} updated`);
+    }
+    return;
+  }
+  await db.bookingOrders.put(order);
+  console.log(`[Sync] Booking order ${order.id} saved`);
 }
 
 /** Handle bulk sync — multiple items in one request */

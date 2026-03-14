@@ -264,6 +264,13 @@ export default function PosPartyLodge() {
         createdAt: Date.now(),
       };
       await db.supplierPayments.put(payment);
+      // Sync to Main if party lodge sync enabled
+      try {
+        const { syncPartyPaymentOptional } = await import("@/features/sync/optional-sync");
+        const updatedSup = await db.suppliers.get(sup.id);
+        const expenseRecord = payAsExpense ? await db.expenses.get(expenseId!) : undefined;
+        await syncPartyPaymentOptional(updatedSup ?? sup, payment, expenseRecord);
+      } catch {}
       toast({ title: "Payment recorded", description: payAsExpense ? "Also recorded as expense" : undefined });
       setPayMode({ open: false });
       await refresh();
@@ -372,6 +379,21 @@ export default function PosPartyLodge() {
           totalBalance: sup.totalBalance + totalAdded,
         });
       });
+
+      // Sync to Main if party lodge sync enabled
+      try {
+        const { syncPartyArrivalOptional } = await import("@/features/sync/optional-sync");
+        const updatedSup = await db.suppliers.get(sup.id);
+        // Sync the last arrival(s) — for simplicity sync the supplier state
+        for (const it of validItems) {
+          const total = getItemTotal(it);
+          const arrivalRecord = await db.supplierArrivals
+            .where("supplierId").equals(sup.id)
+            .filter(a => a.receiptNo === entryNo && a.itemName === (it.itemName.trim() || sup.itemName || "—"))
+            .first();
+          if (arrivalRecord) await syncPartyArrivalOptional(updatedSup ?? { ...sup, totalBalance: sup.totalBalance + totalAdded }, arrivalRecord);
+        }
+      } catch {}
 
       toast({
         title: `Arrival #${entryNo} recorded`,
