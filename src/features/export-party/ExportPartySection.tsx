@@ -79,6 +79,8 @@ export function ExportPartySection() {
   // Customer form
   const [cName, setCName] = React.useState("");
   const [cContact, setCContact] = React.useState("");
+  const [cWhatsapp, setCWhatsapp] = React.useState("");
+  const [cEmail, setCEmail] = React.useState("");
   const [cItemName, setCItemName] = React.useState("");
   const [cUnit, setCUnit] = React.useState("");
   const [cUnitPrice, setCUnitPrice] = React.useState(0);
