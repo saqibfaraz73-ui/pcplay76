@@ -2,7 +2,7 @@
  * Sync Settings Panel — UI for configuring Main/Sub device role
  * and managing the local P2P connection.
  */
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -14,8 +14,9 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import { Wifi, WifiOff, Server, Smartphone, Printer as PrinterIcon, Loader2, QrCode } from "lucide-react";
+import { Wifi, WifiOff, Server, Smartphone, Printer as PrinterIcon, Loader2, QrCode, Camera } from "lucide-react";
 import { barcodeToDataUrl } from "@/features/labels/barcode-generator";
+import { Html5Qrcode } from "html5-qrcode";
 import type { DeviceRole, ConnectionStatus, SyncConfig } from "./sync-types";
 import { DEFAULT_SYNC_CONFIG, DEFAULT_SYNC_PORT } from "./sync-types";
 import type { Settings } from "@/db/schema";
