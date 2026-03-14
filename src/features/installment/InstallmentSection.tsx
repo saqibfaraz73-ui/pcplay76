@@ -112,7 +112,17 @@ export function InstallmentSection() {
   const openEdit = (c: InstallmentCustomer) => { setEditCustomer(c); setFormOpen(true); };
 
   const saveCustomer = async (c: InstallmentCustomer) => {
+    // Check free limit for new customers only
+    const isNew = !customers.some(x => x.id === c.id);
+    if (isNew) {
+      const check = await canMakeSale("installment");
+      if (!check.allowed) {
+        toast({ title: "Free limit reached", description: check.message, variant: "destructive" });
+        return;
+      }
+    }
     await db.installmentCustomers.put(c);
+    if (isNew) await incrementSaleCount("installment");
     setFormOpen(false);
     setEditCustomer(undefined);
     toast({ title: "Customer saved" });
