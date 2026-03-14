@@ -45,6 +45,8 @@ type BackupPayloadV1 = {
     bookingOrders?: any[];
     recoveryCustomers?: any[];
     recoveryPayments?: any[];
+    installmentCustomers?: any[];
+    installmentPayments?: any[];
   };
 };
 
