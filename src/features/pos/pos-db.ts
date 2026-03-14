@@ -138,6 +138,27 @@ export async function createOrder(args: {
       console.warn("[Sync] Failed to send order to Main:", e);
     }
 
+    // Send kitchen order to Main if KDS enabled (Sub sends via sync, Main creates locally)
+    try {
+      const s = await db.settings.get("app");
+      if (s?.kitchenDisplayEnabled) {
+        const { sendToMainApp: sendKO } = await import("@/features/sync/sync-client");
+        const { getLicense: getLic } = await import("@/features/licensing/licensing-db");
+        const lic2 = await getLic();
+        const kitchenOrder = {
+          id: `ko_${Math.random().toString(16).slice(2)}_${Date.now().toString(16)}`,
+          sourceOrderId: order.id,
+          sourceType: "pos" as const,
+          orderNumber: order.receiptNo,
+          items: order.lines.map((l: any) => ({ name: l.name, qty: l.qty })),
+          status: "pending" as const,
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        };
+        sendKO("kitchen-order", kitchenOrder, lic2.deviceId).catch(() => {});
+      }
+    } catch {}
+
     await incrementSaleCount(saleModule);
     return order;
   }
@@ -199,6 +220,22 @@ export async function createOrder(args: {
 
     return order;
   });
+
+  // Create kitchen order if KDS enabled (fire-and-forget, outside transaction)
+  try {
+    const s = await db.settings.get("app");
+    if (s?.kitchenDisplayEnabled) {
+      const { createKitchenOrderFromOrder } = await import("@/features/kitchen/kitchen-handler");
+      await createKitchenOrderFromOrder(
+        createdOrder.id,
+        createdOrder.receiptNo,
+        createdOrder.lines.map(l => ({ name: l.name, qty: l.qty })),
+        "pos"
+      );
+    }
+  } catch (e) {
+    console.warn("[Kitchen] Failed to create kitchen order:", e);
+  }
 
   return createdOrder;
 }

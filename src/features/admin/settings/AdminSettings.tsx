@@ -809,14 +809,14 @@ export function AdminSettings() {
         </CardHeader>
         <CardContent className="grid gap-4">
           {/* Add new staff */}
-          <div className="grid gap-3 sm:grid-cols-5 items-end">
+          <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 items-end">
             <div className="space-y-2">
               <Label>Name</Label>
               <Input value={newStaffName} onChange={(e) => setNewStaffName(e.target.value)} placeholder="e.g. Ali" />
             </div>
             <div className="space-y-2">
-              <Label>Phone <span className="text-muted-foreground text-xs">(optional)</span></Label>
-              <Input value={newStaffPhone} onChange={(e) => setNewStaffPhone(e.target.value)} inputMode="tel" placeholder="e.g. 03001234567" />
+              <Label>Phone <span className="text-muted-foreground text-xs">(opt)</span></Label>
+              <Input value={newStaffPhone} onChange={(e) => setNewStaffPhone(e.target.value)} inputMode="tel" placeholder="03001234567" />
             </div>
             <div className="space-y-2">
               <Label>Role</Label>
@@ -831,43 +831,64 @@ export function AdminSettings() {
             </div>
             <div className="space-y-2">
               <Label>4-Digit PIN</Label>
-              <Input value={newStaffPin} onChange={(e) => setNewStaffPin(e.target.value.replace(/\D/g, "").slice(0, 4))} inputMode="numeric" maxLength={4} placeholder="e.g. 1234" />
+              <Input value={newStaffPin} onChange={(e) => setNewStaffPin(e.target.value.replace(/\D/g, "").slice(0, 4))} inputMode="numeric" maxLength={4} placeholder="1234" />
             </div>
-            <Button onClick={() => void addStaff()} className="gap-1">
+            <Button onClick={() => void addStaff()} className="gap-1 col-span-2 sm:col-span-1">
               <Plus className="h-4 w-4" /> Add
             </Button>
           </div>
 
-          {/* Staff list */}
+          {/* Staff list — card layout for mobile, table for desktop */}
           {staffAccounts.length > 0 ? (
-            <div className="rounded-md border">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b bg-muted/50">
-                    <th className="px-3 py-2 text-left font-medium">Name</th>
-                    <th className="px-3 py-2 text-left font-medium">Phone</th>
-                    <th className="px-3 py-2 text-left font-medium">Role</th>
-                    <th className="px-3 py-2 text-left font-medium">PIN</th>
-                    <th className="px-3 py-2 text-right font-medium">Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {staffAccounts.map((s) => (
-                    <tr key={s.id} className="border-b last:border-0">
-                      <td className="px-3 py-2">{s.name}</td>
-                      <td className="px-3 py-2 text-muted-foreground">{s.phone || "—"}</td>
-                      <td className="px-3 py-2 capitalize">{s.role}</td>
-                      <td className="px-3 py-2 font-mono">{s.pin}</td>
-                      <td className="px-3 py-2 text-right">
-                        <Button variant="ghost" size="icon" onClick={() => setDeleteStaffId(s.id)}>
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </td>
+            <>
+              {/* Mobile: card list */}
+              <div className="space-y-2 sm:hidden">
+                {staffAccounts.map((s) => (
+                  <div key={s.id} className="rounded-md border p-3 flex items-center justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <div className="font-medium truncate">{s.name}</div>
+                      <div className="text-xs text-muted-foreground flex flex-wrap gap-x-3">
+                        <span className="capitalize">{s.role.replace("_", " ")}</span>
+                        <span className="font-mono">PIN: {s.pin}</span>
+                        {s.phone && <span>{s.phone}</span>}
+                      </div>
+                    </div>
+                    <Button variant="ghost" size="icon" className="shrink-0" onClick={() => setDeleteStaffId(s.id)}>
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+              {/* Desktop: table */}
+              <div className="rounded-md border hidden sm:block overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b bg-muted/50">
+                      <th className="px-3 py-2 text-left font-medium">Name</th>
+                      <th className="px-3 py-2 text-left font-medium">Phone</th>
+                      <th className="px-3 py-2 text-left font-medium">Role</th>
+                      <th className="px-3 py-2 text-left font-medium">PIN</th>
+                      <th className="px-3 py-2 text-right font-medium">Action</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {staffAccounts.map((s) => (
+                      <tr key={s.id} className="border-b last:border-0">
+                        <td className="px-3 py-2">{s.name}</td>
+                        <td className="px-3 py-2 text-muted-foreground">{s.phone || "—"}</td>
+                        <td className="px-3 py-2 capitalize">{s.role.replace("_", " ")}</td>
+                        <td className="px-3 py-2 font-mono">{s.pin}</td>
+                        <td className="px-3 py-2 text-right">
+                          <Button variant="ghost" size="icon" onClick={() => setDeleteStaffId(s.id)}>
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
           ) : (
             <p className="text-sm text-muted-foreground">No staff accounts yet. Add a cashier or waiter above.</p>
           )}

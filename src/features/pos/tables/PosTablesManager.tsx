@@ -395,6 +395,27 @@ export function PosTablesManager() {
         await db.tableOrders.put(order);
       }
 
+      // Create kitchen order if KDS enabled
+      try {
+        if (settings?.kitchenDisplayEnabled) {
+          const table = tablesById[tableId];
+          const waiter = waitersById[selectedWaiterId];
+          const { createKitchenOrderFromOrder } = await import("@/features/kitchen/kitchen-handler");
+          const tableOrder = await db.tableOrders.where("tableId").equals(tableId).and(o => o.status === "open").first();
+          if (tableOrder) {
+            await createKitchenOrderFromOrder(
+              tableOrder.id,
+              tableOrder.receiptNo ?? 0,
+              cart.map(l => ({ name: l.name, qty: l.qty })),
+              "table",
+              { tableNumber: table?.tableNumber, waiterName: waiter?.name }
+            );
+          }
+        }
+      } catch (e) {
+        console.warn("[Kitchen] Failed to create kitchen order:", e);
+      }
+
       if (printKot) {
         try {
           const table = tablesById[tableId];
