@@ -218,6 +218,7 @@ export function AdminSettings() {
         currencySymbol: currencySymbol.trim(),
         deliveryEnabled,
         recoveryEnabled,
+        kitchenDisplayEnabled,
         updatedAt: Date.now(),
       };
       await db.settings.put(next);
