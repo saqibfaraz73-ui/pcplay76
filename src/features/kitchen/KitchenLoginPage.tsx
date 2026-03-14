@@ -2,13 +2,15 @@
  * Kitchen Login — Kitchen staff scan Main device IP barcode, enter PIN, then connect.
  */
 import React, { useState, useCallback, useRef, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Camera, Wifi, Loader2, ChefHat } from "lucide-react";
+import { useAuth } from "@/auth/AuthProvider";
+import { Camera, Wifi, Loader2, ChefHat, ArrowLeft } from "lucide-react";
 import { Html5Qrcode } from "html5-qrcode";
 import { setMainAppUrl, pingMainApp } from "@/features/sync/sync-client";
 import { DEFAULT_SYNC_PORT } from "@/features/sync/sync-types";
@@ -19,6 +21,8 @@ interface KitchenLoginPageProps {
 
 export function KitchenLoginPage({ onConnected }: KitchenLoginPageProps) {
   const { toast } = useToast();
+  const { logout } = useAuth();
+  const navigate = useNavigate();
   const [ipInput, setIpInput] = useState("");
   const [pinInput, setPinInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -102,7 +106,15 @@ export function KitchenLoginPage({ onConnected }: KitchenLoginPageProps) {
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
+      <Button
+        variant="ghost"
+        size="sm"
+        className="absolute top-4 left-4 gap-1"
+        onClick={() => { logout(); navigate("/login"); }}
+      >
+        <ArrowLeft className="h-4 w-4" /> Back to Login
+      </Button>
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-primary/10">
