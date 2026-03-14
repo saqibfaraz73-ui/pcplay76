@@ -129,6 +129,7 @@ export function SalesReportPreview({
 
   const customersById = React.useMemo(() => Object.fromEntries(customers.map((c) => [c.id, c])), [customers]);
   const itemsById = React.useMemo(() => Object.fromEntries(items.map((i) => [i.id, i])), [items]);
+  const categoriesById = React.useMemo(() => Object.fromEntries(categories.map((c) => [c.id, c])), [categories]);
   const deliveryPersonsById = React.useMemo(() => Object.fromEntries(deliveryPersons.map((p) => [p.id, p])), [deliveryPersons]);
   const tablesById = React.useMemo(() => Object.fromEntries(tables.map((t) => [t.id, t])), [tables]);
   const waitersById = React.useMemo(() => Object.fromEntries(waiters.map((w) => [w.id, w])), [waiters]);
