@@ -151,6 +151,7 @@ const App = () => (
                       <AdminKitchenPage />
                     </ProtectedRoute>
                   }
+                />
                 <Route
                   path="/admin/sync"
                   element={
