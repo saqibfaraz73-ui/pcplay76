@@ -1030,6 +1030,7 @@ export function AdminReports() {
         exportCustomers={exportCustomers}
         advanceOrders={salesPreview.advanceOrders}
         bookingOrders={salesPreview.bookingOrders}
+        workPeriod={filterType === "workPeriod" && selectedWorkPeriodId ? workPeriods.find(w => w.id === selectedWorkPeriodId) : undefined}
       />
 
       <Card>
