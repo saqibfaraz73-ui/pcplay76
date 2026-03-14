@@ -189,6 +189,7 @@ const bonusKey: Record<SalesModule, keyof LicenseRecord> = {
   expenses: "expensesAdBonus",
   customPrint: "customPrintAdBonus",
   labelPrint: "labelPrintAdBonus",
+  installment: "installmentAdBonus",
 };
 
 export type CanSaleResult = {
