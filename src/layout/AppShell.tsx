@@ -314,7 +314,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   {/* Dashboard link for waiter/agent */}
                   {(isWaiter || isRecoveryAgent || isInstallmentAgent) && (
                     <Link
-                      to={isRecoveryAgent ? "/recovery" : isInstallmentAgent ? "/admin?tab=installment" : isWaiter ? "/pos/tables" : "/home"}
+                      to={isRecoveryAgent ? "/recovery" : isInstallmentAgent ? "/installments" : isWaiter ? "/pos/tables" : "/home"}
                       className={cn(
                         "rounded-md px-3 py-2 text-sm transition-colors",
                         isActive(isRecoveryAgent ? "/recovery" : isInstallmentAgent ? "/admin" : isWaiter ? "/pos/tables" : "/home")
