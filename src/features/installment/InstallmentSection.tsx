@@ -359,8 +359,8 @@ export function InstallmentSection() {
                         </div>
                       )}
 
-                      {/* Images thumbnails - clickable */}
-                      {c.images && c.images.length > 0 && (
+                      {/* Images thumbnails - clickable (hidden from agents) */}
+                      {!isAgent && c.images && c.images.length > 0 && (
                         <div className="flex gap-1.5 overflow-x-auto">
                           {c.images.slice(0, 4).map((img, i) => (
                             <button
