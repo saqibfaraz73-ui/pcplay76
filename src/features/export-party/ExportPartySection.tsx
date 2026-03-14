@@ -1269,6 +1269,14 @@ export function ExportPartySection() {
               <Input inputMode="tel" value={cContact} onChange={(e) => setCContact(e.target.value)} />
             </div>
             <div className="space-y-2">
+              <Label>WhatsApp Number (optional)</Label>
+              <Input inputMode="tel" value={cWhatsapp} onChange={(e) => setCWhatsapp(e.target.value)} placeholder="e.g., +923001234567" />
+            </div>
+            <div className="space-y-2">
+              <Label>Email (optional)</Label>
+              <Input type="email" value={cEmail} onChange={(e) => setCEmail(e.target.value)} placeholder="e.g., buyer@email.com" />
+            </div>
+            <div className="space-y-2">
               <Label>Item Name (optional)</Label>
               <Input value={cItemName} onChange={(e) => setCItemName(e.target.value)} placeholder="e.g., Rice, Flour" />
             </div>
