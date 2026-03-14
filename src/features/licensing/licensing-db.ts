@@ -24,6 +24,7 @@ export type LicenseRecord = {
   expensesCount: number;
   customPrintCount: number;
   labelPrintCount: number;
+  installmentCount: number;
   // Ad bonus credits per module
   cashAdBonus: number;
   creditAdBonus: number;
@@ -33,6 +34,7 @@ export type LicenseRecord = {
   expensesAdBonus: number;
   customPrintAdBonus: number;
   labelPrintAdBonus: number;
+  installmentAdBonus: number;
 };
 
 // Runtime-only premium state (sourced from Play Store on every getLicense call)
