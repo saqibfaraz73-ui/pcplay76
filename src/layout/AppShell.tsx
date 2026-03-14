@@ -172,12 +172,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                       <div className="mt-4 space-y-4">
                         <nav className="grid gap-1">
                           {/* Dashboard link for waiter/agent who have no main nav */}
-                          {(isWaiter || isRecoveryAgent) && (
+                          {(isWaiter || isRecoveryAgent || isInstallmentAgent) && (
                             <Link
-                              to={isRecoveryAgent ? "/recovery" : isWaiter ? "/pos/tables" : "/home"}
+                              to={isRecoveryAgent ? "/recovery" : isInstallmentAgent ? "/admin?tab=installment" : isWaiter ? "/pos/tables" : "/home"}
                               className={cn(
                                 "flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors",
-                                isActive(isRecoveryAgent ? "/recovery" : isWaiter ? "/pos/tables" : "/home")
+                                isActive(isRecoveryAgent ? "/recovery" : isInstallmentAgent ? "/admin" : isWaiter ? "/pos/tables" : "/home")
                                   ? "bg-accent text-accent-foreground"
                                   : "text-muted-foreground hover:text-foreground",
                               )}
