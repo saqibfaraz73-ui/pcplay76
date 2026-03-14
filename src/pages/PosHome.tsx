@@ -193,17 +193,17 @@ export default function PosHome() {
         isAdmin
           ? {
               to: "/admin/kitchen",
-              label: "Kitchen Status",
+              label: "Order Status",
               icon: ChefHat,
               color: "bg-rose-500/10 text-rose-600 border-rose-200",
-              description: "Kitchen order status",
+              description: "Live order tracking",
             }
           : {
               to: "/kitchen",
-              label: "Kitchen Login",
+              label: "Secondary Display",
               icon: ChefHat,
               color: "bg-rose-500/10 text-rose-600 border-rose-200",
-              description: "Connect kitchen/display device",
+              description: "Connect secondary device",
             }
       );
     }
