@@ -222,6 +222,11 @@ export default function PosExpenses() {
       };
       await db.expenses.put(expense);
       await incrementSaleCount("expenses");
+      // Sync to Main if enabled
+      try {
+        const { syncExpenseOptional } = await import("@/features/sync/optional-sync");
+        await syncExpenseOptional(expense);
+      } catch {}
       toast({ title: "Expense added", description: `${name} — ${formatIntMoney(amount)}` });
       setAddOpen(false);
       await refresh();
