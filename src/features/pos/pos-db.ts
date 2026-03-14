@@ -200,6 +200,22 @@ export async function createOrder(args: {
     return order;
   });
 
+  // Create kitchen order if KDS enabled (fire-and-forget, outside transaction)
+  try {
+    const s = await db.settings.get("app");
+    if (s?.kitchenDisplayEnabled) {
+      const { createKitchenOrderFromOrder } = await import("@/features/kitchen/kitchen-handler");
+      await createKitchenOrderFromOrder(
+        createdOrder.id,
+        createdOrder.receiptNo,
+        createdOrder.lines.map(l => ({ name: l.name, qty: l.qty })),
+        "pos"
+      );
+    }
+  } catch (e) {
+    console.warn("[Kitchen] Failed to create kitchen order:", e);
+  }
+
   return createdOrder;
 }
 
