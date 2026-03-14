@@ -908,6 +908,10 @@ export function AdminReports() {
     const advOrders = await fetchAdvanceOrdersInRange(fromTs, toTs);
     const bkOrders = await fetchBookingOrdersInRange(fromTs, toTs);
 
+    const selectedWp = (filterType === "workPeriod" && selectedWorkPeriodId) 
+      ? workPeriods.find((w) => w.id === selectedWorkPeriodId) 
+      : undefined;
+
     const doc = buildSalesPdf({
       restaurantName: settings?.restaurantName ?? "SANGI POS",
       from: fromTs,
@@ -926,6 +930,7 @@ export function AdminReports() {
       exportCustomers,
       advanceOrders: advOrders,
       bookingOrders: bkOrders,
+      workPeriod: selectedWp,
     });
     const bytes = doc.output("arraybuffer");
     const fileName = `sales_${toDateInputValue(fromTs)}_${toDateInputValue(toTs)}.pdf`;
