@@ -194,6 +194,7 @@ export function AdminBackupRestore() {
         db.adminAccount, db.staffAccounts, db.settings, db.counters,
         db.advanceOrders, db.bookableItems, db.bookingOrders,
         db.recoveryCustomers, db.recoveryPayments,
+        db.installmentCustomers, db.installmentPayments,
       ],
       async () => {
         await Promise.all([
