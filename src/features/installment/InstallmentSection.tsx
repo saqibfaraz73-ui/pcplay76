@@ -452,6 +452,16 @@ export function InstallmentSection() {
             onAssigned={async () => { setAssignOpen(false); setSelectedIds(new Set()); await refresh(); }}
           />
         )}
+
+        {/* Image Viewer */}
+        {imageViewer && (
+          <InstallmentImageViewer
+            images={imageViewer.images}
+            initialIndex={imageViewer.index}
+            customerName={imageViewer.name}
+            onClose={() => setImageViewer(null)}
+          />
+        )}
       </TabsContent>
 
       {canEdit && (
