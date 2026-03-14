@@ -333,7 +333,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     <Link
                       to={isRecoveryAgent ? "/recovery" : isInstallmentAgent ? "/installments" : isWaiter ? "/pos/tables" : "/home"}
                       className={cn(
-                        "rounded-md px-3 py-2 text-sm transition-colors",
+                        "rounded-md px-2 py-1.5 text-xs whitespace-nowrap transition-colors",
                         isActive(isRecoveryAgent ? "/recovery" : isInstallmentAgent ? "/installments" : isWaiter ? "/pos/tables" : "/home")
                           ? "bg-accent text-accent-foreground"
                           : "text-muted-foreground hover:text-foreground",
@@ -347,7 +347,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                       key={n.to}
                       to={n.to}
                       className={cn(
-                        "rounded-md px-3 py-2 text-sm transition-colors",
+                        "rounded-md px-2 py-1.5 text-xs whitespace-nowrap transition-colors",
                         isActive(n.to) && !adminSubNav.some((s) => isActive(s.to))
                           ? "bg-accent text-accent-foreground"
                           : "text-muted-foreground hover:text-foreground",
@@ -357,17 +357,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     </Link>
                   ))}
                    {!isWaiter && !isRecoveryAgent && !isInstallmentAgent && (
-                    <Link to="/pos/orders" className={cn("rounded-md px-3 py-2 text-sm transition-colors", isActive("/pos/orders") ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground")}>
+                    <Link to="/pos/orders" className={cn("rounded-md px-2 py-1.5 text-xs whitespace-nowrap transition-colors", isActive("/pos/orders") ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground")}>
                       Orders
                     </Link>
                   )}
                   {installmentEnabled && (isAdmin || isCashier) && (
-                    <Link to="/installments" className={cn("rounded-md px-3 py-2 text-sm transition-colors", isActive("/installments") ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground")}>
+                    <Link to="/installments" className={cn("rounded-md px-2 py-1.5 text-xs whitespace-nowrap transition-colors", isActive("/installments") ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground")}>
                       Installment
                     </Link>
                   )}
                   {isCashier && cashierReportsEnabled && (
-                    <Link to="/admin/reports" className={cn("rounded-md px-3 py-2 text-sm transition-colors", isActive("/admin/reports") ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground")}>
+                    <Link to="/admin/reports" className={cn("rounded-md px-2 py-1.5 text-xs whitespace-nowrap transition-colors", isActive("/admin/reports") ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground")}>
                       Reports
                     </Link>
                   )}
@@ -375,7 +375,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     <Link
                       to="/admin/printer"
                       className={cn(
-                        "rounded-md px-3 py-2 text-sm transition-colors",
+                        "rounded-md px-2 py-1.5 text-xs whitespace-nowrap transition-colors",
                         isActive("/admin/printer")
                           ? "bg-accent text-accent-foreground"
                           : "text-muted-foreground hover:text-foreground",
@@ -390,7 +390,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                           key={n.to}
                           to={n.to}
                           className={cn(
-                            "rounded-md px-3 py-2 text-sm transition-colors",
+                            "rounded-md px-2 py-1.5 text-xs whitespace-nowrap transition-colors",
                             isActive(n.to)
                               ? "bg-accent text-accent-foreground"
                               : "text-muted-foreground hover:text-foreground",
@@ -400,10 +400,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                         </Link>
                       ))
                     : null}
-                  <Link to="/about" className={cn("rounded-md px-3 py-2 text-sm transition-colors", isActive("/about") ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground")}>
+                  <Link to="/about" className={cn("rounded-md px-2 py-1.5 text-xs whitespace-nowrap transition-colors", isActive("/about") ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground")}>
                     About
                   </Link>
-                  <Link to="/help" className={cn("rounded-md px-3 py-2 text-sm transition-colors", isActive("/help") ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground")}>
+                  <Link to="/help" className={cn("rounded-md px-2 py-1.5 text-xs whitespace-nowrap transition-colors", isActive("/help") ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground")}>
                     Help
                   </Link>
                 </nav>
