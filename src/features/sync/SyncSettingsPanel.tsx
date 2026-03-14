@@ -465,7 +465,7 @@ export function SyncSettingsPanel() {
                 </div>
 
                 {/* QR Code for IP */}
-                <SyncQrCode ip={serverIp} port={serverPort} />
+                <SyncQrCode ip={serverIp} />
 
                 {/* Connection PIN */}
                 <div className="space-y-2 rounded-md border p-3">
