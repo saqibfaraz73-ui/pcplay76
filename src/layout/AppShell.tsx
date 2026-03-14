@@ -71,6 +71,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     setDeliveryEnabled(!!s?.deliveryEnabled);
     setRecoveryEnabled(!!s?.recoveryEnabled);
     setKitchenDisplayEnabled(!!s?.kitchenDisplayEnabled);
+    setInstallmentEnabled(!!s?.installmentEnabled);
     // Count open (pending) table orders
     const openCount = await db.tableOrders.where("status").equals("open").count();
     setPendingTableCount(openCount);
