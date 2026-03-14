@@ -10,12 +10,12 @@ import React, { createContext, useContext, useEffect, useState, useCallback, use
 import { db } from "@/db/appDb";
 import type { DeviceRole, ConnectionStatus, SyncConfig } from "./sync-types";
 import { DEFAULT_SYNC_CONFIG, DEFAULT_SYNC_PORT } from "./sync-types";
-import { DEFAULT_SYNC_CONFIG, DEFAULT_SYNC_PORT } from "./sync-types";
 import {
   startSyncServer,
   stopSyncServer,
   getSyncServerStatus,
   onSyncDataReceived,
+  onSyncGetRequest,
   isNativeAndroid,
 } from "./local-sync-server";
 import { setMainAppUrl, pingMainApp, sendToMainApp, sendPrintJob } from "./sync-client";
