@@ -1,0 +1,172 @@
+import React from "react";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { db } from "@/db/appDb";
+import type { InstallmentCustomer, InstallmentPayment } from "@/db/installment-schema";
+import type { Settings } from "@/db/schema";
+import { useToast } from "@/hooks/use-toast";
+import { makeId } from "@/features/admin/id";
+import { formatIntMoney, parseNonDecimalInt } from "@/features/pos/format";
+import { buildInstallmentReceiptPdf } from "./installment-pdf";
+import { sharePdfBytes, savePdfBytes } from "@/features/pos/share-utils";
+import { SaveShareMenu } from "@/components/SaveShareMenu";
+
+interface Props {
+  customer: InstallmentCustomer;
+  payments: InstallmentPayment[];
+  settings: Settings | null;
+  agentName: string;
+  onClose: () => void;
+  onSaved: () => Promise<void>;
+}
+
+function getCurrentMonth(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
+export function InstallmentPaymentDialog({ customer, payments, settings, agentName, onClose, onSaved }: Props) {
+  const { toast } = useToast();
+  const [amount, setAmount] = React.useState(customer.monthlyInstallment);
+  const [note, setNote] = React.useState("");
+  const [saving, setSaving] = React.useState(false);
+  const [savedPayment, setSavedPayment] = React.useState<InstallmentPayment | null>(null);
+
+  // Calculate late fee
+  const now = new Date();
+  const lateDays = customer.dueDate && now.getDate() > customer.dueDate
+    ? now.getDate() - customer.dueDate : 0;
+  const lateFee = lateDays > 0 && customer.lateFeePerDay ? lateDays * customer.lateFeePerDay : 0;
+
+  const balanceBefore = customer.totalBalance;
+  // Payment deducts from balance; late fee does NOT deduct from balance
+  const balanceAfter = Math.max(0, balanceBefore - amount);
+
+  const handleSave = async () => {
+    if (amount <= 0) { toast({ title: "Amount must be > 0", variant: "destructive" }); return; }
+    setSaving(true);
+    try {
+      // Get receipt number
+      const counter = (await db.counters.get("installmentPayment")) ?? { id: "installmentPayment" as any, next: 1 };
+      const receiptNo = counter.next;
+      await db.counters.put({ id: "installmentPayment" as any, next: receiptNo + 1 });
+
+      const payment: InstallmentPayment = {
+        id: makeId("ipay"),
+        customerId: customer.id,
+        receiptNo,
+        amount,
+        lateFeeAmount: lateFee > 0 ? lateFee : undefined,
+        balanceBefore,
+        balanceAfter,
+        agentName,
+        note: note.trim() || undefined,
+        month: getCurrentMonth(),
+        createdAt: Date.now(),
+      };
+      await db.installmentPayments.put(payment);
+
+      // Update customer balance (late fee NOT deducted from balance)
+      const updated = { ...customer, totalBalance: balanceAfter };
+      await db.installmentCustomers.put(updated);
+
+      setSavedPayment(payment);
+      toast({ title: "Payment recorded" });
+      await onSaved();
+    } catch (e: any) {
+      toast({ title: "Failed", description: e?.message, variant: "destructive" });
+    }
+    setSaving(false);
+  };
+
+  if (savedPayment) {
+    return (
+      <Dialog open onOpenChange={() => onClose()}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Payment Recorded ✓</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2 text-sm">
+            <div>Receipt #: <strong>{savedPayment.receiptNo}</strong></div>
+            <div>Customer: <strong>{customer.name}</strong></div>
+            <div>Amount: <strong>{formatIntMoney(savedPayment.amount)}</strong></div>
+            {savedPayment.lateFeeAmount ? <div>Late Fee: <strong>{formatIntMoney(savedPayment.lateFeeAmount)}</strong></div> : null}
+            <div>Balance Before: {formatIntMoney(savedPayment.balanceBefore)}</div>
+            <div>Balance After: <strong>{formatIntMoney(savedPayment.balanceAfter)}</strong></div>
+          </div>
+          <DialogFooter className="flex-wrap gap-2">
+            <SaveShareMenu
+              label="Receipt"
+              getDefaultFileName={() => `installment_receipt_${savedPayment.receiptNo}_${Date.now()}.pdf`}
+              onSave={async (fn) => {
+                const doc = buildInstallmentReceiptPdf({ customer, payment: savedPayment, settings });
+                const bytes = doc.output("arraybuffer");
+                await savePdfBytes(new Uint8Array(bytes), fn ?? `installment_receipt_${savedPayment.receiptNo}.pdf`);
+              }}
+              onShare={async () => {
+                const doc = buildInstallmentReceiptPdf({ customer, payment: savedPayment, settings });
+                const bytes = doc.output("arraybuffer");
+                await sharePdfBytes(new Uint8Array(bytes), `installment_receipt_${savedPayment.receiptNo}.pdf`);
+              }}
+            />
+            <Button variant="outline" onClick={onClose}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  return (
+    <Dialog open onOpenChange={() => onClose()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Record Payment — {customer.name}</DialogTitle>
+        </DialogHeader>
+        <div className="grid gap-3">
+          <div className="grid grid-cols-2 gap-2 text-xs">
+            <div className="rounded bg-muted/50 p-2">
+              <div className="text-muted-foreground">Monthly Installment</div>
+              <div className="font-bold">{formatIntMoney(customer.monthlyInstallment)}</div>
+            </div>
+            <div className="rounded bg-muted/50 p-2">
+              <div className="text-muted-foreground">Current Balance</div>
+              <div className="font-bold text-destructive">{formatIntMoney(balanceBefore)}</div>
+            </div>
+          </div>
+
+          {lateFee > 0 && (
+            <div className="rounded-md border border-destructive/30 bg-destructive/5 p-2 text-xs text-destructive">
+              ⚠ Late Fee: {formatIntMoney(lateFee)} ({lateDays} days × {formatIntMoney(customer.lateFeePerDay ?? 0)}/day)
+              <div className="text-[10px] mt-0.5">Late fee is charged separately and not deducted from overall balance.</div>
+            </div>
+          )}
+
+          <div className="space-y-1">
+            <Label>Payment Amount</Label>
+            <Input
+              value={amount || ""}
+              onChange={e => setAmount(parseNonDecimalInt(e.target.value))}
+              inputMode="numeric"
+              placeholder="0"
+            />
+          </div>
+          <div className="space-y-1">
+            <Label>Note (optional)</Label>
+            <Input value={note} onChange={e => setNote(e.target.value)} placeholder="e.g. Cash payment" />
+          </div>
+
+          <div className="rounded bg-muted/50 p-2 text-xs">
+            <div>Total to collect: <strong>{formatIntMoney(amount + lateFee)}</strong> (Payment {formatIntMoney(amount)} + Late Fee {formatIntMoney(lateFee)})</div>
+            <div>Balance after payment: <strong>{formatIntMoney(balanceAfter)}</strong></div>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button onClick={() => void handleSave()} disabled={saving}>Save Payment</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
