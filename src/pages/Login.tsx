@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/auth/AuthProvider";
 import { isAdminRegistered, registerAdmin, getSecurityQuestion, verifySecurityAnswer, verifySecurityAnswerForUsername, masterReset } from "@/auth/auth";
+import type { UserRole } from "@/auth/auth-types";
 import appLogo from "@/assets/app-logo.jpg";
 import { getLicense } from "@/features/licensing/licensing-db";
 
@@ -20,6 +21,13 @@ const SECURITY_QUESTIONS = [
 ];
 
 type Screen = "checking" | "register" | "login" | "forgot" | "forgot-username" | "master-reset";
+
+const getRoleHomeRoute = (role: UserRole) => {
+  if (role === "kitchen") return "/kitchen";
+  if (role === "recovery") return "/recovery";
+  if (role === "admin" || role === "cashier") return "/home";
+  return "/pos/tables";
+};
 
 export default function Login() {
   const { toast } = useToast();
@@ -68,10 +76,7 @@ export default function Login() {
 
   React.useEffect(() => {
     if (!session) return;
-    const dest = session.role === "recovery" ? "/recovery"
-      : (session.role === "admin" || session.role === "cashier") ? "/home"
-      : "/pos/tables";
-    navigate(dest, { replace: true });
+    navigate(getRoleHomeRoute(session.role), { replace: true });
   }, [navigate, session]);
 
   const onRegister = async (e: React.FormEvent) => {
@@ -124,10 +129,7 @@ export default function Login() {
         toast({ title: "Login failed", description: "Wrong credentials." });
         return;
       }
-      const dest = result.role === "recovery" ? "/recovery"
-        : (result.role === "admin" || result.role === "cashier") ? "/home"
-        : "/pos/tables";
-      navigate(dest, { replace: true });
+      navigate(getRoleHomeRoute(result.role), { replace: true });
     } finally {
       setLoading(false);
     }

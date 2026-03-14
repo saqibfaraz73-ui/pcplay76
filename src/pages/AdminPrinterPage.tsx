@@ -26,7 +26,8 @@ export default function AdminPrinterPage() {
 
   if (allowed === null) return null; // loading
   if (!allowed) {
-    const fallback = session?.role === "recovery" ? "/recovery"
+    const fallback = session?.role === "kitchen" ? "/kitchen"
+      : session?.role === "recovery" ? "/recovery"
       : session?.role === "waiter" || session?.role === "supervisor" ? "/pos/tables"
       : "/home";
     return <Navigate to={fallback} replace />;
