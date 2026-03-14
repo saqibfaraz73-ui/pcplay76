@@ -394,7 +394,7 @@ export function InstallmentSection() {
                         <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setHistoryCustomerId(c.id)}>
                           <History className="h-3 w-3 mr-1" /> History
                         </Button>
-                        {c.images && c.images.length > 0 && (
+                        {!isAgent && c.images && c.images.length > 0 && (
                           <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setImageViewer({ images: c.images!, index: 0, name: c.name })}>
                             <ImageIcon className="h-3 w-3 mr-1" /> {c.images.length}
                           </Button>
