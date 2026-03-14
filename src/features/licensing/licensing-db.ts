@@ -82,6 +82,7 @@ function defaultRecord(): LicenseRecord {
     expensesCount: 0,
     customPrintCount: 0,
     labelPrintCount: 0,
+    installmentCount: 0,
     cashAdBonus: 0,
     creditAdBonus: 0,
     deliveryAdBonus: 0,
@@ -90,6 +91,7 @@ function defaultRecord(): LicenseRecord {
     expensesAdBonus: 0,
     customPrintAdBonus: 0,
     labelPrintAdBonus: 0,
+    installmentAdBonus: 0,
   };
 }
 
