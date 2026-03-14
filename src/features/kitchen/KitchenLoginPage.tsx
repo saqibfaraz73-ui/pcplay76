@@ -21,6 +21,8 @@ interface KitchenLoginPageProps {
 
 export function KitchenLoginPage({ onConnected }: KitchenLoginPageProps) {
   const { toast } = useToast();
+  const { logout } = useAuth();
+  const navigate = useNavigate();
   const [ipInput, setIpInput] = useState("");
   const [pinInput, setPinInput] = useState("");
   const [loading, setLoading] = useState(false);
