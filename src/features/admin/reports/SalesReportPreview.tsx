@@ -1,5 +1,5 @@
 import * as React from "react";
-import type { CreditCustomer, DeliveryPerson, Expense, ExportCustomer, ExportSale, MenuItem, Order, RestaurantTable, Settings, TableOrder, Waiter } from "@/db/schema";
+import type { Category, CreditCustomer, DeliveryPerson, Expense, ExportCustomer, ExportSale, MenuItem, Order, RestaurantTable, Settings, TableOrder, Waiter } from "@/db/schema";
 import type { AdvanceOrder, BookingOrder } from "@/db/booking-schema";
 import { formatIntMoney, fmtDate } from "@/features/pos/format";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,6 +10,7 @@ type Props = {
   fromLabel: string;
   toLabel: string;
   orders: Order[];
+  categories?: Category[];
   customers: CreditCustomer[];
   deliveryPersons: DeliveryPerson[];
   items: MenuItem[];
@@ -29,6 +30,7 @@ export function SalesReportPreview({
   fromLabel, 
   toLabel, 
   orders, 
+  categories = [],
   customers, 
   deliveryPersons, 
   items, 
@@ -124,9 +126,9 @@ export function SalesReportPreview({
   );
 
 
-
   const customersById = React.useMemo(() => Object.fromEntries(customers.map((c) => [c.id, c])), [customers]);
   const itemsById = React.useMemo(() => Object.fromEntries(items.map((i) => [i.id, i])), [items]);
+  const categoriesById = React.useMemo(() => Object.fromEntries(categories.map((c) => [c.id, c])), [categories]);
   const deliveryPersonsById = React.useMemo(() => Object.fromEntries(deliveryPersons.map((p) => [p.id, p])), [deliveryPersons]);
   const tablesById = React.useMemo(() => Object.fromEntries(tables.map((t) => [t.id, t])), [tables]);
   const waitersById = React.useMemo(() => Object.fromEntries(waiters.map((w) => [w.id, w])), [waiters]);
@@ -191,6 +193,45 @@ export function SalesReportPreview({
     addLines(completedTableOrders);
     return Object.values(byItem).sort((a, b) => b.revenue - a.revenue);
   }, [completed, completedTableOrders, itemsById]);
+
+  const categorySales = React.useMemo(() => {
+    const byCat: Record<string, { catId: string; name: string; section?: string; qty: number; revenue: number; profit: number }> = {};
+    const addCatLines = (list: Array<{ lines: Array<{ itemId: string; name: string; qty: number; unitPrice: number; subtotal: number; buyingPrice?: number }> }>) => {
+      for (const o of list) {
+        for (const l of o.lines) {
+          const isAddOn = l.itemId.includes("__ao_");
+          const item = itemsById[l.itemId];
+          const catId = item?.categoryId ?? "uncategorized";
+          const cat = categoriesById[catId];
+          const catName = cat?.name ?? "Uncategorized";
+          const section = cat?.printerSection;
+          const buying = l.buyingPrice ?? item?.buyingPrice ?? 0;
+          const hasBuying = !isAddOn && (l.buyingPrice != null || item?.buyingPrice != null);
+          if (!byCat[catId]) byCat[catId] = { catId, name: catName, section, qty: 0, revenue: 0, profit: 0 };
+          byCat[catId].qty += l.qty;
+          byCat[catId].revenue += l.subtotal;
+          if (hasBuying) byCat[catId].profit += (l.unitPrice - buying) * l.qty;
+        }
+      }
+    };
+    addCatLines(completed);
+    addCatLines(completedTableOrders);
+    return Object.values(byCat).sort((a, b) => b.revenue - a.revenue);
+  }, [completed, completedTableOrders, itemsById, categoriesById]);
+
+  const sectionSales = React.useMemo(() => {
+    const sectionsUsed = categorySales.filter(c => c.section);
+    if (sectionsUsed.length === 0) return [];
+    const bySec: Record<string, { section: string; qty: number; revenue: number; profit: number }> = {};
+    for (const c of categorySales) {
+      const sec = c.section || "No Section";
+      if (!bySec[sec]) bySec[sec] = { section: sec, qty: 0, revenue: 0, profit: 0 };
+      bySec[sec].qty += c.qty;
+      bySec[sec].revenue += c.revenue;
+      bySec[sec].profit += c.profit;
+    }
+    return Object.values(bySec).sort((a, b) => b.revenue - a.revenue);
+  }, [categorySales]);
 
   return (
     <Card>
@@ -648,6 +689,80 @@ export function SalesReportPreview({
             </div>
           )}
         </div>
+
+        {/* Category Sales Breakdown */}
+        {categorySales.length > 0 && (
+          <div className="space-y-2">
+            <div className="text-sm font-semibold">Sales by Category</div>
+            <div className="overflow-auto rounded-md border">
+              <table className="w-full text-sm">
+                <thead className="bg-muted/40">
+                  <tr className="text-left">
+                    <th className="px-3 py-2 font-medium">Category</th>
+                    <th className="whitespace-nowrap px-3 py-2 font-medium">Qty</th>
+                    <th className="whitespace-nowrap px-3 py-2 font-medium">Sales</th>
+                    <th className="whitespace-nowrap px-3 py-2 font-medium">Profit</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {categorySales.map((r) => (
+                    <tr key={r.catId} className="border-t">
+                      <td className="px-3 py-2">{r.name}</td>
+                      <td className="whitespace-nowrap px-3 py-2">{r.qty}</td>
+                      <td className="whitespace-nowrap px-3 py-2">{formatIntMoney(r.revenue)}</td>
+                      <td className="whitespace-nowrap px-3 py-2">{formatIntMoney(r.profit)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot className="bg-muted/40 font-semibold">
+                  <tr className="border-t">
+                    <td className="px-3 py-2">Total</td>
+                    <td className="whitespace-nowrap px-3 py-2">{categorySales.reduce((s, r) => s + r.qty, 0)}</td>
+                    <td className="whitespace-nowrap px-3 py-2">{formatIntMoney(categorySales.reduce((s, r) => s + r.revenue, 0))}</td>
+                    <td className="whitespace-nowrap px-3 py-2">{formatIntMoney(categorySales.reduce((s, r) => s + r.profit, 0))}</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* Section Sales Breakdown */}
+        {sectionSales.length > 0 && (
+          <div className="space-y-2">
+            <div className="text-sm font-semibold">Sales by Section</div>
+            <div className="overflow-auto rounded-md border">
+              <table className="w-full text-sm">
+                <thead className="bg-muted/40">
+                  <tr className="text-left">
+                    <th className="px-3 py-2 font-medium">Section</th>
+                    <th className="whitespace-nowrap px-3 py-2 font-medium">Qty</th>
+                    <th className="whitespace-nowrap px-3 py-2 font-medium">Sales</th>
+                    <th className="whitespace-nowrap px-3 py-2 font-medium">Profit</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sectionSales.map((r) => (
+                    <tr key={r.section} className="border-t">
+                      <td className="px-3 py-2">{r.section}</td>
+                      <td className="whitespace-nowrap px-3 py-2">{r.qty}</td>
+                      <td className="whitespace-nowrap px-3 py-2">{formatIntMoney(r.revenue)}</td>
+                      <td className="whitespace-nowrap px-3 py-2">{formatIntMoney(r.profit)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot className="bg-muted/40 font-semibold">
+                  <tr className="border-t">
+                    <td className="px-3 py-2">Total</td>
+                    <td className="whitespace-nowrap px-3 py-2">{sectionSales.reduce((s, r) => s + r.qty, 0)}</td>
+                    <td className="whitespace-nowrap px-3 py-2">{formatIntMoney(sectionSales.reduce((s, r) => s + r.revenue, 0))}</td>
+                    <td className="whitespace-nowrap px-3 py-2">{formatIntMoney(sectionSales.reduce((s, r) => s + r.profit, 0))}</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </div>
+        )}
 
         <ReportOrderList
           orders={orders}

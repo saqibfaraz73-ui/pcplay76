@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { db } from "@/db/appDb";
-import type { CreditCustomer, DeliveryPerson, Expense, ExportCustomer, ExportSale, MenuItem, Order, RestaurantTable, Settings, TableOrder, Waiter, WorkPeriod } from "@/db/schema";
+import type { Category, CreditCustomer, DeliveryPerson, Expense, ExportCustomer, ExportSale, MenuItem, Order, RestaurantTable, Settings, TableOrder, Waiter, WorkPeriod } from "@/db/schema";
 import type { AdvanceOrder, BookingOrder } from "@/db/booking-schema";
 import { useToast } from "@/hooks/use-toast";
 import { formatIntMoney, fmtDate, fmtDateTime, fmtTime12 } from "@/features/pos/format";
@@ -47,6 +47,7 @@ function buildSalesPdf(args: {
   from: number;
   to: number;
   orders: Order[];
+  categories: Category[];
   customers: CreditCustomer[];
   deliveryPersons: DeliveryPerson[];
   items: MenuItem[];
@@ -108,6 +109,7 @@ function buildSalesPdf(args: {
   const customersById = Object.fromEntries(args.customers.map((c) => [c.id, c]));
   const deliveryPersonsById = Object.fromEntries(args.deliveryPersons.map((p) => [p.id, p]));
   const itemsById = Object.fromEntries(args.items.map((i) => [i.id, i]));
+  const categoriesById = Object.fromEntries(args.categories.map((c) => [c.id, c]));
   const tablesById = Object.fromEntries(args.tables.map((t) => [t.id, t]));
   const waitersById = Object.fromEntries(args.waiters.map((w) => [w.id, w]));
 
@@ -572,6 +574,112 @@ function buildSalesPdf(args: {
     y += lineH;
   }
 
+  // ===== CATEGORY SALES BREAKDOWN =====
+  {
+    const byCat: Record<string, { catId: string; name: string; section?: string; qty: number; revenue: number; profit: number }> = {};
+    const addCatLines = (list: Array<{ lines: Array<{ itemId: string; name: string; qty: number; unitPrice: number; subtotal: number; buyingPrice?: number }> }>) => {
+      for (const o of list) {
+        for (const l of o.lines) {
+          const isAddOn = l.itemId.includes("__ao_");
+          const item = itemsById[l.itemId];
+          const catId = item?.categoryId ?? "uncategorized";
+          const cat = categoriesById[catId];
+          const catName = cat?.name ?? "Uncategorized";
+          const section = cat?.printerSection;
+          const buying = l.buyingPrice ?? item?.buyingPrice ?? 0;
+          const hasBuying = !isAddOn && (l.buyingPrice != null || item?.buyingPrice != null);
+          if (!byCat[catId]) byCat[catId] = { catId, name: catName, section, qty: 0, revenue: 0, profit: 0 };
+          byCat[catId].qty += l.qty;
+          byCat[catId].revenue += l.subtotal;
+          if (hasBuying) byCat[catId].profit += (l.unitPrice - buying) * l.qty;
+        }
+      }
+    };
+    addCatLines(completed);
+    addCatLines(completedTableOrders);
+    const catSales = Object.values(byCat).sort((a, b) => b.revenue - a.revenue);
+
+    if (catSales.length > 0) {
+      const printCatHeader = () => {
+        doc.setFontSize(8); doc.setFont("helvetica", "bold"); doc.setTextColor(80);
+        doc.text("Category", left + 4, y);
+        doc.text("Qty", left + contentWidth * 0.45, y);
+        doc.text("Sales", left + contentWidth * 0.6, y);
+        doc.text("Profit", left + contentWidth * 0.8, y);
+        y += 10;
+        separator();
+        doc.setFont("helvetica", "normal"); doc.setTextColor(0);
+      };
+
+      heading("Sales by Category");
+      printCatHeader();
+
+      for (const r of catSales) {
+        if (y + lineH * 2 > pageHeight) { doc.addPage(); y = 48; printCatHeader(); }
+        doc.setFontSize(9);
+        doc.text(r.name.slice(0, 35), left + 4, y);
+        doc.text(String(r.qty), left + contentWidth * 0.45, y);
+        doc.text(formatIntMoney(r.revenue), left + contentWidth * 0.6, y);
+        doc.text(formatIntMoney(r.profit), left + contentWidth * 0.8, y);
+        y += lineH;
+      }
+      // Total
+      const totalCatRev = catSales.reduce((s, r) => s + r.revenue, 0);
+      const totalCatProfit = catSales.reduce((s, r) => s + r.profit, 0);
+      const totalCatQty = catSales.reduce((s, r) => s + r.qty, 0);
+      y += 4; separator();
+      doc.setFontSize(9); doc.setFont("helvetica", "bold"); doc.setTextColor(0);
+      doc.text("Total", left + 4, y);
+      doc.text(String(totalCatQty), left + contentWidth * 0.45, y);
+      doc.text(formatIntMoney(totalCatRev), left + contentWidth * 0.6, y);
+      doc.text(formatIntMoney(totalCatProfit), left + contentWidth * 0.8, y);
+      y += lineH;
+
+      // ===== SECTION BREAKDOWN =====
+      const sectionsUsed = catSales.filter(c => c.section);
+      if (sectionsUsed.length > 0) {
+        const bySection: Record<string, { section: string; qty: number; revenue: number; profit: number }> = {};
+        for (const c of catSales) {
+          const sec = c.section || "No Section";
+          if (!bySection[sec]) bySection[sec] = { section: sec, qty: 0, revenue: 0, profit: 0 };
+          bySection[sec].qty += c.qty;
+          bySection[sec].revenue += c.revenue;
+          bySection[sec].profit += c.profit;
+        }
+        const sectionSales = Object.values(bySection).sort((a, b) => b.revenue - a.revenue);
+
+        heading("Sales by Section");
+        doc.setFontSize(8); doc.setFont("helvetica", "bold"); doc.setTextColor(80);
+        doc.text("Section", left + 4, y);
+        doc.text("Qty", left + contentWidth * 0.45, y);
+        doc.text("Sales", left + contentWidth * 0.6, y);
+        doc.text("Profit", left + contentWidth * 0.8, y);
+        y += 10; separator();
+        doc.setFont("helvetica", "normal"); doc.setTextColor(0);
+
+        for (const r of sectionSales) {
+          checkPage();
+          doc.setFontSize(9);
+          doc.text(r.section, left + 4, y);
+          doc.text(String(r.qty), left + contentWidth * 0.45, y);
+          doc.text(formatIntMoney(r.revenue), left + contentWidth * 0.6, y);
+          doc.text(formatIntMoney(r.profit), left + contentWidth * 0.8, y);
+          y += lineH;
+        }
+        const totalSecRev = sectionSales.reduce((s, r) => s + r.revenue, 0);
+        const totalSecProfit = sectionSales.reduce((s, r) => s + r.profit, 0);
+        const totalSecQty = sectionSales.reduce((s, r) => s + r.qty, 0);
+        y += 4; separator();
+        doc.setFontSize(9); doc.setFont("helvetica", "bold"); doc.setTextColor(0);
+        doc.text("Total", left + 4, y);
+        doc.text(String(totalSecQty), left + contentWidth * 0.45, y);
+        doc.text(formatIntMoney(totalSecRev), left + contentWidth * 0.6, y);
+        doc.text(formatIntMoney(totalSecProfit), left + contentWidth * 0.8, y);
+        y += lineH;
+      }
+    }
+  }
+
   return doc;
 }
 
@@ -580,6 +688,7 @@ export function AdminReports() {
   const { toast } = useToast();
   const isAdmin = session?.role === "admin";
   const [settings, setSettings] = React.useState<Settings | null>(null);
+  const [categories, setCategories] = React.useState<Category[]>([]);
   const [customers, setCustomers] = React.useState<CreditCustomer[]>([]);
   const [deliveryPersons, setDeliveryPersons] = React.useState<DeliveryPerson[]>([]);
   const [items, setItems] = React.useState<MenuItem[]>([]);
@@ -615,8 +724,9 @@ export function AdminReports() {
 
   React.useEffect(() => {
     (async () => {
-      const [s, cs, dps, its, wps, tbls, wtrs, expCs] = await Promise.all([
+      const [s, cats, cs, dps, its, wps, tbls, wtrs, expCs] = await Promise.all([
         db.settings.get("app"),
+        db.categories.orderBy("createdAt").toArray(),
         db.customers.orderBy("createdAt").toArray(),
         db.deliveryPersons.orderBy("createdAt").toArray(),
         db.items.orderBy("createdAt").toArray(),
@@ -633,6 +743,7 @@ export function AdminReports() {
         db.exportCustomers.orderBy("createdAt").toArray(),
       ]);
       setSettings(s ?? null);
+      setCategories(cats);
       setCustomers(cs);
       setDeliveryPersons(dps);
       setItems(its);
@@ -777,6 +888,7 @@ export function AdminReports() {
       from: fromTs,
       to: toTs,
       orders,
+      categories,
       customers,
       deliveryPersons,
       items,
@@ -875,6 +987,7 @@ export function AdminReports() {
         fromLabel={from}
         toLabel={to}
         orders={salesPreview.orders}
+        categories={categories}
         customers={customers}
         deliveryPersons={deliveryPersons}
         items={items}
