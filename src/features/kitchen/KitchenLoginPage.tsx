@@ -1,5 +1,5 @@
 /**
- * Kitchen Login — Kitchen staff scan Main device IP barcode, enter PIN, then connect.
+ * Secondary Display Login — Staff connect a secondary device to the Main POS via IP/PIN.
  */
 import React, { useState, useCallback, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/auth/AuthProvider";
-import { Camera, Wifi, Loader2, ChefHat, ArrowLeft } from "lucide-react";
+import { Camera, Wifi, Loader2, Monitor, ArrowLeft } from "lucide-react";
 import { Html5Qrcode } from "html5-qrcode";
 import { setMainAppUrl, pingMainApp } from "@/features/sync/sync-client";
 import { DEFAULT_SYNC_PORT } from "@/features/sync/sync-types";
@@ -118,11 +118,11 @@ export function KitchenLoginPage({ onConnected }: KitchenLoginPageProps) {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-primary/10">
-            <ChefHat className="h-7 w-7 text-primary" />
+            <Monitor className="h-7 w-7 text-primary" />
           </div>
-          <CardTitle className="text-xl">Kitchen Display Login</CardTitle>
+          <CardTitle className="text-xl">Secondary Display Setup</CardTitle>
           <p className="text-sm text-muted-foreground mt-1">
-            Connect to the Main POS device to receive kitchen orders.
+            Connect this device to the Main POS to receive live updates.
           </p>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -170,8 +170,8 @@ export function KitchenLoginPage({ onConnected }: KitchenLoginPageProps) {
               onClick={() => void handleConnect("kitchen")}
               disabled={loading}
             >
-              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ChefHat className="h-4 w-4" />}
-              Connect as Kitchen Staff
+              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Monitor className="h-4 w-4" />}
+              Connect as Staff Display
             </Button>
             <Button
               variant="outline"
