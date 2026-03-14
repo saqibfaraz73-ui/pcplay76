@@ -129,10 +129,7 @@ export default function Login() {
         toast({ title: "Login failed", description: "Wrong credentials." });
         return;
       }
-      const dest = result.role === "recovery" ? "/recovery"
-        : (result.role === "admin" || result.role === "cashier") ? "/home"
-        : "/pos/tables";
-      navigate(dest, { replace: true });
+      navigate(getRoleHomeRoute(result.role), { replace: true });
     } finally {
       setLoading(false);
     }
