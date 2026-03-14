@@ -234,6 +234,8 @@ export function AdminCustomers() {
                         <div className="min-w-0">
                           <div className="truncate text-sm font-medium">{c.name}</div>
                           <div className="text-xs text-muted-foreground">{c.mobile ? `Mobile: ${c.mobile}` : "Mobile: —"}</div>
+                          {c.whatsapp && <div className="text-xs text-muted-foreground">WhatsApp: {c.whatsapp}</div>}
+                          {c.email && <div className="text-xs text-muted-foreground">Email: {c.email}</div>}
                         </div>
                         <div className="flex items-center gap-2">
                           <Button variant="outline" size="sm" onClick={() => openEdit(c)}>

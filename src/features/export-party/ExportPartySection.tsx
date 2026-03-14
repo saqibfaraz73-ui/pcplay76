@@ -177,6 +177,8 @@ export function ExportPartySection() {
         id: isEdit ? customerMode.customer!.id : makeId("exp"),
         name,
         contact: cContact.trim() || undefined,
+        whatsapp: cWhatsapp.trim() || undefined,
+        email: cEmail.trim() || undefined,
         itemName: cItemName.trim() || undefined,
         stockUnit: (cUnit as any) || undefined,
         unitPrice: cUnitPrice || undefined,

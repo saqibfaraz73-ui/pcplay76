@@ -198,6 +198,8 @@ export default function PosPartyLodge() {
         id: isEdit ? supplierMode.supplier!.id : makeId("sup"),
         name,
         contact: sContact.trim() || undefined,
+        whatsapp: sWhatsapp.trim() || undefined,
+        email: sEmail.trim() || undefined,
         itemName: sItemName.trim() || undefined,
         stockUnit: (sUnit as any) || undefined,
         unitPrice: sUnitPrice || undefined,
