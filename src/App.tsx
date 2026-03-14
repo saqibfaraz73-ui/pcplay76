@@ -46,11 +46,14 @@ const App = () => (
         <WorkPeriodProvider>
           <SyncProvider>
           <BrowserRouter>
-            <AppShell>
-              <Routes>
-                <Route path="/" element={<Index />} />
-                <Route path="/login" element={<Login />} />
-                
+            <Routes>
+              <Route path="/kitchen" element={<KitchenPage />} />
+              <Route path="*" element={
+                <AppShell>
+                  <Routes>
+                    <Route path="/" element={<Index />} />
+                    <Route path="/login" element={<Login />} />
+                    
 
                 <Route
                   path="/home"
