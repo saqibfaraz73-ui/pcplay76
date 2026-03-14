@@ -24,6 +24,7 @@ import { SaveShareMenu } from "@/components/SaveShareMenu";
 import { buildInstallmentReceiptPdf, buildPaymentHistoryPdf } from "./installment-pdf";
 import { sharePdfBytes, savePdfBytes, saveFileBlob, shareFileBlob } from "@/features/pos/share-utils";
 import { canMakeSale, incrementSaleCount } from "@/features/licensing/licensing-db";
+import { InstallmentImageViewer } from "./InstallmentImageViewer";
 
 function getCurrentMonth(): string {
   const d = new Date();
