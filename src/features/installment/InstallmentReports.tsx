@@ -36,7 +36,7 @@ function getCurrentMonth(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 }
 
-export function InstallmentReports({ customers, payments, agents, settings }: Props) {
+export function InstallmentReports({ customers, payments, agents, settings, agentMode, agentName }: Props) {
   const now = Date.now();
   const [from, setFrom] = React.useState(toDateInputValue(startOfDay(now - 30 * 24 * 60 * 60 * 1000)));
   const [to, setTo] = React.useState(toDateInputValue(endOfDay(now)));
