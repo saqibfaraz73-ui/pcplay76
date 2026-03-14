@@ -2,7 +2,7 @@
  * Sync Settings Panel — UI for configuring Main/Sub device role
  * and managing the local P2P connection.
  */
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -14,8 +14,9 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import { Wifi, WifiOff, Server, Smartphone, Printer as PrinterIcon, Loader2, QrCode } from "lucide-react";
+import { Wifi, WifiOff, Server, Smartphone, Printer as PrinterIcon, Loader2, QrCode, Camera } from "lucide-react";
 import { barcodeToDataUrl } from "@/features/labels/barcode-generator";
+import { Html5Qrcode } from "html5-qrcode";
 import type { DeviceRole, ConnectionStatus, SyncConfig } from "./sync-types";
 import { DEFAULT_SYNC_CONFIG, DEFAULT_SYNC_PORT } from "./sync-types";
 import type { Settings } from "@/db/schema";
@@ -124,9 +125,10 @@ export function SyncSettingsPanel() {
 
   const canBeMain = !isWaiter || waiterMainAppEnabled;
 
-  // Check server status on mount for Main devices
+  // Check server status on mount and periodically refresh IP for Main devices
   useEffect(() => {
-    if (config.role === "main" && isAndroid) {
+    if (config.role !== "main" || !isAndroid) return;
+    const refresh = () => {
       getSyncServerStatus().then((s) => {
         if (s.running) {
           setStatus("connected");
@@ -134,8 +136,68 @@ export function SyncSettingsPanel() {
           setServerPort(s.port);
         }
       });
-    }
+    };
+    refresh();
+    const interval = setInterval(refresh, 5000); // refresh IP every 5s
+    return () => clearInterval(interval);
   }, [config.role, isAndroid]);
+
+  // ─── Sub: Barcode Scanner ─────────────────────────────
+  const scannerRef = useRef<HTMLDivElement>(null);
+  const qrInstanceRef = useRef<Html5Qrcode | null>(null);
+  const [scanning, setScanning] = useState(false);
+
+  const stopScanner = useCallback(() => {
+    const qr = qrInstanceRef.current;
+    qrInstanceRef.current = null;
+    if (qr) {
+      (async () => {
+        try { const st = await qr.getState(); if (st === 2 || st === 3) await qr.stop(); } catch {}
+        try { qr.clear(); } catch {}
+      })();
+    }
+    if (scannerRef.current) scannerRef.current.innerHTML = "";
+    setScanning(false);
+  }, []);
+
+  const startScanner = useCallback(() => {
+    setScanning(true);
+  }, []);
+
+  useEffect(() => {
+    if (!scanning || !scannerRef.current || qrInstanceRef.current) return;
+    let cancelled = false;
+    const el = scannerRef.current;
+    const id = "sync-ip-scanner-" + Date.now();
+    const div = document.createElement("div");
+    div.id = id;
+    el.innerHTML = "";
+    el.appendChild(div);
+
+    (async () => {
+      try {
+        const qr = new Html5Qrcode(id);
+        if (cancelled) return;
+        qrInstanceRef.current = qr;
+        await qr.start(
+          { facingMode: "environment" },
+          { fps: 10, qrbox: { width: 280, height: 120 } },
+          (decoded) => {
+            // Extract IP from scanned text
+            const ipMatch = decoded.match(/(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})/);
+            if (ipMatch) {
+              setIpInput(ipMatch[1]);
+              toast({ title: "IP Scanned", description: ipMatch[1] });
+              stopScanner();
+            }
+          },
+          () => {}
+        );
+      } catch {}
+    })();
+
+    return () => { cancelled = true; };
+  }, [scanning, toast, stopScanner]);
 
   // ─── Main: Start Server ──────────────────────────────
   const handleStartServer = useCallback(async () => {
@@ -438,14 +500,34 @@ export function SyncSettingsPanel() {
               <>
                 <div className="space-y-2">
                   <Label htmlFor="main-ip">Main App IP Address</Label>
-                  <Input
-                    id="main-ip"
-                    placeholder="e.g. 192.168.43.1"
-                    value={ipInput}
-                    onChange={(e) => setIpInput(e.target.value)}
-                    disabled={loading}
-                  />
-                  <p className="text-xs text-muted-foreground">Or scan the barcode shown on Main device.</p>
+                  <div className="flex gap-2">
+                    <Input
+                      id="main-ip"
+                      placeholder="e.g. 192.168.43.1"
+                      value={ipInput}
+                      onChange={(e) => setIpInput(e.target.value)}
+                      disabled={loading}
+                      className="flex-1"
+                    />
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="outline"
+                      onClick={scanning ? stopScanner : startScanner}
+                      title="Scan IP barcode"
+                    >
+                      <Camera className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  {scanning && (
+                    <div className="rounded-md overflow-hidden border">
+                      <div ref={scannerRef} className="w-full" style={{ minHeight: 200 }} />
+                      <Button size="sm" variant="ghost" className="w-full" onClick={stopScanner}>
+                        Cancel Scan
+                      </Button>
+                    </div>
+                  )}
+                  <p className="text-xs text-muted-foreground">Enter IP manually or scan the barcode shown on Main device.</p>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="sync-pin">Connection PIN (if set on Main)</Label>
