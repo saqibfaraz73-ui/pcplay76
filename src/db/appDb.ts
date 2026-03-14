@@ -72,6 +72,8 @@ export class SangiPosDb extends Dexie {
   labourAttendance!: Table<LabourAttendance, string>;
   labourProduction!: Table<LabourProduction, string>;
   kitchenOrders!: Table<KitchenOrder, string>;
+  installmentCustomers!: Table<InstallmentCustomer, string>;
+  installmentPayments!: Table<InstallmentPayment, string>;
   
 
   constructor() {

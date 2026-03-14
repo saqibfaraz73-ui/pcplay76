@@ -321,6 +321,8 @@ export type Settings = {
   showAdvanceBookingInReports?: boolean;
   // Recovery settings
   recoveryEnabled?: boolean;
+  // Installment settings
+  installmentEnabled?: boolean;
   // Kitchen Display settings
   kitchenDisplayEnabled?: boolean; // if true, kitchen display section is available
   // Sync settings
