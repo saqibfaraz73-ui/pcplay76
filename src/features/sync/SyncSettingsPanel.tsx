@@ -15,8 +15,8 @@ import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { Wifi, WifiOff, Server, Smartphone, Printer as PrinterIcon, Loader2, QrCode, Camera } from "lucide-react";
-import { barcodeToDataUrl } from "@/features/labels/barcode-generator";
 import { Html5Qrcode } from "html5-qrcode";
+import QRCodeLib from "qrcode";
 import type { DeviceRole, ConnectionStatus, SyncConfig } from "./sync-types";
 import { DEFAULT_SYNC_CONFIG, DEFAULT_SYNC_PORT } from "./sync-types";
 import type { Settings } from "@/db/schema";
@@ -45,6 +45,28 @@ function loadConfig(): SyncConfig {
 
 function saveConfig(config: SyncConfig) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
+}
+
+/** QR Code component for displaying IP address */
+function SyncQrCode({ ip }: { ip: string }) {
+  const [qrDataUrl, setQrDataUrl] = useState<string>("");
+  useEffect(() => {
+    QRCodeLib.toDataURL(ip, { width: 200, margin: 2, errorCorrectionLevel: "M" })
+      .then(setQrDataUrl)
+      .catch(() => {});
+  }, [ip]);
+
+  return (
+    <div className="flex flex-col items-center gap-2 rounded-md border p-3">
+      <div className="flex items-center gap-2 text-sm font-medium">
+        <QrCode className="h-4 w-4" /> Scan QR Code
+      </div>
+      {qrDataUrl && (
+        <img src={qrDataUrl} alt={`QR: ${ip}`} className="w-48 h-48" />
+      )}
+      <p className="text-xs text-muted-foreground">Sub/Kitchen device can scan this QR code to connect.</p>
+    </div>
+  );
 }
 
 function SubPrinterModeContent() {
@@ -183,7 +205,7 @@ export function SyncSettingsPanel() {
         qrInstanceRef.current = qr;
         await qr.start(
           { facingMode: "environment" },
-          { fps: 10, qrbox: { width: 280, height: 120 } },
+          { fps: 10, qrbox: { width: 250, height: 250 } },
           (decoded) => {
             // Extract IP from scanned text
             const ipMatch = decoded.match(/(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})/);
@@ -442,18 +464,8 @@ export function SyncSettingsPanel() {
                   </p>
                 </div>
 
-                {/* IP Barcode */}
-                <div className="flex flex-col items-center gap-2 rounded-md border p-3">
-                  <div className="flex items-center gap-2 text-sm font-medium">
-                    <QrCode className="h-4 w-4" /> Scan IP Barcode
-                  </div>
-                  <img
-                    src={barcodeToDataUrl(`${serverIp}`, { width: 350, height: 70 })}
-                    alt={`Barcode: ${serverIp}`}
-                    className="max-w-full"
-                  />
-                  <p className="text-xs text-muted-foreground">Sub device can scan this barcode to get the IP address.</p>
-                </div>
+                {/* QR Code for IP */}
+                <SyncQrCode ip={serverIp} />
 
                 {/* Connection PIN */}
                 <div className="space-y-2 rounded-md border p-3">

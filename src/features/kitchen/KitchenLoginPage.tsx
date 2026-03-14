@@ -60,7 +60,7 @@ export function KitchenLoginPage({ onConnected }: KitchenLoginPageProps) {
         qrInstanceRef.current = qr;
         await qr.start(
           { facingMode: "environment" },
-          { fps: 10, qrbox: { width: 280, height: 120 } },
+          { fps: 10, qrbox: { width: 250, height: 250 } },
           (decoded) => {
             const ipMatch = decoded.match(/(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})/);
             if (ipMatch) {
@@ -185,7 +185,7 @@ export function KitchenLoginPage({ onConnected }: KitchenLoginPageProps) {
           </div>
 
           <p className="text-xs text-muted-foreground text-center">
-            Scan the IP barcode shown on Main device Device Sync page, or enter IP manually. Set/update PIN on Main: Admin → Device Sync.
+            Scan the QR code shown on Main device's Device Sync page, or enter IP manually. Set/update PIN on Main: Admin → Device Sync.
           </p>
         </CardContent>
       </Card>
