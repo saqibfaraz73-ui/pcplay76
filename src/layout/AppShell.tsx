@@ -52,6 +52,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [salesDashboardEnabled, setSalesDashboardEnabled] = React.useState(true);
   const [deliveryEnabled, setDeliveryEnabled] = React.useState(false);
   const [recoveryEnabled, setRecoveryEnabled] = React.useState(false);
+  const [kitchenDisplayEnabled, setKitchenDisplayEnabled] = React.useState(false);
   const [pendingTableCount, setPendingTableCount] = React.useState(0);
   const [isPremium, setIsPremium] = React.useState(false);
   const [onlineWarningHours, setOnlineWarningHours] = React.useState<number | null>(null);
