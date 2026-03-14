@@ -118,11 +118,11 @@ export function KitchenLoginPage({ onConnected }: KitchenLoginPageProps) {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-primary/10">
-            <ChefHat className="h-7 w-7 text-primary" />
+            <Monitor className="h-7 w-7 text-primary" />
           </div>
-          <CardTitle className="text-xl">Kitchen Display Login</CardTitle>
+          <CardTitle className="text-xl">Secondary Display Setup</CardTitle>
           <p className="text-sm text-muted-foreground mt-1">
-            Connect to the Main POS device to receive kitchen orders.
+            Connect this device to the Main POS to receive live updates.
           </p>
         </CardHeader>
         <CardContent className="space-y-4">
