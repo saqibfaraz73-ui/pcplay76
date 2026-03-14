@@ -219,6 +219,19 @@ export function SyncSettingsPanel() {
         });
       });
 
+      // Listen for kitchen query requests (GET endpoints)
+      await onSyncQueryReceived(async (endpoint) => {
+        if (endpoint === "kitchen-orders") {
+          const orders = await getKitchenOrders();
+          return { orders };
+        }
+        if (endpoint === "kitchen-display") {
+          const orders = await getKitchenDisplayOrders();
+          return { orders };
+        }
+        return { error: "Unknown endpoint" };
+      });
+
       const newConfig = { ...config, role: "main" as DeviceRole };
       setConfig(newConfig);
       saveConfig(newConfig);
