@@ -109,6 +109,8 @@ export function SyncSettingsPanel() {
   const [serverIp, setServerIp] = useState("");
   const [serverPort, setServerPort] = useState(DEFAULT_SYNC_PORT);
   const [ipInput, setIpInput] = useState(config.mainAppIp ?? "");
+  const [pinInput, setPinInput] = useState("");
+  const [syncPin, setSyncPin] = useState(config.syncPin ?? "");
   const [loading, setLoading] = useState(false);
 
   const isAndroid = isNativeAndroid();
