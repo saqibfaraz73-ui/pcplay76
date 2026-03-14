@@ -339,7 +339,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                       {n.label}
                     </Link>
                   ))}
-                  {!isWaiter && !isRecoveryAgent && (
+                  {!isWaiter && !isRecoveryAgent && !isInstallmentAgent && (
                     <Link to="/pos/orders" className={cn("rounded-md px-3 py-2 text-sm transition-colors", isActive("/pos/orders") ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground")}>
                       Orders
                     </Link>
