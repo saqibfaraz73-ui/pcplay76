@@ -356,12 +356,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                       {n.label}
                     </Link>
                   ))}
-                  {!isWaiter && !isRecoveryAgent && !isInstallmentAgent && (
+                   {!isWaiter && !isRecoveryAgent && !isInstallmentAgent && (
                     <Link to="/pos/orders" className={cn("rounded-md px-3 py-2 text-sm transition-colors", isActive("/pos/orders") ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground")}>
                       Orders
                     </Link>
                   )}
-                  {isCashier && cashierReportsEnabled && (
+                  {installmentEnabled && (isAdmin || isCashier) && (
+                    <Link to="/installments" className={cn("rounded-md px-3 py-2 text-sm transition-colors", isActive("/installments") ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground")}>
+                      Installment
+                    </Link>
+                  )}
                     <Link to="/admin/reports" className={cn("rounded-md px-3 py-2 text-sm transition-colors", isActive("/admin/reports") ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground")}>
                       Reports
                     </Link>
