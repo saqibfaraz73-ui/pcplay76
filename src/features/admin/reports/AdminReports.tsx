@@ -201,8 +201,32 @@ function buildSalesPdf(args: {
 
   doc.setFontSize(10);
   doc.setFont("helvetica", "normal");
-  doc.text(`${args.restaurantName} • ${toDateInputValue(args.from)} → ${toDateInputValue(args.to)}`, left, y);
-  y += 24;
+  doc.text(`${args.restaurantName} • ${fmtDateShort(args.from)} → ${fmtDateShort(args.to)}`, left, y);
+  y += 16;
+
+  // Work Period Info
+  if (args.workPeriod) {
+    const wp = args.workPeriod;
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "bold");
+    doc.text("Work Period:", left, y);
+    doc.setFont("helvetica", "normal");
+    doc.text(`${wp.cashier} • Started: ${fmtDateTime(wp.startedAt)}`, left + 70, y);
+    y += 12;
+    if (wp.isClosed && wp.endedAt) {
+      doc.text(`Closed: ${fmtDateTime(wp.endedAt)}`, left + 70, y);
+      const duration = fmtDuration(wp.endedAt - wp.startedAt);
+      doc.text(`Duration: ${duration}`, left + 250, y);
+    } else {
+      doc.setTextColor(0, 128, 0);
+      doc.text("Status: Active", left + 70, y);
+      const duration = fmtDuration(Date.now() - wp.startedAt);
+      doc.setTextColor(0);
+      doc.text(`Duration: ${duration}`, left + 200, y);
+    }
+    y += 16;
+  }
+  y += 8;
 
 
   const boxData: { label: string; value: string; color?: [number, number, number] }[] = [
