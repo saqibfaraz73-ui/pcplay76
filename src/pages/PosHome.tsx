@@ -190,8 +190,8 @@ export default function PosHome() {
 
     if (!isWaiter && settings?.kitchenDisplayEnabled) {
       actions.push({
-        to: "/kitchen",
-        label: "Kitchen Display",
+        to: "/admin/kitchen",
+        label: "Kitchen Orders",
         icon: ChefHat,
         color: "bg-rose-500/10 text-rose-600 border-rose-200",
         description: "Kitchen order queue",
