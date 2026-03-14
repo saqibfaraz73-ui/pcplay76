@@ -311,8 +311,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                             <HelpCircle className="h-4 w-4" /> Help
                           </Link>
                         </nav>
-
-                        </nav>
                         <div className="shrink-0 space-y-3 pt-3 border-t">
                           <div className="rounded-md border bg-muted/20 p-3 text-sm">
                             <div className="text-xs text-muted-foreground">Logged in</div>
