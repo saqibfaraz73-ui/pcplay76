@@ -23,6 +23,7 @@ type Props = {
   exportCustomers?: ExportCustomer[];
   advanceOrders?: AdvanceOrder[];
   bookingOrders?: BookingOrder[];
+  workPeriod?: WorkPeriod;
 };
 
 export function SalesReportPreview({ 
