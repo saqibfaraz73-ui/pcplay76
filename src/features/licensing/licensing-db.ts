@@ -109,9 +109,9 @@ export async function getLicense(): Promise<LicenseRecord & { isPremium: boolean
   // Ensure all bonus/count fields exist (migration for older records)
   const allFields: (keyof LicenseRecord)[] = [
     "cashSalesCount", "creditSalesCount", "deliverySalesCount", "tableSalesCount",
-    "partyLodgeCount", "expensesCount", "customPrintCount", "labelPrintCount",
+    "partyLodgeCount", "expensesCount", "customPrintCount", "labelPrintCount", "installmentCount",
     "cashAdBonus", "creditAdBonus", "deliveryAdBonus", "tableAdBonus",
-    "partyAdBonus", "expensesAdBonus", "customPrintAdBonus", "labelPrintAdBonus",
+    "partyAdBonus", "expensesAdBonus", "customPrintAdBonus", "labelPrintAdBonus", "installmentAdBonus",
   ];
   let needsUpdate = false;
   for (const field of allFields) {
