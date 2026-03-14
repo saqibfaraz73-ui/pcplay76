@@ -500,14 +500,34 @@ export function SyncSettingsPanel() {
               <>
                 <div className="space-y-2">
                   <Label htmlFor="main-ip">Main App IP Address</Label>
-                  <Input
-                    id="main-ip"
-                    placeholder="e.g. 192.168.43.1"
-                    value={ipInput}
-                    onChange={(e) => setIpInput(e.target.value)}
-                    disabled={loading}
-                  />
-                  <p className="text-xs text-muted-foreground">Or scan the barcode shown on Main device.</p>
+                  <div className="flex gap-2">
+                    <Input
+                      id="main-ip"
+                      placeholder="e.g. 192.168.43.1"
+                      value={ipInput}
+                      onChange={(e) => setIpInput(e.target.value)}
+                      disabled={loading}
+                      className="flex-1"
+                    />
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="outline"
+                      onClick={scanning ? stopScanner : startScanner}
+                      title="Scan IP barcode"
+                    >
+                      <Camera className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  {scanning && (
+                    <div className="rounded-md overflow-hidden border">
+                      <div ref={scannerRef} className="w-full" style={{ minHeight: 200 }} />
+                      <Button size="sm" variant="ghost" className="w-full" onClick={stopScanner}>
+                        Cancel Scan
+                      </Button>
+                    </div>
+                  )}
+                  <p className="text-xs text-muted-foreground">Enter IP manually or scan the barcode shown on Main device.</p>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="sync-pin">Connection PIN (if set on Main)</Label>
