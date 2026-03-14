@@ -313,56 +313,39 @@ export function InstallmentSection() {
 
                   return (
                     <div key={c.id} className="rounded-md border p-3 space-y-2">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex items-start gap-2">
-                          {isAdmin && (
-                            <input type="checkbox" checked={selectedIds.has(c.id)} onChange={() => toggleSelect(c.id)} className="mt-1 rounded" />
-                          )}
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span className="font-medium text-sm">{c.name}</span>
-                              {completed && <Badge variant="outline" className="text-green-600 border-green-600">Completed</Badge>}
-                              {!completed && paid && <Badge variant="outline" className="text-green-600 border-green-600">Paid</Badge>}
-                              {overdue && <Badge variant="destructive">Overdue ({lateDays}d)</Badge>}
-                              {!completed && !paid && !overdue && <Badge variant="outline">Pending</Badge>}
-                            </div>
-                            <div className="text-xs text-muted-foreground mt-0.5">{c.phone}{c.agentName ? ` • Agent: ${c.agentName}` : ""}</div>
+                      {/* Name + status row */}
+                      <div className="flex items-start gap-2">
+                        {isAdmin && (
+                          <input type="checkbox" checked={selectedIds.has(c.id)} onChange={() => toggleSelect(c.id)} className="mt-1 rounded" />
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="font-medium text-sm">{c.name}</span>
+                            {completed && <Badge variant="outline" className="text-xs px-1.5 py-0 border-green-600 text-green-600">Done</Badge>}
+                            {!completed && paid && <Badge variant="outline" className="text-xs px-1.5 py-0 border-green-600 text-green-600">Paid</Badge>}
+                            {overdue && <Badge variant="destructive" className="text-xs px-1.5 py-0">Late {lateDays}d</Badge>}
+                            {!completed && !paid && !overdue && <Badge variant="outline" className="text-xs px-1.5 py-0">Pending</Badge>}
                           </div>
-                        </div>
-                        <div className="flex gap-1">
-                          {!completed && (
-                            <Button size="sm" variant="outline" onClick={() => setPaymentCustomerId(c.id)}>
-                              <CreditCard className="h-3 w-3 mr-1" /> Pay
-                            </Button>
-                          )}
-                          <Button size="sm" variant="ghost" onClick={() => setHistoryCustomerId(c.id)}>
-                            <History className="h-3 w-3" />
-                          </Button>
-                          {canEdit && (
-                            <>
-                              <Button size="sm" variant="ghost" onClick={() => openEdit(c)}><Edit className="h-3 w-3" /></Button>
-                              <Button size="sm" variant="ghost" onClick={() => void deleteCustomer(c)}><Trash2 className="h-3 w-3 text-destructive" /></Button>
-                            </>
-                          )}
+                          <div className="text-xs text-muted-foreground mt-0.5">{c.phone}{c.agentName ? ` • ${c.agentName}` : ""}</div>
                         </div>
                       </div>
 
                       {/* Product & installment info */}
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-                        <div className="rounded bg-muted/50 p-2">
-                          <div className="text-muted-foreground">Product</div>
+                      <div className="grid grid-cols-2 gap-1.5 text-xs">
+                        <div className="rounded bg-muted/50 p-1.5">
+                          <div className="text-muted-foreground text-[10px]">Product</div>
                           <div className="font-medium truncate">{c.productName}</div>
                         </div>
-                        <div className="rounded bg-muted/50 p-2">
-                          <div className="text-muted-foreground">Total Price</div>
+                        <div className="rounded bg-muted/50 p-1.5">
+                          <div className="text-muted-foreground text-[10px]">Total</div>
                           <div className="font-semibold">{formatIntMoney(c.totalPrice)}</div>
                         </div>
-                        <div className="rounded bg-muted/50 p-2">
-                          <div className="text-muted-foreground">Monthly</div>
+                        <div className="rounded bg-muted/50 p-1.5">
+                          <div className="text-muted-foreground text-[10px]">Monthly</div>
                           <div className="font-semibold">{formatIntMoney(c.monthlyInstallment)}</div>
                         </div>
-                        <div className="rounded bg-muted/50 p-2">
-                          <div className="text-muted-foreground">Balance</div>
+                        <div className="rounded bg-muted/50 p-1.5">
+                          <div className="text-muted-foreground text-[10px]">Balance</div>
                           <div className={`font-semibold ${c.totalBalance > 0 ? "text-destructive" : "text-green-600"}`}>
                             {formatIntMoney(c.totalBalance)}
                           </div>
@@ -371,19 +354,57 @@ export function InstallmentSection() {
 
                       {currentLateFee > 0 && (
                         <div className="text-xs text-destructive font-medium">
-                          ⚠ Late fee: {formatIntMoney(currentLateFee)} ({lateDays} days × {formatIntMoney(c.lateFeePerDay ?? 0)}/day)
+                          ⚠ {formatIntMoney(currentLateFee)} late ({lateDays}d × {formatIntMoney(c.lateFeePerDay ?? 0)})
                         </div>
                       )}
 
-                      {/* Images thumbnails */}
+                      {/* Images thumbnails - clickable */}
                       {c.images && c.images.length > 0 && (
-                        <div className="flex gap-1 overflow-x-auto">
+                        <div className="flex gap-1.5 overflow-x-auto">
                           {c.images.slice(0, 4).map((img, i) => (
-                            <img key={i} src={img} alt={`doc-${i}`} className="h-12 w-12 rounded border object-cover shrink-0" />
+                            <button
+                              key={i}
+                              type="button"
+                              className="shrink-0 rounded border overflow-hidden hover:ring-2 ring-primary transition-all"
+                              onClick={() => setImageViewer({ images: c.images!, index: i, name: c.name })}
+                            >
+                              <img src={img} alt={`doc-${i}`} className="h-12 w-12 object-cover" />
+                            </button>
                           ))}
-                          {c.images.length > 4 && <span className="text-xs text-muted-foreground self-center">+{c.images.length - 4}</span>}
+                          {c.images.length > 4 && (
+                            <button
+                              type="button"
+                              className="shrink-0 h-12 w-12 rounded border flex items-center justify-center text-xs text-muted-foreground hover:bg-muted"
+                              onClick={() => setImageViewer({ images: c.images!, index: 4, name: c.name })}
+                            >
+                              +{c.images.length - 4}
+                            </button>
+                          )}
                         </div>
                       )}
+
+                      {/* Action buttons - compact row */}
+                      <div className="flex gap-1 flex-wrap pt-1 border-t">
+                        {!completed && (
+                          <Button size="sm" className="h-7 text-xs" onClick={() => setPaymentCustomerId(c.id)}>
+                            <CreditCard className="h-3 w-3 mr-1" /> Pay
+                          </Button>
+                        )}
+                        <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setHistoryCustomerId(c.id)}>
+                          <History className="h-3 w-3 mr-1" /> History
+                        </Button>
+                        {c.images && c.images.length > 0 && (
+                          <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setImageViewer({ images: c.images!, index: 0, name: c.name })}>
+                            <ImageIcon className="h-3 w-3 mr-1" /> {c.images.length}
+                          </Button>
+                        )}
+                        {canEdit && (
+                          <>
+                            <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => openEdit(c)}><Edit className="h-3 w-3" /></Button>
+                            <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => void deleteCustomer(c)}><Trash2 className="h-3 w-3 text-destructive" /></Button>
+                          </>
+                        )}
+                      </div>
                     </div>
                   );
                 })}
