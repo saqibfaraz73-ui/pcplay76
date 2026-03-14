@@ -113,6 +113,8 @@ export function AdminCustomers() {
   const openEdit = (c: CreditCustomer) => {
     setName(c.name);
     setMobile(c.mobile ?? "");
+    setWhatsapp(c.whatsapp ?? "");
+    setEmail(c.email ?? "");
     setMode({ open: true, customer: c });
   };
 
