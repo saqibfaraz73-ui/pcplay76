@@ -442,7 +442,7 @@ export type StaffAccount = {
   createdAt: number;
 };
 
-export type CounterId = "receipt" | "arrival" | "exportSale" | "advanceOrder" | "bookingOrder" | "recoveryPayment";
+export type CounterId = "receipt" | "arrival" | "exportSale" | "advanceOrder" | "bookingOrder" | "recoveryPayment" | "installmentPayment";
 
 // ─── Recovery (bill collection) ────────────────────
 
