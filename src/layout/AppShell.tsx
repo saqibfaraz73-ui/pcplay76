@@ -312,16 +312,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                           </Link>
                         </nav>
 
-                        <div className="rounded-md border bg-muted/20 p-3 text-sm">
-                          <div className="text-xs text-muted-foreground">Logged in</div>
-                          <div className="font-medium">
-                            {session.username} ({session.role})
+                        </nav>
+                        <div className="shrink-0 space-y-3 pt-3 border-t">
+                          <div className="rounded-md border bg-muted/20 p-3 text-sm">
+                            <div className="text-xs text-muted-foreground">Logged in</div>
+                            <div className="font-medium">
+                              {session.username} ({session.role})
+                            </div>
                           </div>
+                          <Button variant="outline" onClick={logout} className="w-full">
+                            Logout
+                          </Button>
                         </div>
-
-                        <Button variant="outline" onClick={logout} className="w-full">
-                          Logout
-                        </Button>
                       </div>
                     </SheetContent>
                   </Sheet>
