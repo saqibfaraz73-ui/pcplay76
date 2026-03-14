@@ -14,7 +14,8 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import { Wifi, WifiOff, Server, Smartphone, Printer as PrinterIcon, Loader2 } from "lucide-react";
+import { Wifi, WifiOff, Server, Smartphone, Printer as PrinterIcon, Loader2, QrCode } from "lucide-react";
+import { barcodeToDataUrl } from "@/features/labels/barcode-generator";
 import type { DeviceRole, ConnectionStatus, SyncConfig } from "./sync-types";
 import { DEFAULT_SYNC_CONFIG, DEFAULT_SYNC_PORT } from "./sync-types";
 import type { Settings } from "@/db/schema";
@@ -108,6 +109,8 @@ export function SyncSettingsPanel() {
   const [serverIp, setServerIp] = useState("");
   const [serverPort, setServerPort] = useState(DEFAULT_SYNC_PORT);
   const [ipInput, setIpInput] = useState(config.mainAppIp ?? "");
+  const [pinInput, setPinInput] = useState("");
+  const [syncPin, setSyncPin] = useState(config.syncPin ?? "");
   const [loading, setLoading] = useState(false);
 
   const isAndroid = isNativeAndroid();
@@ -361,6 +364,49 @@ export function SyncSettingsPanel() {
                     Tell Sub devices to enter this IP: <strong>{serverIp}</strong>
                   </p>
                 </div>
+
+                {/* IP Barcode */}
+                <div className="flex flex-col items-center gap-2 rounded-md border p-3">
+                  <div className="flex items-center gap-2 text-sm font-medium">
+                    <QrCode className="h-4 w-4" /> Scan IP Barcode
+                  </div>
+                  <img
+                    src={barcodeToDataUrl(`${serverIp}`, { width: 350, height: 70 })}
+                    alt={`Barcode: ${serverIp}`}
+                    className="max-w-full"
+                  />
+                  <p className="text-xs text-muted-foreground">Sub device can scan this barcode to get the IP address.</p>
+                </div>
+
+                {/* Connection PIN */}
+                <div className="space-y-2 rounded-md border p-3">
+                  <div className="text-sm font-medium">Connection PIN</div>
+                  <p className="text-xs text-muted-foreground">
+                    Sub devices must enter this PIN to connect. Leave empty to allow without PIN.
+                  </p>
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="e.g. 1234"
+                      value={syncPin}
+                      onChange={(e) => setSyncPin(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                      inputMode="numeric"
+                      maxLength={6}
+                    />
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        const next = { ...config, syncPin: syncPin || undefined };
+                        setConfig(next);
+                        saveConfig(next);
+                        toast({ title: syncPin ? "PIN saved" : "PIN removed" });
+                      }}
+                    >
+                      Save
+                    </Button>
+                  </div>
+                </div>
+
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <PrinterIcon className="h-4 w-4" />
                   Sub devices can use this device's printer
@@ -397,6 +443,19 @@ export function SyncSettingsPanel() {
                     placeholder="e.g. 192.168.43.1"
                     value={ipInput}
                     onChange={(e) => setIpInput(e.target.value)}
+                    disabled={loading}
+                  />
+                  <p className="text-xs text-muted-foreground">Or scan the barcode shown on Main device.</p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="sync-pin">Connection PIN (if set on Main)</Label>
+                  <Input
+                    id="sync-pin"
+                    placeholder="Enter PIN"
+                    value={pinInput}
+                    onChange={(e) => setPinInput(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                    inputMode="numeric"
+                    maxLength={6}
                     disabled={loading}
                   />
                 </div>
