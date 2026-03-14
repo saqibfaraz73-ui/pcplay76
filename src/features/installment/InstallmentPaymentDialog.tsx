@@ -49,7 +49,7 @@ export function InstallmentPaymentDialog({ customer, payments, settings, agentNa
     setSaving(true);
     try {
       // Get receipt number
-      const counter = (await db.counters.get("installmentPayment")) ?? { id: "installmentPayment" as any, next: 1 };
+      const counter = (await db.counters.get("installmentPayment" as any)) ?? { id: "installmentPayment" as any, next: 1 };
       const receiptNo = counter.next;
       await db.counters.put({ id: "installmentPayment" as any, next: receiptNo + 1 });
 

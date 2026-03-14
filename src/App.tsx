@@ -107,7 +107,7 @@ const App = () => (
                 <Route
                   path="/admin"
                   element={
-                    <ProtectedRoute allow={["admin"]}>
+                    <ProtectedRoute allow={["admin", "installment_agent"]}>
                       <AdminDashboard />
                     </ProtectedRoute>
                   }
