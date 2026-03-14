@@ -69,6 +69,8 @@ export type CreditCustomer = {
   id: string;
   name: string;
   mobile?: string;
+  whatsapp?: string;
+  email?: string;
   createdAt: number;
 };
 
