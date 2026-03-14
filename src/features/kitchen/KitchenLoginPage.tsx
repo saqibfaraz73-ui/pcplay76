@@ -1,5 +1,5 @@
 /**
- * Kitchen Login — Kitchen staff scan Main device IP barcode, enter PIN, then connect.
+ * Secondary Display Login — Staff connect a secondary device to the Main POS via IP/PIN.
  */
 import React, { useState, useCallback, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
