@@ -14,29 +14,34 @@ import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
-import com.getcapacitor.annotation.Permission;
 
 import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.util.Collections;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Capacitor Plugin: Local HTTP Sync Server (Foreground Service version)
  *
  * Runs the sync server inside an Android Foreground Service so it stays
- * alive even when the screen is off — just like Zapya, SHAREit, etc.
+ * alive even when the screen is off.
+ *
+ * Supports:
+ * - POST endpoints for syncing orders, expenses, etc.
+ * - GET endpoints for kitchen/display data (bridges to web layer via events)
  *
  * ─── SETUP ───────────────────────────────────────────────
  * 1. Add NanoHTTPD dependency in android/app/build.gradle:
  *      implementation 'org.nanohttpd:nanohttpd:2.3.1'
  *
- * 2. Copy these files to android/app/src/main/java/app/lovable/sangi/:
+ * 2. Copy these files to your package directory:
  *      - LocalSyncServerPlugin.java  (this file)
  *      - SyncForegroundService.java
  *
  * 3. Register in MainActivity.java:
- *      import app.lovable.sangi.LocalSyncServerPlugin;
+ *      import app.lovable.a89517294eb14219b1dd14af0464d470.LocalSyncServerPlugin;
  *      public class MainActivity extends BridgeActivity {
  *          @Override public void onCreate(Bundle savedInstanceState) {
  *              registerPlugin(LocalSyncServerPlugin.class);
@@ -64,9 +69,13 @@ public class LocalSyncServerPlugin extends Plugin {
 
     private static final String TAG = "LocalSyncServer";
 
+    // Pending GET response holder (for kitchen-orders / kitchen-display)
+    private static volatile String pendingGetResponse = null;
+    private static volatile CountDownLatch pendingGetLatch = null;
+
     @Override
     public void load() {
-        // Register as listener so the service can forward events to the web layer
+        // Register POST data listener — forwards sync data to web layer
         SyncForegroundService.syncDataListener = (endpoint, data) -> {
             JSObject eventData = new JSObject();
             eventData.put("endpoint", endpoint);
@@ -74,6 +83,43 @@ public class LocalSyncServerPlugin extends Plugin {
             eventData.put("timestamp", System.currentTimeMillis());
             notifyListeners("syncDataReceived", eventData);
         };
+
+        // Register GET request listener — asks web layer for kitchen/display data
+        SyncForegroundService.syncGetListener = (endpoint) -> {
+            pendingGetResponse = null;
+            pendingGetLatch = new CountDownLatch(1);
+
+            JSObject eventData = new JSObject();
+            eventData.put("endpoint", endpoint);
+            eventData.put("timestamp", System.currentTimeMillis());
+            notifyListeners("syncGetRequest", eventData);
+
+            // Wait up to 3 seconds for the web layer to respond via resolveGetRequest()
+            try {
+                pendingGetLatch.await(3, TimeUnit.SECONDS);
+            } catch (InterruptedException ignored) {}
+
+            String response = pendingGetResponse;
+            pendingGetResponse = null;
+            pendingGetLatch = null;
+            return response;
+        };
+    }
+
+    /**
+     * Called from JavaScript to provide data for a pending GET request.
+     * The web layer reads from Dexie DB and calls this to return kitchen data.
+     */
+    @PluginMethod
+    public void resolveGetRequest(PluginCall call) {
+        String data = call.getString("data", "{}");
+        pendingGetResponse = data;
+        if (pendingGetLatch != null) {
+            pendingGetLatch.countDown();
+        }
+        JSObject ret = new JSObject();
+        ret.put("success", true);
+        call.resolve(ret);
     }
 
     // ─── Start the server (as Foreground Service) ──────────
@@ -91,7 +137,6 @@ public class LocalSyncServerPlugin extends Plugin {
             }
         }
 
-        // Start the foreground service
         Intent intent = new Intent(getContext(), SyncForegroundService.class);
         intent.putExtra("port", port);
 
