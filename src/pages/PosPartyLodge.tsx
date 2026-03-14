@@ -163,12 +163,12 @@ export default function PosPartyLodge() {
   // ─── Supplier CRUD ────────────────────────────────────
 
   const openNew = () => {
-    setSName(""); setSContact(""); setSItemName(""); setSUnit(""); setSUnitPrice(0); setSBalance(0); setSAddBalance(0);
+    setSName(""); setSContact(""); setSWhatsapp(""); setSEmail(""); setSItemName(""); setSUnit(""); setSUnitPrice(0); setSBalance(0); setSAddBalance(0);
     setSupplierMode({ open: true });
   };
 
   const openEdit = (s: Supplier) => {
-    setSName(s.name); setSContact(s.contact ?? ""); setSItemName(s.itemName ?? "");
+    setSName(s.name); setSContact(s.contact ?? ""); setSWhatsapp(s.whatsapp ?? ""); setSEmail(s.email ?? ""); setSItemName(s.itemName ?? "");
     setSUnit(s.stockUnit ?? ""); setSUnitPrice(s.unitPrice ?? 0); setSBalance(s.totalBalance); setSAddBalance(0);
     setSupplierMode({ open: true, supplier: s });
   };
