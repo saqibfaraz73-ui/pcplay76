@@ -327,7 +327,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   </Sheet>
                 </div>
 
-                <nav className="hidden items-center gap-2 md:flex">
+                <nav className="hidden items-center gap-1 md:flex overflow-x-auto no-scrollbar flex-1 min-w-0">
                   {/* Dashboard link for waiter/agent */}
                   {(isWaiter || isRecoveryAgent || isInstallmentAgent) && (
                     <Link
