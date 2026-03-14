@@ -30,6 +30,7 @@ export function SalesReportPreview({
   fromLabel, 
   toLabel, 
   orders, 
+  categories = [],
   customers, 
   deliveryPersons, 
   items, 
