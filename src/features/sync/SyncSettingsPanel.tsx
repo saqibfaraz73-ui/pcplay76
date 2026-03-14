@@ -17,7 +17,6 @@ import { useToast } from "@/hooks/use-toast";
 import { Wifi, WifiOff, Server, Smartphone, Printer as PrinterIcon, Loader2, QrCode, Camera } from "lucide-react";
 import { Html5Qrcode } from "html5-qrcode";
 import QRCodeLib from "qrcode";
-import { Html5Qrcode } from "html5-qrcode";
 import type { DeviceRole, ConnectionStatus, SyncConfig } from "./sync-types";
 import { DEFAULT_SYNC_CONFIG, DEFAULT_SYNC_PORT } from "./sync-types";
 import type { Settings } from "@/db/schema";
