@@ -2,13 +2,15 @@
  * Kitchen Login — Kitchen staff scan Main device IP barcode, enter PIN, then connect.
  */
 import React, { useState, useCallback, useRef, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Camera, Wifi, Loader2, ChefHat } from "lucide-react";
+import { useAuth } from "@/auth/AuthProvider";
+import { Camera, Wifi, Loader2, ChefHat, ArrowLeft } from "lucide-react";
 import { Html5Qrcode } from "html5-qrcode";
 import { setMainAppUrl, pingMainApp } from "@/features/sync/sync-client";
 import { DEFAULT_SYNC_PORT } from "@/features/sync/sync-types";
