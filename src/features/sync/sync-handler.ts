@@ -98,6 +98,26 @@ async function handleOrderSync(order: Order): Promise<void> {
   }
   await db.orders.put(order);
   console.log(`[Sync] Order ${order.id} saved (receipt #${order.receiptNo}, wp: ${order.workPeriodId})`);
+
+  // Auto-create kitchen order if KDS enabled (fallback in case Sub didn't send kitchen-order)
+  try {
+    const settings = await db.settings.get("app");
+    if (settings?.kitchenDisplayEnabled) {
+      const existing_ko = await db.kitchenOrders.where("sourceOrderId").equals(order.id).first();
+      if (!existing_ko) {
+        const { createKitchenOrderFromOrder } = await import("@/features/kitchen/kitchen-handler");
+        await createKitchenOrderFromOrder(
+          order.id,
+          order.receiptNo,
+          order.lines.map((l: any) => ({ name: l.name, qty: l.qty })),
+          "pos"
+        );
+        console.log(`[Sync] Kitchen order auto-created for synced order #${order.receiptNo}`);
+      }
+    }
+  } catch (e) {
+    console.warn("[Sync] Failed to auto-create kitchen order:", e);
+  }
 }
 
 /** Save a synced table order (keeps Sub's original workPeriodId). Only saves completed/cancelled orders to avoid "stuck" open orders on Main. */
