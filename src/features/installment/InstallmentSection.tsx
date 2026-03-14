@@ -56,7 +56,7 @@ export function InstallmentSection() {
 
   const isAdmin = session?.role === "admin";
   const isCashier = session?.role === "cashier";
-  const isAgent = session?.role === "installment_agent";
+  const isAgent = session?.role === "installment_agent" as any;
   const canEdit = isAdmin || isCashier;
 
   const currentMonth = getCurrentMonth();
