@@ -8,6 +8,7 @@
 import { db } from "@/db/appDb";
 import type { Order, Expense, TableOrder, WorkPeriod, SupplierArrival, SupplierPayment } from "@/db/schema";
 import type { AdvanceOrder, BookingOrder } from "@/db/booking-schema";
+import type { KitchenOrder, KitchenOrderStatus } from "@/db/kitchen-schema";
 import type { SyncPayload, PrintJobPayload, SyncEndpoint } from "./sync-types";
 
 
@@ -70,6 +71,12 @@ export async function handleSyncData(
       break;
     case "booking-order":
       await handleBookingOrderSync(payload.data as BookingOrder);
+      break;
+    case "kitchen-order":
+      await handleKitchenOrderSync(payload.data as KitchenOrder);
+      break;
+    case "kitchen-status-update":
+      await handleKitchenStatusUpdate(payload.data as { orderId: string; status: KitchenOrderStatus; updatedAt: number });
       break;
     default:
       console.warn(`[Sync] Unknown endpoint: ${endpoint}`);
@@ -326,6 +333,38 @@ async function handleBookingOrderSync(order: BookingOrder): Promise<void> {
   }
   await db.bookingOrders.put(order);
   console.log(`[Sync] Booking order ${order.id} saved`);
+}
+
+/** Save a synced kitchen order */
+async function handleKitchenOrderSync(order: KitchenOrder): Promise<void> {
+  const existing = await db.kitchenOrders.get(order.id);
+  if (existing) {
+    if (order.updatedAt > existing.updatedAt) {
+      await db.kitchenOrders.put(order);
+      console.log(`[Sync] Kitchen order ${order.id} updated`);
+    }
+    return;
+  }
+  await db.kitchenOrders.put(order);
+  console.log(`[Sync] Kitchen order ${order.id} saved (#${order.orderNumber})`);
+}
+
+/** Handle kitchen status update from kitchen device */
+async function handleKitchenStatusUpdate(data: { orderId: string; status: KitchenOrderStatus; updatedAt: number }): Promise<void> {
+  const existing = await db.kitchenOrders.get(data.orderId);
+  if (!existing) {
+    console.warn(`[Sync] Kitchen order ${data.orderId} not found for status update`);
+    return;
+  }
+  const updates: Partial<KitchenOrder> = {
+    status: data.status,
+    updatedAt: data.updatedAt,
+  };
+  if (data.status === "preparing") updates.preparingAt = data.updatedAt;
+  if (data.status === "ready") updates.readyAt = data.updatedAt;
+  if (data.status === "served") updates.servedAt = data.updatedAt;
+  await db.kitchenOrders.update(data.orderId, updates);
+  console.log(`[Sync] Kitchen order ${data.orderId} status → ${data.status}`);
 }
 
 /** Handle bulk sync — multiple items in one request */

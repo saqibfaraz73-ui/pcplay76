@@ -25,10 +25,12 @@ import {
   stopSyncServer,
   getSyncServerStatus,
   onSyncDataReceived,
+  onSyncQueryReceived,
   isNativeAndroid,
 } from "./local-sync-server";
 import { setMainAppUrl, pingMainApp } from "./sync-client";
 import { handleSyncData } from "./sync-handler";
+import { getKitchenOrders, getKitchenDisplayOrders } from "@/features/kitchen/kitchen-handler";
 
 const STORAGE_KEY = "sangi_sync_config";
 
@@ -215,6 +217,19 @@ export function SyncSettingsPanel() {
           title: "Data received",
           description: `Synced ${endpoint} from sub device`,
         });
+      });
+
+      // Listen for kitchen query requests (GET endpoints)
+      await onSyncQueryReceived(async (endpoint) => {
+        if (endpoint === "kitchen-orders") {
+          const orders = await getKitchenOrders();
+          return { orders };
+        }
+        if (endpoint === "kitchen-display") {
+          const orders = await getKitchenDisplayOrders();
+          return { orders };
+        }
+        return { error: "Unknown endpoint" };
       });
 
       const newConfig = { ...config, role: "main" as DeviceRole };

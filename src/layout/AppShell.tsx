@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/auth/AuthProvider";
-import { Menu, Printer, BarChart3, Settings, ShoppingCart, ClipboardList, Users, DollarSign, Truck, UtensilsCrossed, CalendarCheck, Wifi, Shield, Home, Info, HelpCircle, Tags, FileText, WifiOff, AlertTriangle } from "lucide-react";
+import { Menu, Printer, BarChart3, Settings, ShoppingCart, ClipboardList, Users, DollarSign, Truck, UtensilsCrossed, CalendarCheck, Wifi, Shield, Home, Info, HelpCircle, Tags, FileText, WifiOff, AlertTriangle, ChefHat } from "lucide-react";
 import { useAndroidBackExitConfirm } from "@/hooks/useAndroidBackExitConfirm";
 import appLogo from "@/assets/app-logo.jpg";
 import { db } from "@/db/appDb";
@@ -52,6 +52,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [salesDashboardEnabled, setSalesDashboardEnabled] = React.useState(true);
   const [deliveryEnabled, setDeliveryEnabled] = React.useState(false);
   const [recoveryEnabled, setRecoveryEnabled] = React.useState(false);
+  const [kitchenDisplayEnabled, setKitchenDisplayEnabled] = React.useState(false);
   const [pendingTableCount, setPendingTableCount] = React.useState(0);
   const [isPremium, setIsPremium] = React.useState(false);
   const [onlineWarningHours, setOnlineWarningHours] = React.useState<number | null>(null);
@@ -68,6 +69,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     setSalesDashboardEnabled(s?.salesDashboardEnabled !== false);
     setDeliveryEnabled(!!s?.deliveryEnabled);
     setRecoveryEnabled(!!s?.recoveryEnabled);
+    setKitchenDisplayEnabled(!!s?.kitchenDisplayEnabled);
     // Count open (pending) table orders
     const openCount = await db.tableOrders.where("status").equals("open").count();
     setPendingTableCount(openCount);
@@ -264,6 +266,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                                   </Link>
                                 );
                               })}
+                              {kitchenDisplayEnabled && (
+                                <Link
+                                  to="/kitchen"
+                                  className={cn(
+                                    "flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors",
+                                    isActive("/kitchen")
+                                      ? "bg-accent text-accent-foreground"
+                                      : "text-muted-foreground hover:text-foreground",
+                                  )}
+                                >
+                                  <ChefHat className="h-4 w-4" />
+                                  Kitchen Display
+                                </Link>
+                              )}
                             </>
                           ) : null}
 

@@ -29,6 +29,11 @@ interface LocalSyncServerPlugin {
     eventName: "syncDataReceived",
     handler: (event: { endpoint: string; data: string; timestamp: number }) => void
   ): Promise<PluginListenerHandle>;
+  addListener(
+    eventName: "syncQueryReceived",
+    handler: (event: { endpoint: string; requestId: string }) => void
+  ): Promise<PluginListenerHandle>;
+  respondToQuery(options: { requestId: string; data: string }): Promise<void>;
 }
 
 const LocalSyncServer = registerPlugin<LocalSyncServerPlugin>("LocalSyncServer");
@@ -74,6 +79,32 @@ export async function onSyncDataReceived(
       callback(parsed, event.endpoint);
     } catch (e) {
       console.error("Failed to parse sync data:", e);
+    }
+  });
+}
+
+/**
+ * Listen for incoming GET query requests from Sub/Kitchen devices.
+ * The callback should return data to respond with.
+ */
+export async function onSyncQueryReceived(
+  callback: (endpoint: string) => Promise<unknown>
+): Promise<PluginListenerHandle | null> {
+  if (!isNativeAndroid()) return null;
+
+  return LocalSyncServer.addListener("syncQueryReceived", async (event) => {
+    try {
+      const data = await callback(event.endpoint);
+      await LocalSyncServer.respondToQuery({
+        requestId: event.requestId,
+        data: JSON.stringify(data),
+      });
+    } catch (e) {
+      console.error("Failed to handle sync query:", e);
+      await LocalSyncServer.respondToQuery({
+        requestId: event.requestId,
+        data: JSON.stringify({ error: "Internal error" }),
+      });
     }
   });
 }
