@@ -417,6 +417,11 @@ export default function PosAdvanceBooking() {
       updatedAt: Date.now(),
     };
     await db.advanceOrders.put(order);
+    // Sync to Main if advance booking sync enabled
+    try {
+      const { syncAdvanceOrderOptional } = await import("@/features/sync/optional-sync");
+      await syncAdvanceOrderOptional(order);
+    } catch {}
     return order;
   };
 
