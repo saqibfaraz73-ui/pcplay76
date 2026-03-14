@@ -29,14 +29,20 @@ export function fmtDate(ts: number | string): string {
   return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
 }
 
-/** Format timestamp as DD/MM/YYYY h:mm AM/PM */
+/** Format timestamp or date-string as DD/MM/YY (short year) */
+export function fmtDateShort(ts: number | string): string {
+  const d = new Date(ts);
+  return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${String(d.getFullYear()).slice(-2)}`;
+}
+
+/** Format timestamp as DD/MM/YY h:mm AM/PM */
 export function fmtDateTime(ts: number): string {
   const d = new Date(ts);
   let h = d.getHours();
   const m = d.getMinutes();
   const ampm = h >= 12 ? "PM" : "AM";
   h = h % 12 || 12;
-  return `${fmtDate(ts)} ${h}:${String(m).padStart(2, "0")} ${ampm}`;
+  return `${fmtDateShort(ts)} ${h}:${String(m).padStart(2, "0")} ${ampm}`;
 }
 
 /** Format 24h time string "HH:mm" to 12h "h:mm AM/PM" */
@@ -45,4 +51,13 @@ export function fmtTime12(t: string): string {
   const ampm = h24 >= 12 ? "PM" : "AM";
   const h = h24 % 12 || 12;
   return `${h}:${String(mi).padStart(2, "0")} ${ampm}`;
+}
+
+/** Format duration in milliseconds as "Xh Ym" */
+export function fmtDuration(ms: number): string {
+  const totalMin = Math.floor(ms / 60000);
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  if (h === 0) return `${m}m`;
+  return `${h}h ${m}m`;
 }
