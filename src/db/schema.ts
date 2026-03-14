@@ -321,6 +321,8 @@ export type Settings = {
   showAdvanceBookingInReports?: boolean;
   // Recovery settings
   recoveryEnabled?: boolean;
+  // Kitchen Display settings
+  kitchenDisplayEnabled?: boolean; // if true, kitchen display section is available
   // Sync settings
   syncEnabled?: boolean; // if true, sync feature is available
   subWorkPeriodMode?: "own" | "main"; // "own" = sub uses its own work period, "main" = inherits from main app

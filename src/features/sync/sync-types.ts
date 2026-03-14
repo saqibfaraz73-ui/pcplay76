@@ -19,7 +19,11 @@ export type SyncEndpoint =
   | "party-lodge-arrival"
   | "party-lodge-payment"
   | "advance-order"
-  | "booking-order";
+  | "booking-order"
+  | "kitchen-order"
+  | "kitchen-status-update"
+  | "kitchen-orders"
+  | "kitchen-display";
 
 /** Payload sent from Sub → Main for each sync endpoint */
 export type SyncPayload = {
