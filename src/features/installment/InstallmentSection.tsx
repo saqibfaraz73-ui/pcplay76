@@ -12,7 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { makeId } from "@/features/admin/id";
 import { formatIntMoney, parseNonDecimalInt, fmtDate, fmtDateTime } from "@/features/pos/format";
 import { useAuth } from "@/auth/AuthProvider";
-import { Search, Plus, Edit, Trash2, CreditCard, History, UserCheck, UserX, Download, Upload, FileSpreadsheet, Share2 } from "lucide-react";
+import { Search, Plus, Edit, Trash2, CreditCard, History, UserCheck, UserX, Download, Upload, FileSpreadsheet, Share2, ImageIcon } from "lucide-react";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { InstallmentCustomerForm } from "./InstallmentCustomerForm";
 import { InstallmentPaymentDialog } from "./InstallmentPaymentDialog";
