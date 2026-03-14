@@ -10,6 +10,7 @@ type Props = {
   fromLabel: string;
   toLabel: string;
   orders: Order[];
+  categories?: Category[];
   customers: CreditCustomer[];
   deliveryPersons: DeliveryPerson[];
   items: MenuItem[];
