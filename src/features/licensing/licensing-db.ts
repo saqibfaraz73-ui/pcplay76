@@ -24,6 +24,7 @@ export type LicenseRecord = {
   expensesCount: number;
   customPrintCount: number;
   labelPrintCount: number;
+  installmentCount: number;
   // Ad bonus credits per module
   cashAdBonus: number;
   creditAdBonus: number;
@@ -33,6 +34,7 @@ export type LicenseRecord = {
   expensesAdBonus: number;
   customPrintAdBonus: number;
   labelPrintAdBonus: number;
+  installmentAdBonus: number;
 };
 
 // Runtime-only premium state (sourced from Play Store on every getLicense call)
@@ -80,6 +82,7 @@ function defaultRecord(): LicenseRecord {
     expensesCount: 0,
     customPrintCount: 0,
     labelPrintCount: 0,
+    installmentCount: 0,
     cashAdBonus: 0,
     creditAdBonus: 0,
     deliveryAdBonus: 0,
@@ -88,6 +91,7 @@ function defaultRecord(): LicenseRecord {
     expensesAdBonus: 0,
     customPrintAdBonus: 0,
     labelPrintAdBonus: 0,
+    installmentAdBonus: 0,
   };
 }
 
@@ -105,9 +109,9 @@ export async function getLicense(): Promise<LicenseRecord & { isPremium: boolean
   // Ensure all bonus/count fields exist (migration for older records)
   const allFields: (keyof LicenseRecord)[] = [
     "cashSalesCount", "creditSalesCount", "deliverySalesCount", "tableSalesCount",
-    "partyLodgeCount", "expensesCount", "customPrintCount", "labelPrintCount",
+    "partyLodgeCount", "expensesCount", "customPrintCount", "labelPrintCount", "installmentCount",
     "cashAdBonus", "creditAdBonus", "deliveryAdBonus", "tableAdBonus",
-    "partyAdBonus", "expensesAdBonus", "customPrintAdBonus", "labelPrintAdBonus",
+    "partyAdBonus", "expensesAdBonus", "customPrintAdBonus", "labelPrintAdBonus", "installmentAdBonus",
   ];
   let needsUpdate = false;
   for (const field of allFields) {
@@ -162,7 +166,7 @@ export async function updateLicense(partial: Partial<Omit<LicenseRecord, "id">>)
 
 export type SalesModule =
   | "cash" | "credit" | "delivery" | "table"
-  | "partyLodge" | "expenses" | "customPrint" | "labelPrint";
+  | "partyLodge" | "expenses" | "customPrint" | "labelPrint" | "installment";
 
 const countKey: Record<SalesModule, keyof LicenseRecord> = {
   cash: "cashSalesCount",
@@ -173,6 +177,7 @@ const countKey: Record<SalesModule, keyof LicenseRecord> = {
   expenses: "expensesCount",
   customPrint: "customPrintCount",
   labelPrint: "labelPrintCount",
+  installment: "installmentCount",
 };
 
 const bonusKey: Record<SalesModule, keyof LicenseRecord> = {
@@ -184,6 +189,7 @@ const bonusKey: Record<SalesModule, keyof LicenseRecord> = {
   expenses: "expensesAdBonus",
   customPrint: "customPrintAdBonus",
   labelPrint: "labelPrintAdBonus",
+  installment: "installmentAdBonus",
 };
 
 export type CanSaleResult = {

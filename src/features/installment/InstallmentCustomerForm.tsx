@@ -6,8 +6,10 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { makeId } from "@/features/admin/id";
 import { parseNonDecimalInt } from "@/features/pos/format";
+import { db } from "@/db/appDb";
+import type { MenuItem } from "@/db/schema";
 import type { InstallmentCustomer, InstallmentCustomerField, ProfitType } from "@/db/installment-schema";
-import { Plus, Trash2, ImagePlus } from "lucide-react";
+import { Plus, Trash2, ImagePlus, Search } from "lucide-react";
 
 interface Props {
   open: boolean;
@@ -59,6 +61,14 @@ export function InstallmentCustomerForm({ open, customer, onClose, onSave }: Pro
   const [lateFeePerDay, setLateFeePerDay] = React.useState(0);
   const [customFields, setCustomFields] = React.useState<InstallmentCustomerField[]>([]);
   const [images, setImages] = React.useState<string[]>([]);
+  const [allItems, setAllItems] = React.useState<MenuItem[]>([]);
+  const [itemQuery, setItemQuery] = React.useState("");
+  const [showItemPicker, setShowItemPicker] = React.useState(false);
+
+  // Load items for product picker
+  React.useEffect(() => {
+    db.items.toArray().then(setAllItems).catch(() => {});
+  }, []);
 
   React.useEffect(() => {
     if (open) {
@@ -190,9 +200,52 @@ export function InstallmentCustomerForm({ open, customer, onClose, onSave }: Pro
           <div className="border-t pt-3 mt-1">
             <div className="text-sm font-semibold mb-2">Product & Installment</div>
             <div className="grid gap-3 sm:grid-cols-2">
-              <div className="space-y-1">
+              <div className="space-y-1 relative">
                 <Label>Product Name *</Label>
-                <Input value={productName} onChange={e => setProductName(e.target.value)} />
+                <div className="flex gap-1">
+                  <Input value={productName} onChange={e => { setProductName(e.target.value); setShowItemPicker(false); }} className="flex-1" />
+                  <Button type="button" size="icon" variant="outline" onClick={() => setShowItemPicker(v => !v)} title="Select from items">
+                    <Search className="h-4 w-4" />
+                  </Button>
+                </div>
+                {showItemPicker && (
+                  <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-background border rounded-md shadow-lg max-h-48 overflow-y-auto">
+                    <div className="p-2">
+                      <Input
+                        value={itemQuery}
+                        onChange={e => setItemQuery(e.target.value)}
+                        placeholder="Search items..."
+                        autoFocus
+                        className="h-8 text-xs"
+                      />
+                    </div>
+                    <div className="px-1 pb-1">
+                      {allItems
+                        .filter(it => !itemQuery || it.name.toLowerCase().includes(itemQuery.toLowerCase()) || (it.sku ?? "").toLowerCase().includes(itemQuery.toLowerCase()))
+                        .slice(0, 20)
+                        .map(it => (
+                          <button
+                            key={it.id}
+                            type="button"
+                            className="w-full text-left px-3 py-1.5 text-xs hover:bg-muted rounded-sm flex justify-between"
+                            onClick={() => {
+                              setProductName(it.name);
+                              setMarketPrice(it.price);
+                              setShowItemPicker(false);
+                              setItemQuery("");
+                            }}
+                          >
+                            <span className="truncate">{it.name}</span>
+                            <span className="text-muted-foreground ml-2 shrink-0">{it.price.toLocaleString()}</span>
+                          </button>
+                        ))
+                      }
+                      {allItems.filter(it => !itemQuery || it.name.toLowerCase().includes(itemQuery.toLowerCase())).length === 0 && (
+                        <div className="text-xs text-muted-foreground text-center py-2">No items found</div>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
               <div className="space-y-1">
                 <Label>Market Price (optional)</Label>

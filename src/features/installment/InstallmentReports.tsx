@@ -1,10 +1,14 @@
 import React from "react";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { InstallmentCustomer, InstallmentPayment } from "@/db/installment-schema";
 import type { Settings, StaffAccount } from "@/db/schema";
 import { formatIntMoney } from "@/features/pos/format";
+import { SaveShareMenu } from "@/components/SaveShareMenu";
+import { buildInstallmentReportPdf } from "./installment-report-pdf";
+import { sharePdfBytes, savePdfBytes } from "@/features/pos/share-utils";
 
 interface Props {
   customers: InstallmentCustomer[];
@@ -52,9 +56,25 @@ export function InstallmentReports({ customers, payments, agents, settings }: Pr
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>Installment Reports</CardTitle>
-        <CardDescription>View recovery summaries by date range.</CardDescription>
+      <CardHeader className="flex flex-row items-start justify-between gap-3 flex-wrap">
+        <div>
+          <CardTitle>Installment Reports</CardTitle>
+          <CardDescription>View recovery summaries by date range.</CardDescription>
+        </div>
+        <SaveShareMenu
+          label="Report PDF"
+          getDefaultFileName={() => `installment_report_${Date.now()}.pdf`}
+          onSave={async (fn) => {
+            const doc = buildInstallmentReportPdf({ customers, payments, filteredPayments, agents, settings, from, to });
+            const bytes = doc.output("arraybuffer");
+            await savePdfBytes(new Uint8Array(bytes), fn ?? `installment_report_${Date.now()}.pdf`);
+          }}
+          onShare={async () => {
+            const doc = buildInstallmentReportPdf({ customers, payments, filteredPayments, agents, settings, from, to });
+            const bytes = doc.output("arraybuffer");
+            await sharePdfBytes(new Uint8Array(bytes), `installment_report_${Date.now()}.pdf`);
+          }}
+        />
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="grid gap-3 sm:grid-cols-2">
