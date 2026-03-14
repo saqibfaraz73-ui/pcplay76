@@ -173,7 +173,7 @@ export default function PosHome() {
 
     if (!isWaiter && settings?.installmentEnabled) {
       actions.push({
-        to: "/admin?tab=installment",
+        to: "/installments",
         label: "Installment",
         icon: CreditCard,
         color: "bg-violet-500/10 text-violet-600 border-violet-200",

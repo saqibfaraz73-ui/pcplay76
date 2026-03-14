@@ -317,7 +317,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                       to={isRecoveryAgent ? "/recovery" : isInstallmentAgent ? "/installments" : isWaiter ? "/pos/tables" : "/home"}
                       className={cn(
                         "rounded-md px-3 py-2 text-sm transition-colors",
-                        isActive(isRecoveryAgent ? "/recovery" : isInstallmentAgent ? "/admin" : isWaiter ? "/pos/tables" : "/home")
+                        isActive(isRecoveryAgent ? "/recovery" : isInstallmentAgent ? "/installments" : isWaiter ? "/pos/tables" : "/home")
                           ? "bg-accent text-accent-foreground"
                           : "text-muted-foreground hover:text-foreground",
                       )}
