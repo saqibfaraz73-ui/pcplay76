@@ -60,6 +60,7 @@ function buildSalesPdf(args: {
   exportCustomers?: ExportCustomer[];
   advanceOrders?: AdvanceOrder[];
   bookingOrders?: BookingOrder[];
+  workPeriod?: WorkPeriod;
 }) {
   const doc = new jsPDF({ unit: "pt", format: "a4" });
   const pageWidth = doc.internal.pageSize.getWidth();
