@@ -150,6 +150,7 @@ export function AdminSettings() {
     setCurrencySymbolState(s?.currencySymbol ?? "");
     setDeliveryEnabled(!!s?.deliveryEnabled);
     setRecoveryEnabled(!!s?.recoveryEnabled);
+    setKitchenDisplayEnabled(!!s?.kitchenDisplayEnabled);
 
     // Load admin account
     const admin = await db.adminAccount.get("admin");
