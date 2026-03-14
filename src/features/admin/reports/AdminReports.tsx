@@ -47,6 +47,7 @@ function buildSalesPdf(args: {
   from: number;
   to: number;
   orders: Order[];
+  categories: Category[];
   customers: CreditCustomer[];
   deliveryPersons: DeliveryPerson[];
   items: MenuItem[];
