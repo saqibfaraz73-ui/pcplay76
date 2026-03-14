@@ -169,6 +169,16 @@ export default function PosHome() {
         color: "bg-sky-500/10 text-sky-600 border-sky-200",
         description: "Device sync",
       });
+    }
+
+    if (!isWaiter && settings?.installmentEnabled) {
+      actions.push({
+        to: "/admin?tab=installment",
+        label: "Installment",
+        icon: CreditCard,
+        color: "bg-violet-500/10 text-violet-600 border-violet-200",
+        description: "Installment management",
+      });
       actions.push({
         to: "/custom-print",
         label: "Custom Print",
