@@ -227,37 +227,37 @@ export function InstallmentSection() {
 
       <TabsContent value="customers">
         <Card>
-          <CardHeader className="flex flex-row items-start justify-between gap-3 flex-wrap">
-            <div>
-              <CardTitle>Installment Customers</CardTitle>
-              <CardDescription>Manage installment plans and payments.</CardDescription>
+          <CardHeader className="space-y-3 pb-3">
+            <div className="flex items-center justify-between gap-2">
+              <div className="min-w-0">
+                <CardTitle className="text-base">Installment Customers</CardTitle>
+                <CardDescription className="text-xs">Manage installment plans and payments.</CardDescription>
+              </div>
+              {canEdit && <Button onClick={openNew} size="sm" className="shrink-0"><Plus className="h-4 w-4 mr-1" /> New</Button>}
             </div>
-            <div className="flex flex-wrap gap-2">
-              {canEdit && <Button onClick={openNew} size="sm"><Plus className="h-4 w-4 mr-1" /> New Customer</Button>}
-              {canEdit && (
-                <>
-                  <Button variant="outline" size="sm" onClick={handleExport}><Download className="h-4 w-4 mr-1" /> Export</Button>
-                  <Button variant="outline" size="sm" asChild>
-                    <label className="cursor-pointer">
-                      <Upload className="h-4 w-4 mr-1" /> Import
-                      <input type="file" accept=".xlsx,.xls" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) void handleImport(f); e.target.value = ""; }} />
-                    </label>
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={handleSampleDownload}><FileSpreadsheet className="h-4 w-4 mr-1" /> Sample</Button>
-                </>
-              )}
-              {isAgent && (
-                <Button variant="outline" size="sm" onClick={handleAgentExport}><Download className="h-4 w-4 mr-1" /> Export My Data</Button>
-              )}
-              {isAdmin && (
-                <Button variant="outline" size="sm" asChild>
+            {canEdit && (
+              <div className="flex flex-wrap gap-1.5">
+                <Button variant="outline" size="sm" className="h-7 text-xs" onClick={handleExport}><Download className="h-3 w-3 mr-1" /> Export</Button>
+                <Button variant="outline" size="sm" className="h-7 text-xs" asChild>
                   <label className="cursor-pointer">
-                    <Upload className="h-4 w-4 mr-1" /> Import Agent Data
-                    <input type="file" accept=".json" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) void handleAgentImport(f); e.target.value = ""; }} />
+                    <Upload className="h-3 w-3 mr-1" /> Import
+                    <input type="file" accept=".xlsx,.xls" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) void handleImport(f); e.target.value = ""; }} />
                   </label>
                 </Button>
-              )}
-            </div>
+                <Button variant="outline" size="sm" className="h-7 text-xs" onClick={handleSampleDownload}><FileSpreadsheet className="h-3 w-3 mr-1" /> Sample</Button>
+                {isAdmin && (
+                  <Button variant="outline" size="sm" className="h-7 text-xs" asChild>
+                    <label className="cursor-pointer">
+                      <Upload className="h-3 w-3 mr-1" /> Agent Data
+                      <input type="file" accept=".json" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) void handleAgentImport(f); e.target.value = ""; }} />
+                    </label>
+                  </Button>
+                )}
+              </div>
+            )}
+            {isAgent && (
+              <Button variant="outline" size="sm" className="h-7 text-xs" onClick={handleAgentExport}><Download className="h-3 w-3 mr-1" /> Export My Data</Button>
+            )}
           </CardHeader>
           <CardContent className="space-y-3">
             {/* Search */}
