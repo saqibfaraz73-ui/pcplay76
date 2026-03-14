@@ -126,6 +126,44 @@ export function SalesReportPreview({
   );
 
 
+  const categorySales = React.useMemo(() => {
+    const byCat: Record<string, { catId: string; name: string; section?: string; qty: number; revenue: number; profit: number }> = {};
+    const addCatLines = (list: Array<{ lines: Array<{ itemId: string; name: string; qty: number; unitPrice: number; subtotal: number; buyingPrice?: number }> }>) => {
+      for (const o of list) {
+        for (const l of o.lines) {
+          const isAddOn = l.itemId.includes("__ao_");
+          const item = itemsById[l.itemId];
+          const catId = item?.categoryId ?? "uncategorized";
+          const cat = categoriesById[catId];
+          const catName = cat?.name ?? "Uncategorized";
+          const section = cat?.printerSection;
+          const buying = l.buyingPrice ?? item?.buyingPrice ?? 0;
+          const hasBuying = !isAddOn && (l.buyingPrice != null || item?.buyingPrice != null);
+          if (!byCat[catId]) byCat[catId] = { catId, name: catName, section, qty: 0, revenue: 0, profit: 0 };
+          byCat[catId].qty += l.qty;
+          byCat[catId].revenue += l.subtotal;
+          if (hasBuying) byCat[catId].profit += (l.unitPrice - buying) * l.qty;
+        }
+      }
+    };
+    addCatLines(completed);
+    addCatLines(completedTableOrders);
+    return Object.values(byCat).sort((a, b) => b.revenue - a.revenue);
+  }, [completed, completedTableOrders, itemsById, categoriesById]);
+
+  const sectionSales = React.useMemo(() => {
+    const sectionsUsed = categorySales.filter(c => c.section);
+    if (sectionsUsed.length === 0) return [];
+    const bySec: Record<string, { section: string; qty: number; revenue: number; profit: number }> = {};
+    for (const c of categorySales) {
+      const sec = c.section || "No Section";
+      if (!bySec[sec]) bySec[sec] = { section: sec, qty: 0, revenue: 0, profit: 0 };
+      bySec[sec].qty += c.qty;
+      bySec[sec].revenue += c.revenue;
+      bySec[sec].profit += c.profit;
+    }
+    return Object.values(bySec).sort((a, b) => b.revenue - a.revenue);
+  }, [categorySales]);
 
   const customersById = React.useMemo(() => Object.fromEntries(customers.map((c) => [c.id, c])), [customers]);
   const itemsById = React.useMemo(() => Object.fromEntries(items.map((i) => [i.id, i])), [items]);
