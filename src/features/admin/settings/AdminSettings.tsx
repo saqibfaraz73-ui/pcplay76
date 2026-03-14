@@ -288,7 +288,7 @@ export function AdminSettings() {
     setNewStaffName("");
     setNewStaffPhone("");
     setNewStaffPin("");
-    toast({ title: `${newStaffRole === "cashier" ? "Cashier" : newStaffRole === "supervisor" ? "Supervisor" : newStaffRole === "recovery" ? "Recovery Agent" : newStaffRole === "kitchen" ? "Kitchen Staff" : "Waiter"} added` });
+    toast({ title: `${newStaffRole === "cashier" ? "Cashier" : newStaffRole === "supervisor" ? "Supervisor" : newStaffRole === "recovery" ? "Recovery Agent" : newStaffRole === "kitchen" ? "Kitchen Staff" : newStaffRole === "installment_agent" ? "Installment Agent" : "Waiter"} added` });
   };
 
   const deleteStaff = async (staffId: string) => {
