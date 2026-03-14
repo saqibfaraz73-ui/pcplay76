@@ -154,11 +154,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen bg-background">
       {/* Sticky header */}
       <header className="fixed top-0 left-0 right-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 pt-[env(safe-area-inset-top)]" style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}>
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-2">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-2 px-3 py-2">
           {session ? (
             <>
               {/* Left: navigation + logout */}
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 flex-1 min-w-0">
                 {/* Mobile nav */}
                 <div className="md:hidden">
                   <Sheet>
@@ -167,12 +167,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                         <Menu className="h-4 w-4" />
                       </Button>
                     </SheetTrigger>
-                    <SheetContent side="left" className="w-72">
+                    <SheetContent side="left" className="w-72 flex flex-col">
                       <SheetHeader>
                         <SheetTitle>Menu</SheetTitle>
                       </SheetHeader>
-                      <div className="mt-4 space-y-4">
-                        <nav className="grid gap-1">
+                      <div className="mt-4 flex flex-col flex-1 min-h-0">
+                        <nav className="grid gap-1 flex-1 overflow-y-auto pb-2">
                           {/* Dashboard link for waiter/agent who have no main nav */}
                           {(isWaiter || isRecoveryAgent || isInstallmentAgent) && (
                             <Link
@@ -311,29 +311,29 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                             <HelpCircle className="h-4 w-4" /> Help
                           </Link>
                         </nav>
-
-                        <div className="rounded-md border bg-muted/20 p-3 text-sm">
-                          <div className="text-xs text-muted-foreground">Logged in</div>
-                          <div className="font-medium">
-                            {session.username} ({session.role})
+                        <div className="shrink-0 space-y-3 pt-3 border-t">
+                          <div className="rounded-md border bg-muted/20 p-3 text-sm">
+                            <div className="text-xs text-muted-foreground">Logged in</div>
+                            <div className="font-medium">
+                              {session.username} ({session.role})
+                            </div>
                           </div>
+                          <Button variant="outline" onClick={logout} className="w-full">
+                            Logout
+                          </Button>
                         </div>
-
-                        <Button variant="outline" onClick={logout} className="w-full">
-                          Logout
-                        </Button>
                       </div>
                     </SheetContent>
                   </Sheet>
                 </div>
 
-                <nav className="hidden items-center gap-2 md:flex">
+                <nav className="hidden items-center gap-1 md:flex overflow-x-auto no-scrollbar flex-1 min-w-0">
                   {/* Dashboard link for waiter/agent */}
                   {(isWaiter || isRecoveryAgent || isInstallmentAgent) && (
                     <Link
                       to={isRecoveryAgent ? "/recovery" : isInstallmentAgent ? "/installments" : isWaiter ? "/pos/tables" : "/home"}
                       className={cn(
-                        "rounded-md px-3 py-2 text-sm transition-colors",
+                        "rounded-md px-2 py-1.5 text-xs whitespace-nowrap transition-colors",
                         isActive(isRecoveryAgent ? "/recovery" : isInstallmentAgent ? "/installments" : isWaiter ? "/pos/tables" : "/home")
                           ? "bg-accent text-accent-foreground"
                           : "text-muted-foreground hover:text-foreground",
@@ -347,7 +347,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                       key={n.to}
                       to={n.to}
                       className={cn(
-                        "rounded-md px-3 py-2 text-sm transition-colors",
+                        "rounded-md px-2 py-1.5 text-xs whitespace-nowrap transition-colors",
                         isActive(n.to) && !adminSubNav.some((s) => isActive(s.to))
                           ? "bg-accent text-accent-foreground"
                           : "text-muted-foreground hover:text-foreground",
@@ -357,17 +357,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     </Link>
                   ))}
                    {!isWaiter && !isRecoveryAgent && !isInstallmentAgent && (
-                    <Link to="/pos/orders" className={cn("rounded-md px-3 py-2 text-sm transition-colors", isActive("/pos/orders") ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground")}>
+                    <Link to="/pos/orders" className={cn("rounded-md px-2 py-1.5 text-xs whitespace-nowrap transition-colors", isActive("/pos/orders") ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground")}>
                       Orders
                     </Link>
                   )}
                   {installmentEnabled && (isAdmin || isCashier) && (
-                    <Link to="/installments" className={cn("rounded-md px-3 py-2 text-sm transition-colors", isActive("/installments") ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground")}>
+                    <Link to="/installments" className={cn("rounded-md px-2 py-1.5 text-xs whitespace-nowrap transition-colors", isActive("/installments") ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground")}>
                       Installment
                     </Link>
                   )}
                   {isCashier && cashierReportsEnabled && (
-                    <Link to="/admin/reports" className={cn("rounded-md px-3 py-2 text-sm transition-colors", isActive("/admin/reports") ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground")}>
+                    <Link to="/admin/reports" className={cn("rounded-md px-2 py-1.5 text-xs whitespace-nowrap transition-colors", isActive("/admin/reports") ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground")}>
                       Reports
                     </Link>
                   )}
@@ -375,7 +375,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     <Link
                       to="/admin/printer"
                       className={cn(
-                        "rounded-md px-3 py-2 text-sm transition-colors",
+                        "rounded-md px-2 py-1.5 text-xs whitespace-nowrap transition-colors",
                         isActive("/admin/printer")
                           ? "bg-accent text-accent-foreground"
                           : "text-muted-foreground hover:text-foreground",
@@ -390,7 +390,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                           key={n.to}
                           to={n.to}
                           className={cn(
-                            "rounded-md px-3 py-2 text-sm transition-colors",
+                            "rounded-md px-2 py-1.5 text-xs whitespace-nowrap transition-colors",
                             isActive(n.to)
                               ? "bg-accent text-accent-foreground"
                               : "text-muted-foreground hover:text-foreground",
@@ -400,10 +400,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                         </Link>
                       ))
                     : null}
-                  <Link to="/about" className={cn("rounded-md px-3 py-2 text-sm transition-colors", isActive("/about") ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground")}>
+                  <Link to="/about" className={cn("rounded-md px-2 py-1.5 text-xs whitespace-nowrap transition-colors", isActive("/about") ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground")}>
                     About
                   </Link>
-                  <Link to="/help" className={cn("rounded-md px-3 py-2 text-sm transition-colors", isActive("/help") ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground")}>
+                  <Link to="/help" className={cn("rounded-md px-2 py-1.5 text-xs whitespace-nowrap transition-colors", isActive("/help") ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground")}>
                     Help
                   </Link>
                 </nav>
@@ -416,7 +416,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </div>
 
               {/* Right: branding + sync indicator */}
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 shrink-0">
                 <SyncStatusIndicator />
                 <div className="text-right">
                   <div className="text-sm font-semibold leading-tight">
