@@ -312,12 +312,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
                 <nav className="hidden items-center gap-2 md:flex">
                   {/* Dashboard link for waiter/agent */}
-                  {(isWaiter || isRecoveryAgent) && (
+                  {(isWaiter || isRecoveryAgent || isInstallmentAgent) && (
                     <Link
-                      to={isRecoveryAgent ? "/recovery" : isWaiter ? "/pos/tables" : "/home"}
+                      to={isRecoveryAgent ? "/recovery" : isInstallmentAgent ? "/admin?tab=installment" : isWaiter ? "/pos/tables" : "/home"}
                       className={cn(
                         "rounded-md px-3 py-2 text-sm transition-colors",
-                        isActive(isRecoveryAgent ? "/recovery" : isWaiter ? "/pos/tables" : "/home")
+                        isActive(isRecoveryAgent ? "/recovery" : isInstallmentAgent ? "/admin" : isWaiter ? "/pos/tables" : "/home")
                           ? "bg-accent text-accent-foreground"
                           : "text-muted-foreground hover:text-foreground",
                       )}
