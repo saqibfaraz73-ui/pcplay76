@@ -12,16 +12,20 @@ import { parseNonDecimalInt } from "@/features/pos/format";
 import { makeId } from "@/features/admin/id";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
+import { ArrowUpDown } from "lucide-react";
 
 type Row = {
   item: MenuItem;
   stock: number;
 };
 
+type SortMode = "expiry-asc" | "expiry-desc" | "stock-asc" | "stock-desc";
+
 export function AdminInventory() {
   const { toast } = useToast();
   const [rows, setRows] = React.useState<Row[]>([]);
   const [query, setQuery] = React.useState("");
+  const [sortMode, setSortMode] = React.useState<SortMode>("expiry-asc");
   const [open, setOpen] = React.useState(false);
   const [activeItemId, setActiveItemId] = React.useState<string | null>(null);
   const [type, setType] = React.useState<InventoryAdjustmentType>("set");
@@ -36,13 +40,7 @@ export function AdminInventory() {
     const invById = Object.fromEntries(inv.map((r) => [r.itemId, r] as const)) as Record<string, InventoryRow>;
     const next: Row[] = items
       .filter((i) => i.trackInventory)
-      .map((i) => ({ item: i, stock: invById[i.id]?.quantity ?? 0 }))
-      .sort((a, b) => {
-        // Items with expiry dates come first, sorted by nearest expiry
-        const aExp = a.item.expiryDate ?? Infinity;
-        const bExp = b.item.expiryDate ?? Infinity;
-        return aExp - bExp;
-      });
+      .map((i) => ({ item: i, stock: invById[i.id]?.quantity ?? 0 }));
     setRows(next);
   }, []);
 
@@ -50,7 +48,21 @@ export function AdminInventory() {
     void refresh();
   }, [refresh]);
 
-  const filtered = rows.filter((r) => r.item.name.toLowerCase().includes(query.trim().toLowerCase()));
+  const sortedRows = React.useMemo(() => {
+    const copy = [...rows];
+    switch (sortMode) {
+      case "expiry-asc":
+        return copy.sort((a, b) => (a.item.expiryDate ?? Infinity) - (b.item.expiryDate ?? Infinity));
+      case "expiry-desc":
+        return copy.sort((a, b) => (b.item.expiryDate ?? 0) - (a.item.expiryDate ?? 0));
+      case "stock-asc":
+        return copy.sort((a, b) => a.stock - b.stock);
+      case "stock-desc":
+        return copy.sort((a, b) => b.stock - a.stock);
+    }
+  }, [rows, sortMode]);
+
+  const filtered = sortedRows.filter((r) => r.item.name.toLowerCase().includes(query.trim().toLowerCase()));
 
   const openAdjust = (itemId: string) => {
     setActiveItemId(itemId);
@@ -97,6 +109,13 @@ export function AdminInventory() {
 
   const active = rows.find((r) => r.item.id === activeItemId)?.item;
 
+  const sortLabels: Record<SortMode, string> = {
+    "expiry-asc": "Expiry ↑ (nearest first)",
+    "expiry-desc": "Expiry ↓ (farthest first)",
+    "stock-asc": "Stock ↑ (low to high)",
+    "stock-desc": "Stock ↓ (high to low)",
+  };
+
   return (
     <div className="space-y-4">
       <Card>
@@ -110,6 +129,20 @@ export function AdminInventory() {
               <Label htmlFor="invSearch">Search item</Label>
               <Input id="invSearch" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Type item name" />
             </div>
+          </div>
+
+          {/* Sort filter */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
+            <select
+              value={sortMode}
+              onChange={(e) => setSortMode(e.target.value as SortMode)}
+              className="h-9 rounded-md border bg-background px-2 text-sm"
+            >
+              {(Object.keys(sortLabels) as SortMode[]).map((k) => (
+                <option key={k} value={k}>{sortLabels[k]}</option>
+              ))}
+            </select>
           </div>
 
           {filtered.length === 0 ? (

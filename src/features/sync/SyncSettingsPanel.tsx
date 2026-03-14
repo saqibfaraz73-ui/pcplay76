@@ -445,6 +445,19 @@ export function SyncSettingsPanel() {
                     onChange={(e) => setIpInput(e.target.value)}
                     disabled={loading}
                   />
+                  <p className="text-xs text-muted-foreground">Or scan the barcode shown on Main device.</p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="sync-pin">Connection PIN (if set on Main)</Label>
+                  <Input
+                    id="sync-pin"
+                    placeholder="Enter PIN"
+                    value={pinInput}
+                    onChange={(e) => setPinInput(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                    inputMode="numeric"
+                    maxLength={6}
+                    disabled={loading}
+                  />
                 </div>
                 <Button onClick={handleConnectToMain} disabled={loading || !ipInput.trim()}>
                   {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

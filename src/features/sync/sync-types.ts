@@ -76,6 +76,8 @@ export type SyncConfig = {
   syncPartyLodge?: boolean;
   /** Optional: sync advance booking orders to Main (default false) */
   syncAdvanceBooking?: boolean;
+  /** Connection PIN — set on Main, required on Sub to connect */
+  syncPin?: string;
 };
 
 export const DEFAULT_SYNC_PORT = 8942;
