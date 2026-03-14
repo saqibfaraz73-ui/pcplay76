@@ -61,6 +61,14 @@ export function InstallmentCustomerForm({ open, customer, onClose, onSave }: Pro
   const [lateFeePerDay, setLateFeePerDay] = React.useState(0);
   const [customFields, setCustomFields] = React.useState<InstallmentCustomerField[]>([]);
   const [images, setImages] = React.useState<string[]>([]);
+  const [allItems, setAllItems] = React.useState<MenuItem[]>([]);
+  const [itemQuery, setItemQuery] = React.useState("");
+  const [showItemPicker, setShowItemPicker] = React.useState(false);
+
+  // Load items for product picker
+  React.useEffect(() => {
+    db.items.toArray().then(setAllItems).catch(() => {});
+  }, []);
 
   React.useEffect(() => {
     if (open) {
