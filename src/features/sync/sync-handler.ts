@@ -204,6 +204,29 @@ async function handleTableOrderSync(tableOrder: TableOrder & { _waiterName?: str
   }
   await db.tableOrders.put(cleanOrder);
   console.log(`[Sync] Table order ${cleanOrder.id} saved (wp: ${cleanOrder.workPeriodId})`);
+
+  // Auto-create kitchen order for synced table orders if KDS enabled
+  if (cleanOrder.status === "open") {
+    try {
+      const settings = await db.settings.get("app");
+      if (settings?.kitchenDisplayEnabled) {
+        const existing_ko = await db.kitchenOrders.where("sourceOrderId").equals(cleanOrder.id).first();
+        if (!existing_ko) {
+          const { createKitchenOrderFromOrder } = await import("@/features/kitchen/kitchen-handler");
+          await createKitchenOrderFromOrder(
+            cleanOrder.id,
+            cleanOrder.receiptNo ?? 0,
+            cleanOrder.lines.map((l: any) => ({ name: l.name, qty: l.qty })),
+            "table",
+            { tableNumber: cleanOrder.tableNumber, waiterName: cleanOrder.waiterName }
+          );
+          console.log(`[Sync] Kitchen order auto-created for synced table order`);
+        }
+      }
+    } catch (e) {
+      console.warn("[Sync] Failed to auto-create kitchen order for table:", e);
+    }
+  }
 }
 
 /** Save a synced credit payment */
