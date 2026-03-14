@@ -108,8 +108,16 @@ const App = () => (
                 <Route
                   path="/admin"
                   element={
-                    <ProtectedRoute allow={["admin", "installment_agent"]}>
+                    <ProtectedRoute allow={["admin"]}>
                       <AdminDashboard />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/installments"
+                  element={
+                    <ProtectedRoute allow={["admin", "cashier", "installment_agent"]}>
+                      <InstallmentPage />
                     </ProtectedRoute>
                   }
                 />
