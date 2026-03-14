@@ -987,6 +987,7 @@ export function AdminReports() {
         fromLabel={from}
         toLabel={to}
         orders={salesPreview.orders}
+        categories={categories}
         customers={customers}
         deliveryPersons={deliveryPersons}
         items={items}
