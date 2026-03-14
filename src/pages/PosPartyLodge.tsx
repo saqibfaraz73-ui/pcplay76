@@ -1175,10 +1175,13 @@ export default function PosPartyLodge() {
               <Card key={sup.id}>
                 <CardContent className="p-3 space-y-2">
                   <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
+                      <div className="min-w-0">
                       <div className="text-sm font-semibold truncate">{sup.name}</div>
                       {sup.contact && <div className="text-xs text-muted-foreground">Contact: {sup.contact}</div>}
+                      {sup.whatsapp && <div className="text-xs text-muted-foreground">WhatsApp: {sup.whatsapp}</div>}
+                      {sup.email && <div className="text-xs text-muted-foreground">Email: {sup.email}</div>}
                       {sup.itemName && <div className="text-xs text-muted-foreground">Item: {sup.itemName}{sup.stockUnit ? ` (${sup.stockUnit})` : ""}{sup.unitPrice ? ` @ ${formatIntMoney(sup.unitPrice)}` : ""}</div>}
+                    </div>
                     </div>
                     <div className="text-right shrink-0">
                       <div className="text-xs text-muted-foreground">Balance</div>

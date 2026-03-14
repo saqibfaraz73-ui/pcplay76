@@ -1077,6 +1077,8 @@ export function ExportPartySection() {
                     <div className="min-w-0">
                       <div className="text-sm font-semibold truncate">{cust.name}</div>
                       {cust.contact && <div className="text-xs text-muted-foreground">Contact: {cust.contact}</div>}
+                      {cust.whatsapp && <div className="text-xs text-muted-foreground">WhatsApp: {cust.whatsapp}</div>}
+                      {cust.email && <div className="text-xs text-muted-foreground">Email: {cust.email}</div>}
                       {cust.itemName && <div className="text-xs text-muted-foreground">Item: {cust.itemName}{cust.stockUnit ? ` (${cust.stockUnit})` : ""}{cust.unitPrice ? ` @ ${formatIntMoney(cust.unitPrice)}` : ""}</div>}
                     </div>
                     <div className={`text-sm font-bold whitespace-nowrap ${balance > 0 ? "text-destructive" : "text-green-600"}`}>
