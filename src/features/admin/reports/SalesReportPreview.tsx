@@ -44,6 +44,7 @@ export function SalesReportPreview({
   exportCustomers = [],
   advanceOrders = [],
   bookingOrders = [],
+  workPeriod,
 }: Props) {
   const deliveryEnabled = settings?.deliveryEnabled ?? true;
   const tableEnabled = settings?.tableManagementEnabled ?? true;
