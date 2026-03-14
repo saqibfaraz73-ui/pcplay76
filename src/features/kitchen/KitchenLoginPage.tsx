@@ -106,7 +106,15 @@ export function KitchenLoginPage({ onConnected }: KitchenLoginPageProps) {
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
+      <Button
+        variant="ghost"
+        size="sm"
+        className="absolute top-4 left-4 gap-1"
+        onClick={() => { logout(); navigate("/login"); }}
+      >
+        <ArrowLeft className="h-4 w-4" /> Back to Login
+      </Button>
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-primary/10">
