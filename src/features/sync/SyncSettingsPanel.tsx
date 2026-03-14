@@ -25,10 +25,12 @@ import {
   stopSyncServer,
   getSyncServerStatus,
   onSyncDataReceived,
+  onSyncQueryReceived,
   isNativeAndroid,
 } from "./local-sync-server";
 import { setMainAppUrl, pingMainApp } from "./sync-client";
 import { handleSyncData } from "./sync-handler";
+import { getKitchenOrders, getKitchenDisplayOrders } from "@/features/kitchen/kitchen-handler";
 
 const STORAGE_KEY = "sangi_sync_config";
 
