@@ -264,6 +264,13 @@ export default function PosPartyLodge() {
         createdAt: Date.now(),
       };
       await db.supplierPayments.put(payment);
+      // Sync to Main if party lodge sync enabled
+      try {
+        const { syncPartyPaymentOptional } = await import("@/features/sync/optional-sync");
+        const updatedSup = await db.suppliers.get(sup.id);
+        const expenseRecord = payAsExpense ? await db.expenses.get(expenseId!) : undefined;
+        await syncPartyPaymentOptional(updatedSup ?? sup, payment, expenseRecord);
+      } catch {}
       toast({ title: "Payment recorded", description: payAsExpense ? "Also recorded as expense" : undefined });
       setPayMode({ open: false });
       await refresh();
