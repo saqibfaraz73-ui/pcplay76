@@ -151,6 +151,7 @@ export function AdminSettings() {
     setCurrencySymbolState(s?.currencySymbol ?? "");
     setDeliveryEnabled(!!s?.deliveryEnabled);
     setRecoveryEnabled(!!s?.recoveryEnabled);
+    setInstallmentEnabled(!!s?.installmentEnabled);
     setKitchenDisplayEnabled(!!s?.kitchenDisplayEnabled);
 
     // Load admin account
