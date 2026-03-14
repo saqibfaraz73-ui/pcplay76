@@ -366,6 +366,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                       Installment
                     </Link>
                   )}
+                  {isCashier && cashierReportsEnabled && (
                     <Link to="/admin/reports" className={cn("rounded-md px-3 py-2 text-sm transition-colors", isActive("/admin/reports") ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground")}>
                       Reports
                     </Link>
