@@ -127,6 +127,8 @@ export function AdminCustomers() {
         id: mode.open && mode.customer ? mode.customer.id : makeId("cust"),
         name: n,
         mobile: mobile.trim() || undefined,
+        whatsapp: whatsapp.trim() || undefined,
+        email: email.trim() || undefined,
         createdAt: mode.open && mode.customer ? mode.customer.createdAt : now,
       };
       await db.customers.put(next);
