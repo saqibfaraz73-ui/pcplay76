@@ -139,7 +139,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       if ((n as any).tablesOnly && !tableManagementEnabled) return false;
       return true;
     });
-  }, [isAdmin, isWaiter, isRecoveryAgent, salesDashboardEnabled]);
+  }, [isAdmin, isWaiter, isRecoveryAgent, isInstallmentAgent, salesDashboardEnabled]);
 
   const visibleAdminSubNav = React.useMemo(() => {
     return adminSubNav;
