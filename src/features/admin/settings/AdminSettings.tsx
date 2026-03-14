@@ -83,6 +83,7 @@ export function AdminSettings() {
   const [currencySymbol, setCurrencySymbolState] = React.useState("");
   const [deliveryEnabled, setDeliveryEnabled] = React.useState(false);
   const [recoveryEnabled, setRecoveryEnabled] = React.useState(false);
+  const [installmentEnabled, setInstallmentEnabled] = React.useState(false);
   const [kitchenDisplayEnabled, setKitchenDisplayEnabled] = React.useState(false);
 
   // Admin account
