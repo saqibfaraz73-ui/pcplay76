@@ -616,8 +616,9 @@ export function AdminReports() {
 
   React.useEffect(() => {
     (async () => {
-      const [s, cs, dps, its, wps, tbls, wtrs, expCs] = await Promise.all([
+      const [s, cats, cs, dps, its, wps, tbls, wtrs, expCs] = await Promise.all([
         db.settings.get("app"),
+        db.categories.orderBy("createdAt").toArray(),
         db.customers.orderBy("createdAt").toArray(),
         db.deliveryPersons.orderBy("createdAt").toArray(),
         db.items.orderBy("createdAt").toArray(),
