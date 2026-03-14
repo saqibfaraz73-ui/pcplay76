@@ -14,6 +14,7 @@ import PosExpenses from "./pages/PosExpenses";
 import PosCreditLodge from "./pages/PosCreditLodge";
 import PosPartyLodge from "./pages/PosPartyLodge";
 import AdminDashboard from "./pages/AdminDashboard";
+import AdminKitchenPage from "./pages/AdminKitchenPage";
 import AdminPrinterPage from "./pages/AdminPrinterPage";
 import AdminReportsPage from "./pages/AdminReportsPage";
 import AdminSettingsPage from "./pages/AdminSettingsPage";
