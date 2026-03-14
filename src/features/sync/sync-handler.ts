@@ -72,6 +72,12 @@ export async function handleSyncData(
     case "booking-order":
       await handleBookingOrderSync(payload.data as BookingOrder);
       break;
+    case "kitchen-order":
+      await handleKitchenOrderSync(payload.data as KitchenOrder);
+      break;
+    case "kitchen-status-update":
+      await handleKitchenStatusUpdate(payload.data as { orderId: string; status: KitchenOrderStatus; updatedAt: number });
+      break;
     default:
       console.warn(`[Sync] Unknown endpoint: ${endpoint}`);
   }
