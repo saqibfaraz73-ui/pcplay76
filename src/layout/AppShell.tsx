@@ -154,11 +154,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen bg-background">
       {/* Sticky header */}
       <header className="fixed top-0 left-0 right-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 pt-[env(safe-area-inset-top)]" style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}>
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-2">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-2 px-3 py-2">
           {session ? (
             <>
               {/* Left: navigation + logout */}
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 flex-1 min-w-0">
                 {/* Mobile nav */}
                 <div className="md:hidden">
                   <Sheet>
