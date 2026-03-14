@@ -60,7 +60,7 @@ export function KitchenLoginPage({ onConnected }: KitchenLoginPageProps) {
         qrInstanceRef.current = qr;
         await qr.start(
           { facingMode: "environment" },
-          { fps: 10, qrbox: { width: 280, height: 120 } },
+          { fps: 10, qrbox: { width: 250, height: 250 } },
           (decoded) => {
             const ipMatch = decoded.match(/(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})/);
             if (ipMatch) {
