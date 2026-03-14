@@ -12,7 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { makeId } from "@/features/admin/id";
 import { formatIntMoney, parseNonDecimalInt, fmtDate, fmtDateTime } from "@/features/pos/format";
 import { useAuth } from "@/auth/AuthProvider";
-import { Search, Plus, Edit, Trash2, CreditCard, History, UserCheck, UserX, Download, Upload, FileSpreadsheet, Share2 } from "lucide-react";
+import { Search, Plus, Edit, Trash2, CreditCard, History, UserCheck, UserX, Download, Upload, FileSpreadsheet, Share2, ImageIcon } from "lucide-react";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { InstallmentCustomerForm } from "./InstallmentCustomerForm";
 import { InstallmentPaymentDialog } from "./InstallmentPaymentDialog";
@@ -24,6 +24,7 @@ import { SaveShareMenu } from "@/components/SaveShareMenu";
 import { buildInstallmentReceiptPdf, buildPaymentHistoryPdf } from "./installment-pdf";
 import { sharePdfBytes, savePdfBytes, saveFileBlob, shareFileBlob } from "@/features/pos/share-utils";
 import { canMakeSale, incrementSaleCount } from "@/features/licensing/licensing-db";
+import { InstallmentImageViewer } from "./InstallmentImageViewer";
 
 function getCurrentMonth(): string {
   const d = new Date();
@@ -54,6 +55,7 @@ export function InstallmentSection() {
   const [historyCustomerId, setHistoryCustomerId] = React.useState<string | null>(null);
   const [assignOpen, setAssignOpen] = React.useState(false);
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
+  const [imageViewer, setImageViewer] = React.useState<{ images: string[]; index: number; name: string } | null>(null);
 
   const isAdmin = session?.role === "admin";
   const isCashier = session?.role === "cashier";
@@ -225,37 +227,37 @@ export function InstallmentSection() {
 
       <TabsContent value="customers">
         <Card>
-          <CardHeader className="flex flex-row items-start justify-between gap-3 flex-wrap">
-            <div>
-              <CardTitle>Installment Customers</CardTitle>
-              <CardDescription>Manage installment plans and payments.</CardDescription>
+          <CardHeader className="space-y-3 pb-3">
+            <div className="flex items-center justify-between gap-2">
+              <div className="min-w-0">
+                <CardTitle className="text-base">Installment Customers</CardTitle>
+                <CardDescription className="text-xs">Manage installment plans and payments.</CardDescription>
+              </div>
+              {canEdit && <Button onClick={openNew} size="sm" className="shrink-0"><Plus className="h-4 w-4 mr-1" /> New</Button>}
             </div>
-            <div className="flex flex-wrap gap-2">
-              {canEdit && <Button onClick={openNew} size="sm"><Plus className="h-4 w-4 mr-1" /> New Customer</Button>}
-              {canEdit && (
-                <>
-                  <Button variant="outline" size="sm" onClick={handleExport}><Download className="h-4 w-4 mr-1" /> Export</Button>
-                  <Button variant="outline" size="sm" asChild>
-                    <label className="cursor-pointer">
-                      <Upload className="h-4 w-4 mr-1" /> Import
-                      <input type="file" accept=".xlsx,.xls" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) void handleImport(f); e.target.value = ""; }} />
-                    </label>
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={handleSampleDownload}><FileSpreadsheet className="h-4 w-4 mr-1" /> Sample</Button>
-                </>
-              )}
-              {isAgent && (
-                <Button variant="outline" size="sm" onClick={handleAgentExport}><Download className="h-4 w-4 mr-1" /> Export My Data</Button>
-              )}
-              {isAdmin && (
-                <Button variant="outline" size="sm" asChild>
+            {canEdit && (
+              <div className="flex flex-wrap gap-1.5">
+                <Button variant="outline" size="sm" className="h-7 text-xs" onClick={handleExport}><Download className="h-3 w-3 mr-1" /> Export</Button>
+                <Button variant="outline" size="sm" className="h-7 text-xs" asChild>
                   <label className="cursor-pointer">
-                    <Upload className="h-4 w-4 mr-1" /> Import Agent Data
-                    <input type="file" accept=".json" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) void handleAgentImport(f); e.target.value = ""; }} />
+                    <Upload className="h-3 w-3 mr-1" /> Import
+                    <input type="file" accept=".xlsx,.xls" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) void handleImport(f); e.target.value = ""; }} />
                   </label>
                 </Button>
-              )}
-            </div>
+                <Button variant="outline" size="sm" className="h-7 text-xs" onClick={handleSampleDownload}><FileSpreadsheet className="h-3 w-3 mr-1" /> Sample</Button>
+                {isAdmin && (
+                  <Button variant="outline" size="sm" className="h-7 text-xs" asChild>
+                    <label className="cursor-pointer">
+                      <Upload className="h-3 w-3 mr-1" /> Agent Data
+                      <input type="file" accept=".json" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) void handleAgentImport(f); e.target.value = ""; }} />
+                    </label>
+                  </Button>
+                )}
+              </div>
+            )}
+            {isAgent && (
+              <Button variant="outline" size="sm" className="h-7 text-xs" onClick={handleAgentExport}><Download className="h-3 w-3 mr-1" /> Export My Data</Button>
+            )}
           </CardHeader>
           <CardContent className="space-y-3">
             {/* Search */}
@@ -311,56 +313,39 @@ export function InstallmentSection() {
 
                   return (
                     <div key={c.id} className="rounded-md border p-3 space-y-2">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex items-start gap-2">
-                          {isAdmin && (
-                            <input type="checkbox" checked={selectedIds.has(c.id)} onChange={() => toggleSelect(c.id)} className="mt-1 rounded" />
-                          )}
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span className="font-medium text-sm">{c.name}</span>
-                              {completed && <Badge variant="outline" className="text-green-600 border-green-600">Completed</Badge>}
-                              {!completed && paid && <Badge variant="outline" className="text-green-600 border-green-600">Paid</Badge>}
-                              {overdue && <Badge variant="destructive">Overdue ({lateDays}d)</Badge>}
-                              {!completed && !paid && !overdue && <Badge variant="outline">Pending</Badge>}
-                            </div>
-                            <div className="text-xs text-muted-foreground mt-0.5">{c.phone}{c.agentName ? ` • Agent: ${c.agentName}` : ""}</div>
+                      {/* Name + status row */}
+                      <div className="flex items-start gap-2">
+                        {isAdmin && (
+                          <input type="checkbox" checked={selectedIds.has(c.id)} onChange={() => toggleSelect(c.id)} className="mt-1 rounded" />
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="font-medium text-sm">{c.name}</span>
+                            {completed && <Badge variant="outline" className="text-xs px-1.5 py-0 border-green-600 text-green-600">Done</Badge>}
+                            {!completed && paid && <Badge variant="outline" className="text-xs px-1.5 py-0 border-green-600 text-green-600">Paid</Badge>}
+                            {overdue && <Badge variant="destructive" className="text-xs px-1.5 py-0">Late {lateDays}d</Badge>}
+                            {!completed && !paid && !overdue && <Badge variant="outline" className="text-xs px-1.5 py-0">Pending</Badge>}
                           </div>
-                        </div>
-                        <div className="flex gap-1">
-                          {!completed && (
-                            <Button size="sm" variant="outline" onClick={() => setPaymentCustomerId(c.id)}>
-                              <CreditCard className="h-3 w-3 mr-1" /> Pay
-                            </Button>
-                          )}
-                          <Button size="sm" variant="ghost" onClick={() => setHistoryCustomerId(c.id)}>
-                            <History className="h-3 w-3" />
-                          </Button>
-                          {canEdit && (
-                            <>
-                              <Button size="sm" variant="ghost" onClick={() => openEdit(c)}><Edit className="h-3 w-3" /></Button>
-                              <Button size="sm" variant="ghost" onClick={() => void deleteCustomer(c)}><Trash2 className="h-3 w-3 text-destructive" /></Button>
-                            </>
-                          )}
+                          <div className="text-xs text-muted-foreground mt-0.5">{c.phone}{c.agentName ? ` • ${c.agentName}` : ""}</div>
                         </div>
                       </div>
 
                       {/* Product & installment info */}
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-                        <div className="rounded bg-muted/50 p-2">
-                          <div className="text-muted-foreground">Product</div>
+                      <div className="grid grid-cols-2 gap-1.5 text-xs">
+                        <div className="rounded bg-muted/50 p-1.5">
+                          <div className="text-muted-foreground text-[10px]">Product</div>
                           <div className="font-medium truncate">{c.productName}</div>
                         </div>
-                        <div className="rounded bg-muted/50 p-2">
-                          <div className="text-muted-foreground">Total Price</div>
+                        <div className="rounded bg-muted/50 p-1.5">
+                          <div className="text-muted-foreground text-[10px]">Total</div>
                           <div className="font-semibold">{formatIntMoney(c.totalPrice)}</div>
                         </div>
-                        <div className="rounded bg-muted/50 p-2">
-                          <div className="text-muted-foreground">Monthly</div>
+                        <div className="rounded bg-muted/50 p-1.5">
+                          <div className="text-muted-foreground text-[10px]">Monthly</div>
                           <div className="font-semibold">{formatIntMoney(c.monthlyInstallment)}</div>
                         </div>
-                        <div className="rounded bg-muted/50 p-2">
-                          <div className="text-muted-foreground">Balance</div>
+                        <div className="rounded bg-muted/50 p-1.5">
+                          <div className="text-muted-foreground text-[10px]">Balance</div>
                           <div className={`font-semibold ${c.totalBalance > 0 ? "text-destructive" : "text-green-600"}`}>
                             {formatIntMoney(c.totalBalance)}
                           </div>
@@ -369,19 +354,57 @@ export function InstallmentSection() {
 
                       {currentLateFee > 0 && (
                         <div className="text-xs text-destructive font-medium">
-                          ⚠ Late fee: {formatIntMoney(currentLateFee)} ({lateDays} days × {formatIntMoney(c.lateFeePerDay ?? 0)}/day)
+                          ⚠ {formatIntMoney(currentLateFee)} late ({lateDays}d × {formatIntMoney(c.lateFeePerDay ?? 0)})
                         </div>
                       )}
 
-                      {/* Images thumbnails */}
+                      {/* Images thumbnails - clickable */}
                       {c.images && c.images.length > 0 && (
-                        <div className="flex gap-1 overflow-x-auto">
+                        <div className="flex gap-1.5 overflow-x-auto">
                           {c.images.slice(0, 4).map((img, i) => (
-                            <img key={i} src={img} alt={`doc-${i}`} className="h-12 w-12 rounded border object-cover shrink-0" />
+                            <button
+                              key={i}
+                              type="button"
+                              className="shrink-0 rounded border overflow-hidden hover:ring-2 ring-primary transition-all"
+                              onClick={() => setImageViewer({ images: c.images!, index: i, name: c.name })}
+                            >
+                              <img src={img} alt={`doc-${i}`} className="h-12 w-12 object-cover" />
+                            </button>
                           ))}
-                          {c.images.length > 4 && <span className="text-xs text-muted-foreground self-center">+{c.images.length - 4}</span>}
+                          {c.images.length > 4 && (
+                            <button
+                              type="button"
+                              className="shrink-0 h-12 w-12 rounded border flex items-center justify-center text-xs text-muted-foreground hover:bg-muted"
+                              onClick={() => setImageViewer({ images: c.images!, index: 4, name: c.name })}
+                            >
+                              +{c.images.length - 4}
+                            </button>
+                          )}
                         </div>
                       )}
+
+                      {/* Action buttons - compact row */}
+                      <div className="flex gap-1 flex-wrap pt-1 border-t">
+                        {!completed && (
+                          <Button size="sm" className="h-7 text-xs" onClick={() => setPaymentCustomerId(c.id)}>
+                            <CreditCard className="h-3 w-3 mr-1" /> Pay
+                          </Button>
+                        )}
+                        <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setHistoryCustomerId(c.id)}>
+                          <History className="h-3 w-3 mr-1" /> History
+                        </Button>
+                        {c.images && c.images.length > 0 && (
+                          <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setImageViewer({ images: c.images!, index: 0, name: c.name })}>
+                            <ImageIcon className="h-3 w-3 mr-1" /> {c.images.length}
+                          </Button>
+                        )}
+                        {canEdit && (
+                          <>
+                            <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => openEdit(c)}><Edit className="h-3 w-3" /></Button>
+                            <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => void deleteCustomer(c)}><Trash2 className="h-3 w-3 text-destructive" /></Button>
+                          </>
+                        )}
+                      </div>
                     </div>
                   );
                 })}
@@ -427,6 +450,16 @@ export function InstallmentSection() {
             agents={agents}
             onClose={() => setAssignOpen(false)}
             onAssigned={async () => { setAssignOpen(false); setSelectedIds(new Set()); await refresh(); }}
+          />
+        )}
+
+        {/* Image Viewer */}
+        {imageViewer && (
+          <InstallmentImageViewer
+            images={imageViewer.images}
+            initialIndex={imageViewer.index}
+            customerName={imageViewer.name}
+            onClose={() => setImageViewer(null)}
           />
         )}
       </TabsContent>
