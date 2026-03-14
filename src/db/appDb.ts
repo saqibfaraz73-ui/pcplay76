@@ -32,6 +32,7 @@ import type {
   WorkPeriod,
 } from "./schema";
 import type { AdvanceOrder, BookableItem, BookingOrder } from "./booking-schema";
+import type { KitchenOrder } from "./kitchen-schema";
 import type { LicenseRecord } from "@/features/licensing/licensing-db";
 
 export class SangiPosDb extends Dexie {
