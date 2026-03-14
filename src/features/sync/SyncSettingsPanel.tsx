@@ -442,18 +442,8 @@ export function SyncSettingsPanel() {
                   </p>
                 </div>
 
-                {/* IP Barcode */}
-                <div className="flex flex-col items-center gap-2 rounded-md border p-3">
-                  <div className="flex items-center gap-2 text-sm font-medium">
-                    <QrCode className="h-4 w-4" /> Scan IP Barcode
-                  </div>
-                  <img
-                    src={barcodeToDataUrl(`${serverIp}`, { width: 350, height: 70 })}
-                    alt={`Barcode: ${serverIp}`}
-                    className="max-w-full"
-                  />
-                  <p className="text-xs text-muted-foreground">Sub device can scan this barcode to get the IP address.</p>
-                </div>
+                {/* QR Code for IP */}
+                <SyncQrCode ip={serverIp} port={serverPort} />
 
                 {/* Connection PIN */}
                 <div className="space-y-2 rounded-md border p-3">
