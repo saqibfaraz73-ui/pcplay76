@@ -10,8 +10,11 @@ import { useToast } from "@/hooks/use-toast";
 import { makeId } from "@/features/admin/id";
 import { formatIntMoney, parseNonDecimalInt } from "@/features/pos/format";
 import { buildInstallmentReceiptPdf } from "./installment-pdf";
+import { buildInstallmentReceiptEscPos } from "./installment-escpos";
+import { sendToDefaultPrinter } from "@/features/pos/printer-routing";
 import { sharePdfBytes, savePdfBytes } from "@/features/pos/share-utils";
 import { SaveShareMenu } from "@/components/SaveShareMenu";
+import { Printer } from "lucide-react";
 
 interface Props {
   customer: InstallmentCustomer;
