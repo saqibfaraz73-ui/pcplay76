@@ -606,6 +606,37 @@ export function AdminSettings() {
         </CardContent>
       </Card>
 
+      {/* Kitchen Display Settings */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Kitchen Display (KDS)</CardTitle>
+          <CardDescription>Enable the kitchen display system for real-time order tracking between kitchen staff and customers.</CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-4">
+          <div className="flex items-center justify-between gap-3 rounded-md border p-3">
+            <div>
+              <div className="text-sm font-medium">Enable Kitchen Display</div>
+              <div className="text-xs text-muted-foreground">Show "Kitchen Display" in the admin menu. Kitchen devices connect separately via /kitchen route.</div>
+            </div>
+            <Switch checked={kitchenDisplayEnabled} onCheckedChange={setKitchenDisplayEnabled} />
+          </div>
+          {kitchenDisplayEnabled && (
+            <div className="rounded-md bg-muted/50 p-3 text-sm text-muted-foreground space-y-1">
+              <p>✅ Kitchen Display is enabled. Here's how it works:</p>
+              <ul className="list-disc pl-4 space-y-1 text-xs">
+                <li><strong>Main device</strong> receives orders and stores them as kitchen orders</li>
+                <li><strong>Kitchen staff</strong> open <code>/kitchen</code> on a separate device, scan Main's IP barcode, and see the order queue</li>
+                <li><strong>Customer display</strong> shows order statuses (pending → preparing → ready) on a TV/tablet</li>
+                <li>Kitchen staff tap to update status → syncs back to Main → broadcasts to all displays</li>
+              </ul>
+            </div>
+          )}
+          <div className="flex justify-end">
+            <Button onClick={() => void save()} disabled={!settings}>Save</Button>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Recovery Settings */}
       <Card>
         <CardHeader>

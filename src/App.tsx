@@ -191,6 +191,8 @@ const App = () => (
                   }
                 />
 
+                <Route path="/kitchen" element={<KitchenPage />} />
+
                 <Route path="/about" element={<AboutApp />} />
                 <Route path="/help" element={<HelpPage />} />
                 <Route path="/privacy-policy" element={<PrivacyPolicy />} />
