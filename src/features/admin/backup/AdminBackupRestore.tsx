@@ -45,6 +45,8 @@ type BackupPayloadV1 = {
     bookingOrders?: any[];
     recoveryCustomers?: any[];
     recoveryPayments?: any[];
+    installmentCustomers?: any[];
+    installmentPayments?: any[];
   };
 };
 
@@ -116,6 +118,8 @@ export function AdminBackupRestore() {
         bookingOrders: await db.bookingOrders.toArray(),
         recoveryCustomers: await db.recoveryCustomers.toArray(),
         recoveryPayments: await db.recoveryPayments.toArray(),
+        installmentCustomers: await db.installmentCustomers.toArray(),
+        installmentPayments: await db.installmentPayments.toArray(),
       },
     };
     const fileName = `backup_${payload.createdAt}.json`;
@@ -190,6 +194,7 @@ export function AdminBackupRestore() {
         db.adminAccount, db.staffAccounts, db.settings, db.counters,
         db.advanceOrders, db.bookableItems, db.bookingOrders,
         db.recoveryCustomers, db.recoveryPayments,
+        db.installmentCustomers, db.installmentPayments,
       ],
       async () => {
         await Promise.all([
@@ -204,6 +209,7 @@ export function AdminBackupRestore() {
           db.settings.clear(), db.counters.clear(),
           db.advanceOrders.clear(), db.bookableItems.clear(), db.bookingOrders.clear(),
           db.recoveryCustomers.clear(), db.recoveryPayments.clear(),
+          db.installmentCustomers.clear(), db.installmentPayments.clear(),
         ]);
         await db.categories.bulkAdd(payload.data.categories);
         await db.items.bulkAdd(payload.data.items);
@@ -237,6 +243,8 @@ export function AdminBackupRestore() {
         if (payload.data.bookingOrders?.length) await db.bookingOrders.bulkAdd(payload.data.bookingOrders);
         if (payload.data.recoveryCustomers?.length) await db.recoveryCustomers.bulkAdd(payload.data.recoveryCustomers);
         if (payload.data.recoveryPayments?.length) await db.recoveryPayments.bulkAdd(payload.data.recoveryPayments);
+        if (payload.data.installmentCustomers?.length) await db.installmentCustomers.bulkAdd(payload.data.installmentCustomers);
+        if (payload.data.installmentPayments?.length) await db.installmentPayments.bulkAdd(payload.data.installmentPayments);
         await db.settings.bulkAdd(payload.data.settings);
         await db.counters.bulkAdd(payload.data.counters);
       },

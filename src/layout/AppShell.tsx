@@ -129,16 +129,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const isWaiter = session?.role === "waiter" || session?.role === "supervisor";
   const isSupervisor = session?.role === "supervisor";
   const isRecoveryAgent = session?.role === "recovery";
+  const isInstallmentAgent = session?.role === "installment_agent";
 
   const visibleNavItems = React.useMemo(() => {
-    if (isWaiter || isRecoveryAgent) return [];
+    if (isWaiter || isRecoveryAgent || isInstallmentAgent) return [];
     return navItems.filter((n) => {
       if (n.adminOnly && !isAdmin) return false;
       if ((n as any).salesOnly && !salesDashboardEnabled) return false;
       if ((n as any).tablesOnly && !tableManagementEnabled) return false;
       return true;
     });
-  }, [isAdmin, isWaiter, isRecoveryAgent, salesDashboardEnabled]);
+  }, [isAdmin, isWaiter, isRecoveryAgent, isInstallmentAgent, salesDashboardEnabled]);
 
   const visibleAdminSubNav = React.useMemo(() => {
     return adminSubNav;
@@ -171,12 +172,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                       <div className="mt-4 space-y-4">
                         <nav className="grid gap-1">
                           {/* Dashboard link for waiter/agent who have no main nav */}
-                          {(isWaiter || isRecoveryAgent) && (
+                          {(isWaiter || isRecoveryAgent || isInstallmentAgent) && (
                             <Link
-                              to={isRecoveryAgent ? "/recovery" : isWaiter ? "/pos/tables" : "/home"}
+                              to={isRecoveryAgent ? "/recovery" : isInstallmentAgent ? "/admin?tab=installment" : isWaiter ? "/pos/tables" : "/home"}
                               className={cn(
                                 "flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors",
-                                isActive(isRecoveryAgent ? "/recovery" : isWaiter ? "/pos/tables" : "/home")
+                                isActive(isRecoveryAgent ? "/recovery" : isInstallmentAgent ? "/admin" : isWaiter ? "/pos/tables" : "/home")
                                   ? "bg-accent text-accent-foreground"
                                   : "text-muted-foreground hover:text-foreground",
                               )}
@@ -203,7 +204,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                               </Link>
                             );
                           })}
-                          {!isWaiter && !isRecoveryAgent && (
+                          {!isWaiter && !isRecoveryAgent && !isInstallmentAgent && (
                             <Link to="/pos/orders" className={cn("flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors", isActive("/pos/orders") ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground")}>
                               <ClipboardList className="h-4 w-4" /> Orders
                             </Link>
@@ -311,12 +312,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
                 <nav className="hidden items-center gap-2 md:flex">
                   {/* Dashboard link for waiter/agent */}
-                  {(isWaiter || isRecoveryAgent) && (
+                  {(isWaiter || isRecoveryAgent || isInstallmentAgent) && (
                     <Link
-                      to={isRecoveryAgent ? "/recovery" : isWaiter ? "/pos/tables" : "/home"}
+                      to={isRecoveryAgent ? "/recovery" : isInstallmentAgent ? "/admin?tab=installment" : isWaiter ? "/pos/tables" : "/home"}
                       className={cn(
                         "rounded-md px-3 py-2 text-sm transition-colors",
-                        isActive(isRecoveryAgent ? "/recovery" : isWaiter ? "/pos/tables" : "/home")
+                        isActive(isRecoveryAgent ? "/recovery" : isInstallmentAgent ? "/admin" : isWaiter ? "/pos/tables" : "/home")
                           ? "bg-accent text-accent-foreground"
                           : "text-muted-foreground hover:text-foreground",
                       )}
@@ -338,7 +339,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                       {n.label}
                     </Link>
                   ))}
-                  {!isWaiter && !isRecoveryAgent && (
+                  {!isWaiter && !isRecoveryAgent && !isInstallmentAgent && (
                     <Link to="/pos/orders" className={cn("rounded-md px-3 py-2 text-sm transition-colors", isActive("/pos/orders") ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground")}>
                       Orders
                     </Link>

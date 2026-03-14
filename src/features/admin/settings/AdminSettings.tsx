@@ -83,6 +83,7 @@ export function AdminSettings() {
   const [currencySymbol, setCurrencySymbolState] = React.useState("");
   const [deliveryEnabled, setDeliveryEnabled] = React.useState(false);
   const [recoveryEnabled, setRecoveryEnabled] = React.useState(false);
+  const [installmentEnabled, setInstallmentEnabled] = React.useState(false);
   const [kitchenDisplayEnabled, setKitchenDisplayEnabled] = React.useState(false);
 
   // Admin account
@@ -98,7 +99,7 @@ export function AdminSettings() {
   const [staffAccounts, setStaffAccounts] = React.useState<StaffAccount[]>([]);
   const [newStaffName, setNewStaffName] = React.useState("");
   const [newStaffPhone, setNewStaffPhone] = React.useState("");
-  const [newStaffRole, setNewStaffRole] = React.useState<"cashier" | "waiter" | "supervisor" | "recovery" | "kitchen">("cashier");
+  const [newStaffRole, setNewStaffRole] = React.useState<"cashier" | "waiter" | "supervisor" | "recovery" | "kitchen" | "installment_agent">("cashier");
   const [newStaffPin, setNewStaffPin] = React.useState("");
   const [deleteStaffId, setDeleteStaffId] = React.useState<string | null>(null);
 
@@ -150,6 +151,7 @@ export function AdminSettings() {
     setCurrencySymbolState(s?.currencySymbol ?? "");
     setDeliveryEnabled(!!s?.deliveryEnabled);
     setRecoveryEnabled(!!s?.recoveryEnabled);
+    setInstallmentEnabled(!!s?.installmentEnabled);
     setKitchenDisplayEnabled(!!s?.kitchenDisplayEnabled);
 
     // Load admin account
@@ -218,6 +220,7 @@ export function AdminSettings() {
         currencySymbol: currencySymbol.trim(),
         deliveryEnabled,
         recoveryEnabled,
+        installmentEnabled,
         kitchenDisplayEnabled,
         updatedAt: Date.now(),
       };
@@ -285,7 +288,7 @@ export function AdminSettings() {
     setNewStaffName("");
     setNewStaffPhone("");
     setNewStaffPin("");
-    toast({ title: `${newStaffRole === "cashier" ? "Cashier" : newStaffRole === "supervisor" ? "Supervisor" : newStaffRole === "recovery" ? "Recovery Agent" : newStaffRole === "kitchen" ? "Kitchen Staff" : "Waiter"} added` });
+    toast({ title: `${newStaffRole === "cashier" ? "Cashier" : newStaffRole === "supervisor" ? "Supervisor" : newStaffRole === "recovery" ? "Recovery Agent" : newStaffRole === "kitchen" ? "Kitchen Staff" : newStaffRole === "installment_agent" ? "Installment Agent" : "Waiter"} added` });
   };
 
   const deleteStaff = async (staffId: string) => {
@@ -675,6 +678,40 @@ export function AdminSettings() {
         </CardContent>
       </Card>
 
+      {/* Installment Settings */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Installment Management</CardTitle>
+          <CardDescription>Configure installment sales for product financing with monthly payments.</CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-4">
+          <div className="flex items-center justify-between gap-3 rounded-md border p-3">
+            <div>
+              <div className="text-sm font-medium">Enable Installment</div>
+              <div className="text-xs text-muted-foreground">Show the Installment tab in Admin for managing customers, payments, and agents.</div>
+            </div>
+            <Switch checked={installmentEnabled} onCheckedChange={setInstallmentEnabled} />
+          </div>
+          {installmentEnabled && (
+            <div className="rounded-md bg-muted/50 p-3 text-sm text-muted-foreground space-y-1">
+              <p>✅ Installment enabled. Features:</p>
+              <ul className="list-disc pl-4 space-y-1 text-xs">
+                <li>Add customers with product details, profit calculation, and tenure</li>
+                <li>Record monthly installment payments with receipts</li>
+                <li>Track paid/unpaid customers with late fee support</li>
+                <li>Assign customers to Installment Agents for field collection</li>
+                <li>Agent data export/import for multi-device workflows</li>
+                <li>Import/export customers via Excel</li>
+                <li>Reports with recovery, late fee, and agent commission breakdowns</li>
+              </ul>
+            </div>
+          )}
+          <div className="flex justify-end">
+            <Button onClick={() => void save()} disabled={!settings}>Save</Button>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* General Permissions */}
       <Card>
         <CardHeader>
@@ -783,11 +820,12 @@ export function AdminSettings() {
             </div>
             <div className="space-y-2">
               <Label>Role</Label>
-              <select value={newStaffRole} onChange={(e) => setNewStaffRole(e.target.value as "cashier" | "waiter" | "supervisor" | "recovery" | "kitchen")} className="h-10 w-full rounded-md border bg-background px-3 text-sm">
+              <select value={newStaffRole} onChange={(e) => setNewStaffRole(e.target.value as any)} className="h-10 w-full rounded-md border bg-background px-3 text-sm">
                 <option value="cashier">Cashier</option>
                 <option value="waiter">Waiter</option>
                 <option value="supervisor">Supervisor</option>
                 <option value="recovery">Recovery Agent</option>
+                {installmentEnabled && <option value="installment_agent">Installment Agent</option>}
                 {kitchenDisplayEnabled && <option value="kitchen">Kitchen Staff</option>}
               </select>
             </div>

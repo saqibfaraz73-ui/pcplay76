@@ -321,6 +321,8 @@ export type Settings = {
   showAdvanceBookingInReports?: boolean;
   // Recovery settings
   recoveryEnabled?: boolean;
+  // Installment settings
+  installmentEnabled?: boolean;
   // Kitchen Display settings
   kitchenDisplayEnabled?: boolean; // if true, kitchen display section is available
   // Sync settings
@@ -436,13 +438,13 @@ export type StaffAccount = {
   id: string;
   name: string;
   phone?: string; // optional mobile number for login
-  role: "cashier" | "waiter" | "supervisor" | "recovery" | "kitchen";
+  role: "cashier" | "waiter" | "supervisor" | "recovery" | "kitchen" | "installment_agent";
   pin: string; // 4-digit PIN
   defaultTableId?: string;
   createdAt: number;
 };
 
-export type CounterId = "receipt" | "arrival" | "exportSale" | "advanceOrder" | "bookingOrder" | "recoveryPayment";
+export type CounterId = "receipt" | "arrival" | "exportSale" | "advanceOrder" | "bookingOrder" | "recoveryPayment" | "installmentPayment";
 
 // ─── Recovery (bill collection) ────────────────────
 

@@ -1,4 +1,4 @@
-export type UserRole = "cashier" | "admin" | "waiter" | "supervisor" | "recovery" | "kitchen";
+export type UserRole = "cashier" | "admin" | "waiter" | "supervisor" | "recovery" | "kitchen" | "installment_agent";
 
 export type AuthSession = {
   username: string;
