@@ -125,9 +125,10 @@ export function SyncSettingsPanel() {
 
   const canBeMain = !isWaiter || waiterMainAppEnabled;
 
-  // Check server status on mount for Main devices
+  // Check server status on mount and periodically refresh IP for Main devices
   useEffect(() => {
-    if (config.role === "main" && isAndroid) {
+    if (config.role !== "main" || !isAndroid) return;
+    const refresh = () => {
       getSyncServerStatus().then((s) => {
         if (s.running) {
           setStatus("connected");
@@ -135,8 +136,68 @@ export function SyncSettingsPanel() {
           setServerPort(s.port);
         }
       });
-    }
+    };
+    refresh();
+    const interval = setInterval(refresh, 5000); // refresh IP every 5s
+    return () => clearInterval(interval);
   }, [config.role, isAndroid]);
+
+  // ─── Sub: Barcode Scanner ─────────────────────────────
+  const scannerRef = useRef<HTMLDivElement>(null);
+  const qrInstanceRef = useRef<Html5Qrcode | null>(null);
+  const [scanning, setScanning] = useState(false);
+
+  const stopScanner = useCallback(() => {
+    const qr = qrInstanceRef.current;
+    qrInstanceRef.current = null;
+    if (qr) {
+      (async () => {
+        try { const st = await qr.getState(); if (st === 2 || st === 3) await qr.stop(); } catch {}
+        try { qr.clear(); } catch {}
+      })();
+    }
+    if (scannerRef.current) scannerRef.current.innerHTML = "";
+    setScanning(false);
+  }, []);
+
+  const startScanner = useCallback(() => {
+    setScanning(true);
+  }, []);
+
+  useEffect(() => {
+    if (!scanning || !scannerRef.current || qrInstanceRef.current) return;
+    let cancelled = false;
+    const el = scannerRef.current;
+    const id = "sync-ip-scanner-" + Date.now();
+    const div = document.createElement("div");
+    div.id = id;
+    el.innerHTML = "";
+    el.appendChild(div);
+
+    (async () => {
+      try {
+        const qr = new Html5Qrcode(id);
+        if (cancelled) return;
+        qrInstanceRef.current = qr;
+        await qr.start(
+          { facingMode: "environment" },
+          { fps: 10, qrbox: { width: 280, height: 120 } },
+          (decoded) => {
+            // Extract IP from scanned text
+            const ipMatch = decoded.match(/(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})/);
+            if (ipMatch) {
+              setIpInput(ipMatch[1]);
+              toast({ title: "IP Scanned", description: ipMatch[1] });
+              stopScanner();
+            }
+          },
+          () => {}
+        );
+      } catch {}
+    })();
+
+    return () => { cancelled = true; };
+  }, [scanning, toast, stopScanner]);
 
   // ─── Main: Start Server ──────────────────────────────
   const handleStartServer = useCallback(async () => {
