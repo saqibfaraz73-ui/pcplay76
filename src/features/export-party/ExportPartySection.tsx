@@ -149,12 +149,12 @@ export function ExportPartySection() {
 
   // ─── Customer CRUD ───
   const openNew = () => {
-    setCName(""); setCContact(""); setCItemName(""); setCUnit(""); setCUnitPrice(0); setCBalance(0); setCAddBalance(0);
+    setCName(""); setCContact(""); setCWhatsapp(""); setCEmail(""); setCItemName(""); setCUnit(""); setCUnitPrice(0); setCBalance(0); setCAddBalance(0);
     setCustomerMode({ open: true });
   };
 
   const openEdit = (c: ExportCustomer) => {
-    setCName(c.name); setCContact(c.contact ?? ""); setCItemName(c.itemName ?? "");
+    setCName(c.name); setCContact(c.contact ?? ""); setCWhatsapp(c.whatsapp ?? ""); setCEmail(c.email ?? ""); setCItemName(c.itemName ?? "");
     setCUnit(c.stockUnit ?? ""); setCUnitPrice(c.unitPrice ?? 0); setCBalance(c.totalBalance); setCAddBalance(0);
     setCustomerMode({ open: true, customer: c });
   };
