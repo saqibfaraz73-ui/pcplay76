@@ -100,6 +100,21 @@ export function InstallmentPaymentDialog({ customer, payments, settings, agentNa
             <div>Balance After: <strong>{formatIntMoney(savedPayment.balanceAfter)}</strong></div>
           </div>
           <DialogFooter className="flex-wrap gap-2">
+            <Button
+              variant="outline"
+              onClick={async () => {
+                try {
+                  if (!settings) { toast({ title: "No printer settings", variant: "destructive" }); return; }
+                  const escPos = buildInstallmentReceiptEscPos({ customer, payment: savedPayment, settings });
+                  await sendToDefaultPrinter(settings, escPos);
+                  toast({ title: "Printed ✓" });
+                } catch (e: any) {
+                  toast({ title: "Print failed", description: e?.message, variant: "destructive" });
+                }
+              }}
+            >
+              <Printer className="h-4 w-4 mr-1" /> Print
+            </Button>
             <SaveShareMenu
               label="Receipt"
               getDefaultFileName={() => `installment_receipt_${savedPayment.receiptNo}_${Date.now()}.pdf`}

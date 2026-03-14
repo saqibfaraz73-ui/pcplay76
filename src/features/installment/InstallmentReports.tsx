@@ -1,10 +1,14 @@
 import React from "react";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { InstallmentCustomer, InstallmentPayment } from "@/db/installment-schema";
 import type { Settings, StaffAccount } from "@/db/schema";
 import { formatIntMoney } from "@/features/pos/format";
+import { SaveShareMenu } from "@/components/SaveShareMenu";
+import { buildInstallmentReportPdf } from "./installment-report-pdf";
+import { sharePdfBytes, savePdfBytes } from "@/features/pos/share-utils";
 
 interface Props {
   customers: InstallmentCustomer[];
