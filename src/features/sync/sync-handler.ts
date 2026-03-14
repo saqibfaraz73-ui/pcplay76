@@ -59,6 +59,18 @@ export async function handleSyncData(
     case "bulk":
       await handleBulkSync(payload.data as Array<{ endpoint: SyncEndpoint; data: unknown }>);
       break;
+    case "party-lodge-arrival":
+      await handlePartyLodgeArrivalSync(payload.data as { supplier: any; arrival: SupplierArrival });
+      break;
+    case "party-lodge-payment":
+      await handlePartyLodgePaymentSync(payload.data as { supplier: any; payment: SupplierPayment; expense?: Expense });
+      break;
+    case "advance-order":
+      await handleAdvanceOrderSync(payload.data as AdvanceOrder);
+      break;
+    case "booking-order":
+      await handleBookingOrderSync(payload.data as BookingOrder);
+      break;
     default:
       console.warn(`[Sync] Unknown endpoint: ${endpoint}`);
   }
