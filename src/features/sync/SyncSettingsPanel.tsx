@@ -25,7 +25,7 @@ import {
   stopSyncServer,
   getSyncServerStatus,
   onSyncDataReceived,
-  onSyncQueryReceived,
+  onSyncGetRequest,
   isNativeAndroid,
 } from "./local-sync-server";
 import { setMainAppUrl, pingMainApp } from "./sync-client";
