@@ -189,13 +189,23 @@ export default function PosHome() {
     }
 
     if (!isWaiter && settings?.kitchenDisplayEnabled) {
-      actions.push({
-        to: "/kitchen",
-        label: "Kitchen Login",
-        icon: ChefHat,
-        color: "bg-rose-500/10 text-rose-600 border-rose-200",
-        description: "Connect kitchen/display device",
-      });
+      actions.push(
+        isAdmin
+          ? {
+              to: "/admin/kitchen",
+              label: "Kitchen Status",
+              icon: ChefHat,
+              color: "bg-rose-500/10 text-rose-600 border-rose-200",
+              description: "Kitchen order status",
+            }
+          : {
+              to: "/kitchen",
+              label: "Kitchen Login",
+              icon: ChefHat,
+              color: "bg-rose-500/10 text-rose-600 border-rose-200",
+              description: "Connect kitchen/display device",
+            }
+      );
     }
 
     if (isAdmin) {
