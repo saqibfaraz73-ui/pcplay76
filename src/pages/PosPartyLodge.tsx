@@ -1374,6 +1374,14 @@ export default function PosPartyLodge() {
               <Input id="supContact" inputMode="tel" value={sContact} onChange={(e) => setSContact(e.target.value)} />
             </div>
             <div className="space-y-2">
+              <Label htmlFor="supWhatsapp">WhatsApp Number (optional)</Label>
+              <Input id="supWhatsapp" inputMode="tel" value={sWhatsapp} onChange={(e) => setSWhatsapp(e.target.value)} placeholder="e.g., +923001234567" />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="supEmail">Email (optional)</Label>
+              <Input id="supEmail" type="email" value={sEmail} onChange={(e) => setSEmail(e.target.value)} placeholder="e.g., supplier@email.com" />
+            </div>
+            <div className="space-y-2">
               <Label htmlFor="supItem">Item Supply Name (optional)</Label>
               <Input id="supItem" value={sItemName} onChange={(e) => setSItemName(e.target.value)} placeholder="e.g., Rice, Flour" />
             </div>
