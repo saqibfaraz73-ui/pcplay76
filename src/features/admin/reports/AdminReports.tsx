@@ -580,6 +580,7 @@ export function AdminReports() {
   const { toast } = useToast();
   const isAdmin = session?.role === "admin";
   const [settings, setSettings] = React.useState<Settings | null>(null);
+  const [categories, setCategories] = React.useState<Category[]>([]);
   const [customers, setCustomers] = React.useState<CreditCustomer[]>([]);
   const [deliveryPersons, setDeliveryPersons] = React.useState<DeliveryPerson[]>([]);
   const [items, setItems] = React.useState<MenuItem[]>([]);
