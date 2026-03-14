@@ -76,10 +76,7 @@ export default function Login() {
 
   React.useEffect(() => {
     if (!session) return;
-    const dest = session.role === "recovery" ? "/recovery"
-      : (session.role === "admin" || session.role === "cashier") ? "/home"
-      : "/pos/tables";
-    navigate(dest, { replace: true });
+    navigate(getRoleHomeRoute(session.role), { replace: true });
   }, [navigate, session]);
 
   const onRegister = async (e: React.FormEvent) => {
