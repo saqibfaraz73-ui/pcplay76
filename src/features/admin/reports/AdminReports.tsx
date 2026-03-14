@@ -574,6 +574,112 @@ function buildSalesPdf(args: {
     y += lineH;
   }
 
+  // ===== CATEGORY SALES BREAKDOWN =====
+  {
+    const byCat: Record<string, { catId: string; name: string; section?: string; qty: number; revenue: number; profit: number }> = {};
+    const addCatLines = (list: Array<{ lines: Array<{ itemId: string; name: string; qty: number; unitPrice: number; subtotal: number; buyingPrice?: number }> }>) => {
+      for (const o of list) {
+        for (const l of o.lines) {
+          const isAddOn = l.itemId.includes("__ao_");
+          const item = itemsById[l.itemId];
+          const catId = item?.categoryId ?? "uncategorized";
+          const cat = categoriesById[catId];
+          const catName = cat?.name ?? "Uncategorized";
+          const section = cat?.printerSection;
+          const buying = l.buyingPrice ?? item?.buyingPrice ?? 0;
+          const hasBuying = !isAddOn && (l.buyingPrice != null || item?.buyingPrice != null);
+          if (!byCat[catId]) byCat[catId] = { catId, name: catName, section, qty: 0, revenue: 0, profit: 0 };
+          byCat[catId].qty += l.qty;
+          byCat[catId].revenue += l.subtotal;
+          if (hasBuying) byCat[catId].profit += (l.unitPrice - buying) * l.qty;
+        }
+      }
+    };
+    addCatLines(completed);
+    addCatLines(completedTableOrders);
+    const catSales = Object.values(byCat).sort((a, b) => b.revenue - a.revenue);
+
+    if (catSales.length > 0) {
+      const printCatHeader = () => {
+        doc.setFontSize(8); doc.setFont("helvetica", "bold"); doc.setTextColor(80);
+        doc.text("Category", left + 4, y);
+        doc.text("Qty", left + contentWidth * 0.45, y);
+        doc.text("Sales", left + contentWidth * 0.6, y);
+        doc.text("Profit", left + contentWidth * 0.8, y);
+        y += 10;
+        separator();
+        doc.setFont("helvetica", "normal"); doc.setTextColor(0);
+      };
+
+      heading("Sales by Category");
+      printCatHeader();
+
+      for (const r of catSales) {
+        if (y + lineH * 2 > pageHeight) { doc.addPage(); y = 48; printCatHeader(); }
+        doc.setFontSize(9);
+        doc.text(r.name.slice(0, 35), left + 4, y);
+        doc.text(String(r.qty), left + contentWidth * 0.45, y);
+        doc.text(formatIntMoney(r.revenue), left + contentWidth * 0.6, y);
+        doc.text(formatIntMoney(r.profit), left + contentWidth * 0.8, y);
+        y += lineH;
+      }
+      // Total
+      const totalCatRev = catSales.reduce((s, r) => s + r.revenue, 0);
+      const totalCatProfit = catSales.reduce((s, r) => s + r.profit, 0);
+      const totalCatQty = catSales.reduce((s, r) => s + r.qty, 0);
+      y += 4; separator();
+      doc.setFontSize(9); doc.setFont("helvetica", "bold"); doc.setTextColor(0);
+      doc.text("Total", left + 4, y);
+      doc.text(String(totalCatQty), left + contentWidth * 0.45, y);
+      doc.text(formatIntMoney(totalCatRev), left + contentWidth * 0.6, y);
+      doc.text(formatIntMoney(totalCatProfit), left + contentWidth * 0.8, y);
+      y += lineH;
+
+      // ===== SECTION BREAKDOWN =====
+      const sectionsUsed = catSales.filter(c => c.section);
+      if (sectionsUsed.length > 0) {
+        const bySection: Record<string, { section: string; qty: number; revenue: number; profit: number }> = {};
+        for (const c of catSales) {
+          const sec = c.section || "No Section";
+          if (!bySection[sec]) bySection[sec] = { section: sec, qty: 0, revenue: 0, profit: 0 };
+          bySection[sec].qty += c.qty;
+          bySection[sec].revenue += c.revenue;
+          bySection[sec].profit += c.profit;
+        }
+        const sectionSales = Object.values(bySection).sort((a, b) => b.revenue - a.revenue);
+
+        heading("Sales by Section");
+        doc.setFontSize(8); doc.setFont("helvetica", "bold"); doc.setTextColor(80);
+        doc.text("Section", left + 4, y);
+        doc.text("Qty", left + contentWidth * 0.45, y);
+        doc.text("Sales", left + contentWidth * 0.6, y);
+        doc.text("Profit", left + contentWidth * 0.8, y);
+        y += 10; separator();
+        doc.setFont("helvetica", "normal"); doc.setTextColor(0);
+
+        for (const r of sectionSales) {
+          checkPage();
+          doc.setFontSize(9);
+          doc.text(r.section, left + 4, y);
+          doc.text(String(r.qty), left + contentWidth * 0.45, y);
+          doc.text(formatIntMoney(r.revenue), left + contentWidth * 0.6, y);
+          doc.text(formatIntMoney(r.profit), left + contentWidth * 0.8, y);
+          y += lineH;
+        }
+        const totalSecRev = sectionSales.reduce((s, r) => s + r.revenue, 0);
+        const totalSecProfit = sectionSales.reduce((s, r) => s + r.profit, 0);
+        const totalSecQty = sectionSales.reduce((s, r) => s + r.qty, 0);
+        y += 4; separator();
+        doc.setFontSize(9); doc.setFont("helvetica", "bold"); doc.setTextColor(0);
+        doc.text("Total", left + 4, y);
+        doc.text(String(totalSecQty), left + contentWidth * 0.45, y);
+        doc.text(formatIntMoney(totalSecRev), left + contentWidth * 0.6, y);
+        doc.text(formatIntMoney(totalSecProfit), left + contentWidth * 0.8, y);
+        y += lineH;
+      }
+    }
+  }
+
   return doc;
 }
 
