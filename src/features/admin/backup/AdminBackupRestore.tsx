@@ -118,6 +118,8 @@ export function AdminBackupRestore() {
         bookingOrders: await db.bookingOrders.toArray(),
         recoveryCustomers: await db.recoveryCustomers.toArray(),
         recoveryPayments: await db.recoveryPayments.toArray(),
+        installmentCustomers: await db.installmentCustomers.toArray(),
+        installmentPayments: await db.installmentPayments.toArray(),
       },
     };
     const fileName = `backup_${payload.createdAt}.json`;
