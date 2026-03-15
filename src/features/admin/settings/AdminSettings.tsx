@@ -137,6 +137,7 @@ export function AdminSettings() {
     setAdvanceBookingEnabled(!!s.advanceBookingEnabled);
     setShowAdvanceBookingInReports(!!s.showAdvanceBookingInReports);
     setSyncEnabled(!!s.syncEnabled);
+    setSyncPinRequired(!!s.syncPinRequired);
     setSubWorkPeriodMode(s.subWorkPeriodMode ?? "own");
     setCashierReportsEnabled(!!s?.cashierReportsEnabled);
     setCashierCancelOrderEnabled(s?.cashierCancelOrderEnabled !== false); // default true
