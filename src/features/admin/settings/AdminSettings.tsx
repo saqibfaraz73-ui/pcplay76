@@ -606,6 +606,15 @@ export function AdminSettings() {
             </div>
             <Switch checked={syncEnabled} onCheckedChange={setSyncEnabled} />
           </div>
+          {syncEnabled && (
+            <div className="flex items-center justify-between gap-3 rounded-md border p-3">
+              <div>
+                <div className="text-sm font-medium">Require PIN for connections</div>
+                <div className="text-xs text-muted-foreground">Sub devices and KDS devices must enter the correct PIN to connect. Set PIN on the Device Sync page.</div>
+              </div>
+              <Switch checked={syncPinRequired} onCheckedChange={setSyncPinRequired} />
+            </div>
+          )}
           <div className="flex justify-end">
             <Button onClick={() => void save()} disabled={!settings}>Save</Button>
           </div>
