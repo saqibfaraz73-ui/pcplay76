@@ -207,6 +207,7 @@ export function AdminSettings() {
         advanceBookingEnabled,
         showAdvanceBookingInReports,
         syncEnabled,
+        syncPinRequired,
         subWorkPeriodMode,
         cashierReportsEnabled,
         cashierCancelOrderEnabled,
