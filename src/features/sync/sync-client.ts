@@ -69,7 +69,7 @@ export async function pingMainApp(): Promise<boolean> {
 export async function verifyPinWithMain(pin: string): Promise<{ ok: boolean; error?: string }> {
   if (!mainAppUrl) return { ok: false, error: "Not connected" };
   try {
-    const url = `${mainAppUrl}/get/verify-pin?pin=${encodeURIComponent(pin)}`;
+    const url = `${mainAppUrl}/sync/verify-pin?pin=${encodeURIComponent(pin)}`;
     const res = await fetch(url, {
       method: "GET",
       mode: "cors",
