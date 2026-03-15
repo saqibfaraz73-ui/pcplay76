@@ -13,7 +13,7 @@ export function ProtectedRoute({ allow, children }: { allow: UserRole[]; childre
   if (!allow.includes(session.role)) {
     const fallback = session.role === "kitchen" ? "/kitchen"
       : session.role === "recovery" ? "/recovery"
-      : session.role === "installment_agent" ? "/admin?tab=installment"
+      : session.role === "installment_agent" ? "/installments"
       : (session.role === "admin" || session.role === "cashier") ? "/home"
       : "/pos/tables";
     return <Navigate to={fallback} replace />;

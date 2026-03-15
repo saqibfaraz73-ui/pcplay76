@@ -25,6 +25,7 @@ type Screen = "checking" | "register" | "login" | "forgot" | "forgot-username" |
 const getRoleHomeRoute = (role: UserRole) => {
   if (role === "kitchen") return "/kitchen";
   if (role === "recovery") return "/recovery";
+  if (role === "installment_agent") return "/installments";
   if (role === "admin" || role === "cashier") return "/home";
   return "/pos/tables";
 };

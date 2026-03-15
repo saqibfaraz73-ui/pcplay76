@@ -167,7 +167,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                         <Menu className="h-4 w-4" />
                       </Button>
                     </SheetTrigger>
-                    <SheetContent side="left" className="w-72 flex flex-col">
+                    <SheetContent side="left" className="w-72 flex flex-col" style={{ paddingTop: 'max(1rem, env(safe-area-inset-top))', paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}>
                       <SheetHeader>
                         <SheetTitle>Menu</SheetTitle>
                       </SheetHeader>

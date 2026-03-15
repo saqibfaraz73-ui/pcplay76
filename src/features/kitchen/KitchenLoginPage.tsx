@@ -106,11 +106,11 @@ export function KitchenLoginPage({ onConnected }: KitchenLoginPageProps) {
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
+    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4" style={{ paddingTop: 'max(1rem, env(safe-area-inset-top))' }}>
       <Button
         variant="ghost"
         size="sm"
-        className="absolute top-4 left-4 gap-1"
+        className="absolute left-4 gap-1" style={{ top: 'max(1rem, env(safe-area-inset-top))' }}
         onClick={() => { logout(); navigate("/login"); }}
       >
         <ArrowLeft className="h-4 w-4" /> Back to Login
