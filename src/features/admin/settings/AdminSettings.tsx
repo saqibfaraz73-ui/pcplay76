@@ -68,6 +68,7 @@ export function AdminSettings() {
   const [advanceBookingEnabled, setAdvanceBookingEnabled] = React.useState(false);
   const [showAdvanceBookingInReports, setShowAdvanceBookingInReports] = React.useState(false);
   const [syncEnabled, setSyncEnabled] = React.useState(false);
+  const [syncPinRequired, setSyncPinRequired] = React.useState(false);
   const [subWorkPeriodMode, setSubWorkPeriodMode] = React.useState<"own" | "main">("own");
   const [cashierReportsEnabled, setCashierReportsEnabled] = React.useState(false);
   const [cashierCancelOrderEnabled, setCashierCancelOrderEnabled] = React.useState(true);
