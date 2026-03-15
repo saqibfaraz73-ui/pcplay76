@@ -28,7 +28,7 @@ import {
   onSyncGetRequest,
   isNativeAndroid,
 } from "./local-sync-server";
-import { setMainAppUrl, pingMainApp } from "./sync-client";
+import { setMainAppUrl, pingMainApp, verifyPinWithMain } from "./sync-client";
 import { handleSyncData } from "./sync-handler";
 import { getKitchenOrders, getKitchenDisplayOrders } from "@/features/kitchen/kitchen-handler";
 
