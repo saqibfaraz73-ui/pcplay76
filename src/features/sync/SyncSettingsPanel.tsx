@@ -256,9 +256,16 @@ export function SyncSettingsPanel() {
           const submittedPin = endpoint.slice("verify-pin:".length);
           const currentConfig = loadConfig();
           const mainPin = currentConfig.syncPin;
-          // If no PIN is set on Main, allow all connections
-          if (!mainPin) {
+          // Check if PIN is required from app settings
+          const appSettings = await db.settings.get("app");
+          const pinRequired = !!appSettings?.syncPinRequired;
+          // If PIN is not required in settings, allow all connections
+          if (!pinRequired) {
             return { ok: true };
+          }
+          // PIN is required but not set on Main — reject (admin must set a PIN)
+          if (!mainPin) {
+            return { ok: false, error: "PIN is required but not set on Main device. Admin must set a PIN on Device Sync page." };
           }
           // Validate PIN
           if (submittedPin === mainPin) {
