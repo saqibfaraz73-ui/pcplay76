@@ -65,6 +65,23 @@ export async function pingMainApp(): Promise<boolean> {
   }
 }
 
+/** Verify connection PIN with the Main device. Returns true if PIN is correct or no PIN is set. */
+export async function verifyPinWithMain(pin: string): Promise<{ ok: boolean; error?: string }> {
+  if (!mainAppUrl) return { ok: false, error: "Not connected" };
+  try {
+    const res = await fetch(`${mainAppUrl}/sync/verify-pin`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ pin }),
+      signal: AbortSignal.timeout(5000),
+    });
+    const json = await res.json();
+    return { ok: !!json.ok, error: json.error };
+  } catch (e: any) {
+    return { ok: false, error: e.message || "Network error" };
+  }
+}
+
 /** Common hotspot/router gateway IPs to try first (highest priority) */
 const PRIORITY_IPS = [
   "192.168.43.1",   // Android hotspot default
