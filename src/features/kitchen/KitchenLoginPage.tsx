@@ -12,7 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/auth/AuthProvider";
 import { Camera, Wifi, Loader2, Monitor, ArrowLeft } from "lucide-react";
 import { Html5Qrcode } from "html5-qrcode";
-import { setMainAppUrl, pingMainApp } from "@/features/sync/sync-client";
+import { setMainAppUrl, pingMainApp, verifyPinWithMain } from "@/features/sync/sync-client";
 import { DEFAULT_SYNC_PORT } from "@/features/sync/sync-types";
 
 interface KitchenLoginPageProps {
@@ -94,6 +94,19 @@ export function KitchenLoginPage({ onConnected }: KitchenLoginPageProps) {
         });
         return;
       }
+
+      // Verify PIN
+      const pinResult = await verifyPinWithMain(pinInput.trim());
+      if (!pinResult.ok) {
+        toast({
+          title: "Connection rejected",
+          description: pinResult.error || "Wrong PIN. Check the PIN set on Main device.",
+          variant: "destructive",
+        });
+        setMainAppUrl("", 0);
+        return;
+      }
+
       // Store connection info
       localStorage.setItem("kitchen_connection", JSON.stringify({ ip, pin: pinInput, mode }));
       toast({ title: "Connected!", description: `Connected to Main at ${ip}` });
@@ -106,11 +119,11 @@ export function KitchenLoginPage({ onConnected }: KitchenLoginPageProps) {
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
+    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4" style={{ paddingTop: 'max(1rem, env(safe-area-inset-top))' }}>
       <Button
         variant="ghost"
         size="sm"
-        className="absolute top-4 left-4 gap-1"
+        className="absolute left-4 gap-1" style={{ top: 'max(1rem, env(safe-area-inset-top))' }}
         onClick={() => { logout(); navigate("/login"); }}
       >
         <ArrowLeft className="h-4 w-4" /> Back to Login

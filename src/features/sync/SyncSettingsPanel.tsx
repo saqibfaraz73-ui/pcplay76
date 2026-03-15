@@ -28,7 +28,7 @@ import {
   onSyncGetRequest,
   isNativeAndroid,
 } from "./local-sync-server";
-import { setMainAppUrl, pingMainApp } from "./sync-client";
+import { setMainAppUrl, pingMainApp, verifyPinWithMain } from "./sync-client";
 import { handleSyncData } from "./sync-handler";
 import { getKitchenOrders, getKitchenDisplayOrders } from "@/features/kitchen/kitchen-handler";
 
@@ -241,7 +241,7 @@ export function SyncSettingsPanel() {
         });
       });
 
-      // Listen for kitchen query requests (GET endpoints)
+      // Listen for GET requests (kitchen data + PIN verification)
       await onSyncGetRequest(async (endpoint) => {
         if (endpoint === "kitchen-orders") {
           const orders = await getKitchenOrders();
@@ -250,6 +250,21 @@ export function SyncSettingsPanel() {
         if (endpoint === "kitchen-display") {
           const orders = await getKitchenDisplayOrders();
           return { orders };
+        }
+        // PIN verification: endpoint format is "verify-pin:<pin>"
+        if (endpoint.startsWith("verify-pin:")) {
+          const submittedPin = endpoint.slice("verify-pin:".length);
+          const currentConfig = loadConfig();
+          const mainPin = currentConfig.syncPin;
+          // If no PIN is set on Main, allow all connections
+          if (!mainPin) {
+            return { ok: true };
+          }
+          // Validate PIN
+          if (submittedPin === mainPin) {
+            return { ok: true };
+          }
+          return { ok: false, error: "Wrong PIN. Enter the correct PIN set on Main device." };
         }
         return { error: "Unknown endpoint" };
       });
@@ -310,6 +325,20 @@ export function SyncSettingsPanel() {
         });
         return;
       }
+
+      // Verify PIN
+      const pinResult = await verifyPinWithMain(pinInput.trim());
+      if (!pinResult.ok) {
+        setStatus("error");
+        toast({
+          title: "Connection rejected",
+          description: pinResult.error || "Wrong PIN. Check the PIN set on Main device.",
+          variant: "destructive",
+        });
+        setMainAppUrl("", 0);
+        return;
+      }
+
       setStatus("connected");
       const newConfig: SyncConfig = {
         ...config,

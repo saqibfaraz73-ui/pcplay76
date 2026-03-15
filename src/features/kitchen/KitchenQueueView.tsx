@@ -102,7 +102,7 @@ export function KitchenQueueView({ onDisconnect }: KitchenQueueViewProps) {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <div className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur px-4 py-3">
+      <div className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur px-4 py-3" style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}>
         <div className="mx-auto max-w-7xl flex items-center justify-between">
           <div className="flex items-center gap-3">
             <ChefHat className="h-6 w-6 text-primary" />

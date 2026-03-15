@@ -66,7 +66,7 @@ export function CustomerDisplayView({ onDisconnect }: CustomerDisplayViewProps) 
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <div className="border-b bg-background px-6 py-4">
+      <div className="border-b bg-background px-6 py-4" style={{ paddingTop: 'max(1rem, env(safe-area-inset-top))' }}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <ChefHat className="h-8 w-8 text-primary" />
