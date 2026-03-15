@@ -65,14 +65,14 @@ export async function pingMainApp(): Promise<boolean> {
   }
 }
 
-/** Verify connection PIN with the Main device. Returns true if PIN is correct or no PIN is set. */
+/** Verify connection PIN with the Main device via GET bridge. Returns true if PIN is correct or no PIN is set. */
 export async function verifyPinWithMain(pin: string): Promise<{ ok: boolean; error?: string }> {
   if (!mainAppUrl) return { ok: false, error: "Not connected" };
   try {
-    const res = await fetch(`${mainAppUrl}/sync/verify-pin`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ pin }),
+    const url = `${mainAppUrl}/get/verify-pin?pin=${encodeURIComponent(pin)}`;
+    const res = await fetch(url, {
+      method: "GET",
+      mode: "cors",
       signal: AbortSignal.timeout(5000),
     });
     const json = await res.json();
