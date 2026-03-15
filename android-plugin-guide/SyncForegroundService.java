@@ -219,6 +219,11 @@ public class SyncForegroundService extends Service {
             if ("/sync/kitchen-display".equals(uri) && Method.GET.equals(method)) {
                 return handleSyncGet("kitchen-display");
             }
+            // PIN verification GET endpoint — bridge to web layer
+            if (uri.startsWith("/sync/verify-pin") && Method.GET.equals(method)) {
+                String pin = session.getParms().get("pin");
+                return handleSyncGet("verify-pin:" + (pin != null ? pin : ""));
+            }
 
             // ─── POST endpoints ────────────────────────────
 
