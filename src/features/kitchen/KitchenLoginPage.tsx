@@ -12,7 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/auth/AuthProvider";
 import { Camera, Wifi, Loader2, Monitor, ArrowLeft } from "lucide-react";
 import { Html5Qrcode } from "html5-qrcode";
-import { setMainAppUrl, pingMainApp } from "@/features/sync/sync-client";
+import { setMainAppUrl, pingMainApp, verifyPinWithMain } from "@/features/sync/sync-client";
 import { DEFAULT_SYNC_PORT } from "@/features/sync/sync-types";
 
 interface KitchenLoginPageProps {
