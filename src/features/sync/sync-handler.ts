@@ -38,11 +38,7 @@ export async function handleSyncData(
 
   console.log(`[Sync] Received ${endpoint} from ${payload.sourceDeviceId}`);
 
-  switch (endpoint as SyncEndpoint | "verify-pin") {
-    case "verify-pin":
-      // PIN verification is handled separately — not a data sync endpoint
-      // Actual verification happens in SyncSettingsPanel's onSyncDataReceived
-      break;
+  switch (endpoint as SyncEndpoint) {
     case "order":
       await handleOrderSync(payload.data as Order);
       break;
