@@ -68,6 +68,7 @@ export function AdminSettings() {
   const [advanceBookingEnabled, setAdvanceBookingEnabled] = React.useState(false);
   const [showAdvanceBookingInReports, setShowAdvanceBookingInReports] = React.useState(false);
   const [syncEnabled, setSyncEnabled] = React.useState(false);
+  const [syncPinRequired, setSyncPinRequired] = React.useState(false);
   const [subWorkPeriodMode, setSubWorkPeriodMode] = React.useState<"own" | "main">("own");
   const [cashierReportsEnabled, setCashierReportsEnabled] = React.useState(false);
   const [cashierCancelOrderEnabled, setCashierCancelOrderEnabled] = React.useState(true);
@@ -136,6 +137,7 @@ export function AdminSettings() {
     setAdvanceBookingEnabled(!!s.advanceBookingEnabled);
     setShowAdvanceBookingInReports(!!s.showAdvanceBookingInReports);
     setSyncEnabled(!!s.syncEnabled);
+    setSyncPinRequired(!!s.syncPinRequired);
     setSubWorkPeriodMode(s.subWorkPeriodMode ?? "own");
     setCashierReportsEnabled(!!s?.cashierReportsEnabled);
     setCashierCancelOrderEnabled(s?.cashierCancelOrderEnabled !== false); // default true
@@ -205,6 +207,7 @@ export function AdminSettings() {
         advanceBookingEnabled,
         showAdvanceBookingInReports,
         syncEnabled,
+        syncPinRequired,
         subWorkPeriodMode,
         cashierReportsEnabled,
         cashierCancelOrderEnabled,
@@ -603,6 +606,15 @@ export function AdminSettings() {
             </div>
             <Switch checked={syncEnabled} onCheckedChange={setSyncEnabled} />
           </div>
+          {syncEnabled && (
+            <div className="flex items-center justify-between gap-3 rounded-md border p-3">
+              <div>
+                <div className="text-sm font-medium">Require PIN for connections</div>
+                <div className="text-xs text-muted-foreground">Sub devices and KDS devices must enter the correct PIN to connect. Set PIN on the Device Sync page.</div>
+              </div>
+              <Switch checked={syncPinRequired} onCheckedChange={setSyncPinRequired} />
+            </div>
+          )}
           <div className="flex justify-end">
             <Button onClick={() => void save()} disabled={!settings}>Save</Button>
           </div>

@@ -327,6 +327,7 @@ export type Settings = {
   kitchenDisplayEnabled?: boolean; // if true, kitchen display section is available
   // Sync settings
   syncEnabled?: boolean; // if true, sync feature is available
+  syncPinRequired?: boolean; // if true, sub/KDS devices must enter PIN to connect
   subWorkPeriodMode?: "own" | "main"; // "own" = sub uses its own work period, "main" = inherits from main app
   // Cashier permissions
   cashierReportsEnabled?: boolean; // if true, cashier can access reports section
