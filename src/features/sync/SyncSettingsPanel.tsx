@@ -507,7 +507,7 @@ export function SyncSettingsPanel() {
                 <div className="space-y-2 rounded-md border p-3">
                   <div className="text-sm font-medium">Connection PIN</div>
                   <p className="text-xs text-muted-foreground">
-                    Sub devices must enter this PIN to connect. Leave empty to allow without PIN.
+                    Set a PIN for sub/KDS devices. Enable "Require PIN for connections" in Admin → Settings → Device Sync to enforce it.
                   </p>
                   <div className="flex gap-2">
                     <Input
