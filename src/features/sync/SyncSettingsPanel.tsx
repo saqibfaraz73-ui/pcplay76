@@ -310,6 +310,20 @@ export function SyncSettingsPanel() {
         });
         return;
       }
+
+      // Verify PIN
+      const pinResult = await verifyPinWithMain(pinInput.trim());
+      if (!pinResult.ok) {
+        setStatus("error");
+        toast({
+          title: "Connection rejected",
+          description: pinResult.error || "Wrong PIN. Check the PIN set on Main device.",
+          variant: "destructive",
+        });
+        setMainAppUrl("", 0);
+        return;
+      }
+
       setStatus("connected");
       const newConfig: SyncConfig = {
         ...config,

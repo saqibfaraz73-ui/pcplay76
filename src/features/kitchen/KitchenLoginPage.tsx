@@ -94,6 +94,19 @@ export function KitchenLoginPage({ onConnected }: KitchenLoginPageProps) {
         });
         return;
       }
+
+      // Verify PIN
+      const pinResult = await verifyPinWithMain(pinInput.trim());
+      if (!pinResult.ok) {
+        toast({
+          title: "Connection rejected",
+          description: pinResult.error || "Wrong PIN. Check the PIN set on Main device.",
+          variant: "destructive",
+        });
+        setMainAppUrl("", 0);
+        return;
+      }
+
       // Store connection info
       localStorage.setItem("kitchen_connection", JSON.stringify({ ip, pin: pinInput, mode }));
       toast({ title: "Connected!", description: `Connected to Main at ${ip}` });
