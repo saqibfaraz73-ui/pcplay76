@@ -75,9 +75,35 @@ export async function verifyPinWithMain(pin: string): Promise<{ ok: boolean; err
       mode: "cors",
       signal: AbortSignal.timeout(5000),
     });
+    const contentType = res.headers.get("content-type") || "";
+    // If the response is HTML (not JSON), it means the Main device doesn't have
+    // the native sync server (e.g. PC/browser version) — skip PIN verification
+    if (contentType.includes("text/html") || !contentType.includes("json")) {
+      const text = await res.text();
+      if (text.trimStart().startsWith("<!") || text.trimStart().startsWith("<html")) {
+        console.warn("[Sync] PIN verify got HTML response — Main is likely browser/PC, skipping PIN check");
+        return { ok: true };
+      }
+      // Try parsing as JSON anyway
+      try {
+        const json = JSON.parse(text);
+        return { ok: !!json.ok, error: json.error };
+      } catch {
+        // Not JSON and not HTML — skip PIN check for compatibility
+        console.warn("[Sync] PIN verify got non-JSON response, skipping PIN check");
+        return { ok: true };
+      }
+    }
     const json = await res.json();
     return { ok: !!json.ok, error: json.error };
   } catch (e: any) {
+    // Network error or timeout — if we can ping but can't verify PIN,
+    // the Main device likely doesn't support PIN verification (older/PC version)
+    const isPingable = await pingMainApp().catch(() => false);
+    if (isPingable) {
+      console.warn("[Sync] PIN verify failed but Main is reachable — skipping PIN check for compatibility");
+      return { ok: true };
+    }
     return { ok: false, error: e.message || "Network error" };
   }
 }
