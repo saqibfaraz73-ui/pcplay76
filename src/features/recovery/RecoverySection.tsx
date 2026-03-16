@@ -742,6 +742,11 @@ export function RecoverySection() {
           <Button variant="outline" size="sm" onClick={() => setShowReport(true)}>
             <FileText className="h-3 w-3 mr-1" /> Report
           </Button>
+          {(isAdmin || isCashier) && (
+            <Button variant={showAgentView ? "default" : "outline"} size="sm" onClick={() => setShowAgentView(v => !v)}>
+              <Users className="h-3 w-3 mr-1" /> Agent View
+            </Button>
+          )}
           {(isAdmin || isCashier || (isRecovery && agentCanAddCustomer)) && (
             <Button size="sm" onClick={() => { resetForm(); setShowAdd(true); }}>
               <Plus className="h-3 w-3 mr-1" /> Add Customer
