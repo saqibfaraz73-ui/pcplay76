@@ -32,6 +32,23 @@ function getCurrentMonth(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 }
 
+function getCurrentWeek(): string {
+  const d = new Date();
+  const start = new Date(d.getFullYear(), 0, 1);
+  const weekNo = Math.ceil(((d.getTime() - start.getTime()) / 86400000 + start.getDay() + 1) / 7);
+  return `${d.getFullYear()}-W${String(weekNo).padStart(2, "0")}`;
+}
+
+function getCurrentYear(): string {
+  return `${new Date().getFullYear()}`;
+}
+
+function getCurrentPeriod(frequency?: string): string {
+  if (frequency === "weekly") return getCurrentWeek();
+  if (frequency === "yearly") return getCurrentYear();
+  return getCurrentMonth();
+}
+
 function isPaymentOverdue(customer: InstallmentCustomer): boolean {
   if (!customer.dueDate || customer.totalBalance <= 0) return false;
   const now = new Date();
