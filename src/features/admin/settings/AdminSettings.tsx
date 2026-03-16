@@ -935,7 +935,7 @@ export function AdminSettings() {
                       <th className="px-3 py-2 text-left font-medium">Phone</th>
                       <th className="px-3 py-2 text-left font-medium">Role</th>
                       <th className="px-3 py-2 text-left font-medium">PIN</th>
-                      <th className="px-3 py-2 text-right font-medium">Action</th>
+                      <th className="px-3 py-2 text-right font-medium">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
