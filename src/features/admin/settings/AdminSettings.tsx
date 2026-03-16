@@ -299,6 +299,43 @@ export function AdminSettings() {
     toast({ title: `${newStaffRole === "cashier" ? "Cashier" : newStaffRole === "supervisor" ? "Supervisor" : newStaffRole === "recovery" ? "Recovery Agent" : newStaffRole === "kitchen" ? "Kitchen Staff" : newStaffRole === "installment_agent" ? "Installment Agent" : "Waiter"} added` });
   };
 
+  const openEditStaff = (s: StaffAccount) => {
+    setEditStaff(s);
+    setEditName(s.name);
+    setEditPhone(s.phone || "");
+    setEditRole(s.role as any);
+    setEditPin(s.pin);
+  };
+
+  const saveEditStaff = async () => {
+    if (!editStaff) return;
+    if (!editName.trim()) {
+      toast({ title: "Name is required", variant: "destructive" });
+      return;
+    }
+    if (!editPin || editPin.length !== 4 || !/^\d{4}$/.test(editPin)) {
+      toast({ title: "PIN must be exactly 4 digits", variant: "destructive" });
+      return;
+    }
+    // Check duplicate name (exclude current)
+    const dup = staffAccounts.find((s) => s.id !== editStaff.id && s.name.toLowerCase() === editName.trim().toLowerCase());
+    if (dup) {
+      toast({ title: "Staff name already exists", variant: "destructive" });
+      return;
+    }
+    const updated: StaffAccount = {
+      ...editStaff,
+      name: editName.trim(),
+      phone: editPhone.trim() || undefined,
+      role: editRole,
+      pin: editPin,
+    };
+    await db.staffAccounts.put(updated);
+    setStaffAccounts((prev) => prev.map((s) => (s.id === updated.id ? updated : s)));
+    setEditStaff(null);
+    toast({ title: "Staff account updated" });
+  };
+
   const deleteStaff = async (staffId: string) => {
     await db.staffAccounts.delete(staffId);
     setStaffAccounts((prev) => prev.filter((s) => s.id !== staffId));
