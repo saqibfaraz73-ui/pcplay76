@@ -223,6 +223,19 @@ export function InstallmentSection() {
     }
   };
 
+  const handleStatusExport = async (status: "cleared" | "defaulter", mode: "save" | "share") => {
+    try {
+      const statusCustomers = customers.filter(c => c.status === status);
+      if (statusCustomers.length === 0) { toast({ title: `No ${status} customers to export` }); return; }
+      const blob = exportStatusListExcel(statusCustomers, payments, status);
+      const fileName = `${status}_customers_${Date.now()}.xlsx`;
+      if (mode === "save") await saveFileBlob(blob, fileName);
+      else await shareFileBlob(blob, fileName);
+    } catch (e: any) {
+      toast({ title: "Export failed", description: e?.message, variant: "destructive" });
+    }
+  };
+
   const handleImport = async (file: File) => {
     try {
       const imported = await importInstallmentExcel(file);
@@ -240,6 +253,62 @@ export function InstallmentSection() {
       await saveFileBlob(blob, "installment_sample_import.xlsx");
     } catch (e: any) {
       toast({ title: "Failed", description: e?.message, variant: "destructive" });
+    }
+  };
+
+  // Defaulter export to agent
+  const handleDefaulterExportToAgent = async (agent: StaffAccount) => {
+    try {
+      const blob = exportDefaulterListToAgent(customers, payments, {
+        id: agent.id, name: agent.name, pin: agent.pin, phone: agent.phone, role: agent.role,
+      });
+      const fileName = `defaulters_${agent.name.replace(/\s+/g, "_")}_${Date.now()}.json`;
+      await saveFileBlob(blob, fileName);
+      const count = customers.filter(c => c.agentId === agent.id && c.status === "defaulter").length;
+      toast({ title: `Exported ${count} defaulters for ${agent.name}` });
+    } catch (e: any) {
+      toast({ title: "Export failed", description: e?.message, variant: "destructive" });
+    }
+  };
+
+  // Agent: import defaulter assignment
+  const handleDefaulterAssignmentImport = async (file: File) => {
+    try {
+      const result = await importDefaulterAssignment(file);
+      let custCount = 0, payCount = 0;
+
+      if (result.agentAccount) {
+        const acc = result.agentAccount;
+        const deterministicId = `agent_${acc.name.toLowerCase().replace(/\s+/g, "_")}_${acc.pin}`;
+        const existing = await db.staffAccounts.get(deterministicId);
+        if (!existing) {
+          await db.staffAccounts.put({
+            id: deterministicId, name: acc.name, phone: acc.phone || undefined,
+            role: (acc.role as any) || "installment_agent", pin: acc.pin, createdAt: Date.now(),
+          });
+        }
+        for (const c of result.customers) {
+          if (c.agentId === result.agentId) (c as any).agentId = deterministicId;
+        }
+      }
+
+      for (const c of result.customers) {
+        const existing = await db.installmentCustomers.get(c.id);
+        if (!existing) {
+          await db.installmentCustomers.put({ ...c, images: [] } as any);
+          custCount++;
+        } else {
+          await db.installmentCustomers.put({ ...c, images: existing.images ?? [] } as any);
+        }
+      }
+      for (const p of result.payments) {
+        const existing = await db.installmentPayments.get(p.id);
+        if (!existing) { await db.installmentPayments.put(p); payCount++; }
+      }
+      toast({ title: `Imported ${custCount} defaulter customers, ${payCount} payments` });
+      await refresh();
+    } catch (e: any) {
+      toast({ title: "Import failed", description: e?.message, variant: "destructive" });
     }
   };
 
