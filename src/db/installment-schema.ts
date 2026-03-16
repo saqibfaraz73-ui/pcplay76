@@ -25,9 +25,12 @@ export type InstallmentCustomer = {
   profitType: ProfitType;
   profitValue: number; // fixed amount or percentage
   tenureMonths: number; // total months (if user picks years, convert)
-  monthlyInstallment: number; // auto-calculated
+  monthlyInstallment: number; // auto-calculated (per-period amount)
   totalPrice: number; // auto-calculated (market + profit)
   totalBalance: number; // remaining balance (decreases on payment)
+
+  // Installment frequency
+  frequency?: InstallmentFrequency; // defaults to "monthly" if not set
 
   // Due date & late fee
   dueDate?: number; // day of month (1-28) when installment is due
