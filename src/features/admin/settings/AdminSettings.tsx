@@ -605,10 +605,9 @@ export function AdminSettings() {
             <Button onClick={() => void save()} disabled={!settings}>Save</Button>
           </div>
         </CardContent>
-      </Card>
+      </Card>}
 
-      {/* Sync Settings */}
-      <Card>
+      {match("sync", "device", "multi") && <Card>
         <CardHeader>
           <CardTitle>Device Sync</CardTitle>
           <CardDescription>Enable multi-device sync for Main/Sub device setup over local network.</CardDescription>
