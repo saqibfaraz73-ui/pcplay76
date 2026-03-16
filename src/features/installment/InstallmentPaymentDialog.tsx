@@ -54,6 +54,11 @@ export function InstallmentPaymentDialog({ customer, payments, settings, agentNa
   const [saving, setSaving] = React.useState(false);
   const [savedPayment, setSavedPayment] = React.useState<InstallmentPayment | null>(null);
 
+  // Frequency-based period check
+  const currentPeriod = getCurrentPeriod(customer.frequency);
+  const alreadyPaidThisPeriod = payments.some(p => p.month === currentPeriod);
+  const frequencyLabel = customer.frequency === "weekly" ? "week" : customer.frequency === "yearly" ? "year" : "month";
+
   // Calculate late fee
   const now = new Date();
   const lateDays = customer.dueDate && now.getDate() > customer.dueDate
@@ -66,6 +71,7 @@ export function InstallmentPaymentDialog({ customer, payments, settings, agentNa
 
   const handleSave = async () => {
     if (amount <= 0) { toast({ title: "Amount must be > 0", variant: "destructive" }); return; }
+    if (alreadyPaidThisPeriod) { toast({ title: `Already paid for this ${frequencyLabel}`, variant: "destructive" }); return; }
     setSaving(true);
     try {
       // Get receipt number
