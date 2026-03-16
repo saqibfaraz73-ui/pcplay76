@@ -169,3 +169,16 @@ export async function importAgentData(file: File): Promise<{ agentName: string; 
   if (!data.payments || !Array.isArray(data.payments)) throw new Error("Invalid agent data file");
   return { agentName: data.agentName, payments: data.payments };
 }
+
+/** Import agent assignment file (customers + payments) on agent device */
+export async function importAgentAssignment(file: File): Promise<{ agentName: string; customers: Omit<InstallmentCustomer, "images">[]; payments: InstallmentPayment[] }> {
+  const text = await file.text();
+  const data = JSON.parse(text);
+  if (data.type !== "agent_assignment") throw new Error("Not an agent assignment file. Use the correct file from admin.");
+  if (!data.customers || !Array.isArray(data.customers)) throw new Error("Invalid assignment file — no customers found");
+  return {
+    agentName: data.agentName,
+    customers: data.customers,
+    payments: data.payments ?? [],
+  };
+}
