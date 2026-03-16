@@ -31,6 +31,7 @@ import jsPDF from "jspdf";
 import { sharePdfBytes, savePdfBytes } from "@/features/pos/share-utils";
 import { SaveShareMenu } from "@/components/SaveShareMenu";
 import { RecoveryAgentExport } from "./RecoveryAgentExport";
+import { RecoveryAgentView } from "./RecoveryAgentView";
 
 function uid(prefix: string) {
   return `${prefix}_${Math.random().toString(16).slice(2)}_${Date.now().toString(16)}`;
