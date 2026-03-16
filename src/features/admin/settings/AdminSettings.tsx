@@ -9,7 +9,7 @@ import type { AdminAccount, ChargeType, Settings, StaffAccount } from "@/db/sche
 import { useToast } from "@/hooks/use-toast";
 import { ensureSeedData } from "@/db/seed";
 import { AdminTablesWaiters } from "@/features/admin/tables/AdminTablesWaiters";
-import { Trash2, Plus, Search, X } from "lucide-react";
+import { Trash2, Plus, Search, X, Pencil } from "lucide-react";
 import { getLicense } from "@/features/licensing/licensing-db";
 
 
