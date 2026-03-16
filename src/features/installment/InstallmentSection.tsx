@@ -12,7 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { makeId } from "@/features/admin/id";
 import { formatIntMoney, parseNonDecimalInt, fmtDate, fmtDateTime } from "@/features/pos/format";
 import { useAuth } from "@/auth/AuthProvider";
-import { Search, Plus, Edit, Trash2, CreditCard, History, UserCheck, UserX, Download, Upload, FileSpreadsheet, Share2, ImageIcon } from "lucide-react";
+import { Search, Plus, Edit, Trash2, CreditCard, History, UserCheck, UserX, Download, Upload, FileSpreadsheet, Share2, ImageIcon, CheckCircle, Ban, AlertTriangle } from "lucide-react";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { InstallmentCustomerForm } from "./InstallmentCustomerForm";
 import { InstallmentPaymentDialog } from "./InstallmentPaymentDialog";
@@ -64,6 +64,7 @@ export function InstallmentSection() {
   const [settings, setSettings] = React.useState<Settings | null>(null);
   const [agents, setAgents] = React.useState<StaffAccount[]>([]);
   const [query, setQuery] = React.useState("");
+  const [statusTab, setStatusTab] = React.useState<"active" | "cleared" | "defaulter">("active");
   const [filterTab, setFilterTab] = React.useState<"all" | "paid" | "unpaid">("all");
 
   // Dialogs
@@ -75,6 +76,7 @@ export function InstallmentSection() {
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
   const [imageViewer, setImageViewer] = React.useState<{ images: string[]; index: number; name: string } | null>(null);
   const [agentExportOpen, setAgentExportOpen] = React.useState(false);
+  const [clearConfirmId, setClearConfirmId] = React.useState<string | null>(null);
 
   const isAdmin = session?.role === "admin";
   const isCashier = session?.role === "cashier";
@@ -83,7 +85,6 @@ export function InstallmentSection() {
 
   const refresh = React.useCallback(async () => {
     let custs = await db.installmentCustomers.orderBy("createdAt").toArray();
-    // Agent only sees assigned customers
     if (isAgent && session) {
       const staffList = await db.staffAccounts.where("name").equals(session.username).toArray();
       const staffId = staffList[0]?.id;
@@ -100,15 +101,19 @@ export function InstallmentSection() {
 
   React.useEffect(() => { void refresh(); }, [refresh]);
 
-  // Check if customer has paid current period (frequency-aware)
   const isCurrentPeriodPaid = React.useCallback((customer: InstallmentCustomer) => {
     const period = getCurrentPeriod(customer.frequency);
     return payments.some(p => p.customerId === customer.id && p.month === period);
   }, [payments]);
 
-  // Filter customers
+  // Filter by status tab, then by paid/unpaid
   const filtered = React.useMemo(() => {
     let list = customers;
+    // Status filter
+    list = list.filter(c => {
+      const s = c.status || "active";
+      return s === statusTab;
+    });
     // Search
     const q = query.trim().toLowerCase();
     if (q) {
@@ -119,20 +124,21 @@ export function InstallmentSection() {
         (c.agentName ?? "").toLowerCase().includes(q)
       );
     }
-    // Filter by paid/unpaid
-    if (filterTab === "paid") {
-      list = list.filter(c => isCurrentPeriodPaid(c) || c.totalBalance <= 0);
-    } else if (filterTab === "unpaid") {
-      list = list.filter(c => !isCurrentPeriodPaid(c) && c.totalBalance > 0);
+    // Filter by paid/unpaid (only for active tab)
+    if (statusTab === "active") {
+      if (filterTab === "paid") {
+        list = list.filter(c => isCurrentPeriodPaid(c) || c.totalBalance <= 0);
+      } else if (filterTab === "unpaid") {
+        list = list.filter(c => !isCurrentPeriodPaid(c) && c.totalBalance > 0);
+      }
     }
     return list;
-  }, [customers, query, filterTab, isCurrentPeriodPaid]);
+  }, [customers, query, statusTab, filterTab, isCurrentPeriodPaid]);
 
   const openNew = () => { setEditCustomer(undefined); setFormOpen(true); };
   const openEdit = (c: InstallmentCustomer) => { setEditCustomer(c); setFormOpen(true); };
 
   const saveCustomer = async (c: InstallmentCustomer) => {
-    // Check free limit for new customers only
     const isNew = !customers.some(x => x.id === c.id);
     if (isNew) {
       const check = await canMakeSale("installment");
@@ -141,6 +147,8 @@ export function InstallmentSection() {
         return;
       }
     }
+    // Ensure new customers have active status
+    if (isNew && !c.status) c.status = "active";
     await db.installmentCustomers.put(c);
     if (isNew) await incrementSaleCount("installment");
     setFormOpen(false);
@@ -165,6 +173,37 @@ export function InstallmentSection() {
       next.has(id) ? next.delete(id) : next.add(id);
       return next;
     });
+  };
+
+  // Clear customer (admin)
+  const clearCustomer = async (c: InstallmentCustomer) => {
+    const updated = { ...c, status: "cleared" as const, totalBalance: 0, clearedAt: Date.now() };
+    await db.installmentCustomers.put(updated);
+    toast({ title: `${c.name} marked as Cleared ✅` });
+    setClearConfirmId(null);
+    await refresh();
+  };
+
+  // Bulk mark as defaulter
+  const bulkMarkDefaulter = async () => {
+    if (selectedIds.size === 0) return;
+    if (!confirm(`Mark ${selectedIds.size} customer(s) as Defaulter?`)) return;
+    for (const id of selectedIds) {
+      const c = customers.find(x => x.id === id);
+      if (c) {
+        await db.installmentCustomers.put({ ...c, status: "defaulter" });
+      }
+    }
+    setSelectedIds(new Set());
+    toast({ title: `${selectedIds.size} customers marked as Defaulter` });
+    await refresh();
+  };
+
+  // Restore customer to active
+  const restoreCustomer = async (c: InstallmentCustomer) => {
+    await db.installmentCustomers.put({ ...c, status: "active", clearedAt: undefined });
+    toast({ title: `${c.name} restored to Active` });
+    await refresh();
   };
 
   const handleExport = async () => {
@@ -219,7 +258,6 @@ export function InstallmentSection() {
         const existing = await db.installmentPayments.get(payment.id);
         if (!existing) {
           await db.installmentPayments.put(payment);
-          // Update customer balance
           const cust = await db.installmentCustomers.get(payment.customerId);
           if (cust) {
             cust.totalBalance = Math.max(0, cust.totalBalance - payment.amount);
@@ -240,10 +278,8 @@ export function InstallmentSection() {
       const result = await importAgentAssignment(file);
       let custCount = 0, payCount = 0;
 
-      // Auto-create agent staff account if included in file
       if (result.agentAccount) {
         const acc = result.agentAccount;
-        // Use deterministic ID based on name+pin to avoid cross-device ID conflicts
         const deterministicId = `agent_${acc.name.toLowerCase().replace(/\s+/g, "_")}_${acc.pin}`;
         const existing = await db.staffAccounts.get(deterministicId);
         if (!existing) {
@@ -257,7 +293,6 @@ export function InstallmentSection() {
           });
           toast({ title: `Agent account "${acc.name}" created. Login with PIN: ${acc.pin}` });
         }
-        // Remap customer agentId from original admin ID to deterministic ID
         for (const c of result.customers) {
           if (c.agentId === result.agentId) {
             (c as any).agentId = deterministicId;
@@ -271,7 +306,6 @@ export function InstallmentSection() {
           await db.installmentCustomers.put({ ...c, images: [] } as any);
           custCount++;
         } else {
-          // Update customer data but keep existing images
           await db.installmentCustomers.put({ ...c, images: existing.images ?? [] } as any);
         }
       }
@@ -288,6 +322,11 @@ export function InstallmentSection() {
       toast({ title: "Import failed", description: e?.message, variant: "destructive" });
     }
   };
+
+  // Status counts
+  const activeCount = customers.filter(c => (c.status || "active") === "active").length;
+  const clearedCount = customers.filter(c => c.status === "cleared").length;
+  const defaulterCount = customers.filter(c => c.status === "defaulter").length;
 
   return (
     <Tabs defaultValue="customers">
@@ -341,6 +380,19 @@ export function InstallmentSection() {
             )}
           </CardHeader>
           <CardContent className="space-y-3">
+            {/* Status tabs */}
+            <div className="flex gap-1 flex-wrap">
+              <Button variant={statusTab === "active" ? "default" : "outline"} size="sm" onClick={() => { setStatusTab("active"); setSelectedIds(new Set()); }}>
+                Active ({activeCount})
+              </Button>
+              <Button variant={statusTab === "cleared" ? "default" : "outline"} size="sm" onClick={() => { setStatusTab("cleared"); setSelectedIds(new Set()); }}>
+                <CheckCircle className="h-3 w-3 mr-1" /> Cleared ({clearedCount})
+              </Button>
+              <Button variant={statusTab === "defaulter" ? "default" : "outline"} size="sm" onClick={() => { setStatusTab("defaulter"); setSelectedIds(new Set()); }}>
+                <AlertTriangle className="h-3 w-3 mr-1" /> Defaulter ({defaulterCount})
+              </Button>
+            </div>
+
             {/* Search */}
             <div className="flex gap-2 items-end flex-wrap">
               <div className="flex-1 min-w-[200px] space-y-1">
@@ -350,18 +402,20 @@ export function InstallmentSection() {
                   <Input value={query} onChange={e => setQuery(e.target.value)} placeholder="Name, phone, product, agent..." className="pl-9" />
                 </div>
               </div>
-              <div className="flex gap-1">
-                {(["all", "paid", "unpaid"] as const).map(t => (
-                  <Button key={t} variant={filterTab === t ? "default" : "outline"} size="sm" onClick={() => setFilterTab(t)} className="capitalize">
-                    {t === "all" ? "All" : t === "paid" ? <><UserCheck className="h-3 w-3 mr-1" /> Paid</> : <><UserX className="h-3 w-3 mr-1" /> Unpaid</>}
-                  </Button>
-                ))}
-              </div>
+              {statusTab === "active" && (
+                <div className="flex gap-1">
+                  {(["all", "paid", "unpaid"] as const).map(t => (
+                    <Button key={t} variant={filterTab === t ? "default" : "outline"} size="sm" onClick={() => setFilterTab(t)} className="capitalize">
+                      {t === "all" ? "All" : t === "paid" ? <><UserCheck className="h-3 w-3 mr-1" /> Paid</> : <><UserX className="h-3 w-3 mr-1" /> Unpaid</>}
+                    </Button>
+                  ))}
+                </div>
+              )}
             </div>
 
-            {/* Select all for agent assignment */}
+            {/* Select all + bulk actions */}
             {isAdmin && filtered.length > 0 && (
-              <div className="flex items-center gap-2 text-sm">
+              <div className="flex items-center gap-2 text-sm flex-wrap">
                 <input
                   type="checkbox"
                   checked={selectedIds.size === filtered.length && filtered.length > 0}
@@ -372,19 +426,26 @@ export function InstallmentSection() {
                   className="rounded"
                 />
                 <span>Select all ({selectedIds.size} selected)</span>
-                {selectedIds.size > 0 && (
-                  <Button size="sm" variant="outline" onClick={() => setAssignOpen(true)}>Assign to Agent</Button>
+                {selectedIds.size > 0 && statusTab === "active" && (
+                  <>
+                    <Button size="sm" variant="outline" onClick={() => setAssignOpen(true)}>Assign to Agent</Button>
+                    <Button size="sm" variant="destructive" onClick={bulkMarkDefaulter}>
+                      <Ban className="h-3 w-3 mr-1" /> Mark Defaulter
+                    </Button>
+                  </>
                 )}
-                <Button size="sm" variant="outline" onClick={() => setAgentExportOpen(true)}>
-                  <Share2 className="h-3 w-3 mr-1" /> Export to Agent
-                </Button>
+                {statusTab === "active" && (
+                  <Button size="sm" variant="outline" onClick={() => setAgentExportOpen(true)}>
+                    <Share2 className="h-3 w-3 mr-1" /> Export to Agent
+                  </Button>
+                )}
               </div>
             )}
 
             {/* Customer list */}
             {filtered.length === 0 ? (
               <div className="text-sm text-muted-foreground py-8 text-center">
-                {query ? "No customers match your search." : "No installment customers yet. Add one to get started."}
+                {query ? "No customers match your search." : statusTab === "cleared" ? "No cleared customers." : statusTab === "defaulter" ? "No defaulters." : "No installment customers yet. Add one to get started."}
               </div>
             ) : (
               <div className="space-y-3">
@@ -394,9 +455,10 @@ export function InstallmentSection() {
                   const lateDays = overdue && c.dueDate ? Math.max(0, new Date().getDate() - c.dueDate) : 0;
                   const currentLateFee = lateDays > 0 && c.lateFeePerDay ? lateDays * c.lateFeePerDay : 0;
                   const completed = c.totalBalance <= 0;
+                  const customerStatus = c.status || "active";
 
                   return (
-                    <div key={c.id} className="rounded-md border p-3 space-y-2">
+                    <div key={c.id} className={`rounded-md border p-3 space-y-2 ${customerStatus === "defaulter" ? "border-destructive/40 bg-destructive/5" : customerStatus === "cleared" ? "border-green-500/40 bg-green-500/5" : ""}`}>
                       {/* Name + status row */}
                       <div className="flex items-start gap-2">
                         {isAdmin && (
@@ -405,10 +467,12 @@ export function InstallmentSection() {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-1.5 flex-wrap">
                             <span className="font-medium text-sm">{c.name}</span>
-                            {completed && <Badge variant="outline" className="text-xs px-1.5 py-0 border-green-600 text-green-600">Done</Badge>}
-                            {!completed && paid && <Badge variant="outline" className="text-xs px-1.5 py-0 border-green-600 text-green-600">Paid</Badge>}
-                            {overdue && <Badge variant="destructive" className="text-xs px-1.5 py-0">Late {lateDays}d</Badge>}
-                            {!completed && !paid && !overdue && <Badge variant="outline" className="text-xs px-1.5 py-0">Pending</Badge>}
+                            {customerStatus === "cleared" && <Badge variant="outline" className="text-xs px-1.5 py-0 border-green-600 text-green-600">Cleared ✅</Badge>}
+                            {customerStatus === "defaulter" && <Badge variant="destructive" className="text-xs px-1.5 py-0">Defaulter</Badge>}
+                            {customerStatus === "active" && completed && <Badge variant="outline" className="text-xs px-1.5 py-0 border-green-600 text-green-600">Done</Badge>}
+                            {customerStatus === "active" && !completed && paid && <Badge variant="outline" className="text-xs px-1.5 py-0 border-green-600 text-green-600">Paid</Badge>}
+                            {customerStatus === "active" && overdue && <Badge variant="destructive" className="text-xs px-1.5 py-0">Late {lateDays}d</Badge>}
+                            {customerStatus === "active" && !completed && !paid && !overdue && <Badge variant="outline" className="text-xs px-1.5 py-0">Pending</Badge>}
                           </div>
                           <div className="text-xs text-muted-foreground mt-0.5">{c.phone}{c.agentName ? ` • ${c.agentName}` : ""}</div>
                         </div>
@@ -436,13 +500,13 @@ export function InstallmentSection() {
                         </div>
                       </div>
 
-                      {currentLateFee > 0 && (
+                      {currentLateFee > 0 && customerStatus === "active" && (
                         <div className="text-xs text-destructive font-medium">
                           ⚠ {formatIntMoney(currentLateFee)} late ({lateDays}d × {formatIntMoney(c.lateFeePerDay ?? 0)})
                         </div>
                       )}
 
-                      {/* Images thumbnails - clickable (hidden from agents) */}
+                      {/* Images thumbnails */}
                       {!isAgent && c.images && c.images.length > 0 && (
                         <div className="flex gap-1.5 overflow-x-auto">
                           {c.images.slice(0, 4).map((img, i) => (
@@ -467,9 +531,9 @@ export function InstallmentSection() {
                         </div>
                       )}
 
-                      {/* Action buttons - compact row */}
+                      {/* Action buttons */}
                       <div className="flex gap-1 flex-wrap pt-1 border-t">
-                        {!completed && (
+                        {customerStatus === "active" && !completed && (
                           <Button size="sm" className="h-7 text-xs" onClick={() => setPaymentCustomerId(c.id)}>
                             <CreditCard className="h-3 w-3 mr-1" /> Pay
                           </Button>
@@ -480,6 +544,18 @@ export function InstallmentSection() {
                         {!isAgent && c.images && c.images.length > 0 && (
                           <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setImageViewer({ images: c.images!, index: 0, name: c.name })}>
                             <ImageIcon className="h-3 w-3 mr-1" /> {c.images.length}
+                          </Button>
+                        )}
+                        {/* Admin: Clear customer */}
+                        {isAdmin && customerStatus === "active" && c.totalBalance > 0 && (
+                          <Button size="sm" variant="outline" className="h-7 text-xs text-green-600 border-green-600" onClick={() => setClearConfirmId(c.id)}>
+                            <CheckCircle className="h-3 w-3 mr-1" /> Clear
+                          </Button>
+                        )}
+                        {/* Admin: Restore from cleared/defaulter */}
+                        {isAdmin && (customerStatus === "cleared" || customerStatus === "defaulter") && (
+                          <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => void restoreCustomer(c)}>
+                            Restore Active
                           </Button>
                         )}
                         {canEdit && (
@@ -512,6 +588,7 @@ export function InstallmentSection() {
             payments={payments.filter(p => p.customerId === paymentCustomerId)}
             settings={settings}
             agentName={session?.username ?? "admin"}
+            isAdmin={isAdmin}
             onClose={() => setPaymentCustomerId(null)}
             onSaved={refresh}
           />
@@ -554,6 +631,34 @@ export function InstallmentSection() {
             onClose={() => setImageViewer(null)}
           />
         )}
+
+        {/* Clear Confirm Dialog */}
+        {clearConfirmId && (() => {
+          const c = customers.find(x => x.id === clearConfirmId);
+          if (!c) return null;
+          return (
+            <Dialog open onOpenChange={() => setClearConfirmId(null)}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Clear Account — {c.name}</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-2 text-sm">
+                  <p>Mark this customer as <strong>Cleared</strong>? Remaining balance of <strong>{formatIntMoney(c.totalBalance)}</strong> will be set to 0.</p>
+                  <p className="text-muted-foreground text-xs">You can also record a payment for the full remaining amount instead.</p>
+                </div>
+                <DialogFooter className="flex-wrap gap-2">
+                  <Button variant="outline" onClick={() => setClearConfirmId(null)}>Cancel</Button>
+                  <Button variant="outline" onClick={() => { setClearConfirmId(null); setPaymentCustomerId(c.id); }}>
+                    <CreditCard className="h-4 w-4 mr-1" /> Pay Full Amount
+                  </Button>
+                  <Button className="bg-green-600 hover:bg-green-700" onClick={() => void clearCustomer(c)}>
+                    <CheckCircle className="h-4 w-4 mr-1" /> Mark Cleared
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          );
+        })()}
       </TabsContent>
 
       {isAgent && (

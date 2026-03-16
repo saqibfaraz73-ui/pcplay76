@@ -2,6 +2,7 @@
 
 export type ProfitType = "fixed" | "percent";
 export type InstallmentFrequency = "weekly" | "monthly" | "yearly";
+export type InstallmentCustomerStatus = "active" | "cleared" | "defaulter";
 
 export type InstallmentCustomerField = {
   name: string;
@@ -41,6 +42,10 @@ export type InstallmentCustomer = {
   agentName?: string;
   agentCommissionType?: "percent" | "fixed"; // per collection
   agentCommissionValue?: number;
+
+  // Status: active (default), cleared (fully paid / admin cleared), defaulter (admin marked)
+  status?: InstallmentCustomerStatus; // defaults to "active"
+  clearedAt?: number; // timestamp when cleared
 
   createdAt: number;
 };
