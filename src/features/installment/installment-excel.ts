@@ -145,6 +145,7 @@ export async function importInstallmentExcel(file: File): Promise<InstallmentCus
       profitType,
       profitValue,
       tenureMonths,
+      frequency: validFreq,
       monthlyInstallment,
       totalPrice,
       totalBalance: totalPrice,
