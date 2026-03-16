@@ -500,10 +500,9 @@ export function AdminSettings() {
             <Button onClick={() => void save()} disabled={!settings}>Save Expiry Settings</Button>
           </div>
         </CardContent>
-      </Card>
+      </Card>}
 
-      {/* Table Management Settings */}
-      <Card>
+      {match("table", "waiter", "dine", "supervisor") && <Card>
         <CardHeader>
           <CardTitle>Table Management</CardTitle>
           <CardDescription>Enable table service mode for dine-in restaurants with waiters.</CardDescription>
