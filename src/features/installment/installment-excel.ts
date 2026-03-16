@@ -125,10 +125,13 @@ export async function importInstallmentExcel(file: File): Promise<InstallmentCus
     const profitType = (String(r["Profit Type"] ?? "percent").toLowerCase() === "fixed" ? "fixed" : "percent") as "fixed" | "percent";
     const profitValue = Number(r["Profit Value"]) || 0;
     const tenureMonths = Number(r["Tenure (Months)"]) || 12;
+    const frequency = (String(r["Frequency"] ?? "monthly").toLowerCase()) as "weekly" | "monthly" | "yearly";
+    const validFreq = ["weekly", "monthly", "yearly"].includes(frequency) ? frequency : "monthly";
     const totalPrice = profitType === "percent"
       ? Math.round(marketPrice * (1 + profitValue / 100))
       : marketPrice + profitValue;
-    const monthlyInstallment = tenureMonths > 0 ? Math.round(totalPrice / tenureMonths) : totalPrice;
+    const totalPeriods = validFreq === "weekly" ? Math.round(tenureMonths * 4.33) : validFreq === "yearly" ? Math.round(tenureMonths / 12) || 1 : tenureMonths;
+    const monthlyInstallment = totalPeriods > 0 ? Math.round(totalPrice / totalPeriods) : totalPrice;
 
     return {
       id: makeId("inst"),
