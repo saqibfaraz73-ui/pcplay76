@@ -106,7 +106,7 @@ export function AdminSettings() {
 
   
   const [isPremium, setIsPremium] = React.useState(false);
-  
+  const [searchQuery, setSearchQuery] = React.useState("");
 
   const load = React.useCallback(async () => {
     await ensureSeedData();
