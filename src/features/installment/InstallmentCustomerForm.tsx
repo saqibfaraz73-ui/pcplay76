@@ -87,6 +87,7 @@ export function InstallmentCustomerForm({ open, customer, onClose, onSave }: Pro
         setTenureUnit("months");
         setDueDate(customer.dueDate ?? 0);
         setLateFeePerDay(customer.lateFeePerDay ?? 0);
+        setFrequency(customer.frequency ?? "monthly");
         setCustomFields(customer.customFields ?? []);
         setImages(customer.images ?? []);
       } else {
