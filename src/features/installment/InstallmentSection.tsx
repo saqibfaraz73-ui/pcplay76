@@ -471,6 +471,23 @@ export function InstallmentSection() {
               </Button>
             </div>
 
+            {/* Export buttons for cleared/defaulter tabs */}
+            {isAdmin && (statusTab === "cleared" || statusTab === "defaulter") && (
+              <div className="flex flex-wrap gap-1.5">
+                <SaveShareMenu
+                  label={`Export ${statusTab === "cleared" ? "Cleared" : "Defaulter"} List`}
+                  size="sm"
+                  onSave={() => handleStatusExport(statusTab as "cleared" | "defaulter", "save")}
+                  onShare={() => handleStatusExport(statusTab as "cleared" | "defaulter", "share")}
+                />
+                {statusTab === "defaulter" && (
+                  <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setDefaulterExportOpen(true)}>
+                    <Share2 className="h-3 w-3 mr-1" /> Export Defaulters to Agent
+                  </Button>
+                )}
+              </div>
+            )}
+
             {/* Search */}
             <div className="flex gap-2 items-end flex-wrap">
               <div className="flex-1 min-w-[200px] space-y-1">
