@@ -81,8 +81,6 @@ export function InstallmentSection() {
   const isAgent = session?.role === "installment_agent" as any;
   const canEdit = isAdmin || isCashier;
 
-  const currentMonth = getCurrentMonth();
-
   const refresh = React.useCallback(async () => {
     let custs = await db.installmentCustomers.orderBy("createdAt").toArray();
     // Agent only sees assigned customers
