@@ -15,7 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/auth/AuthProvider";
 import {
   Plus, Search, Upload, Download, FileSpreadsheet, Trash2, CheckCircle, XCircle,
-  History, Printer, Share2, X, FileText, Users,
+  History, Printer, Share2, X, FileText, Users, SendHorizonal,
 } from "lucide-react";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -30,6 +30,7 @@ import { Capacitor } from "@capacitor/core";
 import jsPDF from "jspdf";
 import { sharePdfBytes, savePdfBytes } from "@/features/pos/share-utils";
 import { SaveShareMenu } from "@/components/SaveShareMenu";
+import { RecoveryAgentExport } from "./RecoveryAgentExport";
 
 function uid(prefix: string) {
   return `${prefix}_${Math.random().toString(16).slice(2)}_${Date.now().toString(16)}`;
@@ -307,6 +308,7 @@ export function RecoverySection() {
   const [exportPromptOpen, setExportPromptOpen] = React.useState(false);
   const [exportDefaultName, setExportDefaultName] = React.useState("");
   const pendingExportBlob = React.useRef<Blob | null>(null);
+  const [showAgentExport, setShowAgentExport] = React.useState(false);
 
   const startExportAgentSales = () => {
     const myCusts = customers;
@@ -338,6 +340,7 @@ export function RecoverySection() {
 
   // ── Collect / Import agent data JSON ──
   const collectFileRef = React.useRef<HTMLInputElement>(null);
+  const assignmentFileRef = React.useRef<HTMLInputElement>(null);
   const [collectStats, setCollectStats] = React.useState<{ imported: number; skipped: number; payments: number } | null>(null);
 
   const collectAgentData = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -388,6 +391,79 @@ export function RecoverySection() {
     setCollectStats({ imported: totalImported, skipped: totalSkipped, payments: totalPayments });
     toast({ title: `Collected: ${totalImported} new customers, ${totalPayments} payments (${totalSkipped} existing updated)` });
     void load();
+    e.target.value = "";
+  };
+
+  // ── Import agent assignment file (agent device) ──
+  const handleAgentAssignmentImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text);
+      if (data.type !== "recovery_agent_assignment") {
+        toast({ title: "Not a valid recovery agent assignment file", variant: "destructive" });
+        return;
+      }
+
+      let custCount = 0, payCount = 0;
+
+      // Auto-create agent staff account with deterministic ID
+      if (data.agentAccount) {
+        const acc = data.agentAccount;
+        const deterministicId = `agent_${acc.name.toLowerCase().replace(/\s+/g, "_")}_${acc.pin}`;
+        const existing = await db.staffAccounts.get(deterministicId);
+        if (!existing) {
+          await db.staffAccounts.put({
+            id: deterministicId,
+            name: acc.name,
+            phone: acc.phone || undefined,
+            role: acc.role || "recovery",
+            pin: acc.pin,
+            createdAt: Date.now(),
+          });
+          toast({ title: `Agent account "${acc.name}" created. Login with PIN: ${acc.pin}` });
+        }
+        // Remap customer agentId from original admin ID to deterministic ID
+        const originalAgentId = data.agentId;
+        for (const c of (data.customers ?? [])) {
+          if (c.agentId === originalAgentId) {
+            c.agentId = deterministicId;
+          }
+        }
+      }
+
+      const importCustomers: RecoveryCustomer[] = data.customers ?? [];
+      const importPayments: RecoveryPayment[] = data.payments ?? [];
+
+      for (const c of importCustomers) {
+        const existing = await db.recoveryCustomers.get(c.id);
+        if (!existing) {
+          await db.recoveryCustomers.add(c);
+          custCount++;
+        } else {
+          // Update customer data but preserve local changes
+          await db.recoveryCustomers.update(c.id, {
+            name: c.name, contact: c.contact, address: c.address,
+            pkg: c.pkg, monthlyBill: c.monthlyBill, billingFrequency: c.billingFrequency,
+            agentId: c.agentId, agentName: c.agentName,
+          });
+        }
+      }
+
+      for (const p of importPayments) {
+        const existing = await db.recoveryPayments.get(p.id);
+        if (!existing) {
+          await db.recoveryPayments.add(p);
+          payCount++;
+        }
+      }
+
+      toast({ title: `Imported ${custCount} new customers, ${payCount} payments` });
+      void load();
+    } catch (err: any) {
+      toast({ title: "Import failed", description: err?.message, variant: "destructive" });
+    }
     e.target.value = "";
   };
 
@@ -640,9 +716,21 @@ export function RecoverySection() {
           </Button>
           {(isAdmin || isCashier) && (
             <>
+              <Button variant="outline" size="sm" onClick={() => setShowAgentExport(true)}>
+                <SendHorizonal className="h-3 w-3 mr-1" /> Export to Agent
+              </Button>
               <input ref={collectFileRef} type="file" accept=".json" multiple onChange={collectAgentData} className="hidden" />
               <Button variant="outline" size="sm" onClick={() => collectFileRef.current?.click()}>
                 <Download className="h-3 w-3 mr-1" /> Collect Agent Data
+              </Button>
+            </>
+          )}
+          {/* Agent: Import Assignment file from admin */}
+          {isRecovery && (
+            <>
+              <input ref={assignmentFileRef} type="file" accept=".json" onChange={handleAgentAssignmentImport} className="hidden" />
+              <Button variant="outline" size="sm" onClick={() => assignmentFileRef.current?.click()}>
+                <Download className="h-3 w-3 mr-1" /> Import Assignment
               </Button>
             </>
           )}
@@ -966,6 +1054,12 @@ export function RecoverySection() {
         defaultName={exportDefaultName}
         onConfirm={confirmExport}
         onCancel={() => setExportPromptOpen(false)}
+      />
+      <RecoveryAgentExport
+        open={showAgentExport}
+        onClose={() => setShowAgentExport(false)}
+        customers={allCustomers}
+        agents={agents}
       />
     </div>
   );
