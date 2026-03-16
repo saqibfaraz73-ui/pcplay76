@@ -852,6 +852,12 @@ export function InstallmentSection() {
       )}
 
       {isAdmin && (
+        <TabsContent value="agentview">
+          <InstallmentAgentView customers={customers} payments={payments} agents={agents} onRefresh={refresh} />
+        </TabsContent>
+      )}
+
+      {isAdmin && (
         <TabsContent value="agents">
           <Card>
             <CardHeader>
