@@ -946,9 +946,14 @@ export function AdminSettings() {
                         <td className="px-3 py-2 capitalize">{s.role.replace("_", " ")}</td>
                         <td className="px-3 py-2 font-mono">{s.pin}</td>
                         <td className="px-3 py-2 text-right">
-                          <Button variant="ghost" size="icon" onClick={() => setDeleteStaffId(s.id)}>
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
+                          <div className="inline-flex gap-1">
+                            <Button variant="ghost" size="icon" onClick={() => openEditStaff(s)}>
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="icon" onClick={() => setDeleteStaffId(s.id)}>
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </div>
                         </td>
                       </tr>
                     ))}
