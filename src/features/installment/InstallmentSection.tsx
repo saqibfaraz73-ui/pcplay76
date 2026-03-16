@@ -235,6 +235,34 @@ export function InstallmentSection() {
     }
   };
 
+  const handleAgentAssignmentImport = async (file: File) => {
+    try {
+      const result = await importAgentAssignment(file);
+      let custCount = 0, payCount = 0;
+      for (const c of result.customers) {
+        const existing = await db.installmentCustomers.get(c.id);
+        if (!existing) {
+          await db.installmentCustomers.put({ ...c, images: [] } as any);
+          custCount++;
+        } else {
+          // Update customer data but keep existing images
+          await db.installmentCustomers.put({ ...c, images: existing.images ?? [] } as any);
+        }
+      }
+      for (const p of result.payments) {
+        const existing = await db.installmentPayments.get(p.id);
+        if (!existing) {
+          await db.installmentPayments.put(p);
+          payCount++;
+        }
+      }
+      toast({ title: `Imported ${custCount} new customers, ${payCount} payments` });
+      await refresh();
+    } catch (e: any) {
+      toast({ title: "Import failed", description: e?.message, variant: "destructive" });
+    }
+  };
+
   return (
     <Tabs defaultValue="customers">
       <TabsList className="flex w-full flex-wrap justify-start gap-1">
