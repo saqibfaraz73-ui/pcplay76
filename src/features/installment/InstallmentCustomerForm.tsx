@@ -147,6 +147,7 @@ export function InstallmentCustomerForm({ open, customer, onClose, onSave }: Pro
       profitType,
       profitValue,
       tenureMonths: actualTenureMonths,
+      frequency,
       monthlyInstallment,
       totalPrice,
       totalBalance: customer?.totalBalance ?? totalPrice, // keep existing balance on edit
