@@ -459,6 +459,14 @@ export function InstallmentSection() {
           />
         )}
 
+        {/* Agent Export */}
+        <InstallmentAgentExport
+          open={agentExportOpen}
+          onClose={() => setAgentExportOpen(false)}
+          customers={customers}
+          agents={agents}
+        />
+
         {/* Image Viewer */}
         {imageViewer && (
           <InstallmentImageViewer
