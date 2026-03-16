@@ -913,7 +913,7 @@ export function AdminSettings() {
             <p className="text-sm text-muted-foreground">No staff accounts yet. Add a cashier or waiter above.</p>
           )}
         </CardContent>
-      </Card>
+      </Card>}
 
 
       {/* Delete staff confirmation */}
