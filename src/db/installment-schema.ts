@@ -43,6 +43,10 @@ export type InstallmentCustomer = {
   agentCommissionType?: "percent" | "fixed"; // per collection
   agentCommissionValue?: number;
 
+  // Status: active (default), cleared (fully paid / admin cleared), defaulter (admin marked)
+  status?: InstallmentCustomerStatus; // defaults to "active"
+  clearedAt?: number; // timestamp when cleared
+
   createdAt: number;
 };
 
