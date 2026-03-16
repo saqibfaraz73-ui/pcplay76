@@ -301,9 +301,28 @@ export function AdminSettings() {
     toast({ title: "Staff removed" });
   };
 
+  const sq = searchQuery.toLowerCase().trim();
+  const match = (...keywords: string[]) => !sq || keywords.some(k => k.toLowerCase().includes(sq));
+
   return (
     <div className="space-y-4">
-      <Card>
+      {/* Search bar */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Search settings..."
+          className="pl-9 pr-9"
+        />
+        {searchQuery && (
+          <button onClick={() => setSearchQuery("")} className="absolute right-3 top-1/2 -translate-y-1/2">
+            <X className="h-4 w-4 text-muted-foreground" />
+          </button>
+        )}
+      </div>
+
+      {match("business", "name", "currency", "address", "phone", "image", "sku", "barcode") && <Card>
         <CardHeader>
           <CardTitle>Business Settings</CardTitle>
           <CardDescription>Basic settings for your business.</CardDescription>
