@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { db } from "@/db/appDb";
 import type { InstallmentCustomer, InstallmentPayment } from "@/db/installment-schema";
 import type { Settings } from "@/db/schema";
@@ -21,6 +22,7 @@ interface Props {
   payments: InstallmentPayment[];
   settings: Settings | null;
   agentName: string;
+  isAdmin?: boolean;
   onClose: () => void;
   onSaved: () => Promise<void>;
 }
@@ -47,17 +49,58 @@ function getCurrentPeriod(frequency?: string): string {
   return getCurrentMonth();
 }
 
-export function InstallmentPaymentDialog({ customer, payments, settings, agentName, onClose, onSaved }: Props) {
+/** Count how many periods were missed (no payment recorded) */
+function countMissedPeriods(customer: InstallmentCustomer, payments: InstallmentPayment[]): number {
+  if (customer.totalBalance <= 0) return 0;
+  const freq = customer.frequency || "monthly";
+  const paidPeriods = new Set(payments.map(p => p.month));
+  const now = new Date();
+  let missed = 0;
+
+  if (freq === "monthly") {
+    // Check last 12 months
+    for (let i = 0; i < 12; i++) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const period = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      // Only count missed if customer existed then
+      if (d.getTime() < customer.createdAt) break;
+      if (!paidPeriods.has(period)) missed++;
+    }
+  } else if (freq === "weekly") {
+    // Check last 8 weeks
+    for (let i = 0; i < 8; i++) {
+      const d = new Date(now.getTime() - i * 7 * 86400000);
+      const start = new Date(d.getFullYear(), 0, 1);
+      const weekNo = Math.ceil(((d.getTime() - start.getTime()) / 86400000 + start.getDay() + 1) / 7);
+      const period = `${d.getFullYear()}-W${String(weekNo).padStart(2, "0")}`;
+      if (d.getTime() < customer.createdAt) break;
+      if (!paidPeriods.has(period)) missed++;
+    }
+  } else if (freq === "yearly") {
+    for (let i = 0; i < 5; i++) {
+      const year = `${now.getFullYear() - i}`;
+      if (new Date(Number(year), 0, 1).getTime() < customer.createdAt) break;
+      if (!paidPeriods.has(year)) missed++;
+    }
+  }
+  return missed;
+}
+
+export function InstallmentPaymentDialog({ customer, payments, settings, agentName, isAdmin, onClose, onSaved }: Props) {
   const { toast } = useToast();
-  const [amount, setAmount] = React.useState(customer.monthlyInstallment);
   const [note, setNote] = React.useState("");
   const [saving, setSaving] = React.useState(false);
   const [savedPayment, setSavedPayment] = React.useState<InstallmentPayment | null>(null);
+  const [includeDues, setIncludeDues] = React.useState(true);
 
   // Frequency-based period check
   const currentPeriod = getCurrentPeriod(customer.frequency);
   const alreadyPaidThisPeriod = payments.some(p => p.month === currentPeriod);
   const frequencyLabel = customer.frequency === "weekly" ? "week" : customer.frequency === "yearly" ? "year" : "month";
+
+  // Calculate missed periods / accumulated dues
+  const missedPeriods = countMissedPeriods(customer, payments);
+  const accumulatedDues = missedPeriods * customer.monthlyInstallment;
 
   // Calculate late fee
   const now = new Date();
@@ -65,16 +108,28 @@ export function InstallmentPaymentDialog({ customer, payments, settings, agentNa
     ? now.getDate() - customer.dueDate : 0;
   const lateFee = lateDays > 0 && customer.lateFeePerDay ? lateDays * customer.lateFeePerDay : 0;
 
+  // Default amount: current installment + missed dues (if includeDues)
+  const suggestedAmount = includeDues ? accumulatedDues : customer.monthlyInstallment;
+  const [amount, setAmount] = React.useState(suggestedAmount);
+  const [includeLateFee, setIncludeLateFee] = React.useState(true);
+
+  // Update amount when includeDues changes
+  React.useEffect(() => {
+    setAmount(includeDues ? accumulatedDues : customer.monthlyInstallment);
+  }, [includeDues, accumulatedDues, customer.monthlyInstallment]);
+
   const balanceBefore = customer.totalBalance;
-  // Payment deducts from balance; late fee does NOT deduct from balance
   const balanceAfter = Math.max(0, balanceBefore - amount);
+  const actualLateFee = includeLateFee ? lateFee : 0;
+
+  // Admin can override period restriction
+  const canPay = isAdmin || !alreadyPaidThisPeriod;
 
   const handleSave = async () => {
     if (amount <= 0) { toast({ title: "Amount must be > 0", variant: "destructive" }); return; }
-    if (alreadyPaidThisPeriod) { toast({ title: `Already paid for this ${frequencyLabel}`, variant: "destructive" }); return; }
+    if (!canPay) { toast({ title: `Already paid for this ${frequencyLabel}`, variant: "destructive" }); return; }
     setSaving(true);
     try {
-      // Get receipt number
       const counter = (await db.counters.get("installmentPayment" as any)) ?? { id: "installmentPayment" as any, next: 1 };
       const receiptNo = counter.next;
       await db.counters.put({ id: "installmentPayment" as any, next: receiptNo + 1 });
@@ -84,7 +139,7 @@ export function InstallmentPaymentDialog({ customer, payments, settings, agentNa
         customerId: customer.id,
         receiptNo,
         amount,
-        lateFeeAmount: lateFee > 0 ? lateFee : undefined,
+        lateFeeAmount: actualLateFee > 0 ? actualLateFee : undefined,
         balanceBefore,
         balanceAfter,
         agentName,
@@ -94,8 +149,13 @@ export function InstallmentPaymentDialog({ customer, payments, settings, agentNa
       };
       await db.installmentPayments.put(payment);
 
-      // Update customer balance (late fee NOT deducted from balance)
+      // Update customer balance
       const updated = { ...customer, totalBalance: balanceAfter };
+      // Auto-clear if balance is 0
+      if (balanceAfter <= 0) {
+        updated.status = "cleared" as any;
+        updated.clearedAt = Date.now();
+      }
       await db.installmentCustomers.put(updated);
 
       setSavedPayment(payment);
@@ -121,6 +181,9 @@ export function InstallmentPaymentDialog({ customer, payments, settings, agentNa
             {savedPayment.lateFeeAmount ? <div>Late Fee: <strong>{formatIntMoney(savedPayment.lateFeeAmount)}</strong></div> : null}
             <div>Balance Before: {formatIntMoney(savedPayment.balanceBefore)}</div>
             <div>Balance After: <strong>{formatIntMoney(savedPayment.balanceAfter)}</strong></div>
+            {savedPayment.balanceAfter <= 0 && (
+              <div className="text-green-600 font-semibold">✅ Account Cleared!</div>
+            )}
           </div>
           <DialogFooter className="flex-wrap gap-2">
             <Button
@@ -177,16 +240,36 @@ export function InstallmentPaymentDialog({ customer, payments, settings, agentNa
             </div>
           </div>
 
-          {lateFee > 0 && (
-            <div className="rounded-md border border-destructive/30 bg-destructive/5 p-2 text-xs text-destructive">
-              ⚠ Late Fee: {formatIntMoney(lateFee)} ({lateDays} days × {formatIntMoney(customer.lateFeePerDay ?? 0)}/day)
-              <div className="text-[10px] mt-0.5">Late fee is charged separately and not deducted from overall balance.</div>
+          {/* Accumulated dues info */}
+          {missedPeriods > 1 && (
+            <div className="rounded-md border border-orange-500/30 bg-orange-500/10 p-2 text-xs text-orange-700 dark:text-orange-400">
+              📋 {missedPeriods} {frequencyLabel}s missed. Accumulated dues: <strong>{formatIntMoney(accumulatedDues)}</strong>
+              <div className="flex items-center gap-2 mt-1">
+                <Switch checked={includeDues} onCheckedChange={setIncludeDues} className="scale-75" />
+                <span>Include all missed dues in payment</span>
+              </div>
             </div>
           )}
 
-          {alreadyPaidThisPeriod && (
+          {lateFee > 0 && (
+            <div className="rounded-md border border-destructive/30 bg-destructive/5 p-2 text-xs text-destructive">
+              ⚠ Late Fee: {formatIntMoney(lateFee)} ({lateDays} days × {formatIntMoney(customer.lateFeePerDay ?? 0)}/day)
+              <div className="flex items-center gap-2 mt-1">
+                <Switch checked={includeLateFee} onCheckedChange={setIncludeLateFee} className="scale-75" />
+                <span>Collect late fee with this payment</span>
+              </div>
+            </div>
+          )}
+
+          {alreadyPaidThisPeriod && !isAdmin && (
             <div className="rounded-md border border-yellow-500/30 bg-yellow-500/10 p-2 text-xs text-yellow-700 dark:text-yellow-400">
               ⚠ Already paid for this {frequencyLabel}. Only one payment allowed per {frequencyLabel}.
+            </div>
+          )}
+
+          {alreadyPaidThisPeriod && isAdmin && (
+            <div className="rounded-md border border-blue-500/30 bg-blue-500/10 p-2 text-xs text-blue-700 dark:text-blue-400">
+              ℹ Already paid this {frequencyLabel}. Admin override enabled.
             </div>
           )}
 
@@ -197,22 +280,26 @@ export function InstallmentPaymentDialog({ customer, payments, settings, agentNa
               onChange={e => setAmount(parseNonDecimalInt(e.target.value))}
               inputMode="numeric"
               placeholder="0"
-              disabled={alreadyPaidThisPeriod}
+              disabled={!canPay}
             />
+            {isAdmin && (
+              <p className="text-[10px] text-muted-foreground">Admin: enter any amount including full remaining balance</p>
+            )}
           </div>
           <div className="space-y-1">
             <Label>Note (optional)</Label>
-            <Input value={note} onChange={e => setNote(e.target.value)} placeholder="e.g. Cash payment" disabled={alreadyPaidThisPeriod} />
+            <Input value={note} onChange={e => setNote(e.target.value)} placeholder="e.g. Cash payment" disabled={!canPay} />
           </div>
 
           <div className="rounded bg-muted/50 p-2 text-xs">
-            <div>Total to collect: <strong>{formatIntMoney(amount + lateFee)}</strong> (Payment {formatIntMoney(amount)} + Late Fee {formatIntMoney(lateFee)})</div>
+            <div>Total to collect: <strong>{formatIntMoney(amount + actualLateFee)}</strong> (Payment {formatIntMoney(amount)} + Late Fee {formatIntMoney(actualLateFee)})</div>
             <div>Balance after payment: <strong>{formatIntMoney(balanceAfter)}</strong></div>
+            {balanceAfter <= 0 && <div className="text-green-600 font-semibold mt-1">✅ This will clear the account!</div>}
           </div>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button onClick={() => void handleSave()} disabled={saving || alreadyPaidThisPeriod}>Save Payment</Button>
+          <Button onClick={() => void handleSave()} disabled={saving || !canPay}>Save Payment</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
