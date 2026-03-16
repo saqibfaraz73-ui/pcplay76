@@ -21,6 +21,7 @@ import { InstallmentReports } from "./InstallmentReports";
 import { InstallmentAgentAssign } from "./InstallmentAgentAssign";
 import { exportInstallmentExcel, importInstallmentExcel, downloadSampleExcel, exportAgentData, importAgentData, importAgentAssignment, exportStatusListExcel, exportDefaulterListToAgent, importDefaulterAssignment } from "./installment-excel";
 import { InstallmentAgentExport } from "./InstallmentAgentExport";
+import { InstallmentAgentView } from "./InstallmentAgentView";
 import { SaveShareMenu } from "@/components/SaveShareMenu";
 import { buildInstallmentReceiptPdf, buildPaymentHistoryPdf } from "./installment-pdf";
 import { sharePdfBytes, savePdfBytes, saveFileBlob, shareFileBlob } from "@/features/pos/share-utils";
