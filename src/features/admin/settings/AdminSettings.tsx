@@ -663,10 +663,9 @@ export function AdminSettings() {
             <Button onClick={() => void save()} disabled={!settings}>Save</Button>
           </div>
         </CardContent>
-      </Card>
+      </Card>}
 
-      {/* Recovery Settings */}
-      <Card>
+      {match("recovery", "bill", "collection", "agent") && <Card>
         <CardHeader>
           <CardTitle>Recovery / Bill Collection</CardTitle>
           <CardDescription>Configure recovery module for bill collection agents.</CardDescription>
