@@ -20,6 +20,7 @@ import { InstallmentPaymentHistory } from "./InstallmentPaymentHistory";
 import { InstallmentReports } from "./InstallmentReports";
 import { InstallmentAgentAssign } from "./InstallmentAgentAssign";
 import { exportInstallmentExcel, importInstallmentExcel, downloadSampleExcel, exportAgentData, importAgentData } from "./installment-excel";
+import { InstallmentAgentExport } from "./InstallmentAgentExport";
 import { SaveShareMenu } from "@/components/SaveShareMenu";
 import { buildInstallmentReceiptPdf, buildPaymentHistoryPdf } from "./installment-pdf";
 import { sharePdfBytes, savePdfBytes, saveFileBlob, shareFileBlob } from "@/features/pos/share-utils";
