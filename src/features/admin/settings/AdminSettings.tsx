@@ -773,10 +773,9 @@ export function AdminSettings() {
             <Button onClick={() => void save()} disabled={!settings}>Save</Button>
           </div>
         </CardContent>
-      </Card>
+      </Card>}
 
-      {/* Admin Account */}
-      <Card>
+      {match("admin", "account", "password", "security") && <Card>
         <CardHeader>
           <CardTitle>Admin Account</CardTitle>
           <CardDescription>Update your admin name, phone, or password.</CardDescription>
