@@ -329,7 +329,7 @@ export function InstallmentSection() {
             ) : (
               <div className="space-y-3">
                 {filtered.map(c => {
-                  const paid = isCurrentMonthPaid(c.id);
+                  const paid = isCurrentPeriodPaid(c);
                   const overdue = !paid && isPaymentOverdue(c);
                   const lateDays = overdue && c.dueDate ? Math.max(0, new Date().getDate() - c.dueDate) : 0;
                   const currentLateFee = lateDays > 0 && c.lateFeePerDay ? lateDays * c.lateFeePerDay : 0;
