@@ -297,6 +297,9 @@ export function InstallmentSection() {
                 {selectedIds.size > 0 && (
                   <Button size="sm" variant="outline" onClick={() => setAssignOpen(true)}>Assign to Agent</Button>
                 )}
+                <Button size="sm" variant="outline" onClick={() => setAgentExportOpen(true)}>
+                  <Share2 className="h-3 w-3 mr-1" /> Export to Agent
+                </Button>
               </div>
             )}
 
