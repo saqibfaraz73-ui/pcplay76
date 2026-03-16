@@ -2,6 +2,7 @@
 
 export type ProfitType = "fixed" | "percent";
 export type InstallmentFrequency = "weekly" | "monthly" | "yearly";
+export type InstallmentCustomerStatus = "active" | "cleared" | "defaulter";
 
 export type InstallmentCustomerField = {
   name: string;
