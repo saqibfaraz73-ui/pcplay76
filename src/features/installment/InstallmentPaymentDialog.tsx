@@ -89,7 +89,7 @@ export function InstallmentPaymentDialog({ customer, payments, settings, agentNa
         balanceAfter,
         agentName,
         note: note.trim() || undefined,
-        month: getCurrentMonth(),
+        month: currentPeriod,
         createdAt: Date.now(),
       };
       await db.installmentPayments.put(payment);
