@@ -633,10 +633,9 @@ export function AdminSettings() {
             <Button onClick={() => void save()} disabled={!settings}>Save</Button>
           </div>
         </CardContent>
-      </Card>
+      </Card>}
 
-      {/* Kitchen Display Settings */}
-      <Card>
+      {match("kitchen", "kds", "display") && <Card>
         <CardHeader>
           <CardTitle>Kitchen Display (KDS)</CardTitle>
           <CardDescription>Enable the kitchen display system for real-time order tracking between kitchen staff and customers.</CardDescription>
