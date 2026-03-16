@@ -1055,6 +1055,12 @@ export function RecoverySection() {
         onConfirm={confirmExport}
         onCancel={() => setExportPromptOpen(false)}
       />
+      <RecoveryAgentExport
+        open={showAgentExport}
+        onClose={() => setShowAgentExport(false)}
+        customers={allCustomers}
+        agents={agents}
+      />
     </div>
   );
 }
