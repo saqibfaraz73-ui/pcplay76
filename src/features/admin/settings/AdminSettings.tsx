@@ -700,10 +700,9 @@ export function AdminSettings() {
             <Button onClick={() => void save()} disabled={!settings}>Save Recovery Settings</Button>
           </div>
         </CardContent>
-      </Card>
+      </Card>}
 
-      {/* Installment Settings */}
-      <Card>
+      {match("installment", "payment", "financing") && <Card>
         <CardHeader>
           <CardTitle>Installment Management</CardTitle>
           <CardDescription>Configure installment sales for product financing with monthly payments.</CardDescription>
