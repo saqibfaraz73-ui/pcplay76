@@ -17,6 +17,7 @@ export function exportInstallmentExcel(customers: InstallmentCustomer[], payment
     "Profit Type": c.profitType,
     "Profit Value": c.profitValue,
     "Tenure (Months)": c.tenureMonths,
+    "Frequency": c.frequency ?? "monthly",
     "Monthly Installment": c.monthlyInstallment,
     "Total Price": c.totalPrice,
     "Balance": c.totalBalance,
