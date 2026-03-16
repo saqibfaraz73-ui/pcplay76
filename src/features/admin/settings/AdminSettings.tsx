@@ -915,9 +915,14 @@ export function AdminSettings() {
                         {s.phone && <span>{s.phone}</span>}
                       </div>
                     </div>
-                    <Button variant="ghost" size="icon" className="shrink-0" onClick={() => setDeleteStaffId(s.id)}>
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
+                    <div className="flex shrink-0 gap-1">
+                      <Button variant="ghost" size="icon" className="shrink-0" onClick={() => openEditStaff(s)}>
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="shrink-0" onClick={() => setDeleteStaffId(s.id)}>
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </div>
                   </div>
                 ))}
               </div>
