@@ -109,11 +109,18 @@ export function InstallmentSection() {
   // Filter by status tab, then by paid/unpaid
   const filtered = React.useMemo(() => {
     let list = customers;
-    // Status filter
-    list = list.filter(c => {
-      const s = c.status || "active";
-      return s === statusTab;
-    });
+    // Status filter — defaulters show in BOTH active and defaulter tabs
+    if (statusTab === "active") {
+      list = list.filter(c => {
+        const s = c.status || "active";
+        return s === "active" || s === "defaulter"; // defaulters stay in active list
+      });
+    } else {
+      list = list.filter(c => {
+        const s = c.status || "active";
+        return s === statusTab;
+      });
+    }
     // Search
     const q = query.trim().toLowerCase();
     if (q) {
