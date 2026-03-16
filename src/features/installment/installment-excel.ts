@@ -156,6 +156,106 @@ export async function importInstallmentExcel(file: File): Promise<InstallmentCus
   });
 }
 
+/** Export a filtered list of customers (cleared/defaulter) as Excel */
+export function exportStatusListExcel(
+  customers: InstallmentCustomer[],
+  payments: InstallmentPayment[],
+  status: "cleared" | "defaulter"
+): Blob {
+  const wb = XLSX.utils.book_new();
+  const label = status === "cleared" ? "Cleared" : "Defaulter";
+
+  const custData = customers.map(c => ({
+    "Name": c.name,
+    "Phone": c.phone,
+    "Address": c.address ?? "",
+    "Product": c.productName,
+    "Total Price": c.totalPrice,
+    "Balance": c.totalBalance,
+    "Monthly Installment": c.monthlyInstallment,
+    "Agent": c.agentName ?? "",
+    "Status": label,
+    ...(status === "cleared" ? { "Cleared Date": c.clearedAt ? new Date(c.clearedAt).toLocaleDateString() : "" } : {}),
+  }));
+  const ws1 = XLSX.utils.json_to_sheet(custData);
+  XLSX.utils.book_append_sheet(wb, ws1, `${label} Customers`);
+
+  // Include their payments
+  const customerIds = new Set(customers.map(c => c.id));
+  const relPayments = payments.filter(p => customerIds.has(p.customerId));
+  if (relPayments.length > 0) {
+    const payData = relPayments.map(p => {
+      const c = customers.find(cu => cu.id === p.customerId);
+      return {
+        "Customer": c?.name ?? "",
+        "Amount": p.amount,
+        "Late Fee": p.lateFeeAmount ?? 0,
+        "Balance After": p.balanceAfter,
+        "Month": p.month,
+        "Agent": p.agentName,
+        "Date": new Date(p.createdAt).toLocaleDateString(),
+      };
+    });
+    const ws2 = XLSX.utils.json_to_sheet(payData);
+    XLSX.utils.book_append_sheet(wb, ws2, "Payments");
+  }
+
+  const buf = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+  return new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+}
+
+/** Export defaulter customers as JSON for agent assignment */
+export function exportDefaulterListToAgent(
+  customers: InstallmentCustomer[],
+  payments: InstallmentPayment[],
+  agent: { id: string; name: string; pin: string; phone?: string; role: string }
+): Blob {
+  const agentCustomers = customers.filter(c => c.agentId === agent.id && c.status === "defaulter");
+  const customerIds = new Set(agentCustomers.map(c => c.id));
+  const relPayments = payments.filter(p => customerIds.has(p.customerId));
+  const strippedCustomers = agentCustomers.map(c => {
+    const { images, ...rest } = c;
+    return rest;
+  });
+
+  const data = {
+    type: "defaulter_assignment",
+    agentId: agent.id,
+    agentName: agent.name,
+    agentAccount: {
+      name: agent.name,
+      phone: agent.phone ?? "",
+      role: agent.role,
+      pin: agent.pin,
+    },
+    exportedAt: Date.now(),
+    customers: strippedCustomers,
+    payments: relPayments,
+  };
+  return new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+}
+
+/** Import defaulter assignment file on agent device */
+export async function importDefaulterAssignment(file: File): Promise<{
+  agentName: string;
+  agentId: string;
+  customers: Omit<InstallmentCustomer, "images">[];
+  payments: InstallmentPayment[];
+  agentAccount?: { name: string; phone: string; role: string; pin: string };
+}> {
+  const text = await file.text();
+  const data = JSON.parse(text);
+  if (data.type !== "defaulter_assignment") throw new Error("Not a defaulter assignment file.");
+  if (!data.customers || !Array.isArray(data.customers)) throw new Error("Invalid file — no customers found");
+  return {
+    agentName: data.agentName,
+    agentId: data.agentId,
+    customers: data.customers,
+    payments: data.payments ?? [],
+    agentAccount: data.agentAccount ?? undefined,
+  };
+}
+
 /** Export agent's payment data as JSON for upload to admin */
 export function exportAgentData(payments: InstallmentPayment[], agentName: string): Blob {
   const data = { agentName, exportedAt: Date.now(), payments };

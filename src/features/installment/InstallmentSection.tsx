@@ -19,7 +19,7 @@ import { InstallmentPaymentDialog } from "./InstallmentPaymentDialog";
 import { InstallmentPaymentHistory } from "./InstallmentPaymentHistory";
 import { InstallmentReports } from "./InstallmentReports";
 import { InstallmentAgentAssign } from "./InstallmentAgentAssign";
-import { exportInstallmentExcel, importInstallmentExcel, downloadSampleExcel, exportAgentData, importAgentData, importAgentAssignment } from "./installment-excel";
+import { exportInstallmentExcel, importInstallmentExcel, downloadSampleExcel, exportAgentData, importAgentData, importAgentAssignment, exportStatusListExcel, exportDefaulterListToAgent, importDefaulterAssignment } from "./installment-excel";
 import { InstallmentAgentExport } from "./InstallmentAgentExport";
 import { SaveShareMenu } from "@/components/SaveShareMenu";
 import { buildInstallmentReceiptPdf, buildPaymentHistoryPdf } from "./installment-pdf";
@@ -66,6 +66,7 @@ export function InstallmentSection() {
   const [query, setQuery] = React.useState("");
   const [statusTab, setStatusTab] = React.useState<"active" | "cleared" | "defaulter">("active");
   const [filterTab, setFilterTab] = React.useState<"all" | "paid" | "unpaid">("all");
+  const [defaulterExportOpen, setDefaulterExportOpen] = React.useState(false);
 
   // Dialogs
   const [formOpen, setFormOpen] = React.useState(false);
@@ -109,11 +110,18 @@ export function InstallmentSection() {
   // Filter by status tab, then by paid/unpaid
   const filtered = React.useMemo(() => {
     let list = customers;
-    // Status filter
-    list = list.filter(c => {
-      const s = c.status || "active";
-      return s === statusTab;
-    });
+    // Status filter — defaulters show in BOTH active and defaulter tabs
+    if (statusTab === "active") {
+      list = list.filter(c => {
+        const s = c.status || "active";
+        return s === "active" || s === "defaulter"; // defaulters stay in active list
+      });
+    } else {
+      list = list.filter(c => {
+        const s = c.status || "active";
+        return s === statusTab;
+      });
+    }
     // Search
     const q = query.trim().toLowerCase();
     if (q) {
@@ -216,6 +224,19 @@ export function InstallmentSection() {
     }
   };
 
+  const handleStatusExport = async (status: "cleared" | "defaulter", mode: "save" | "share") => {
+    try {
+      const statusCustomers = customers.filter(c => c.status === status);
+      if (statusCustomers.length === 0) { toast({ title: `No ${status} customers to export` }); return; }
+      const blob = exportStatusListExcel(statusCustomers, payments, status);
+      const fileName = `${status}_customers_${Date.now()}.xlsx`;
+      if (mode === "save") await saveFileBlob(blob, fileName);
+      else await shareFileBlob(blob, fileName);
+    } catch (e: any) {
+      toast({ title: "Export failed", description: e?.message, variant: "destructive" });
+    }
+  };
+
   const handleImport = async (file: File) => {
     try {
       const imported = await importInstallmentExcel(file);
@@ -233,6 +254,62 @@ export function InstallmentSection() {
       await saveFileBlob(blob, "installment_sample_import.xlsx");
     } catch (e: any) {
       toast({ title: "Failed", description: e?.message, variant: "destructive" });
+    }
+  };
+
+  // Defaulter export to agent
+  const handleDefaulterExportToAgent = async (agent: StaffAccount) => {
+    try {
+      const blob = exportDefaulterListToAgent(customers, payments, {
+        id: agent.id, name: agent.name, pin: agent.pin, phone: agent.phone, role: agent.role,
+      });
+      const fileName = `defaulters_${agent.name.replace(/\s+/g, "_")}_${Date.now()}.json`;
+      await saveFileBlob(blob, fileName);
+      const count = customers.filter(c => c.agentId === agent.id && c.status === "defaulter").length;
+      toast({ title: `Exported ${count} defaulters for ${agent.name}` });
+    } catch (e: any) {
+      toast({ title: "Export failed", description: e?.message, variant: "destructive" });
+    }
+  };
+
+  // Agent: import defaulter assignment
+  const handleDefaulterAssignmentImport = async (file: File) => {
+    try {
+      const result = await importDefaulterAssignment(file);
+      let custCount = 0, payCount = 0;
+
+      if (result.agentAccount) {
+        const acc = result.agentAccount;
+        const deterministicId = `agent_${acc.name.toLowerCase().replace(/\s+/g, "_")}_${acc.pin}`;
+        const existing = await db.staffAccounts.get(deterministicId);
+        if (!existing) {
+          await db.staffAccounts.put({
+            id: deterministicId, name: acc.name, phone: acc.phone || undefined,
+            role: (acc.role as any) || "installment_agent", pin: acc.pin, createdAt: Date.now(),
+          });
+        }
+        for (const c of result.customers) {
+          if (c.agentId === result.agentId) (c as any).agentId = deterministicId;
+        }
+      }
+
+      for (const c of result.customers) {
+        const existing = await db.installmentCustomers.get(c.id);
+        if (!existing) {
+          await db.installmentCustomers.put({ ...c, images: [] } as any);
+          custCount++;
+        } else {
+          await db.installmentCustomers.put({ ...c, images: existing.images ?? [] } as any);
+        }
+      }
+      for (const p of result.payments) {
+        const existing = await db.installmentPayments.get(p.id);
+        if (!existing) { await db.installmentPayments.put(p); payCount++; }
+      }
+      toast({ title: `Imported ${custCount} defaulter customers, ${payCount} payments` });
+      await refresh();
+    } catch (e: any) {
+      toast({ title: "Import failed", description: e?.message, variant: "destructive" });
     }
   };
 
@@ -332,6 +409,7 @@ export function InstallmentSection() {
     <Tabs defaultValue="customers">
       <TabsList className="flex w-full flex-wrap justify-start gap-1">
         <TabsTrigger value="customers">Customers</TabsTrigger>
+        {isAgent && <TabsTrigger value="defaulters">Defaulters</TabsTrigger>}
         {isAgent && <TabsTrigger value="myreports">My Reports</TabsTrigger>}
         {canEdit && <TabsTrigger value="reports">Reports</TabsTrigger>}
         {isAdmin && <TabsTrigger value="agents">Agents</TabsTrigger>}
@@ -392,6 +470,23 @@ export function InstallmentSection() {
                 <AlertTriangle className="h-3 w-3 mr-1" /> Defaulter ({defaulterCount})
               </Button>
             </div>
+
+            {/* Export buttons for cleared/defaulter tabs */}
+            {isAdmin && (statusTab === "cleared" || statusTab === "defaulter") && (
+              <div className="flex flex-wrap gap-1.5">
+                <SaveShareMenu
+                  label={`Export ${statusTab === "cleared" ? "Cleared" : "Defaulter"} List`}
+                  size="sm"
+                  onSave={() => handleStatusExport(statusTab as "cleared" | "defaulter", "save")}
+                  onShare={() => handleStatusExport(statusTab as "cleared" | "defaulter", "share")}
+                />
+                {statusTab === "defaulter" && (
+                  <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setDefaulterExportOpen(true)}>
+                    <Share2 className="h-3 w-3 mr-1" /> Export Defaulters to Agent
+                  </Button>
+                )}
+              </div>
+            )}
 
             {/* Search */}
             <div className="flex gap-2 items-end flex-wrap">
@@ -661,6 +756,80 @@ export function InstallmentSection() {
         })()}
       </TabsContent>
 
+      {/* Agent Defaulters Tab */}
+      {isAgent && (
+        <TabsContent value="defaulters">
+          <Card>
+            <CardHeader className="space-y-3 pb-3">
+              <CardTitle className="text-base">Defaulter Customers</CardTitle>
+              <CardDescription className="text-xs">Import defaulter list from admin, collect payments, and export updates back.</CardDescription>
+              <div className="flex flex-wrap gap-1.5">
+                <Button variant="outline" size="sm" className="h-7 text-xs" asChild>
+                  <label className="cursor-pointer">
+                    <Upload className="h-3 w-3 mr-1" /> Import Defaulters
+                    <input type="file" accept=".json" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) void handleDefaulterAssignmentImport(f); e.target.value = ""; }} />
+                  </label>
+                </Button>
+                <Button variant="outline" size="sm" className="h-7 text-xs" onClick={handleAgentExport}>
+                  <Download className="h-3 w-3 mr-1" /> Export Updates to Admin
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {(() => {
+                const defaulterCusts = customers.filter(c => c.status === "defaulter");
+                if (defaulterCusts.length === 0) return <p className="text-sm text-muted-foreground py-4 text-center">No defaulter customers. Import a defaulter list from admin.</p>;
+                return (
+                  <div className="space-y-3">
+                    {defaulterCusts.map(c => (
+                      <div key={c.id} className="rounded-md border border-destructive/40 bg-destructive/5 p-3 space-y-2">
+                        <div className="flex items-start gap-2">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="font-medium text-sm">{c.name}</span>
+                              <Badge variant="destructive" className="text-xs px-1.5 py-0">Defaulter</Badge>
+                            </div>
+                            <div className="text-xs text-muted-foreground mt-0.5">{c.phone}</div>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-1.5 text-xs">
+                          <div className="rounded bg-muted/50 p-1.5">
+                            <div className="text-muted-foreground text-[10px]">Product</div>
+                            <div className="font-medium truncate">{c.productName}</div>
+                          </div>
+                          <div className="rounded bg-muted/50 p-1.5">
+                            <div className="text-muted-foreground text-[10px]">Balance</div>
+                            <div className="font-semibold text-destructive">{formatIntMoney(c.totalBalance)}</div>
+                          </div>
+                          <div className="rounded bg-muted/50 p-1.5">
+                            <div className="text-muted-foreground text-[10px]">{c.frequency === "weekly" ? "Weekly" : c.frequency === "yearly" ? "Yearly" : "Monthly"}</div>
+                            <div className="font-semibold">{formatIntMoney(c.monthlyInstallment)}</div>
+                          </div>
+                          <div className="rounded bg-muted/50 p-1.5">
+                            <div className="text-muted-foreground text-[10px]">Total</div>
+                            <div className="font-semibold">{formatIntMoney(c.totalPrice)}</div>
+                          </div>
+                        </div>
+                        <div className="flex gap-1 flex-wrap pt-1 border-t">
+                          {c.totalBalance > 0 && (
+                            <Button size="sm" className="h-7 text-xs" onClick={() => setPaymentCustomerId(c.id)}>
+                              <CreditCard className="h-3 w-3 mr-1" /> Collect Payment
+                            </Button>
+                          )}
+                          <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setHistoryCustomerId(c.id)}>
+                            <History className="h-3 w-3 mr-1" /> History
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      )}
+
       {isAgent && (
         <TabsContent value="myreports">
           <InstallmentReports
@@ -698,12 +867,20 @@ export function InstallmentSection() {
                   {agents.map(a => {
                     const assigned = customers.filter(c => c.agentId === a.id);
                     const totalBalance = assigned.reduce((s, c) => s + c.totalBalance, 0);
+                    const defaulterAssigned = assigned.filter(c => c.status === "defaulter").length;
                     return (
                       <div key={a.id} className="rounded-md border p-3 flex items-center justify-between">
                         <div>
                           <div className="font-medium text-sm">{a.name}</div>
-                          <div className="text-xs text-muted-foreground">{assigned.length} customers • Balance: {formatIntMoney(totalBalance)}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {assigned.length} customers • {defaulterAssigned > 0 ? `${defaulterAssigned} defaulters • ` : ""}Balance: {formatIntMoney(totalBalance)}
+                          </div>
                         </div>
+                        {defaulterAssigned > 0 && (
+                          <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => void handleDefaulterExportToAgent(a)}>
+                            <Share2 className="h-3 w-3 mr-1" /> Export Defaulters
+                          </Button>
+                        )}
                       </div>
                     );
                   })}
@@ -712,6 +889,38 @@ export function InstallmentSection() {
             </CardContent>
           </Card>
         </TabsContent>
+      )}
+
+      {/* Defaulter Export to Agent Dialog */}
+      {defaulterExportOpen && (
+        <Dialog open onOpenChange={() => setDefaulterExportOpen(false)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Export Defaulters to Agent</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3">
+              <p className="text-sm text-muted-foreground">Select an agent to export their assigned defaulter customers.</p>
+              {agents.map(a => {
+                const count = customers.filter(c => c.agentId === a.id && c.status === "defaulter").length;
+                return (
+                  <div key={a.id} className="rounded-md border p-3 flex items-center justify-between">
+                    <div>
+                      <div className="font-medium text-sm">{a.name}</div>
+                      <div className="text-xs text-muted-foreground">{count} defaulter customers</div>
+                    </div>
+                    <Button size="sm" disabled={count === 0} onClick={() => { void handleDefaulterExportToAgent(a); setDefaulterExportOpen(false); }}>
+                      <Download className="h-3 w-3 mr-1" /> Export
+                    </Button>
+                  </div>
+                );
+              })}
+              {agents.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">No agents found.</p>}
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setDefaulterExportOpen(false)}>Close</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       )}
     </Tabs>
   );
