@@ -9,7 +9,7 @@ import type { AdminAccount, ChargeType, Settings, StaffAccount } from "@/db/sche
 import { useToast } from "@/hooks/use-toast";
 import { ensureSeedData } from "@/db/seed";
 import { AdminTablesWaiters } from "@/features/admin/tables/AdminTablesWaiters";
-import { Trash2, Plus } from "lucide-react";
+import { Trash2, Plus, Search, X } from "lucide-react";
 import { getLicense } from "@/features/licensing/licensing-db";
 
 
@@ -106,7 +106,7 @@ export function AdminSettings() {
 
   
   const [isPremium, setIsPremium] = React.useState(false);
-  
+  const [searchQuery, setSearchQuery] = React.useState("");
 
   const load = React.useCallback(async () => {
     await ensureSeedData();
@@ -301,9 +301,28 @@ export function AdminSettings() {
     toast({ title: "Staff removed" });
   };
 
+  const sq = searchQuery.toLowerCase().trim();
+  const match = (...keywords: string[]) => !sq || keywords.some(k => k.toLowerCase().includes(sq));
+
   return (
     <div className="space-y-4">
-      <Card>
+      {/* Search bar */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Search settings..."
+          className="pl-9 pr-9"
+        />
+        {searchQuery && (
+          <button onClick={() => setSearchQuery("")} className="absolute right-3 top-1/2 -translate-y-1/2">
+            <X className="h-4 w-4 text-muted-foreground" />
+          </button>
+        )}
+      </div>
+
+      {match("business", "name", "currency", "address", "phone", "image", "sku", "barcode") && <Card>
         <CardHeader>
           <CardTitle>Business Settings</CardTitle>
           <CardDescription>Basic settings for your business.</CardDescription>
@@ -374,10 +393,9 @@ export function AdminSettings() {
             <Button onClick={() => void save()} disabled={!settings}>Save</Button>
           </div>
         </CardContent>
-      </Card>
+      </Card>}
 
-      {/* Tax & Service Charges */}
-      <Card>
+      {match("tax", "service", "charge", "percent") && <Card>
         <CardHeader>
           <CardTitle>Tax & Service Charges</CardTitle>
           <CardDescription>Configure automatic tax and service charges on receipts.</CardDescription>
@@ -445,10 +463,9 @@ export function AdminSettings() {
             <Button onClick={() => void save()} disabled={!settings}>Save Charges</Button>
           </div>
         </CardContent>
-      </Card>
+      </Card>}
 
-      {/* Expiry Date Settings */}
-      <Card>
+      {match("expiry", "date") && <Card>
         <CardHeader>
           <CardTitle>Expiry Date Settings</CardTitle>
           <CardDescription>Configure expiry date tracking and display options for items.</CardDescription>
@@ -483,10 +500,9 @@ export function AdminSettings() {
             <Button onClick={() => void save()} disabled={!settings}>Save Expiry Settings</Button>
           </div>
         </CardContent>
-      </Card>
+      </Card>}
 
-      {/* Table Management Settings */}
-      <Card>
+      {match("table", "waiter", "dine", "supervisor") && <Card>
         <CardHeader>
           <CardTitle>Table Management</CardTitle>
           <CardDescription>Enable table service mode for dine-in restaurants with waiters.</CardDescription>
@@ -561,10 +577,9 @@ export function AdminSettings() {
             </div>
           )}
         </CardContent>
-      </Card>
+      </Card>}
 
-      {/* Advance/Booking Settings */}
-      <Card>
+      {match("advance", "booking") && <Card>
         <CardHeader>
           <CardTitle>Advance / Booking Orders</CardTitle>
           <CardDescription>Enable advance item sales and time-based booking features.</CardDescription>
@@ -590,10 +605,9 @@ export function AdminSettings() {
             <Button onClick={() => void save()} disabled={!settings}>Save</Button>
           </div>
         </CardContent>
-      </Card>
+      </Card>}
 
-      {/* Sync Settings */}
-      <Card>
+      {match("sync", "device", "multi") && <Card>
         <CardHeader>
           <CardTitle>Device Sync</CardTitle>
           <CardDescription>Enable multi-device sync for Main/Sub device setup over local network.</CardDescription>
@@ -619,10 +633,9 @@ export function AdminSettings() {
             <Button onClick={() => void save()} disabled={!settings}>Save</Button>
           </div>
         </CardContent>
-      </Card>
+      </Card>}
 
-      {/* Kitchen Display Settings */}
-      <Card>
+      {match("kitchen", "kds", "display") && <Card>
         <CardHeader>
           <CardTitle>Kitchen Display (KDS)</CardTitle>
           <CardDescription>Enable the kitchen display system for real-time order tracking between kitchen staff and customers.</CardDescription>
@@ -650,10 +663,9 @@ export function AdminSettings() {
             <Button onClick={() => void save()} disabled={!settings}>Save</Button>
           </div>
         </CardContent>
-      </Card>
+      </Card>}
 
-      {/* Recovery Settings */}
-      <Card>
+      {match("recovery", "bill", "collection", "agent") && <Card>
         <CardHeader>
           <CardTitle>Recovery / Bill Collection</CardTitle>
           <CardDescription>Configure recovery module for bill collection agents.</CardDescription>
@@ -688,10 +700,9 @@ export function AdminSettings() {
             <Button onClick={() => void save()} disabled={!settings}>Save Recovery Settings</Button>
           </div>
         </CardContent>
-      </Card>
+      </Card>}
 
-      {/* Installment Settings */}
-      <Card>
+      {match("installment", "payment", "financing") && <Card>
         <CardHeader>
           <CardTitle>Installment Management</CardTitle>
           <CardDescription>Configure installment sales for product financing with monthly payments.</CardDescription>
@@ -722,10 +733,9 @@ export function AdminSettings() {
             <Button onClick={() => void save()} disabled={!settings}>Save</Button>
           </div>
         </CardContent>
-      </Card>
+      </Card>}
 
-      {/* General Permissions */}
-      <Card>
+      {match("permission", "dashboard", "delivery", "cashier", "report", "cancel") && <Card>
         <CardHeader>
           <CardTitle>General Permissions</CardTitle>
           <CardDescription>Control access for sales dashboard and cashier roles.</CardDescription>
@@ -763,10 +773,9 @@ export function AdminSettings() {
             <Button onClick={() => void save()} disabled={!settings}>Save</Button>
           </div>
         </CardContent>
-      </Card>
+      </Card>}
 
-      {/* Admin Account */}
-      <Card>
+      {match("admin", "account", "password", "security") && <Card>
         <CardHeader>
           <CardTitle>Admin Account</CardTitle>
           <CardDescription>Update your admin name, phone, or password.</CardDescription>
@@ -811,10 +820,9 @@ export function AdminSettings() {
             </Button>
           </div>
         </CardContent>
-      </Card>
+      </Card>}
 
-      {/* Staff Accounts */}
-      <Card>
+      {match("staff", "cashier", "waiter", "pin", "login") && <Card>
         <CardHeader>
           <CardTitle>Staff Accounts</CardTitle>
           <CardDescription>Create cashier and waiter logins. Staff log in with their name or mobile number + 4-digit PIN.</CardDescription>
@@ -905,7 +913,7 @@ export function AdminSettings() {
             <p className="text-sm text-muted-foreground">No staff accounts yet. Add a cashier or waiter above.</p>
           )}
         </CardContent>
-      </Card>
+      </Card>}
 
 
       {/* Delete staff confirmation */}
