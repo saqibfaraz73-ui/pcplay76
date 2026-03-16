@@ -9,7 +9,7 @@ import type { AdminAccount, ChargeType, Settings, StaffAccount } from "@/db/sche
 import { useToast } from "@/hooks/use-toast";
 import { ensureSeedData } from "@/db/seed";
 import { AdminTablesWaiters } from "@/features/admin/tables/AdminTablesWaiters";
-import { Trash2, Plus, Search, X } from "lucide-react";
+import { Trash2, Plus, Search, X, Pencil } from "lucide-react";
 import { getLicense } from "@/features/licensing/licensing-db";
 
 
@@ -103,6 +103,11 @@ export function AdminSettings() {
   const [newStaffRole, setNewStaffRole] = React.useState<"cashier" | "waiter" | "supervisor" | "recovery" | "kitchen" | "installment_agent">("cashier");
   const [newStaffPin, setNewStaffPin] = React.useState("");
   const [deleteStaffId, setDeleteStaffId] = React.useState<string | null>(null);
+  const [editStaff, setEditStaff] = React.useState<StaffAccount | null>(null);
+  const [editName, setEditName] = React.useState("");
+  const [editPhone, setEditPhone] = React.useState("");
+  const [editRole, setEditRole] = React.useState<"cashier" | "waiter" | "supervisor" | "recovery" | "kitchen" | "installment_agent">("cashier");
+  const [editPin, setEditPin] = React.useState("");
 
   
   const [isPremium, setIsPremium] = React.useState(false);
@@ -292,6 +297,43 @@ export function AdminSettings() {
     setNewStaffPhone("");
     setNewStaffPin("");
     toast({ title: `${newStaffRole === "cashier" ? "Cashier" : newStaffRole === "supervisor" ? "Supervisor" : newStaffRole === "recovery" ? "Recovery Agent" : newStaffRole === "kitchen" ? "Kitchen Staff" : newStaffRole === "installment_agent" ? "Installment Agent" : "Waiter"} added` });
+  };
+
+  const openEditStaff = (s: StaffAccount) => {
+    setEditStaff(s);
+    setEditName(s.name);
+    setEditPhone(s.phone || "");
+    setEditRole(s.role as any);
+    setEditPin(s.pin);
+  };
+
+  const saveEditStaff = async () => {
+    if (!editStaff) return;
+    if (!editName.trim()) {
+      toast({ title: "Name is required", variant: "destructive" });
+      return;
+    }
+    if (!editPin || editPin.length !== 4 || !/^\d{4}$/.test(editPin)) {
+      toast({ title: "PIN must be exactly 4 digits", variant: "destructive" });
+      return;
+    }
+    // Check duplicate name (exclude current)
+    const dup = staffAccounts.find((s) => s.id !== editStaff.id && s.name.toLowerCase() === editName.trim().toLowerCase());
+    if (dup) {
+      toast({ title: "Staff name already exists", variant: "destructive" });
+      return;
+    }
+    const updated: StaffAccount = {
+      ...editStaff,
+      name: editName.trim(),
+      phone: editPhone.trim() || undefined,
+      role: editRole,
+      pin: editPin,
+    };
+    await db.staffAccounts.put(updated);
+    setStaffAccounts((prev) => prev.map((s) => (s.id === updated.id ? updated : s)));
+    setEditStaff(null);
+    toast({ title: "Staff account updated" });
   };
 
   const deleteStaff = async (staffId: string) => {
@@ -873,9 +915,14 @@ export function AdminSettings() {
                         {s.phone && <span>{s.phone}</span>}
                       </div>
                     </div>
-                    <Button variant="ghost" size="icon" className="shrink-0" onClick={() => setDeleteStaffId(s.id)}>
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
+                    <div className="flex shrink-0 gap-1">
+                      <Button variant="ghost" size="icon" className="shrink-0" onClick={() => openEditStaff(s)}>
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="shrink-0" onClick={() => setDeleteStaffId(s.id)}>
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -888,7 +935,7 @@ export function AdminSettings() {
                       <th className="px-3 py-2 text-left font-medium">Phone</th>
                       <th className="px-3 py-2 text-left font-medium">Role</th>
                       <th className="px-3 py-2 text-left font-medium">PIN</th>
-                      <th className="px-3 py-2 text-right font-medium">Action</th>
+                      <th className="px-3 py-2 text-right font-medium">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -899,9 +946,14 @@ export function AdminSettings() {
                         <td className="px-3 py-2 capitalize">{s.role.replace("_", " ")}</td>
                         <td className="px-3 py-2 font-mono">{s.pin}</td>
                         <td className="px-3 py-2 text-right">
-                          <Button variant="ghost" size="icon" onClick={() => setDeleteStaffId(s.id)}>
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
+                          <div className="inline-flex gap-1">
+                            <Button variant="ghost" size="icon" onClick={() => openEditStaff(s)}>
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="icon" onClick={() => setDeleteStaffId(s.id)}>
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -926,6 +978,45 @@ export function AdminSettings() {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={() => deleteStaffId && deleteStaff(deleteStaffId)}>Remove</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Edit staff dialog */}
+      <AlertDialog open={!!editStaff} onOpenChange={(open) => { if (!open) setEditStaff(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Edit Staff Account</AlertDialogTitle>
+            <AlertDialogDescription>Update staff name, phone, role, or PIN.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="grid gap-3">
+            <div className="space-y-2">
+              <Label>Name</Label>
+              <Input value={editName} onChange={(e) => setEditName(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label>Phone <span className="text-xs text-muted-foreground">(optional)</span></Label>
+              <Input value={editPhone} onChange={(e) => setEditPhone(e.target.value)} inputMode="tel" />
+            </div>
+            <div className="space-y-2">
+              <Label>Role</Label>
+              <select value={editRole} onChange={(e) => setEditRole(e.target.value as any)} className="h-10 w-full rounded-md border bg-background px-3 text-sm">
+                <option value="cashier">Cashier</option>
+                <option value="waiter">Waiter</option>
+                <option value="supervisor">Supervisor</option>
+                <option value="recovery">Recovery Agent</option>
+                <option value="installment_agent">Installment Agent</option>
+                <option value="kitchen">Kitchen Staff</option>
+              </select>
+            </div>
+            <div className="space-y-2">
+              <Label>4-Digit PIN</Label>
+              <Input value={editPin} onChange={(e) => setEditPin(e.target.value.replace(/\D/g, "").slice(0, 4))} inputMode="numeric" maxLength={4} />
+            </div>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => void saveEditStaff()}>Save</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
