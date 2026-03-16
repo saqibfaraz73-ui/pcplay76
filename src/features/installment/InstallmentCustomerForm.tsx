@@ -256,7 +256,7 @@ export function InstallmentCustomerForm({ open, customer, onClose, onSave }: Pro
                 <Input value={marketPrice || ""} onChange={e => setMarketPrice(parseNonDecimalInt(e.target.value))} inputMode="numeric" />
               </div>
             </div>
-            <div className="grid gap-3 sm:grid-cols-3 mt-3">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 mt-3">
               <div className="space-y-1">
                 <Label>Profit Type</Label>
                 <select value={profitType} onChange={e => setProfitType(e.target.value as ProfitType)} className="h-10 w-full rounded-md border bg-background px-3 text-sm">
@@ -278,6 +278,14 @@ export function InstallmentCustomerForm({ open, customer, onClose, onSave }: Pro
                   </select>
                 </div>
               </div>
+              <div className="space-y-1">
+                <Label>Frequency</Label>
+                <select value={frequency} onChange={e => setFrequency(e.target.value as InstallmentFrequency)} className="h-10 w-full rounded-md border bg-background px-3 text-sm">
+                  <option value="weekly">Weekly</option>
+                  <option value="monthly">Monthly</option>
+                  <option value="yearly">Yearly</option>
+                </select>
+              </div>
             </div>
 
             {/* Auto-calculated preview */}
@@ -287,12 +295,12 @@ export function InstallmentCustomerForm({ open, customer, onClose, onSave }: Pro
                 <div className="font-bold text-sm">{totalPrice.toLocaleString()}</div>
               </div>
               <div>
-                <div className="text-muted-foreground">Monthly</div>
+                <div className="text-muted-foreground">{frequency === "weekly" ? "Weekly" : frequency === "yearly" ? "Yearly" : "Monthly"}</div>
                 <div className="font-bold text-sm">{monthlyInstallment.toLocaleString()}</div>
               </div>
               <div>
-                <div className="text-muted-foreground">Tenure</div>
-                <div className="font-bold text-sm">{actualTenureMonths} months</div>
+                <div className="text-muted-foreground">Periods</div>
+                <div className="font-bold text-sm">{totalPeriods} {frequency === "weekly" ? "weeks" : frequency === "yearly" ? "years" : "months"}</div>
               </div>
             </div>
           </div>
