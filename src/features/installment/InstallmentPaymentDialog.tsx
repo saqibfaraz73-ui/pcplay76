@@ -168,7 +168,7 @@ export function InstallmentPaymentDialog({ customer, payments, settings, agentNa
         <div className="grid gap-3">
           <div className="grid grid-cols-2 gap-2 text-xs">
             <div className="rounded bg-muted/50 p-2">
-              <div className="text-muted-foreground">Monthly Installment</div>
+              <div className="text-muted-foreground">{customer.frequency === "weekly" ? "Weekly" : customer.frequency === "yearly" ? "Yearly" : "Monthly"} Installment</div>
               <div className="font-bold">{formatIntMoney(customer.monthlyInstallment)}</div>
             </div>
             <div className="rounded bg-muted/50 p-2">
