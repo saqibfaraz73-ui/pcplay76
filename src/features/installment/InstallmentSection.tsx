@@ -303,7 +303,15 @@ export function InstallmentSection() {
               </div>
             )}
             {isAgent && (
-              <Button variant="outline" size="sm" className="h-7 text-xs" onClick={handleAgentExport}><Download className="h-3 w-3 mr-1" /> Export My Data</Button>
+              <div className="flex flex-wrap gap-1.5">
+                <Button variant="outline" size="sm" className="h-7 text-xs" asChild>
+                  <label className="cursor-pointer">
+                    <Upload className="h-3 w-3 mr-1" /> Import Assignment
+                    <input type="file" accept=".json" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) void handleAgentAssignmentImport(f); e.target.value = ""; }} />
+                  </label>
+                </Button>
+                <Button variant="outline" size="sm" className="h-7 text-xs" onClick={handleAgentExport}><Download className="h-3 w-3 mr-1" /> Export My Data</Button>
+              </div>
             )}
           </CardHeader>
           <CardContent className="space-y-3">
