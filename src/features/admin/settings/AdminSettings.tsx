@@ -463,10 +463,9 @@ export function AdminSettings() {
             <Button onClick={() => void save()} disabled={!settings}>Save Charges</Button>
           </div>
         </CardContent>
-      </Card>
+      </Card>}
 
-      {/* Expiry Date Settings */}
-      <Card>
+      {match("expiry", "date") && <Card>
         <CardHeader>
           <CardTitle>Expiry Date Settings</CardTitle>
           <CardDescription>Configure expiry date tracking and display options for items.</CardDescription>
