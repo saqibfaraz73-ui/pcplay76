@@ -89,6 +89,7 @@ export function RecoverySection() {
   // Report
   const [showReport, setShowReport] = React.useState(false);
   const [reportFrom, setReportFrom] = React.useState(format(new Date(), "yyyy-MM-dd"));
+  const [showAgentView, setShowAgentView] = React.useState(false);
   const [reportTo, setReportTo] = React.useState(format(new Date(), "yyyy-MM-dd"));
 
   // Current month
