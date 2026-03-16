@@ -31,6 +31,7 @@ import jsPDF from "jspdf";
 import { sharePdfBytes, savePdfBytes } from "@/features/pos/share-utils";
 import { SaveShareMenu } from "@/components/SaveShareMenu";
 import { RecoveryAgentExport } from "./RecoveryAgentExport";
+import { RecoveryAgentView } from "./RecoveryAgentView";
 
 function uid(prefix: string) {
   return `${prefix}_${Math.random().toString(16).slice(2)}_${Date.now().toString(16)}`;
@@ -88,6 +89,7 @@ export function RecoverySection() {
   // Report
   const [showReport, setShowReport] = React.useState(false);
   const [reportFrom, setReportFrom] = React.useState(format(new Date(), "yyyy-MM-dd"));
+  const [showAgentView, setShowAgentView] = React.useState(false);
   const [reportTo, setReportTo] = React.useState(format(new Date(), "yyyy-MM-dd"));
 
   // Current month
@@ -740,6 +742,11 @@ export function RecoverySection() {
           <Button variant="outline" size="sm" onClick={() => setShowReport(true)}>
             <FileText className="h-3 w-3 mr-1" /> Report
           </Button>
+          {(isAdmin || isCashier) && (
+            <Button variant={showAgentView ? "default" : "outline"} size="sm" onClick={() => setShowAgentView(v => !v)}>
+              <Users className="h-3 w-3 mr-1" /> Agent View
+            </Button>
+          )}
           {(isAdmin || isCashier || (isRecovery && agentCanAddCustomer)) && (
             <Button size="sm" onClick={() => { resetForm(); setShowAdd(true); }}>
               <Plus className="h-3 w-3 mr-1" /> Add Customer
@@ -766,6 +773,11 @@ export function RecoverySection() {
           </Select>
           <span className="text-xs text-muted-foreground">{customers.length} customers</span>
         </div>
+      )}
+
+      {/* Agent View */}
+      {(isAdmin || isCashier) && showAgentView && (
+        <RecoveryAgentView customers={allCustomers} payments={payments} agents={agents} onRefresh={load} />
       )}
 
       {/* Search */}

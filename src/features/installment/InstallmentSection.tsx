@@ -21,6 +21,7 @@ import { InstallmentReports } from "./InstallmentReports";
 import { InstallmentAgentAssign } from "./InstallmentAgentAssign";
 import { exportInstallmentExcel, importInstallmentExcel, downloadSampleExcel, exportAgentData, importAgentData, importAgentAssignment, exportStatusListExcel, exportDefaulterListToAgent, importDefaulterAssignment } from "./installment-excel";
 import { InstallmentAgentExport } from "./InstallmentAgentExport";
+import { InstallmentAgentView } from "./InstallmentAgentView";
 import { SaveShareMenu } from "@/components/SaveShareMenu";
 import { buildInstallmentReceiptPdf, buildPaymentHistoryPdf } from "./installment-pdf";
 import { sharePdfBytes, savePdfBytes, saveFileBlob, shareFileBlob } from "@/features/pos/share-utils";
@@ -412,6 +413,7 @@ export function InstallmentSection() {
         {isAgent && <TabsTrigger value="defaulters">Defaulters</TabsTrigger>}
         {isAgent && <TabsTrigger value="myreports">My Reports</TabsTrigger>}
         {canEdit && <TabsTrigger value="reports">Reports</TabsTrigger>}
+        {isAdmin && <TabsTrigger value="agentview">Agent View</TabsTrigger>}
         {isAdmin && <TabsTrigger value="agents">Agents</TabsTrigger>}
       </TabsList>
 
@@ -846,6 +848,12 @@ export function InstallmentSection() {
       {canEdit && (
         <TabsContent value="reports">
           <InstallmentReports customers={customers} payments={payments} agents={agents} settings={settings} />
+        </TabsContent>
+      )}
+
+      {isAdmin && (
+        <TabsContent value="agentview">
+          <InstallmentAgentView customers={customers} payments={payments} agents={agents} onRefresh={refresh} />
         </TabsContent>
       )}
 
