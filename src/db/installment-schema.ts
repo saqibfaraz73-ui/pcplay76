@@ -1,6 +1,7 @@
 // ─── Installment Management Schema ────────────────────
 
 export type ProfitType = "fixed" | "percent";
+export type InstallmentFrequency = "weekly" | "monthly" | "yearly";
 
 export type InstallmentCustomerField = {
   name: string;
