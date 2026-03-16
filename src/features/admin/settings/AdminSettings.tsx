@@ -393,10 +393,9 @@ export function AdminSettings() {
             <Button onClick={() => void save()} disabled={!settings}>Save</Button>
           </div>
         </CardContent>
-      </Card>
+      </Card>}
 
-      {/* Tax & Service Charges */}
-      <Card>
+      {match("tax", "service", "charge", "percent") && <Card>
         <CardHeader>
           <CardTitle>Tax & Service Charges</CardTitle>
           <CardDescription>Configure automatic tax and service charges on receipts.</CardDescription>
