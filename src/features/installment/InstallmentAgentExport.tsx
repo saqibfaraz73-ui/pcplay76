@@ -52,6 +52,12 @@ export function InstallmentAgentExport({ open, onClose, customers, agents }: Pro
       type: "agent_assignment",
       agentId: agent.id,
       agentName: agent.name,
+      agentAccount: {
+        name: agent.name,
+        phone: agent.phone ?? "",
+        role: agent.role,
+        pin: agent.pin,
+      },
       exportedAt: Date.now(),
       customers: strippedCustomers,
       payments: relevantPayments,
