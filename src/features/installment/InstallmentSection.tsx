@@ -347,7 +347,7 @@ export function InstallmentSection() {
                           <div className="font-semibold">{formatIntMoney(c.totalPrice)}</div>
                         </div>
                         <div className="rounded bg-muted/50 p-1.5">
-                          <div className="text-muted-foreground text-[10px]">Monthly</div>
+                          <div className="text-muted-foreground text-[10px]">{c.frequency === "weekly" ? "Weekly" : c.frequency === "yearly" ? "Yearly" : "Monthly"}</div>
                           <div className="font-semibold">{formatIntMoney(c.monthlyInstallment)}</div>
                         </div>
                         <div className="rounded bg-muted/50 p-1.5">
