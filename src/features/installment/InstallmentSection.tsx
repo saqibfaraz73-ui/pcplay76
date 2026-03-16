@@ -102,10 +102,11 @@ export function InstallmentSection() {
 
   React.useEffect(() => { void refresh(); }, [refresh]);
 
-  // Check if customer has paid current month
-  const isCurrentMonthPaid = React.useCallback((customerId: string) => {
-    return payments.some(p => p.customerId === customerId && p.month === currentMonth);
-  }, [payments, currentMonth]);
+  // Check if customer has paid current period (frequency-aware)
+  const isCurrentPeriodPaid = React.useCallback((customer: InstallmentCustomer) => {
+    const period = getCurrentPeriod(customer.frequency);
+    return payments.some(p => p.customerId === customer.id && p.month === period);
+  }, [payments]);
 
   // Filter customers
   const filtered = React.useMemo(() => {
@@ -122,12 +123,12 @@ export function InstallmentSection() {
     }
     // Filter by paid/unpaid
     if (filterTab === "paid") {
-      list = list.filter(c => isCurrentMonthPaid(c.id) || c.totalBalance <= 0);
+      list = list.filter(c => isCurrentPeriodPaid(c) || c.totalBalance <= 0);
     } else if (filterTab === "unpaid") {
-      list = list.filter(c => !isCurrentMonthPaid(c.id) && c.totalBalance > 0);
+      list = list.filter(c => !isCurrentPeriodPaid(c) && c.totalBalance > 0);
     }
     return list;
-  }, [customers, query, filterTab, isCurrentMonthPaid]);
+  }, [customers, query, filterTab, isCurrentPeriodPaid]);
 
   const openNew = () => { setEditCustomer(undefined); setFormOpen(true); };
   const openEdit = (c: InstallmentCustomer) => { setEditCustomer(c); setFormOpen(true); };
