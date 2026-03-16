@@ -333,17 +333,15 @@ export default function PosHome() {
 
       {/* Stats grid */}
       {!isWaiter && (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
           {statCards.map((s) => (
-            <Card key={s.label} className="border shadow-sm">
-              <CardContent className="p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className={`rounded-lg p-1.5 ${s.bg}`}>
-                    <s.icon className={`h-4 w-4 ${s.color}`} />
-                  </div>
+            <Card key={s.label} className={`border shadow-sm ${s.bg} ${s.color}`}>
+              <CardContent className="flex items-center gap-3 p-4">
+                <s.icon className="h-6 w-6 shrink-0" />
+                <div className="min-w-0">
+                  <p className="font-semibold text-sm truncate">{s.value}</p>
+                  <p className="text-xs opacity-75 truncate">{s.label}</p>
                 </div>
-                <p className="text-lg font-bold text-foreground">{s.value}</p>
-                <p className="text-xs text-muted-foreground">{s.label}</p>
               </CardContent>
             </Card>
           ))}
