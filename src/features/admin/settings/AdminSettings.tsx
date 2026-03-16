@@ -733,10 +733,9 @@ export function AdminSettings() {
             <Button onClick={() => void save()} disabled={!settings}>Save</Button>
           </div>
         </CardContent>
-      </Card>
+      </Card>}
 
-      {/* General Permissions */}
-      <Card>
+      {match("permission", "dashboard", "delivery", "cashier", "report", "cancel") && <Card>
         <CardHeader>
           <CardTitle>General Permissions</CardTitle>
           <CardDescription>Control access for sales dashboard and cashier roles.</CardDescription>
