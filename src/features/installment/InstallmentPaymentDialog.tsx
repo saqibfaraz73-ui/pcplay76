@@ -184,6 +184,12 @@ export function InstallmentPaymentDialog({ customer, payments, settings, agentNa
             </div>
           )}
 
+          {alreadyPaidThisPeriod && (
+            <div className="rounded-md border border-yellow-500/30 bg-yellow-500/10 p-2 text-xs text-yellow-700 dark:text-yellow-400">
+              ⚠ Already paid for this {frequencyLabel}. Only one payment allowed per {frequencyLabel}.
+            </div>
+          )}
+
           <div className="space-y-1">
             <Label>Payment Amount</Label>
             <Input
@@ -191,11 +197,12 @@ export function InstallmentPaymentDialog({ customer, payments, settings, agentNa
               onChange={e => setAmount(parseNonDecimalInt(e.target.value))}
               inputMode="numeric"
               placeholder="0"
+              disabled={alreadyPaidThisPeriod}
             />
           </div>
           <div className="space-y-1">
             <Label>Note (optional)</Label>
-            <Input value={note} onChange={e => setNote(e.target.value)} placeholder="e.g. Cash payment" />
+            <Input value={note} onChange={e => setNote(e.target.value)} placeholder="e.g. Cash payment" disabled={alreadyPaidThisPeriod} />
           </div>
 
           <div className="rounded bg-muted/50 p-2 text-xs">
@@ -205,7 +212,7 @@ export function InstallmentPaymentDialog({ customer, payments, settings, agentNa
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button onClick={() => void handleSave()} disabled={saving}>Save Payment</Button>
+          <Button onClick={() => void handleSave()} disabled={saving || alreadyPaidThisPeriod}>Save Payment</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
