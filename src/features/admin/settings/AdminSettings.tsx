@@ -103,6 +103,11 @@ export function AdminSettings() {
   const [newStaffRole, setNewStaffRole] = React.useState<"cashier" | "waiter" | "supervisor" | "recovery" | "kitchen" | "installment_agent">("cashier");
   const [newStaffPin, setNewStaffPin] = React.useState("");
   const [deleteStaffId, setDeleteStaffId] = React.useState<string | null>(null);
+  const [editStaff, setEditStaff] = React.useState<StaffAccount | null>(null);
+  const [editName, setEditName] = React.useState("");
+  const [editPhone, setEditPhone] = React.useState("");
+  const [editRole, setEditRole] = React.useState<"cashier" | "waiter" | "supervisor" | "recovery" | "kitchen" | "installment_agent">("cashier");
+  const [editPin, setEditPin] = React.useState("");
 
   
   const [isPremium, setIsPremium] = React.useState(false);
