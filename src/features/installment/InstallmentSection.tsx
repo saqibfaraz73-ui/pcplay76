@@ -756,6 +756,80 @@ export function InstallmentSection() {
         })()}
       </TabsContent>
 
+      {/* Agent Defaulters Tab */}
+      {isAgent && (
+        <TabsContent value="defaulters">
+          <Card>
+            <CardHeader className="space-y-3 pb-3">
+              <CardTitle className="text-base">Defaulter Customers</CardTitle>
+              <CardDescription className="text-xs">Import defaulter list from admin, collect payments, and export updates back.</CardDescription>
+              <div className="flex flex-wrap gap-1.5">
+                <Button variant="outline" size="sm" className="h-7 text-xs" asChild>
+                  <label className="cursor-pointer">
+                    <Upload className="h-3 w-3 mr-1" /> Import Defaulters
+                    <input type="file" accept=".json" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) void handleDefaulterAssignmentImport(f); e.target.value = ""; }} />
+                  </label>
+                </Button>
+                <Button variant="outline" size="sm" className="h-7 text-xs" onClick={handleAgentExport}>
+                  <Download className="h-3 w-3 mr-1" /> Export Updates to Admin
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {(() => {
+                const defaulterCusts = customers.filter(c => c.status === "defaulter");
+                if (defaulterCusts.length === 0) return <p className="text-sm text-muted-foreground py-4 text-center">No defaulter customers. Import a defaulter list from admin.</p>;
+                return (
+                  <div className="space-y-3">
+                    {defaulterCusts.map(c => (
+                      <div key={c.id} className="rounded-md border border-destructive/40 bg-destructive/5 p-3 space-y-2">
+                        <div className="flex items-start gap-2">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="font-medium text-sm">{c.name}</span>
+                              <Badge variant="destructive" className="text-xs px-1.5 py-0">Defaulter</Badge>
+                            </div>
+                            <div className="text-xs text-muted-foreground mt-0.5">{c.phone}</div>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-1.5 text-xs">
+                          <div className="rounded bg-muted/50 p-1.5">
+                            <div className="text-muted-foreground text-[10px]">Product</div>
+                            <div className="font-medium truncate">{c.productName}</div>
+                          </div>
+                          <div className="rounded bg-muted/50 p-1.5">
+                            <div className="text-muted-foreground text-[10px]">Balance</div>
+                            <div className="font-semibold text-destructive">{formatIntMoney(c.totalBalance)}</div>
+                          </div>
+                          <div className="rounded bg-muted/50 p-1.5">
+                            <div className="text-muted-foreground text-[10px]">{c.frequency === "weekly" ? "Weekly" : c.frequency === "yearly" ? "Yearly" : "Monthly"}</div>
+                            <div className="font-semibold">{formatIntMoney(c.monthlyInstallment)}</div>
+                          </div>
+                          <div className="rounded bg-muted/50 p-1.5">
+                            <div className="text-muted-foreground text-[10px]">Total</div>
+                            <div className="font-semibold">{formatIntMoney(c.totalPrice)}</div>
+                          </div>
+                        </div>
+                        <div className="flex gap-1 flex-wrap pt-1 border-t">
+                          {c.totalBalance > 0 && (
+                            <Button size="sm" className="h-7 text-xs" onClick={() => setPaymentCustomerId(c.id)}>
+                              <CreditCard className="h-3 w-3 mr-1" /> Collect Payment
+                            </Button>
+                          )}
+                          <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setHistoryCustomerId(c.id)}>
+                            <History className="h-3 w-3 mr-1" /> History
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      )}
+
       {isAgent && (
         <TabsContent value="myreports">
           <InstallmentReports
@@ -793,12 +867,20 @@ export function InstallmentSection() {
                   {agents.map(a => {
                     const assigned = customers.filter(c => c.agentId === a.id);
                     const totalBalance = assigned.reduce((s, c) => s + c.totalBalance, 0);
+                    const defaulterAssigned = assigned.filter(c => c.status === "defaulter").length;
                     return (
                       <div key={a.id} className="rounded-md border p-3 flex items-center justify-between">
                         <div>
                           <div className="font-medium text-sm">{a.name}</div>
-                          <div className="text-xs text-muted-foreground">{assigned.length} customers • Balance: {formatIntMoney(totalBalance)}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {assigned.length} customers • {defaulterAssigned > 0 ? `${defaulterAssigned} defaulters • ` : ""}Balance: {formatIntMoney(totalBalance)}
+                          </div>
                         </div>
+                        {defaulterAssigned > 0 && (
+                          <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => void handleDefaulterExportToAgent(a)}>
+                            <Share2 className="h-3 w-3 mr-1" /> Export Defaulters
+                          </Button>
+                        )}
                       </div>
                     );
                   })}
@@ -807,6 +889,38 @@ export function InstallmentSection() {
             </CardContent>
           </Card>
         </TabsContent>
+      )}
+
+      {/* Defaulter Export to Agent Dialog */}
+      {defaulterExportOpen && (
+        <Dialog open onOpenChange={() => setDefaulterExportOpen(false)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Export Defaulters to Agent</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3">
+              <p className="text-sm text-muted-foreground">Select an agent to export their assigned defaulter customers.</p>
+              {agents.map(a => {
+                const count = customers.filter(c => c.agentId === a.id && c.status === "defaulter").length;
+                return (
+                  <div key={a.id} className="rounded-md border p-3 flex items-center justify-between">
+                    <div>
+                      <div className="font-medium text-sm">{a.name}</div>
+                      <div className="text-xs text-muted-foreground">{count} defaulter customers</div>
+                    </div>
+                    <Button size="sm" disabled={count === 0} onClick={() => { void handleDefaulterExportToAgent(a); setDefaulterExportOpen(false); }}>
+                      <Download className="h-3 w-3 mr-1" /> Export
+                    </Button>
+                  </div>
+                );
+              })}
+              {agents.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">No agents found.</p>}
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setDefaulterExportOpen(false)}>Close</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       )}
     </Tabs>
   );
