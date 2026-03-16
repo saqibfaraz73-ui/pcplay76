@@ -100,10 +100,11 @@ export function InstallmentCustomerForm({ open, customer, onClose, onSave }: Pro
   }, [open, customer]);
 
   const actualTenureMonths = tenureUnit === "years" ? tenureMonths * 12 : tenureMonths;
+  const totalPeriods = frequency === "weekly" ? Math.round(actualTenureMonths * 4.33) : frequency === "yearly" ? Math.round(actualTenureMonths / 12) || 1 : actualTenureMonths;
   const totalPrice = profitType === "percent"
     ? Math.round(marketPrice * (1 + profitValue / 100))
     : marketPrice + profitValue;
-  const monthlyInstallment = actualTenureMonths > 0 ? Math.round(totalPrice / actualTenureMonths) : totalPrice;
+  const monthlyInstallment = totalPeriods > 0 ? Math.round(totalPrice / totalPeriods) : totalPrice;
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
