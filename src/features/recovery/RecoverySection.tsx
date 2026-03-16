@@ -15,7 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/auth/AuthProvider";
 import {
   Plus, Search, Upload, Download, FileSpreadsheet, Trash2, CheckCircle, XCircle,
-  History, Printer, Share2, X, FileText, Users,
+  History, Printer, Share2, X, FileText, Users, SendHorizonal,
 } from "lucide-react";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -30,6 +30,7 @@ import { Capacitor } from "@capacitor/core";
 import jsPDF from "jspdf";
 import { sharePdfBytes, savePdfBytes } from "@/features/pos/share-utils";
 import { SaveShareMenu } from "@/components/SaveShareMenu";
+import { RecoveryAgentExport } from "./RecoveryAgentExport";
 
 function uid(prefix: string) {
   return `${prefix}_${Math.random().toString(16).slice(2)}_${Date.now().toString(16)}`;
