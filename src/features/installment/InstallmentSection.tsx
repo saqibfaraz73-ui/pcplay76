@@ -66,6 +66,7 @@ export function InstallmentSection() {
   const [query, setQuery] = React.useState("");
   const [statusTab, setStatusTab] = React.useState<"active" | "cleared" | "defaulter">("active");
   const [filterTab, setFilterTab] = React.useState<"all" | "paid" | "unpaid">("all");
+  const [defaulterExportOpen, setDefaulterExportOpen] = React.useState(false);
 
   // Dialogs
   const [formOpen, setFormOpen] = React.useState(false);
