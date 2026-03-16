@@ -981,6 +981,45 @@ export function AdminSettings() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Edit staff dialog */}
+      <AlertDialog open={!!editStaff} onOpenChange={(open) => { if (!open) setEditStaff(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Edit Staff Account</AlertDialogTitle>
+            <AlertDialogDescription>Update staff name, phone, role, or PIN.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="grid gap-3">
+            <div className="space-y-2">
+              <Label>Name</Label>
+              <Input value={editName} onChange={(e) => setEditName(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label>Phone <span className="text-xs text-muted-foreground">(optional)</span></Label>
+              <Input value={editPhone} onChange={(e) => setEditPhone(e.target.value)} inputMode="tel" />
+            </div>
+            <div className="space-y-2">
+              <Label>Role</Label>
+              <select value={editRole} onChange={(e) => setEditRole(e.target.value as any)} className="h-10 w-full rounded-md border bg-background px-3 text-sm">
+                <option value="cashier">Cashier</option>
+                <option value="waiter">Waiter</option>
+                <option value="supervisor">Supervisor</option>
+                <option value="recovery">Recovery Agent</option>
+                <option value="installment_agent">Installment Agent</option>
+                <option value="kitchen">Kitchen Staff</option>
+              </select>
+            </div>
+            <div className="space-y-2">
+              <Label>4-Digit PIN</Label>
+              <Input value={editPin} onChange={(e) => setEditPin(e.target.value.replace(/\D/g, "").slice(0, 4))} inputMode="numeric" maxLength={4} />
+            </div>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => void saveEditStaff()}>Save</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
