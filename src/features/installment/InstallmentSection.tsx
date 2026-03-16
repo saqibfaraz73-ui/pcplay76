@@ -57,6 +57,7 @@ export function InstallmentSection() {
   const [assignOpen, setAssignOpen] = React.useState(false);
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
   const [imageViewer, setImageViewer] = React.useState<{ images: string[]; index: number; name: string } | null>(null);
+  const [agentExportOpen, setAgentExportOpen] = React.useState(false);
 
   const isAdmin = session?.role === "admin";
   const isCashier = session?.role === "cashier";
