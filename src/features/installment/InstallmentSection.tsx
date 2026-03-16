@@ -19,7 +19,8 @@ import { InstallmentPaymentDialog } from "./InstallmentPaymentDialog";
 import { InstallmentPaymentHistory } from "./InstallmentPaymentHistory";
 import { InstallmentReports } from "./InstallmentReports";
 import { InstallmentAgentAssign } from "./InstallmentAgentAssign";
-import { exportInstallmentExcel, importInstallmentExcel, downloadSampleExcel, exportAgentData, importAgentData } from "./installment-excel";
+import { exportInstallmentExcel, importInstallmentExcel, downloadSampleExcel, exportAgentData, importAgentData, importAgentAssignment } from "./installment-excel";
+import { InstallmentAgentExport } from "./InstallmentAgentExport";
 import { SaveShareMenu } from "@/components/SaveShareMenu";
 import { buildInstallmentReceiptPdf, buildPaymentHistoryPdf } from "./installment-pdf";
 import { sharePdfBytes, savePdfBytes, saveFileBlob, shareFileBlob } from "@/features/pos/share-utils";
@@ -29,6 +30,23 @@ import { InstallmentImageViewer } from "./InstallmentImageViewer";
 function getCurrentMonth(): string {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function getCurrentWeek(): string {
+  const d = new Date();
+  const start = new Date(d.getFullYear(), 0, 1);
+  const weekNo = Math.ceil(((d.getTime() - start.getTime()) / 86400000 + start.getDay() + 1) / 7);
+  return `${d.getFullYear()}-W${String(weekNo).padStart(2, "0")}`;
+}
+
+function getCurrentYear(): string {
+  return `${new Date().getFullYear()}`;
+}
+
+function getCurrentPeriod(frequency?: string): string {
+  if (frequency === "weekly") return getCurrentWeek();
+  if (frequency === "yearly") return getCurrentYear();
+  return getCurrentMonth();
 }
 
 function isPaymentOverdue(customer: InstallmentCustomer): boolean {
@@ -56,13 +74,12 @@ export function InstallmentSection() {
   const [assignOpen, setAssignOpen] = React.useState(false);
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
   const [imageViewer, setImageViewer] = React.useState<{ images: string[]; index: number; name: string } | null>(null);
+  const [agentExportOpen, setAgentExportOpen] = React.useState(false);
 
   const isAdmin = session?.role === "admin";
   const isCashier = session?.role === "cashier";
   const isAgent = session?.role === "installment_agent" as any;
   const canEdit = isAdmin || isCashier;
-
-  const currentMonth = getCurrentMonth();
 
   const refresh = React.useCallback(async () => {
     let custs = await db.installmentCustomers.orderBy("createdAt").toArray();
@@ -83,10 +100,11 @@ export function InstallmentSection() {
 
   React.useEffect(() => { void refresh(); }, [refresh]);
 
-  // Check if customer has paid current month
-  const isCurrentMonthPaid = React.useCallback((customerId: string) => {
-    return payments.some(p => p.customerId === customerId && p.month === currentMonth);
-  }, [payments, currentMonth]);
+  // Check if customer has paid current period (frequency-aware)
+  const isCurrentPeriodPaid = React.useCallback((customer: InstallmentCustomer) => {
+    const period = getCurrentPeriod(customer.frequency);
+    return payments.some(p => p.customerId === customer.id && p.month === period);
+  }, [payments]);
 
   // Filter customers
   const filtered = React.useMemo(() => {
@@ -103,12 +121,12 @@ export function InstallmentSection() {
     }
     // Filter by paid/unpaid
     if (filterTab === "paid") {
-      list = list.filter(c => isCurrentMonthPaid(c.id) || c.totalBalance <= 0);
+      list = list.filter(c => isCurrentPeriodPaid(c) || c.totalBalance <= 0);
     } else if (filterTab === "unpaid") {
-      list = list.filter(c => !isCurrentMonthPaid(c.id) && c.totalBalance > 0);
+      list = list.filter(c => !isCurrentPeriodPaid(c) && c.totalBalance > 0);
     }
     return list;
-  }, [customers, query, filterTab, isCurrentMonthPaid]);
+  }, [customers, query, filterTab, isCurrentPeriodPaid]);
 
   const openNew = () => { setEditCustomer(undefined); setFormOpen(true); };
   const openEdit = (c: InstallmentCustomer) => { setEditCustomer(c); setFormOpen(true); };
@@ -217,6 +235,34 @@ export function InstallmentSection() {
     }
   };
 
+  const handleAgentAssignmentImport = async (file: File) => {
+    try {
+      const result = await importAgentAssignment(file);
+      let custCount = 0, payCount = 0;
+      for (const c of result.customers) {
+        const existing = await db.installmentCustomers.get(c.id);
+        if (!existing) {
+          await db.installmentCustomers.put({ ...c, images: [] } as any);
+          custCount++;
+        } else {
+          // Update customer data but keep existing images
+          await db.installmentCustomers.put({ ...c, images: existing.images ?? [] } as any);
+        }
+      }
+      for (const p of result.payments) {
+        const existing = await db.installmentPayments.get(p.id);
+        if (!existing) {
+          await db.installmentPayments.put(p);
+          payCount++;
+        }
+      }
+      toast({ title: `Imported ${custCount} new customers, ${payCount} payments` });
+      await refresh();
+    } catch (e: any) {
+      toast({ title: "Import failed", description: e?.message, variant: "destructive" });
+    }
+  };
+
   return (
     <Tabs defaultValue="customers">
       <TabsList className="flex w-full flex-wrap justify-start gap-1">
@@ -257,7 +303,15 @@ export function InstallmentSection() {
               </div>
             )}
             {isAgent && (
-              <Button variant="outline" size="sm" className="h-7 text-xs" onClick={handleAgentExport}><Download className="h-3 w-3 mr-1" /> Export My Data</Button>
+              <div className="flex flex-wrap gap-1.5">
+                <Button variant="outline" size="sm" className="h-7 text-xs" asChild>
+                  <label className="cursor-pointer">
+                    <Upload className="h-3 w-3 mr-1" /> Import Assignment
+                    <input type="file" accept=".json" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) void handleAgentAssignmentImport(f); e.target.value = ""; }} />
+                  </label>
+                </Button>
+                <Button variant="outline" size="sm" className="h-7 text-xs" onClick={handleAgentExport}><Download className="h-3 w-3 mr-1" /> Export My Data</Button>
+              </div>
             )}
           </CardHeader>
           <CardContent className="space-y-3">
@@ -295,6 +349,9 @@ export function InstallmentSection() {
                 {selectedIds.size > 0 && (
                   <Button size="sm" variant="outline" onClick={() => setAssignOpen(true)}>Assign to Agent</Button>
                 )}
+                <Button size="sm" variant="outline" onClick={() => setAgentExportOpen(true)}>
+                  <Share2 className="h-3 w-3 mr-1" /> Export to Agent
+                </Button>
               </div>
             )}
 
@@ -306,7 +363,7 @@ export function InstallmentSection() {
             ) : (
               <div className="space-y-3">
                 {filtered.map(c => {
-                  const paid = isCurrentMonthPaid(c.id);
+                  const paid = isCurrentPeriodPaid(c);
                   const overdue = !paid && isPaymentOverdue(c);
                   const lateDays = overdue && c.dueDate ? Math.max(0, new Date().getDate() - c.dueDate) : 0;
                   const currentLateFee = lateDays > 0 && c.lateFeePerDay ? lateDays * c.lateFeePerDay : 0;
@@ -342,7 +399,7 @@ export function InstallmentSection() {
                           <div className="font-semibold">{formatIntMoney(c.totalPrice)}</div>
                         </div>
                         <div className="rounded bg-muted/50 p-1.5">
-                          <div className="text-muted-foreground text-[10px]">Monthly</div>
+                          <div className="text-muted-foreground text-[10px]">{c.frequency === "weekly" ? "Weekly" : c.frequency === "yearly" ? "Yearly" : "Monthly"}</div>
                           <div className="font-semibold">{formatIntMoney(c.monthlyInstallment)}</div>
                         </div>
                         <div className="rounded bg-muted/50 p-1.5">
@@ -453,6 +510,14 @@ export function InstallmentSection() {
             onAssigned={async () => { setAssignOpen(false); setSelectedIds(new Set()); await refresh(); }}
           />
         )}
+
+        {/* Agent Export */}
+        <InstallmentAgentExport
+          open={agentExportOpen}
+          onClose={() => setAgentExportOpen(false)}
+          customers={customers}
+          agents={agents}
+        />
 
         {/* Image Viewer */}
         {imageViewer && (

@@ -30,12 +30,34 @@ function getCurrentMonth(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 }
 
+function getCurrentWeek(): string {
+  const d = new Date();
+  const start = new Date(d.getFullYear(), 0, 1);
+  const weekNo = Math.ceil(((d.getTime() - start.getTime()) / 86400000 + start.getDay() + 1) / 7);
+  return `${d.getFullYear()}-W${String(weekNo).padStart(2, "0")}`;
+}
+
+function getCurrentYear(): string {
+  return `${new Date().getFullYear()}`;
+}
+
+function getCurrentPeriod(frequency?: string): string {
+  if (frequency === "weekly") return getCurrentWeek();
+  if (frequency === "yearly") return getCurrentYear();
+  return getCurrentMonth();
+}
+
 export function InstallmentPaymentDialog({ customer, payments, settings, agentName, onClose, onSaved }: Props) {
   const { toast } = useToast();
   const [amount, setAmount] = React.useState(customer.monthlyInstallment);
   const [note, setNote] = React.useState("");
   const [saving, setSaving] = React.useState(false);
   const [savedPayment, setSavedPayment] = React.useState<InstallmentPayment | null>(null);
+
+  // Frequency-based period check
+  const currentPeriod = getCurrentPeriod(customer.frequency);
+  const alreadyPaidThisPeriod = payments.some(p => p.month === currentPeriod);
+  const frequencyLabel = customer.frequency === "weekly" ? "week" : customer.frequency === "yearly" ? "year" : "month";
 
   // Calculate late fee
   const now = new Date();
@@ -49,6 +71,7 @@ export function InstallmentPaymentDialog({ customer, payments, settings, agentNa
 
   const handleSave = async () => {
     if (amount <= 0) { toast({ title: "Amount must be > 0", variant: "destructive" }); return; }
+    if (alreadyPaidThisPeriod) { toast({ title: `Already paid for this ${frequencyLabel}`, variant: "destructive" }); return; }
     setSaving(true);
     try {
       // Get receipt number
@@ -66,7 +89,7 @@ export function InstallmentPaymentDialog({ customer, payments, settings, agentNa
         balanceAfter,
         agentName,
         note: note.trim() || undefined,
-        month: getCurrentMonth(),
+        month: currentPeriod,
         createdAt: Date.now(),
       };
       await db.installmentPayments.put(payment);
@@ -145,7 +168,7 @@ export function InstallmentPaymentDialog({ customer, payments, settings, agentNa
         <div className="grid gap-3">
           <div className="grid grid-cols-2 gap-2 text-xs">
             <div className="rounded bg-muted/50 p-2">
-              <div className="text-muted-foreground">Monthly Installment</div>
+              <div className="text-muted-foreground">{customer.frequency === "weekly" ? "Weekly" : customer.frequency === "yearly" ? "Yearly" : "Monthly"} Installment</div>
               <div className="font-bold">{formatIntMoney(customer.monthlyInstallment)}</div>
             </div>
             <div className="rounded bg-muted/50 p-2">
@@ -161,6 +184,12 @@ export function InstallmentPaymentDialog({ customer, payments, settings, agentNa
             </div>
           )}
 
+          {alreadyPaidThisPeriod && (
+            <div className="rounded-md border border-yellow-500/30 bg-yellow-500/10 p-2 text-xs text-yellow-700 dark:text-yellow-400">
+              ⚠ Already paid for this {frequencyLabel}. Only one payment allowed per {frequencyLabel}.
+            </div>
+          )}
+
           <div className="space-y-1">
             <Label>Payment Amount</Label>
             <Input
@@ -168,11 +197,12 @@ export function InstallmentPaymentDialog({ customer, payments, settings, agentNa
               onChange={e => setAmount(parseNonDecimalInt(e.target.value))}
               inputMode="numeric"
               placeholder="0"
+              disabled={alreadyPaidThisPeriod}
             />
           </div>
           <div className="space-y-1">
             <Label>Note (optional)</Label>
-            <Input value={note} onChange={e => setNote(e.target.value)} placeholder="e.g. Cash payment" />
+            <Input value={note} onChange={e => setNote(e.target.value)} placeholder="e.g. Cash payment" disabled={alreadyPaidThisPeriod} />
           </div>
 
           <div className="rounded bg-muted/50 p-2 text-xs">
@@ -182,7 +212,7 @@ export function InstallmentPaymentDialog({ customer, payments, settings, agentNa
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button onClick={() => void handleSave()} disabled={saving}>Save Payment</Button>
+          <Button onClick={() => void handleSave()} disabled={saving || alreadyPaidThisPeriod}>Save Payment</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

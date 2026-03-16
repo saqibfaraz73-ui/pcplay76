@@ -8,7 +8,7 @@ import { makeId } from "@/features/admin/id";
 import { parseNonDecimalInt } from "@/features/pos/format";
 import { db } from "@/db/appDb";
 import type { MenuItem } from "@/db/schema";
-import type { InstallmentCustomer, InstallmentCustomerField, ProfitType } from "@/db/installment-schema";
+import type { InstallmentCustomer, InstallmentCustomerField, ProfitType, InstallmentFrequency } from "@/db/installment-schema";
 import { Plus, Trash2, ImagePlus, Search } from "lucide-react";
 
 interface Props {
@@ -61,6 +61,7 @@ export function InstallmentCustomerForm({ open, customer, onClose, onSave }: Pro
   const [lateFeePerDay, setLateFeePerDay] = React.useState(0);
   const [customFields, setCustomFields] = React.useState<InstallmentCustomerField[]>([]);
   const [images, setImages] = React.useState<string[]>([]);
+  const [frequency, setFrequency] = React.useState<InstallmentFrequency>("monthly");
   const [allItems, setAllItems] = React.useState<MenuItem[]>([]);
   const [itemQuery, setItemQuery] = React.useState("");
   const [showItemPicker, setShowItemPicker] = React.useState(false);
@@ -86,22 +87,24 @@ export function InstallmentCustomerForm({ open, customer, onClose, onSave }: Pro
         setTenureUnit("months");
         setDueDate(customer.dueDate ?? 0);
         setLateFeePerDay(customer.lateFeePerDay ?? 0);
+        setFrequency(customer.frequency ?? "monthly");
         setCustomFields(customer.customFields ?? []);
         setImages(customer.images ?? []);
       } else {
         setName(""); setPhone(""); setAddress(""); setWhatsapp(""); setEmail("");
         setProductName(""); setMarketPrice(0); setProfitType("percent"); setProfitValue(0);
         setTenureMonths(12); setTenureUnit("months"); setDueDate(0); setLateFeePerDay(0);
-        setCustomFields([]); setImages([]);
+        setFrequency("monthly"); setCustomFields([]); setImages([]);
       }
     }
   }, [open, customer]);
 
   const actualTenureMonths = tenureUnit === "years" ? tenureMonths * 12 : tenureMonths;
+  const totalPeriods = frequency === "weekly" ? Math.round(actualTenureMonths * 4.33) : frequency === "yearly" ? Math.round(actualTenureMonths / 12) || 1 : actualTenureMonths;
   const totalPrice = profitType === "percent"
     ? Math.round(marketPrice * (1 + profitValue / 100))
     : marketPrice + profitValue;
-  const monthlyInstallment = actualTenureMonths > 0 ? Math.round(totalPrice / actualTenureMonths) : totalPrice;
+  const monthlyInstallment = totalPeriods > 0 ? Math.round(totalPrice / totalPeriods) : totalPrice;
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -144,6 +147,7 @@ export function InstallmentCustomerForm({ open, customer, onClose, onSave }: Pro
       profitType,
       profitValue,
       tenureMonths: actualTenureMonths,
+      frequency,
       monthlyInstallment,
       totalPrice,
       totalBalance: customer?.totalBalance ?? totalPrice, // keep existing balance on edit
@@ -252,7 +256,7 @@ export function InstallmentCustomerForm({ open, customer, onClose, onSave }: Pro
                 <Input value={marketPrice || ""} onChange={e => setMarketPrice(parseNonDecimalInt(e.target.value))} inputMode="numeric" />
               </div>
             </div>
-            <div className="grid gap-3 sm:grid-cols-3 mt-3">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 mt-3">
               <div className="space-y-1">
                 <Label>Profit Type</Label>
                 <select value={profitType} onChange={e => setProfitType(e.target.value as ProfitType)} className="h-10 w-full rounded-md border bg-background px-3 text-sm">
@@ -274,6 +278,14 @@ export function InstallmentCustomerForm({ open, customer, onClose, onSave }: Pro
                   </select>
                 </div>
               </div>
+              <div className="space-y-1">
+                <Label>Frequency</Label>
+                <select value={frequency} onChange={e => setFrequency(e.target.value as InstallmentFrequency)} className="h-10 w-full rounded-md border bg-background px-3 text-sm">
+                  <option value="weekly">Weekly</option>
+                  <option value="monthly">Monthly</option>
+                  <option value="yearly">Yearly</option>
+                </select>
+              </div>
             </div>
 
             {/* Auto-calculated preview */}
@@ -283,12 +295,12 @@ export function InstallmentCustomerForm({ open, customer, onClose, onSave }: Pro
                 <div className="font-bold text-sm">{totalPrice.toLocaleString()}</div>
               </div>
               <div>
-                <div className="text-muted-foreground">Monthly</div>
+                <div className="text-muted-foreground">{frequency === "weekly" ? "Weekly" : frequency === "yearly" ? "Yearly" : "Monthly"}</div>
                 <div className="font-bold text-sm">{monthlyInstallment.toLocaleString()}</div>
               </div>
               <div>
-                <div className="text-muted-foreground">Tenure</div>
-                <div className="font-bold text-sm">{actualTenureMonths} months</div>
+                <div className="text-muted-foreground">Periods</div>
+                <div className="font-bold text-sm">{totalPeriods} {frequency === "weekly" ? "weeks" : frequency === "yearly" ? "years" : "months"}</div>
               </div>
             </div>
           </div>
