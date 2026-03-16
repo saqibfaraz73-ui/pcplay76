@@ -577,10 +577,9 @@ export function AdminSettings() {
             </div>
           )}
         </CardContent>
-      </Card>
+      </Card>}
 
-      {/* Advance/Booking Settings */}
-      <Card>
+      {match("advance", "booking") && <Card>
         <CardHeader>
           <CardTitle>Advance / Booking Orders</CardTitle>
           <CardDescription>Enable advance item sales and time-based booking features.</CardDescription>
