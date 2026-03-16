@@ -239,6 +239,32 @@ export function InstallmentSection() {
     try {
       const result = await importAgentAssignment(file);
       let custCount = 0, payCount = 0;
+
+      // Auto-create agent staff account if included in file
+      if (result.agentAccount) {
+        const acc = result.agentAccount;
+        // Use deterministic ID based on name+pin to avoid cross-device ID conflicts
+        const deterministicId = `agent_${acc.name.toLowerCase().replace(/\s+/g, "_")}_${acc.pin}`;
+        const existing = await db.staffAccounts.get(deterministicId);
+        if (!existing) {
+          await db.staffAccounts.put({
+            id: deterministicId,
+            name: acc.name,
+            phone: acc.phone || undefined,
+            role: (acc.role as any) || "installment_agent",
+            pin: acc.pin,
+            createdAt: Date.now(),
+          });
+          toast({ title: `Agent account "${acc.name}" created. Login with PIN: ${acc.pin}` });
+        }
+        // Remap customer agentId from original admin ID to deterministic ID
+        for (const c of result.customers) {
+          if (c.agentId === result.agentId) {
+            (c as any).agentId = deterministicId;
+          }
+        }
+      }
+
       for (const c of result.customers) {
         const existing = await db.installmentCustomers.get(c.id);
         if (!existing) {
