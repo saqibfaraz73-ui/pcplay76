@@ -820,10 +820,9 @@ export function AdminSettings() {
             </Button>
           </div>
         </CardContent>
-      </Card>
+      </Card>}
 
-      {/* Staff Accounts */}
-      <Card>
+      {match("staff", "cashier", "waiter", "pin", "login") && <Card>
         <CardHeader>
           <CardTitle>Staff Accounts</CardTitle>
           <CardDescription>Create cashier and waiter logins. Staff log in with their name or mobile number + 4-digit PIN.</CardDescription>
