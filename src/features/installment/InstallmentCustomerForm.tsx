@@ -94,7 +94,7 @@ export function InstallmentCustomerForm({ open, customer, onClose, onSave }: Pro
         setName(""); setPhone(""); setAddress(""); setWhatsapp(""); setEmail("");
         setProductName(""); setMarketPrice(0); setProfitType("percent"); setProfitValue(0);
         setTenureMonths(12); setTenureUnit("months"); setDueDate(0); setLateFeePerDay(0);
-        setCustomFields([]); setImages([]);
+        setFrequency("monthly"); setCustomFields([]); setImages([]);
       }
     }
   }, [open, customer]);
