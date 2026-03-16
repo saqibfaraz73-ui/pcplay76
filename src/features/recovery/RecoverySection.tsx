@@ -716,9 +716,21 @@ export function RecoverySection() {
           </Button>
           {(isAdmin || isCashier) && (
             <>
+              <Button variant="outline" size="sm" onClick={() => setShowAgentExport(true)}>
+                <SendHorizonal className="h-3 w-3 mr-1" /> Export to Agent
+              </Button>
               <input ref={collectFileRef} type="file" accept=".json" multiple onChange={collectAgentData} className="hidden" />
               <Button variant="outline" size="sm" onClick={() => collectFileRef.current?.click()}>
                 <Download className="h-3 w-3 mr-1" /> Collect Agent Data
+              </Button>
+            </>
+          )}
+          {/* Agent: Import Assignment file from admin */}
+          {isRecovery && (
+            <>
+              <input ref={assignmentFileRef} type="file" accept=".json" onChange={handleAgentAssignmentImport} className="hidden" />
+              <Button variant="outline" size="sm" onClick={() => assignmentFileRef.current?.click()}>
+                <Download className="h-3 w-3 mr-1" /> Import Assignment
               </Button>
             </>
           )}
