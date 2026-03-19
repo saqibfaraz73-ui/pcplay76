@@ -134,6 +134,8 @@ export function AdminSettings() {
     setServiceChargeType(s.serviceChargeType ?? "percent");
     setServiceChargeValue(s.serviceChargeValue ?? 0);
     setServiceChargeLabel(s.serviceChargeLabel ?? "Service");
+    setServiceChargeForSales(s.serviceChargeForSales !== false); // default true
+    setServiceChargeForTables(s.serviceChargeForTables !== false); // default true
     setExpiryDateEnabled(!!s.expiryDateEnabled);
     setShowExpiryOnDashboard(!!s.showExpiryOnDashboard);
     setShowExpiryOnReceipt(!!s.showExpiryOnReceipt);
