@@ -46,10 +46,26 @@ export function KitchenQueueView({ onDisconnect }: KitchenQueueViewProps) {
   const [orders, setOrders] = useState<KitchenOrder[]>([]);
   const [filter, setFilter] = useState<"active" | "all">("active");
   const prevOrderIdsRef = useRef<Set<string>>(new Set());
+  // Track locally updated orders to prevent poll from reverting optimistic updates
+  const localUpdatesRef = useRef<Map<string, { status: KitchenOrderStatus; until: number }>>(new Map());
 
   const loadOrders = useCallback(async () => {
     const fetched = await fetchKitchenOrders();
-    setOrders(fetched);
+    
+    // Merge: keep local optimistic status if within grace period
+    const now = Date.now();
+    const merged = fetched.map(order => {
+      const local = localUpdatesRef.current.get(order.id);
+      if (local && now < local.until) {
+        // Server hasn't caught up yet — keep our optimistic status
+        return { ...order, status: local.status };
+      }
+      // Clean up expired entries
+      if (local) localUpdatesRef.current.delete(order.id);
+      return order;
+    });
+    
+    setOrders(merged);
 
     // Play bell for new orders
     const currentIds = new Set(fetched.filter(o => o.status === "pending").map(o => o.id));
@@ -75,14 +91,20 @@ export function KitchenQueueView({ onDisconnect }: KitchenQueueViewProps) {
     if (currentIdx < 0 || currentIdx >= STATUS_FLOW.length - 1) return;
     const nextStatus = STATUS_FLOW[currentIdx + 1];
 
+    // Optimistic update FIRST — mark as locally updated with 10s grace period
+    localUpdatesRef.current.set(order.id, { status: nextStatus, until: Date.now() + 10000 });
+    setOrders(prev => prev.map(o =>
+      o.id === order.id ? { ...o, status: nextStatus, updatedAt: Date.now() } : o
+    ));
+
     const deviceId = localStorage.getItem("kitchen_device_id") || "kitchen";
     const ok = await sendKitchenStatusUpdate(order.id, nextStatus, deviceId);
-    if (ok) {
-      // Optimistic update
+    if (!ok) {
+      // Revert optimistic update on failure
+      localUpdatesRef.current.delete(order.id);
       setOrders(prev => prev.map(o =>
-        o.id === order.id ? { ...o, status: nextStatus, updatedAt: Date.now() } : o
+        o.id === order.id ? { ...o, status: order.status } : o
       ));
-    } else {
       toast({ title: "Failed to update", description: "Could not reach Main device", variant: "destructive" });
     }
   };
