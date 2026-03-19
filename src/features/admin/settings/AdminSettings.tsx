@@ -206,6 +206,8 @@ export function AdminSettings() {
         serviceChargeType,
         serviceChargeValue,
         serviceChargeLabel: serviceChargeLabel.trim() || "Service",
+        serviceChargeForSales,
+        serviceChargeForTables,
         expiryDateEnabled,
         showExpiryOnDashboard,
         showExpiryOnReceipt,
