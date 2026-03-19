@@ -295,6 +295,8 @@ export type Settings = {
   serviceChargeType?: ChargeType;
   serviceChargeValue?: number; // percent or fixed amount
   serviceChargeLabel?: string; // custom label e.g. "Service Fee"
+  serviceChargeForSales?: boolean; // apply service charge to Sales Dashboard orders (default true when enabled)
+  serviceChargeForTables?: boolean; // apply service charge to Table Management orders (default true when enabled)
   // Legacy fields (no longer used - auth moved to adminAccount/staffAccounts tables)
   cashierUsername?: string;
   cashierPassword?: string;
