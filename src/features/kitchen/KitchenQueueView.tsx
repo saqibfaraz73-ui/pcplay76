@@ -2,8 +2,7 @@
  * Kitchen Queue View — Large cards showing order items, tap to update status.
  * Used by kitchen staff.
  */
-import React, { useState, useEffect, useCallback, useRef } from "react";
-import { Button } from "@/components/ui/button";
+import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { ChefHat, Clock, CheckCircle2, Bell, LogOut } from "lucide-react";
