@@ -487,40 +487,42 @@ export function AdminSettings() {
               <Switch checked={serviceChargeEnabled} onCheckedChange={setServiceChargeEnabled} />
             </div>
             {serviceChargeEnabled && (
-              <div className="grid gap-3 sm:grid-cols-3 pl-3 border-l-2 border-primary/20">
-                <div className="space-y-2">
-                  <Label htmlFor="serviceLabel">Label</Label>
-                  <Input id="serviceLabel" value={serviceChargeLabel} onChange={(e) => setServiceChargeLabel(e.target.value)} placeholder="Service" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="serviceType">Type</Label>
-                  <select id="serviceType" value={serviceChargeType} onChange={(e) => setServiceChargeType(e.target.value as ChargeType)} className="h-10 w-full rounded-md border bg-background px-3 text-sm">
-                    <option value="percent">Percentage (%)</option>
-                    <option value="fixed">Fixed Amount</option>
-                  </select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="serviceValue">Value</Label>
-                  <Input id="serviceValue" type="number" inputMode="decimal" value={serviceChargeValue || ""} onChange={(e) => setServiceChargeValue(Number(e.target.value) || 0)} placeholder={serviceChargeType === "percent" ? "e.g. 10" : "e.g. 50"} />
-                  <p className="text-xs text-muted-foreground">{serviceChargeType === "percent" ? "Enter percentage (e.g. 10 for 10%)" : "Enter fixed amount"}</p>
-                </div>
-              </div>
-              <div className="grid gap-3 sm:grid-cols-2 pl-3 border-l-2 border-primary/20">
-                <div className="flex items-center justify-between gap-3 rounded-md border p-3">
-                  <div>
-                    <div className="text-sm font-medium">Apply to Sales</div>
-                    <div className="text-xs text-muted-foreground">Charge on Sales Dashboard orders.</div>
+              <>
+                <div className="grid gap-3 sm:grid-cols-3 pl-3 border-l-2 border-primary/20">
+                  <div className="space-y-2">
+                    <Label htmlFor="serviceLabel">Label</Label>
+                    <Input id="serviceLabel" value={serviceChargeLabel} onChange={(e) => setServiceChargeLabel(e.target.value)} placeholder="Service" />
                   </div>
-                  <Switch checked={serviceChargeForSales} onCheckedChange={setServiceChargeForSales} />
-                </div>
-                <div className="flex items-center justify-between gap-3 rounded-md border p-3">
-                  <div>
-                    <div className="text-sm font-medium">Apply to Tables</div>
-                    <div className="text-xs text-muted-foreground">Charge on Table Management orders.</div>
+                  <div className="space-y-2">
+                    <Label htmlFor="serviceType">Type</Label>
+                    <select id="serviceType" value={serviceChargeType} onChange={(e) => setServiceChargeType(e.target.value as ChargeType)} className="h-10 w-full rounded-md border bg-background px-3 text-sm">
+                      <option value="percent">Percentage (%)</option>
+                      <option value="fixed">Fixed Amount</option>
+                    </select>
                   </div>
-                  <Switch checked={serviceChargeForTables} onCheckedChange={setServiceChargeForTables} />
+                  <div className="space-y-2">
+                    <Label htmlFor="serviceValue">Value</Label>
+                    <Input id="serviceValue" type="number" inputMode="decimal" value={serviceChargeValue || ""} onChange={(e) => setServiceChargeValue(Number(e.target.value) || 0)} placeholder={serviceChargeType === "percent" ? "e.g. 10" : "e.g. 50"} />
+                    <p className="text-xs text-muted-foreground">{serviceChargeType === "percent" ? "Enter percentage (e.g. 10 for 10%)" : "Enter fixed amount"}</p>
+                  </div>
                 </div>
-              </div>
+                <div className="grid gap-3 sm:grid-cols-2 pl-3 border-l-2 border-primary/20">
+                  <div className="flex items-center justify-between gap-3 rounded-md border p-3">
+                    <div>
+                      <div className="text-sm font-medium">Apply to Sales</div>
+                      <div className="text-xs text-muted-foreground">Charge on Sales Dashboard orders.</div>
+                    </div>
+                    <Switch checked={serviceChargeForSales} onCheckedChange={setServiceChargeForSales} />
+                  </div>
+                  <div className="flex items-center justify-between gap-3 rounded-md border p-3">
+                    <div>
+                      <div className="text-sm font-medium">Apply to Tables</div>
+                      <div className="text-xs text-muted-foreground">Charge on Table Management orders.</div>
+                    </div>
+                    <Switch checked={serviceChargeForTables} onCheckedChange={setServiceChargeForTables} />
+                  </div>
+                </div>
+              </>
             )}
           </div>
           <div className="flex justify-end">
