@@ -50,6 +50,8 @@ export function AdminSettings() {
   const [serviceChargeType, setServiceChargeType] = React.useState<ChargeType>("percent");
   const [serviceChargeValue, setServiceChargeValue] = React.useState<number>(0);
   const [serviceChargeLabel, setServiceChargeLabel] = React.useState("Service");
+  const [serviceChargeForSales, setServiceChargeForSales] = React.useState(true);
+  const [serviceChargeForTables, setServiceChargeForTables] = React.useState(true);
 
   // Report settings
   const [showCreditItemsInReport, setShowCreditItemsInReport] = React.useState(false);
