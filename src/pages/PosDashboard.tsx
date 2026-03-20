@@ -987,7 +987,8 @@ export default function PosDashboard() {
                 const isExpired = i.expiryDate && i.expiryDate < Date.now();
                 const hasVariants = i.variations && i.variations.length > 0;
                 const hasAddOns = i.addOns && i.addOns.length > 0;
-                const hasOptions = hasVariants || hasAddOns;
+                const hasIncluded = i.includedItems && i.includedItems.length > 0;
+                const hasOptions = hasVariants || hasAddOns || hasIncluded;
 
                 const itemCard = (
                   <div
