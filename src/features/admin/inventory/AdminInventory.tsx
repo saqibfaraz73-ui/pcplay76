@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { db } from "@/db/appDb";
 import type { InventoryAdjustmentType, InventoryRow, MenuItem, Settings } from "@/db/schema";
 import { useToast } from "@/hooks/use-toast";
@@ -31,6 +32,11 @@ export function AdminInventory() {
   const [type, setType] = React.useState<InventoryAdjustmentType>("set");
   const [amount, setAmount] = React.useState<number>(0);
   const [note, setNote] = React.useState("");
+  const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
+  const [bulkOpen, setBulkOpen] = React.useState(false);
+  const [bulkType, setBulkType] = React.useState<InventoryAdjustmentType>("set");
+  const [bulkAmount, setBulkAmount] = React.useState<number>(0);
+  const [bulkNote, setBulkNote] = React.useState("");
 
   const refresh = React.useCallback(async () => {
     const [items, inv] = await Promise.all([
@@ -63,6 +69,58 @@ export function AdminInventory() {
   }, [rows, sortMode]);
 
   const filtered = sortedRows.filter((r) => r.item.name.toLowerCase().includes(query.trim().toLowerCase()));
+
+  const allFilteredSelected = filtered.length > 0 && filtered.every((r) => selectedIds.has(r.item.id));
+  const toggleSelectAll = () => {
+    if (allFilteredSelected) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filtered.map((r) => r.item.id)));
+    }
+  };
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const bulkSave = async () => {
+    if (selectedIds.size === 0) return;
+    try {
+      const now = Date.now();
+      const delta = Math.max(0, Math.round(bulkAmount));
+      await db.transaction("rw", db.inventory, db.inventoryAdjustments, async () => {
+        for (const itemId of selectedIds) {
+          const row = await db.inventory.get(itemId);
+          const before = row?.quantity ?? 0;
+          let after = before;
+          if (bulkType === "set") after = delta;
+          if (bulkType === "add") after = before + delta;
+          if (bulkType === "remove") after = Math.max(0, before - delta);
+          await db.inventory.put({ itemId, quantity: after, updatedAt: now });
+          await db.inventoryAdjustments.put({
+            id: makeId("invadj"),
+            itemId,
+            type: bulkType,
+            delta,
+            before,
+            after,
+            note: bulkNote.trim() || "Bulk update",
+            createdAt: now,
+          });
+        }
+      });
+      toast({ title: `Updated ${selectedIds.size} items` });
+      setBulkOpen(false);
+      setSelectedIds(new Set());
+      await refresh();
+    } catch (e: any) {
+      toast({ title: "Bulk update failed", description: e?.message ?? String(e), variant: "destructive" });
+    }
+  };
 
   const openAdjust = (itemId: string) => {
     setActiveItemId(itemId);
@@ -145,6 +203,25 @@ export function AdminInventory() {
             </select>
           </div>
 
+          {/* Select all + bulk action */}
+          {filtered.length > 0 && (
+            <div className="flex items-center gap-3 flex-wrap">
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  checked={allFilteredSelected}
+                  onCheckedChange={toggleSelectAll}
+                  id="selectAll"
+                />
+                <Label htmlFor="selectAll" className="text-sm cursor-pointer">Select All ({filtered.length})</Label>
+              </div>
+              {selectedIds.size > 0 && (
+                <Button size="sm" onClick={() => { setBulkType("set"); setBulkAmount(0); setBulkNote(""); setBulkOpen(true); }}>
+                  Bulk Update ({selectedIds.size})
+                </Button>
+              )}
+            </div>
+          )}
+
           {filtered.length === 0 ? (
             <div className="text-sm text-muted-foreground">No tracked items found.</div>
           ) : (
@@ -157,12 +234,16 @@ export function AdminInventory() {
                   <div 
                     key={r.item.id} 
                     className={cn(
-                      "flex items-center justify-between gap-3 rounded-md border p-2",
+                      "flex items-center gap-3 rounded-md border p-2",
                       isExpired && "border-destructive bg-destructive/5",
                       isExpiringSoon && "border-yellow-500 bg-yellow-500/5"
                     )}
                   >
-                    <div className="min-w-0">
+                    <Checkbox
+                      checked={selectedIds.has(r.item.id)}
+                      onCheckedChange={() => toggleSelect(r.item.id)}
+                    />
+                    <div className="min-w-0 flex-1">
                       <div className="truncate text-sm font-medium">{r.item.name}</div>
                       <div className="text-xs text-muted-foreground">
                         Stock: {r.stock}{r.item.stockUnit && r.item.stockUnit !== "pcs" ? ` ${r.item.stockUnit}` : ""}
@@ -230,6 +311,48 @@ export function AdminInventory() {
               Close
             </Button>
             <Button onClick={() => void save()}>Save</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk Update Dialog */}
+      <Dialog open={bulkOpen} onOpenChange={setBulkOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Bulk Update ({selectedIds.size} items)</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-3">
+            <div className="space-y-2">
+              <Label htmlFor="bulkType">Type</Label>
+              <select
+                id="bulkType"
+                value={bulkType}
+                onChange={(e) => setBulkType(e.target.value as InventoryAdjustmentType)}
+                className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+              >
+                <option value="set">Set</option>
+                <option value="add">Add</option>
+                <option value="remove">Remove</option>
+              </select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="bulkAmount">Amount</Label>
+              <Input
+                id="bulkAmount"
+                inputMode="numeric"
+                value={bulkAmount === 0 ? "" : String(bulkAmount)}
+                placeholder="0"
+                onChange={(e) => setBulkAmount(parseNonDecimalInt(e.target.value))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="bulkNote">Note (optional)</Label>
+              <Textarea id="bulkNote" value={bulkNote} onChange={(e) => setBulkNote(e.target.value)} placeholder="Reason / note" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBulkOpen(false)}>Cancel</Button>
+            <Button onClick={() => void bulkSave()}>Update All</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
