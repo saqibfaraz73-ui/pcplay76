@@ -32,6 +32,11 @@ export function AdminInventory() {
   const [type, setType] = React.useState<InventoryAdjustmentType>("set");
   const [amount, setAmount] = React.useState<number>(0);
   const [note, setNote] = React.useState("");
+  const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
+  const [bulkOpen, setBulkOpen] = React.useState(false);
+  const [bulkType, setBulkType] = React.useState<InventoryAdjustmentType>("set");
+  const [bulkAmount, setBulkAmount] = React.useState<number>(0);
+  const [bulkNote, setBulkNote] = React.useState("");
 
   const refresh = React.useCallback(async () => {
     const [items, inv] = await Promise.all([
