@@ -162,6 +162,7 @@ export function AdminProducts() {
     setItemExpiryDate(item.expiryDate ? new Date(item.expiryDate) : undefined);
     setItemVariations(item.variations ?? []);
     setItemAddOns(item.addOns ?? []);
+    setItemIncludedItems(item.includedItems ?? []);
     setItemSku(item.sku ?? "");
     setItemIsActive(item.isActive !== false);
     const inv = await db.inventory.get(item.id);
