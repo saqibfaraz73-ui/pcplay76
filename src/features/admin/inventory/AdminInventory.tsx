@@ -203,6 +203,25 @@ export function AdminInventory() {
             </select>
           </div>
 
+          {/* Select all + bulk action */}
+          {filtered.length > 0 && (
+            <div className="flex items-center gap-3 flex-wrap">
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  checked={allFilteredSelected}
+                  onCheckedChange={toggleSelectAll}
+                  id="selectAll"
+                />
+                <Label htmlFor="selectAll" className="text-sm cursor-pointer">Select All ({filtered.length})</Label>
+              </div>
+              {selectedIds.size > 0 && (
+                <Button size="sm" onClick={() => { setBulkType("set"); setBulkAmount(0); setBulkNote(""); setBulkOpen(true); }}>
+                  Bulk Update ({selectedIds.size})
+                </Button>
+              )}
+            </div>
+          )}
+
           {filtered.length === 0 ? (
             <div className="text-sm text-muted-foreground">No tracked items found.</div>
           ) : (
@@ -215,12 +234,16 @@ export function AdminInventory() {
                   <div 
                     key={r.item.id} 
                     className={cn(
-                      "flex items-center justify-between gap-3 rounded-md border p-2",
+                      "flex items-center gap-3 rounded-md border p-2",
                       isExpired && "border-destructive bg-destructive/5",
                       isExpiringSoon && "border-yellow-500 bg-yellow-500/5"
                     )}
                   >
-                    <div className="min-w-0">
+                    <Checkbox
+                      checked={selectedIds.has(r.item.id)}
+                      onCheckedChange={() => toggleSelect(r.item.id)}
+                    />
+                    <div className="min-w-0 flex-1">
                       <div className="truncate text-sm font-medium">{r.item.name}</div>
                       <div className="text-xs text-muted-foreground">
                         Stock: {r.stock}{r.item.stockUnit && r.item.stockUnit !== "pcs" ? ` ${r.item.stockUnit}` : ""}
