@@ -142,6 +142,7 @@ export function AdminProducts() {
     setItemExpiryDate(undefined);
     setItemVariations([]);
     setItemAddOns([]);
+    setItemIncludedItems([]);
     setItemSku("");
     setItemIsActive(true);
     setItemCategoryId(categories[0]?.id ?? "");
