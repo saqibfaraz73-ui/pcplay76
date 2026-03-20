@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { db } from "@/db/appDb";
 import type { InventoryAdjustmentType, InventoryRow, MenuItem, Settings } from "@/db/schema";
 import { useToast } from "@/hooks/use-toast";
