@@ -1014,6 +1014,9 @@ export default function PosDashboard() {
                     {hasAddOns && (
                       <div className="text-[10px] text-primary">+{i.addOns!.length} add-on{i.addOns!.length > 1 ? "s" : ""}</div>
                     )}
+                    {hasIncluded && (
+                      <div className="text-[10px] text-primary">Combo ({i.includedItems!.length})</div>
+                    )}
                     {i.trackInventory && (
                       <div className={cn("text-[10px]", low ? "text-destructive" : "text-muted-foreground")}>
                         Stock: {qty}{i.stockUnit && i.stockUnit !== "pcs" ? ` ${i.stockUnit}` : ""}
