@@ -79,6 +79,7 @@ export function AdminProducts() {
   const [itemExpiryDate, setItemExpiryDate] = React.useState<Date | undefined>(undefined);
   const [itemVariations, setItemVariations] = React.useState<ItemVariation[]>([]);
   const [itemAddOns, setItemAddOns] = React.useState<ItemAddOn[]>([]);
+  const [itemIncludedItems, setItemIncludedItems] = React.useState<ComboIncludedItem[]>([]);
   const [itemSku, setItemSku] = React.useState("");
   const [itemIsActive, setItemIsActive] = React.useState(true);
   const [skuScanning, setSkuScanning] = React.useState(false);
