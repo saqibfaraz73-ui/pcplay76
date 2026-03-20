@@ -1105,6 +1105,17 @@ export default function PosDashboard() {
                             ))}
                           </>
                         )}
+                        {hasIncluded && (
+                          <>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuLabel className="text-xs text-muted-foreground">Included Items</DropdownMenuLabel>
+                            {i.includedItems!.map((ci, idx) => (
+                              <div key={`ci-${idx}`} className="px-2 py-1 text-xs text-muted-foreground">
+                                {ci.qty}x {ci.name}
+                              </div>
+                            ))}
+                          </>
+                        )}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   );
