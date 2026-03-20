@@ -989,6 +989,59 @@ export function AdminProducts() {
                 )}
               </div>
 
+              {/* Included Items (combo/platter) */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label>Included Items (combo/platter)</Label>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setItemIncludedItems((prev) => [...prev, { name: "", qty: 1 }])}
+                  >
+                    + Add Item
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">Items included in this combo/platter (no separate price).</p>
+                {itemIncludedItems.length > 0 && (
+                  <div className="space-y-2">
+                    {itemIncludedItems.map((ci, idx) => (
+                      <div key={idx} className="flex items-center gap-2 rounded-md border p-2">
+                        <Input
+                          placeholder="e.g. Naan"
+                          value={ci.name}
+                          onChange={(e) => {
+                            const next = [...itemIncludedItems];
+                            next[idx] = { ...next[idx], name: e.target.value };
+                            setItemIncludedItems(next);
+                          }}
+                          className="flex-1"
+                        />
+                        <Input
+                          placeholder="Qty"
+                          inputMode="numeric"
+                          value={ci.qty === 0 ? "" : String(ci.qty)}
+                          onChange={(e) => {
+                            const next = [...itemIncludedItems];
+                            next[idx] = { ...next[idx], qty: parseNonDecimalInt(e.target.value) || 1 };
+                            setItemIncludedItems(next);
+                          }}
+                          className="w-16"
+                        />
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => setItemIncludedItems((prev) => prev.filter((_, i) => i !== idx))}
+                        >
+                          ×
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               {/* Expiry date picker */}
               {settings?.expiryDateEnabled && (
                 <div className="space-y-2">
