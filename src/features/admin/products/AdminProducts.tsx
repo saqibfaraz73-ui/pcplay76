@@ -20,7 +20,7 @@ import { Switch } from "@/components/ui/switch";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { db } from "@/db/appDb";
-import type { Category, MenuItem, Settings, StockUnit, ItemVariation, ItemAddOn } from "@/db/schema";
+import type { Category, MenuItem, Settings, StockUnit, ItemVariation, ItemAddOn, ComboIncludedItem } from "@/db/schema";
 import { STOCK_UNITS } from "@/db/schema";
 import { useToast } from "@/hooks/use-toast";
 import { parseNonDecimalInt, formatIntMoney } from "@/features/pos/format";
