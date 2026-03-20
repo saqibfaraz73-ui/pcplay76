@@ -29,6 +29,12 @@ export type ItemAddOn = {
   price: number;
 };
 
+// Included item in a combo/platter (e.g. "2x Naan" inside "BBQ Platter")
+export type ComboIncludedItem = {
+  name: string;
+  qty: number;
+};
+
 export type MenuItem = {
   id: string;
   categoryId: string;
