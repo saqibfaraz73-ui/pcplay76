@@ -70,6 +70,58 @@ export function AdminInventory() {
 
   const filtered = sortedRows.filter((r) => r.item.name.toLowerCase().includes(query.trim().toLowerCase()));
 
+  const allFilteredSelected = filtered.length > 0 && filtered.every((r) => selectedIds.has(r.item.id));
+  const toggleSelectAll = () => {
+    if (allFilteredSelected) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filtered.map((r) => r.item.id)));
+    }
+  };
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const bulkSave = async () => {
+    if (selectedIds.size === 0) return;
+    try {
+      const now = Date.now();
+      const delta = Math.max(0, Math.round(bulkAmount));
+      await db.transaction("rw", db.inventory, db.inventoryAdjustments, async () => {
+        for (const itemId of selectedIds) {
+          const row = await db.inventory.get(itemId);
+          const before = row?.quantity ?? 0;
+          let after = before;
+          if (bulkType === "set") after = delta;
+          if (bulkType === "add") after = before + delta;
+          if (bulkType === "remove") after = Math.max(0, before - delta);
+          await db.inventory.put({ itemId, quantity: after, updatedAt: now });
+          await db.inventoryAdjustments.put({
+            id: makeId("invadj"),
+            itemId,
+            type: bulkType,
+            delta,
+            before,
+            after,
+            note: bulkNote.trim() || "Bulk update",
+            createdAt: now,
+          });
+        }
+      });
+      toast({ title: `Updated ${selectedIds.size} items` });
+      setBulkOpen(false);
+      setSelectedIds(new Set());
+      await refresh();
+    } catch (e: any) {
+      toast({ title: "Bulk update failed", description: e?.message ?? String(e), variant: "destructive" });
+    }
+  };
+
   const openAdjust = (itemId: string) => {
     setActiveItemId(itemId);
     setType("set");
