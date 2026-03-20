@@ -20,7 +20,7 @@ import { Switch } from "@/components/ui/switch";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { db } from "@/db/appDb";
-import type { Category, MenuItem, Settings, StockUnit, ItemVariation, ItemAddOn } from "@/db/schema";
+import type { Category, MenuItem, Settings, StockUnit, ItemVariation, ItemAddOn, ComboIncludedItem } from "@/db/schema";
 import { STOCK_UNITS } from "@/db/schema";
 import { useToast } from "@/hooks/use-toast";
 import { parseNonDecimalInt, formatIntMoney } from "@/features/pos/format";
@@ -79,6 +79,7 @@ export function AdminProducts() {
   const [itemExpiryDate, setItemExpiryDate] = React.useState<Date | undefined>(undefined);
   const [itemVariations, setItemVariations] = React.useState<ItemVariation[]>([]);
   const [itemAddOns, setItemAddOns] = React.useState<ItemAddOn[]>([]);
+  const [itemIncludedItems, setItemIncludedItems] = React.useState<ComboIncludedItem[]>([]);
   const [itemSku, setItemSku] = React.useState("");
   const [itemIsActive, setItemIsActive] = React.useState(true);
   const [skuScanning, setSkuScanning] = React.useState(false);
@@ -141,6 +142,7 @@ export function AdminProducts() {
     setItemExpiryDate(undefined);
     setItemVariations([]);
     setItemAddOns([]);
+    setItemIncludedItems([]);
     setItemSku("");
     setItemIsActive(true);
     setItemCategoryId(categories[0]?.id ?? "");
@@ -160,6 +162,7 @@ export function AdminProducts() {
     setItemExpiryDate(item.expiryDate ? new Date(item.expiryDate) : undefined);
     setItemVariations(item.variations ?? []);
     setItemAddOns(item.addOns ?? []);
+    setItemIncludedItems(item.includedItems ?? []);
     setItemSku(item.sku ?? "");
     setItemIsActive(item.isActive !== false);
     const inv = await db.inventory.get(item.id);
@@ -221,6 +224,7 @@ export function AdminProducts() {
           expiryDate: itemExpiryDate ? itemExpiryDate.getTime() : undefined,
           variations: itemVariations.length > 0 ? itemVariations.filter(v => v.name.trim() && v.price > 0) : undefined,
           addOns: itemAddOns.length > 0 ? itemAddOns.filter(a => a.name.trim() && a.price > 0) : undefined,
+          includedItems: itemIncludedItems.length > 0 ? itemIncludedItems.filter(ci => ci.name.trim() && ci.qty > 0) : undefined,
           createdAt: mode.item?.createdAt ?? now,
         };
         await db.items.put(next);
@@ -976,6 +980,59 @@ export function AdminProducts() {
                           variant="destructive"
                           size="sm"
                           onClick={() => setItemAddOns((prev) => prev.filter((_, i) => i !== idx))}
+                        >
+                          ×
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Included Items (combo/platter) */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label>Included Items (combo/platter)</Label>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setItemIncludedItems((prev) => [...prev, { name: "", qty: 1 }])}
+                  >
+                    + Add Item
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">Items included in this combo/platter (no separate price).</p>
+                {itemIncludedItems.length > 0 && (
+                  <div className="space-y-2">
+                    {itemIncludedItems.map((ci, idx) => (
+                      <div key={idx} className="flex items-center gap-2 rounded-md border p-2">
+                        <Input
+                          placeholder="e.g. Naan"
+                          value={ci.name}
+                          onChange={(e) => {
+                            const next = [...itemIncludedItems];
+                            next[idx] = { ...next[idx], name: e.target.value };
+                            setItemIncludedItems(next);
+                          }}
+                          className="flex-1"
+                        />
+                        <Input
+                          placeholder="Qty"
+                          inputMode="numeric"
+                          value={ci.qty === 0 ? "" : String(ci.qty)}
+                          onChange={(e) => {
+                            const next = [...itemIncludedItems];
+                            next[idx] = { ...next[idx], qty: parseNonDecimalInt(e.target.value) || 1 };
+                            setItemIncludedItems(next);
+                          }}
+                          className="w-16"
+                        />
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => setItemIncludedItems((prev) => prev.filter((_, i) => i !== idx))}
                         >
                           ×
                         </Button>

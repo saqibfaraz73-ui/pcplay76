@@ -29,6 +29,12 @@ export type ItemAddOn = {
   price: number;
 };
 
+// Included item in a combo/platter (e.g. "2x Naan" inside "BBQ Platter")
+export type ComboIncludedItem = {
+  name: string;
+  qty: number;
+};
+
 export type MenuItem = {
   id: string;
   categoryId: string;
@@ -43,6 +49,7 @@ export type MenuItem = {
   expiryDate?: number; // optional expiry date as timestamp
   variations?: ItemVariation[]; // optional product variations (e.g. Small, Medium, Large)
   addOns?: ItemAddOn[]; // optional per-item add-ons (e.g. Extra Cheese, Gift Wrap)
+  includedItems?: ComboIncludedItem[]; // optional combo/platter included items
   createdAt: number;
 };
 
