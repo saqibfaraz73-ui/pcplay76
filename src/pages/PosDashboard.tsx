@@ -987,7 +987,8 @@ export default function PosDashboard() {
                 const isExpired = i.expiryDate && i.expiryDate < Date.now();
                 const hasVariants = i.variations && i.variations.length > 0;
                 const hasAddOns = i.addOns && i.addOns.length > 0;
-                const hasOptions = hasVariants || hasAddOns;
+                const hasIncluded = i.includedItems && i.includedItems.length > 0;
+                const hasOptions = hasVariants || hasAddOns || hasIncluded;
 
                 const itemCard = (
                   <div
@@ -1012,6 +1013,9 @@ export default function PosDashboard() {
                     )}
                     {hasAddOns && (
                       <div className="text-[10px] text-primary">+{i.addOns!.length} add-on{i.addOns!.length > 1 ? "s" : ""}</div>
+                    )}
+                    {hasIncluded && (
+                      <div className="text-[10px] text-primary">Combo ({i.includedItems!.length})</div>
                     )}
                     {i.trackInventory && (
                       <div className={cn("text-[10px]", low ? "text-destructive" : "text-muted-foreground")}>
@@ -1098,6 +1102,17 @@ export default function PosDashboard() {
                                   <span className="font-bold">{formatIntMoney(ao.price)}</span>
                                 </div>
                               </DropdownMenuItem>
+                            ))}
+                          </>
+                        )}
+                        {hasIncluded && (
+                          <>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuLabel className="text-xs text-muted-foreground">Included Items</DropdownMenuLabel>
+                            {i.includedItems!.map((ci, idx) => (
+                              <div key={`ci-${idx}`} className="px-2 py-1 text-xs text-muted-foreground">
+                                {ci.qty}x {ci.name}
+                              </div>
                             ))}
                           </>
                         )}

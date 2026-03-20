@@ -197,12 +197,17 @@ export async function generateMenuPdf() {
         doc.setFont("helvetica", "bold");
         doc.setTextColor(0, 128, 0);
 
+        // Always show main price
+        const priceText = formatIntMoney(item.price);
+        doc.text(priceText, x + cellW / 2, textY, { align: "center" });
+        textY += 5;
+
         if (item.variations && item.variations.length > 0) {
-          // Show each variation on its own line
+          // Show each variation on its own line below main price
+          doc.setFontSize(9);
           for (const v of item.variations) {
             const vText = `${v.name}: ${formatIntMoney(v.price)}`;
             let vt = vText;
-            doc.setFontSize(9);
             while (doc.getTextWidth(vt) > cellW - 2 && vt.length > 3) {
               vt = vt.slice(0, -1);
             }
@@ -210,10 +215,6 @@ export async function generateMenuPdf() {
             doc.text(vt, x + cellW / 2, textY, { align: "center" });
             textY += 4.5;
           }
-        } else {
-          const priceText = formatIntMoney(item.price);
-          doc.text(priceText, x + cellW / 2, textY, { align: "center" });
-          textY += 5;
         }
 
         // Included items (combo contents)
