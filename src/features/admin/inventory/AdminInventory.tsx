@@ -314,6 +314,48 @@ export function AdminInventory() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Bulk Update Dialog */}
+      <Dialog open={bulkOpen} onOpenChange={setBulkOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Bulk Update ({selectedIds.size} items)</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-3">
+            <div className="space-y-2">
+              <Label htmlFor="bulkType">Type</Label>
+              <select
+                id="bulkType"
+                value={bulkType}
+                onChange={(e) => setBulkType(e.target.value as InventoryAdjustmentType)}
+                className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+              >
+                <option value="set">Set</option>
+                <option value="add">Add</option>
+                <option value="remove">Remove</option>
+              </select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="bulkAmount">Amount</Label>
+              <Input
+                id="bulkAmount"
+                inputMode="numeric"
+                value={bulkAmount === 0 ? "" : String(bulkAmount)}
+                placeholder="0"
+                onChange={(e) => setBulkAmount(parseNonDecimalInt(e.target.value))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="bulkNote">Note (optional)</Label>
+              <Textarea id="bulkNote" value={bulkNote} onChange={(e) => setBulkNote(e.target.value)} placeholder="Reason / note" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBulkOpen(false)}>Cancel</Button>
+            <Button onClick={() => void bulkSave()}>Update All</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
