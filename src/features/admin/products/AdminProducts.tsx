@@ -224,6 +224,7 @@ export function AdminProducts() {
           expiryDate: itemExpiryDate ? itemExpiryDate.getTime() : undefined,
           variations: itemVariations.length > 0 ? itemVariations.filter(v => v.name.trim() && v.price > 0) : undefined,
           addOns: itemAddOns.length > 0 ? itemAddOns.filter(a => a.name.trim() && a.price > 0) : undefined,
+          includedItems: itemIncludedItems.length > 0 ? itemIncludedItems.filter(ci => ci.name.trim() && ci.qty > 0) : undefined,
           createdAt: mode.item?.createdAt ?? now,
         };
         await db.items.put(next);
