@@ -47,6 +47,12 @@ export function AdminSettings() {
   const [taxLabel, setTaxLabel] = React.useState("Tax");
   const [taxCountry, setTaxCountry] = React.useState("");
   const [taxDepartment, setTaxDepartment] = React.useState("");
+  // Tax API integration
+  const [taxApiEnabled, setTaxApiEnabled] = React.useState(false);
+  const [taxApiPosId, setTaxApiPosId] = React.useState("");
+  const [taxApiKey, setTaxApiKey] = React.useState("");
+  const [taxApiEndpoint, setTaxApiEndpoint] = React.useState("");
+  const [taxApiBusinessNtn, setTaxApiBusinessNtn] = React.useState("");
 
   // Service charge settings
   const [serviceChargeEnabled, setServiceChargeEnabled] = React.useState(false);
