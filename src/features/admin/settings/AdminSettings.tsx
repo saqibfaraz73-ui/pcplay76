@@ -147,6 +147,7 @@ export function AdminSettings() {
     setTaxApiKey(s.taxApiKey ?? "");
     setTaxApiEndpoint(s.taxApiEndpoint ?? "");
     setTaxApiBusinessNtn(s.taxApiBusinessNtn ?? "");
+    setTaxQrDisabled(!!s.taxQrDisabled);
     setServiceChargeEnabled(!!s.serviceChargeEnabled);
     setServiceChargeType(s.serviceChargeType ?? "percent");
     setServiceChargeValue(s.serviceChargeValue ?? 0);
