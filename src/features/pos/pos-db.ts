@@ -233,8 +233,13 @@ export async function createOrder(args: {
         "pos"
       );
     }
+    // Queue tax invoice for offline sync (fire-and-forget)
+    if (s?.taxApiEnabled) {
+      const { queueTaxInvoice } = await import("@/features/tax/tax-queue");
+      await queueTaxInvoice(createdOrder, s);
+    }
   } catch (e) {
-    console.warn("[Kitchen] Failed to create kitchen order:", e);
+    console.warn("[Kitchen/Tax] Fire-and-forget error:", e);
   }
 
   return createdOrder;
