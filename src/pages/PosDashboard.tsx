@@ -1276,7 +1276,7 @@ export default function PosDashboard() {
               </div>
 
               {/* Quick tax toggle */}
-              {posSettings?.taxEnabled && posSettings.taxCountry && (
+              {posSettings?.taxEnabled && (
                 <div className="flex items-center justify-between gap-2 rounded-md bg-muted/50 p-1.5">
                   <span className="text-[10px] text-muted-foreground truncate">
                     {posSettings.taxDepartment || posSettings.taxLabel}
