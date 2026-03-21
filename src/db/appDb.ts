@@ -736,6 +736,48 @@ export class SangiPosDb extends Dexie {
       settings: "id",
       counters: "id",
     });
+
+    // v26: add tax invoice queue for offline sync
+    this.version(26).stores({
+      categories: "id, name, createdAt",
+      items: "id, categoryId, name, price, createdAt",
+      inventory: "itemId, quantity, updatedAt",
+      inventoryAdjustments: "id, itemId, createdAt",
+      customers: "id, name, createdAt",
+      creditPayments: "id, customerId, createdAt",
+      orders: "id, receiptNo, status, paymentMethod, workPeriodId, deliveryPersonId, createdAt",
+      workPeriods: "id, cashier, startedAt, isClosed",
+      expenses: "id, name, createdAt, workPeriodId",
+      suppliers: "id, name, createdAt",
+      supplierPayments: "id, supplierId, createdAt",
+      supplierArrivals: "id, supplierId, receiptNo, createdAt",
+      exportCustomers: "id, name, createdAt",
+      exportSales: "id, customerId, receiptNo, createdAt",
+      exportPayments: "id, customerId, createdAt",
+      deliveryPersons: "id, name, createdAt",
+      deliveryCustomers: "id, name, createdAt",
+      waiters: "id, name, createdAt",
+      restaurantTables: "id, tableNumber, createdAt",
+      tableOrders: "id, tableId, waiterId, status, createdAt, completedAt",
+      adminAccount: "id",
+      staffAccounts: "id, name, role, createdAt",
+      license: "id",
+      advanceOrders: "id, receiptNo, status, createdAt",
+      bookableItems: "id, name, createdAt",
+      bookingOrders: "id, receiptNo, bookableItemId, status, date, createdAt",
+      recoveryCustomers: "id, agentId, name, createdAt",
+      recoveryPayments: "id, customerId, receiptNo, agentName, month, createdAt",
+      labours: "id, name, createdAt",
+      labourTransactions: "id, labourId, type, createdAt",
+      labourAttendance: "id, labourId, date, status, createdAt",
+      labourProduction: "id, labourId, createdAt",
+      kitchenOrders: "id, sourceOrderId, status, createdAt",
+      installmentCustomers: "id, agentId, name, phone, createdAt",
+      installmentPayments: "id, customerId, receiptNo, month, createdAt",
+      taxInvoiceQueue: "id, orderId, status, createdAt",
+      settings: "id",
+      counters: "id",
+    });
   }
 }
 
