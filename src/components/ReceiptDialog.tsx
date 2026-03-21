@@ -118,6 +118,35 @@ function buildReceiptPdf(order: Order, opts?: { creditCustomerName?: string; del
   }
   rightLine("Total", formatIntMoney(order.total), true);
 
+  // Tax authority QR (only when tax API is enabled and QR not disabled)
+  if (
+    opts?.settings?.taxEnabled &&
+    opts?.settings?.taxApiEnabled &&
+    !opts?.settings?.taxQrDisabled &&
+    opts?.settings?.taxApiBusinessNtn
+  ) {
+    y += 6;
+    const taxQrData = JSON.stringify({
+      ntn: opts.settings.taxApiBusinessNtn,
+      posId: opts.settings.taxApiPosId || "",
+      inv: order.receiptNo,
+      dt: order.createdAt,
+      tax: order.taxAmount,
+      total: order.total,
+    });
+    // Simple text placeholder for QR in PDF — actual QR requires a library
+    doc.setFontSize(6);
+    doc.setFont("helvetica", "normal");
+    doc.text("Tax Verification QR:", left, y);
+    y += lineH * 0.8;
+    doc.text(`NTN: ${opts.settings.taxApiBusinessNtn}`, left, y);
+    y += lineH * 0.8;
+    doc.text(`POS: ${opts.settings.taxApiPosId || "N/A"}`, left, y);
+    y += lineH * 0.8;
+    doc.text(`Invoice: ${order.receiptNo}`, left, y);
+    y += lineH;
+  }
+
   y += 4;
   doc.setFontSize(8);
   doc.setFont("helvetica", "normal");
