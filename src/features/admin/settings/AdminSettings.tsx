@@ -206,6 +206,8 @@ export function AdminSettings() {
         taxType,
         taxValue,
         taxLabel: taxLabel.trim() || "Tax",
+        taxCountry: taxCountry || undefined,
+        taxDepartment: taxDepartment || undefined,
         serviceChargeEnabled,
         serviceChargeType,
         serviceChargeValue,
