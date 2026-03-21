@@ -449,7 +449,7 @@ export function AdminSettings() {
         </CardContent>
       </Card>}
 
-      {match("tax", "service", "charge", "percent") && <Card>
+      {match("tax", "service", "charge", "percent", "country", "gst", "vat") && <Card>
         <CardHeader>
           <CardTitle>Tax & Service Charges</CardTitle>
           <CardDescription>Configure automatic tax and service charges on receipts.</CardDescription>
@@ -464,24 +464,99 @@ export function AdminSettings() {
               <Switch checked={taxEnabled} onCheckedChange={setTaxEnabled} />
             </div>
             {taxEnabled && (
-              <div className="grid gap-3 sm:grid-cols-3 pl-3 border-l-2 border-primary/20">
-                <div className="space-y-2">
-                  <Label htmlFor="taxLabel">Label</Label>
-                  <Input id="taxLabel" value={taxLabel} onChange={(e) => setTaxLabel(e.target.value)} placeholder="Tax" />
+              <>
+                {/* Country preset picker */}
+                <div className="pl-3 border-l-2 border-primary/20 space-y-3">
+                  <div className="space-y-2">
+                    <Label>Country Tax Preset (optional)</Label>
+                    <select
+                      value={taxCountry}
+                      onChange={(e) => {
+                        const code = e.target.value;
+                        setTaxCountry(code);
+                        setTaxDepartment("");
+                        if (!code) return;
+                        // Auto-set currency
+                        const country = TAX_COUNTRIES.find(c => c.code === code);
+                        if (country) {
+                          setCurrencySymbolState(country.currencySymbol);
+                          // Auto-apply first preset
+                          if (country.presets.length === 1) {
+                            const p = country.presets[0];
+                            setTaxLabel(p.taxLabel);
+                            setTaxValue(p.taxValue);
+                            setTaxType("percent");
+                            setTaxDepartment(p.department);
+                          }
+                        }
+                      }}
+                      className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+                    >
+                      <option value="">— Select Country —</option>
+                      {TAX_COUNTRIES.map(c => (
+                        <option key={c.code} value={c.code}>{c.flag} {c.name}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {taxCountry && (() => {
+                    const country = TAX_COUNTRIES.find(c => c.code === taxCountry);
+                    if (!country || country.presets.length <= 1) return null;
+                    return (
+                      <div className="space-y-2">
+                        <Label>Tax Rate / Department</Label>
+                        <select
+                          value={taxDepartment}
+                          onChange={(e) => {
+                            const dept = e.target.value;
+                            setTaxDepartment(dept);
+                            const preset = country.presets.find(p => p.department === dept);
+                            if (preset) {
+                              setTaxLabel(preset.taxLabel);
+                              setTaxValue(preset.taxValue);
+                              setTaxType("percent");
+                            }
+                          }}
+                          className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+                        >
+                          <option value="">— Select Tax Rate —</option>
+                          {country.presets.map(p => (
+                            <option key={p.department} value={p.department}>
+                              {p.department} — {p.taxValue}%
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    );
+                  })()}
+
+                  {taxDepartment && (
+                    <div className="rounded-md bg-muted/50 p-2 text-xs text-muted-foreground">
+                      📋 Tax Department: {taxDepartment}
+                    </div>
+                  )}
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="taxType">Type</Label>
-                  <select id="taxType" value={taxType} onChange={(e) => setTaxType(e.target.value as ChargeType)} className="h-10 w-full rounded-md border bg-background px-3 text-sm">
-                    <option value="percent">Percentage (%)</option>
-                    <option value="fixed">Fixed Amount</option>
-                  </select>
+
+                {/* Manual tax config (always visible for override) */}
+                <div className="grid gap-3 sm:grid-cols-3 pl-3 border-l-2 border-primary/20">
+                  <div className="space-y-2">
+                    <Label htmlFor="taxLabel">Label</Label>
+                    <Input id="taxLabel" value={taxLabel} onChange={(e) => setTaxLabel(e.target.value)} placeholder="Tax" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="taxType">Type</Label>
+                    <select id="taxType" value={taxType} onChange={(e) => setTaxType(e.target.value as ChargeType)} className="h-10 w-full rounded-md border bg-background px-3 text-sm">
+                      <option value="percent">Percentage (%)</option>
+                      <option value="fixed">Fixed Amount</option>
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="taxValue">Value</Label>
+                    <Input id="taxValue" type="number" inputMode="decimal" value={taxValue || ""} onChange={(e) => setTaxValue(Number(e.target.value) || 0)} placeholder={taxType === "percent" ? "e.g. 5" : "e.g. 100"} />
+                    <p className="text-xs text-muted-foreground">{taxType === "percent" ? "Enter percentage (e.g. 5 for 5%)" : "Enter fixed amount"}</p>
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="taxValue">Value</Label>
-                  <Input id="taxValue" type="number" inputMode="decimal" value={taxValue || ""} onChange={(e) => setTaxValue(Number(e.target.value) || 0)} placeholder={taxType === "percent" ? "e.g. 5" : "e.g. 100"} />
-                  <p className="text-xs text-muted-foreground">{taxType === "percent" ? "Enter percentage (e.g. 5 for 5%)" : "Enter fixed amount"}</p>
-                </div>
-              </div>
+              </>
             )}
           </div>
           <div className="space-y-4">
