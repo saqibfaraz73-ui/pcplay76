@@ -305,6 +305,8 @@ export type Settings = {
   taxApiKey?: string; // API key / secret token
   taxApiEndpoint?: string; // API endpoint URL
   taxApiBusinessNtn?: string; // business NTN / GSTIN / TIN number
+  taxQrOnReceipt?: boolean; // if true, print tax authority QR on receipts (requires taxApiEnabled or taxEnabled)
+  taxQrDisabled?: boolean; // admin can force-disable QR even when API is connected
   // Service charge settings
   serviceChargeEnabled?: boolean;
   serviceChargeType?: ChargeType;
