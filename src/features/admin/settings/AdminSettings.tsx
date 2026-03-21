@@ -227,6 +227,7 @@ export function AdminSettings() {
         taxApiKey: taxApiKey.trim() || undefined,
         taxApiEndpoint: taxApiEndpoint.trim() || undefined,
         taxApiBusinessNtn: taxApiBusinessNtn.trim() || undefined,
+        taxQrDisabled,
         serviceChargeEnabled,
         serviceChargeType,
         serviceChargeValue,
