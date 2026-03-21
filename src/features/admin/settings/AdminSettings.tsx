@@ -485,7 +485,7 @@ export function AdminSettings() {
                 {/* Country preset picker */}
                 <div className="pl-3 border-l-2 border-primary/20 space-y-3">
                   <div className="space-y-2">
-                    <Label>Country Tax Preset (optional)</Label>
+                    <Label>Country Tax Preset <span className="text-xs text-muted-foreground font-normal">(optional — you can set tax manually below)</span></Label>
                     <select
                       value={taxCountry}
                       onChange={(e) => {
