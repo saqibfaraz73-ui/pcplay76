@@ -44,6 +44,8 @@ export function AdminSettings() {
   const [taxType, setTaxType] = React.useState<ChargeType>("percent");
   const [taxValue, setTaxValue] = React.useState<number>(0);
   const [taxLabel, setTaxLabel] = React.useState("Tax");
+  const [taxCountry, setTaxCountry] = React.useState("");
+  const [taxDepartment, setTaxDepartment] = React.useState("");
 
   // Service charge settings
   const [serviceChargeEnabled, setServiceChargeEnabled] = React.useState(false);
