@@ -297,6 +297,8 @@ export type Settings = {
   taxType?: ChargeType;
   taxValue?: number; // percent (e.g. 5 for 5%) or fixed amount
   taxLabel?: string; // custom label e.g. "VAT", "GST"
+  taxCountry?: string; // ISO country code from tax presets
+  taxDepartment?: string; // tax department description
   // Service charge settings
   serviceChargeEnabled?: boolean;
   serviceChargeType?: ChargeType;

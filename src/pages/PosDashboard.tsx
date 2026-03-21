@@ -1275,6 +1275,43 @@ export default function PosDashboard() {
                 />
               </div>
 
+              {/* Quick tax toggle */}
+              {posSettings?.taxEnabled && posSettings.taxCountry && (
+                <div className="flex items-center justify-between gap-2 rounded-md bg-muted/50 p-1.5">
+                  <span className="text-[10px] text-muted-foreground truncate">
+                    {posSettings.taxDepartment || posSettings.taxLabel}
+                  </span>
+                  <button
+                    type="button"
+                    className="text-[10px] font-medium text-primary hover:underline whitespace-nowrap"
+                    onClick={async () => {
+                      if (!posSettings) return;
+                      const { TAX_COUNTRIES } = await import("@/features/tax/tax-presets");
+                      const country = TAX_COUNTRIES.find(c => c.code === posSettings.taxCountry);
+                      if (!country || country.presets.length <= 1) return;
+                      // Cycle to next preset
+                      const currentIdx = country.presets.findIndex(p => p.department === posSettings.taxDepartment);
+                      const nextIdx = (currentIdx + 1) % country.presets.length;
+                      const next = country.presets[nextIdx];
+                      const updated = {
+                        ...posSettings,
+                        taxLabel: next.taxLabel,
+                        taxValue: next.taxValue,
+                        taxType: "percent" as const,
+                        taxDepartment: next.department,
+                        updatedAt: Date.now(),
+                      };
+                      await db.settings.put(updated);
+                      setPosSettings(updated);
+                      setEditTaxAmount(null);
+                      toast({ title: `Tax: ${next.department} — ${next.taxValue}%` });
+                    }}
+                  >
+                    Switch Rate
+                  </button>
+                </div>
+              )}
+
               {/* Tax display - editable */}
               {posSettings?.taxEnabled && (
                 <div className="flex items-center justify-between text-sm">
