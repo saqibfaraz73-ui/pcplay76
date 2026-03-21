@@ -35,6 +35,7 @@ import type { AdvanceOrder, BookableItem, BookingOrder } from "./booking-schema"
 import type { KitchenOrder } from "./kitchen-schema";
 import type { LicenseRecord } from "@/features/licensing/licensing-db";
 import type { InstallmentCustomer, InstallmentPayment } from "./installment-schema";
+import type { TaxInvoiceQueueItem } from "@/features/tax/tax-queue";
 
 export class SangiPosDb extends Dexie {
   categories!: Table<Category, string>;
