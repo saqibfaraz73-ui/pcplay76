@@ -141,6 +141,11 @@ export function AdminSettings() {
     setTaxLabel(s.taxLabel ?? "Tax");
     setTaxCountry(s.taxCountry ?? "");
     setTaxDepartment(s.taxDepartment ?? "");
+    setTaxApiEnabled(!!s.taxApiEnabled);
+    setTaxApiPosId(s.taxApiPosId ?? "");
+    setTaxApiKey(s.taxApiKey ?? "");
+    setTaxApiEndpoint(s.taxApiEndpoint ?? "");
+    setTaxApiBusinessNtn(s.taxApiBusinessNtn ?? "");
     setServiceChargeEnabled(!!s.serviceChargeEnabled);
     setServiceChargeType(s.serviceChargeType ?? "percent");
     setServiceChargeValue(s.serviceChargeValue ?? 0);
