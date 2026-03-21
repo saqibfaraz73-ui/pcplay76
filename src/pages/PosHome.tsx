@@ -218,6 +218,18 @@ export default function PosHome() {
       );
     }
 
+    if (!isWaiter && settings?.taxEnabled) {
+      actions.push({
+        to: "/admin/settings",
+        label: settings.taxLabel || "Tax",
+        icon: BarChart3,
+        color: "bg-yellow-500/10 text-yellow-600 border-yellow-200",
+        description: settings.taxCountry
+          ? `${settings.taxDepartment || settings.taxLabel} — ${settings.taxValue}%`
+          : `${settings.taxType === "percent" ? `${settings.taxValue}%` : "Fixed"} ${settings.taxLabel || "Tax"}`,
+      });
+    }
+
     if (isAdmin) {
       actions.push({
         to: "/admin/reports",
