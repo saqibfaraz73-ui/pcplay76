@@ -132,6 +132,8 @@ export function AdminSettings() {
     setTaxType(s.taxType ?? "percent");
     setTaxValue(s.taxValue ?? 0);
     setTaxLabel(s.taxLabel ?? "Tax");
+    setTaxCountry(s.taxCountry ?? "");
+    setTaxDepartment(s.taxDepartment ?? "");
     setServiceChargeEnabled(!!s.serviceChargeEnabled);
     setServiceChargeType(s.serviceChargeType ?? "percent");
     setServiceChargeValue(s.serviceChargeValue ?? 0);
