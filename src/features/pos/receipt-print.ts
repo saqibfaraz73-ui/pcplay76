@@ -280,6 +280,7 @@ async function buildEscPosReceipt(
   receipt += itemLines.join("\n") + "\n";
   receipt += totals.join("\n");
   if (qrCommands) receipt += "\n" + qrCommands;
+  if (taxQrCommands) receipt += taxQrCommands;
   if (feedCount > 0) receipt += "\n".repeat(feedCount);
   receipt += "\n\x1dV\x41\x03";
   return receipt;
