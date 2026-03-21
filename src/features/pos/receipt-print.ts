@@ -240,6 +240,26 @@ async function buildEscPosReceipt(
     qrCommands = buildEscPosBarcode(order.receiptNo, settings.paperSize);
   }
 
+  // Tax authority QR code (NTN + invoice details) — only when tax API is enabled and QR not disabled
+  let taxQrCommands = "";
+  if (
+    settings.taxEnabled &&
+    settings.taxApiEnabled &&
+    !settings.taxQrDisabled &&
+    settings.taxApiBusinessNtn &&
+    !opts?.skipBarcode
+  ) {
+    const taxQrData = JSON.stringify({
+      ntn: settings.taxApiBusinessNtn,
+      posId: settings.taxApiPosId || "",
+      inv: order.receiptNo,
+      dt: order.createdAt,
+      tax: order.taxAmount,
+      total: order.total,
+    });
+    taxQrCommands = "\n" + buildEscPosQr(taxQrData, 5);
+  }
+
   const totalContentLines = headerLines.length + 1 + itemLines.length + totals.length + (logoCommands ? 4 : 0);
   const feedCount = getFeedLinesForSize(settings, totalContentLines);
 
