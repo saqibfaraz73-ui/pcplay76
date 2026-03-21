@@ -299,6 +299,12 @@ export type Settings = {
   taxLabel?: string; // custom label e.g. "VAT", "GST"
   taxCountry?: string; // ISO country code from tax presets
   taxDepartment?: string; // tax department description
+  // Tax API integration (e.g. FBR ePOS, GSTN, ZATCA)
+  taxApiEnabled?: boolean; // if true, tax integration with govt API is active
+  taxApiPosId?: string; // registered POS device ID
+  taxApiKey?: string; // API key / secret token
+  taxApiEndpoint?: string; // API endpoint URL
+  taxApiBusinessNtn?: string; // business NTN / GSTIN / TIN number
   // Service charge settings
   serviceChargeEnabled?: boolean;
   serviceChargeType?: ChargeType;
