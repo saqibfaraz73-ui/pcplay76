@@ -704,6 +704,7 @@ export function AdminSettings() {
         </CardContent>
       </Card>}
 
+      {match("expiry", "date") && <Card>
         <CardHeader>
           <CardTitle>Expiry Date Settings</CardTitle>
           <CardDescription>Configure expiry date tracking and display options for items.</CardDescription>
