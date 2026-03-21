@@ -53,6 +53,7 @@ export function AdminSettings() {
   const [taxApiKey, setTaxApiKey] = React.useState("");
   const [taxApiEndpoint, setTaxApiEndpoint] = React.useState("");
   const [taxApiBusinessNtn, setTaxApiBusinessNtn] = React.useState("");
+  const [taxQrDisabled, setTaxQrDisabled] = React.useState(false);
 
   // Service charge settings
   const [serviceChargeEnabled, setServiceChargeEnabled] = React.useState(false);
@@ -146,6 +147,7 @@ export function AdminSettings() {
     setTaxApiKey(s.taxApiKey ?? "");
     setTaxApiEndpoint(s.taxApiEndpoint ?? "");
     setTaxApiBusinessNtn(s.taxApiBusinessNtn ?? "");
+    setTaxQrDisabled(!!s.taxQrDisabled);
     setServiceChargeEnabled(!!s.serviceChargeEnabled);
     setServiceChargeType(s.serviceChargeType ?? "percent");
     setServiceChargeValue(s.serviceChargeValue ?? 0);
@@ -225,6 +227,7 @@ export function AdminSettings() {
         taxApiKey: taxApiKey.trim() || undefined,
         taxApiEndpoint: taxApiEndpoint.trim() || undefined,
         taxApiBusinessNtn: taxApiBusinessNtn.trim() || undefined,
+        taxQrDisabled,
         serviceChargeEnabled,
         serviceChargeType,
         serviceChargeValue,
@@ -575,6 +578,82 @@ export function AdminSettings() {
                 </div>
               </>
             )}
+
+            {/* Tax API Integration (inside tax section) */}
+            {taxEnabled && (
+              <div className="space-y-4 pt-2">
+                <div className="flex items-center justify-between gap-3 rounded-md border p-3">
+                  <div>
+                    <div className="text-sm font-medium">Enable Tax API Integration</div>
+                    <div className="text-xs text-muted-foreground">Connect to government tax authority (FBR, GSTN, ZATCA, HMRC) for real-time invoice reporting.</div>
+                  </div>
+                  <Switch checked={taxApiEnabled} onCheckedChange={setTaxApiEnabled} />
+                </div>
+                {taxApiEnabled && (
+                  <div className="pl-3 border-l-2 border-primary/20 space-y-4">
+                    {taxCountry && (
+                      <div className="rounded-md bg-muted/50 p-2 text-xs text-muted-foreground">
+                        ℹ️ {taxCountry === "PK" ? "FBR ePOS Integration — Register your POS device at fbr.gov.pk" :
+                            taxCountry === "IN" ? "GSTN e-Invoice — Register via your GSP (GST Suvidha Provider)" :
+                            taxCountry === "SA" ? "ZATCA FATOORA — Register at zatca.gov.sa" :
+                            taxCountry === "AE" ? "FTA Tax Registration — Register at tax.gov.ae" :
+                            taxCountry === "GB" ? "HMRC MTD — Register for Making Tax Digital" :
+                            "Register with your local tax authority to get API credentials."}
+                      </div>
+                    )}
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label>Business NTN / GSTIN / TIN</Label>
+                        <Input
+                          value={taxApiBusinessNtn}
+                          onChange={(e) => setTaxApiBusinessNtn(e.target.value)}
+                          placeholder={taxCountry === "PK" ? "e.g. 1234567-8" : taxCountry === "IN" ? "e.g. 22AAAAA0000A1Z5" : "Tax ID number"}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Registered POS ID</Label>
+                        <Input
+                          value={taxApiPosId}
+                          onChange={(e) => setTaxApiPosId(e.target.value)}
+                          placeholder="Your registered POS device ID"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label>API Key / Token</Label>
+                        <Input
+                          type="password"
+                          value={taxApiKey}
+                          onChange={(e) => setTaxApiKey(e.target.value)}
+                          placeholder="Secret API key"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>API Endpoint URL</Label>
+                        <Input
+                          value={taxApiEndpoint}
+                          onChange={(e) => setTaxApiEndpoint(e.target.value)}
+                          placeholder={taxCountry === "PK" ? "https://tp.fbr.gov.pk/..." : "https://api.example.com/..."}
+                        />
+                      </div>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      ⚠️ Credentials stored locally. Invoices are queued offline and synced when internet returns.
+                    </p>
+
+                    {/* QR on receipt control */}
+                    <div className="flex items-center justify-between gap-3 rounded-md border p-3">
+                      <div>
+                        <div className="text-sm font-medium">Disable Tax QR on Receipt</div>
+                        <div className="text-xs text-muted-foreground">Turn off the tax verification QR code on printed receipts even when API is connected.</div>
+                      </div>
+                      <Switch checked={taxQrDisabled} onCheckedChange={setTaxQrDisabled} />
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
           <div className="space-y-4">
             <div className="flex items-center justify-between gap-3 rounded-md border p-3">
@@ -629,80 +708,7 @@ export function AdminSettings() {
         </CardContent>
       </Card>}
 
-      {match("tax", "api", "fbr", "gst", "zatca", "integration", "pos id", "ntn") && taxEnabled && <Card>
-        <CardHeader>
-          <CardTitle>Tax API Integration</CardTitle>
-          <CardDescription>
-            Connect to your government tax authority (FBR, GSTN, ZATCA, HMRC, etc.) for real-time invoice reporting.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-4">
-          <div className="flex items-center justify-between gap-3 rounded-md border p-3">
-            <div>
-              <div className="text-sm font-medium">Enable Tax API Integration</div>
-              <div className="text-xs text-muted-foreground">Send invoices to your tax authority in real-time.</div>
-            </div>
-            <Switch checked={taxApiEnabled} onCheckedChange={setTaxApiEnabled} />
-          </div>
-          {taxApiEnabled && (
-            <div className="pl-3 border-l-2 border-primary/20 space-y-4">
-              {taxCountry && (
-                <div className="rounded-md bg-muted/50 p-2 text-xs text-muted-foreground">
-                  ℹ️ {taxCountry === "PK" ? "FBR ePOS Integration — Register your POS device at fbr.gov.pk" :
-                      taxCountry === "IN" ? "GSTN e-Invoice — Register via your GSP (GST Suvidha Provider)" :
-                      taxCountry === "SA" ? "ZATCA FATOORA — Register at zatca.gov.sa" :
-                      taxCountry === "AE" ? "FTA Tax Registration — Register at tax.gov.ae" :
-                      taxCountry === "GB" ? "HMRC MTD — Register for Making Tax Digital" :
-                      "Register with your local tax authority to get API credentials."}
-                </div>
-              )}
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label>Business NTN / GSTIN / TIN</Label>
-                  <Input
-                    value={taxApiBusinessNtn}
-                    onChange={(e) => setTaxApiBusinessNtn(e.target.value)}
-                    placeholder={taxCountry === "PK" ? "e.g. 1234567-8" : taxCountry === "IN" ? "e.g. 22AAAAA0000A1Z5" : "Tax ID number"}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Registered POS ID</Label>
-                  <Input
-                    value={taxApiPosId}
-                    onChange={(e) => setTaxApiPosId(e.target.value)}
-                    placeholder="Your registered POS device ID"
-                  />
-                </div>
-              </div>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label>API Key / Token</Label>
-                  <Input
-                    type="password"
-                    value={taxApiKey}
-                    onChange={(e) => setTaxApiKey(e.target.value)}
-                    placeholder="Secret API key"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>API Endpoint URL</Label>
-                  <Input
-                    value={taxApiEndpoint}
-                    onChange={(e) => setTaxApiEndpoint(e.target.value)}
-                    placeholder={taxCountry === "PK" ? "https://tp.fbr.gov.pk/..." : "https://api.example.com/..."}
-                  />
-                </div>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                ⚠️ These credentials are stored locally on this device only. The actual API integration requires server-side implementation specific to your tax authority.
-              </p>
-            </div>
-          )}
-          <div className="flex justify-end">
-            <Button onClick={() => void save()} disabled={!settings}>Save API Settings</Button>
-          </div>
-        </CardContent>
-      </Card>}
+
 
       {match("expiry", "date") && <Card>
         <CardHeader>
