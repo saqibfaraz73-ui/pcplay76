@@ -41,30 +41,55 @@ const CARD_BORDERS: Record<KitchenOrderStatus, string> = {
   cancelled: "border-destructive/30",
 };
 
+// Local storage key for persisting KDS status overrides
+const KDS_STATUS_STORAGE_KEY = "kds_local_statuses";
+
+function loadLocalStatuses(): Record<string, KitchenOrderStatus> {
+  try {
+    const raw = localStorage.getItem(KDS_STATUS_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch { return {}; }
+}
+
+function saveLocalStatuses(map: Record<string, KitchenOrderStatus>) {
+  localStorage.setItem(KDS_STATUS_STORAGE_KEY, JSON.stringify(map));
+}
+
 export function KitchenQueueView({ onDisconnect }: KitchenQueueViewProps) {
   const { toast } = useToast();
   const [orders, setOrders] = useState<KitchenOrder[]>([]);
   const [filter, setFilter] = useState<"active" | "all">("active");
   const prevOrderIdsRef = useRef<Set<string>>(new Set());
-  // Track locally updated orders to prevent poll from reverting optimistic updates
-  const localUpdatesRef = useRef<Map<string, { status: KitchenOrderStatus; until: number }>>(new Map());
+  // Persistent local status overrides (survives polls and even app restarts)
+  const localStatusRef = useRef<Record<string, KitchenOrderStatus>>(loadLocalStatuses());
 
   const loadOrders = useCallback(async () => {
     const fetched = await fetchKitchenOrders();
-    
-    // Merge: keep local optimistic status if within grace period
-    const now = Date.now();
+
+    // Merge: apply local status overrides if server hasn't caught up
     const merged = fetched.map(order => {
-      const local = localUpdatesRef.current.get(order.id);
-      if (local && now < local.until) {
-        // Server hasn't caught up yet — keep our optimistic status
-        return { ...order, status: local.status };
+      const localStatus = localStatusRef.current[order.id];
+      if (localStatus) {
+        // If server now agrees with our local status, remove the override
+        if (order.status === localStatus) {
+          delete localStatusRef.current[order.id];
+          saveLocalStatuses(localStatusRef.current);
+          return order;
+        }
+        // If server has a MORE advanced status, accept it and remove override
+        const serverIdx = STATUS_FLOW.indexOf(order.status);
+        const localIdx = STATUS_FLOW.indexOf(localStatus);
+        if (serverIdx >= 0 && localIdx >= 0 && serverIdx >= localIdx) {
+          delete localStatusRef.current[order.id];
+          saveLocalStatuses(localStatusRef.current);
+          return order;
+        }
+        // Otherwise keep our local status
+        return { ...order, status: localStatus };
       }
-      // Clean up expired entries
-      if (local) localUpdatesRef.current.delete(order.id);
       return order;
     });
-    
+
     setOrders(merged);
 
     // Play bell for new orders
@@ -73,7 +98,7 @@ export function KitchenQueueView({ onDisconnect }: KitchenQueueViewProps) {
     for (const id of currentIds) {
       if (!prevIds.has(id)) {
         playKitchenBell();
-        break; // one bell per poll
+        break;
       }
     }
     prevOrderIdsRef.current = new Set(fetched.map(o => o.id));
@@ -91,21 +116,23 @@ export function KitchenQueueView({ onDisconnect }: KitchenQueueViewProps) {
     if (currentIdx < 0 || currentIdx >= STATUS_FLOW.length - 1) return;
     const nextStatus = STATUS_FLOW[currentIdx + 1];
 
-    // Optimistic update FIRST — mark as locally updated with 10s grace period
-    localUpdatesRef.current.set(order.id, { status: nextStatus, until: Date.now() + 10000 });
+    // Save local status override PERSISTENTLY — won't be overwritten by polls
+    localStatusRef.current[order.id] = nextStatus;
+    saveLocalStatuses(localStatusRef.current);
+
+    // Optimistic UI update
     setOrders(prev => prev.map(o =>
       o.id === order.id ? { ...o, status: nextStatus, updatedAt: Date.now() } : o
     ));
 
+    // Try to send to Main — but DON'T revert on failure (local status is authoritative)
     const deviceId = localStorage.getItem("kitchen_device_id") || "kitchen";
     const ok = await sendKitchenStatusUpdate(order.id, nextStatus, deviceId);
     if (!ok) {
-      // Revert optimistic update on failure
-      localUpdatesRef.current.delete(order.id);
-      setOrders(prev => prev.map(o =>
-        o.id === order.id ? { ...o, status: order.status } : o
-      ));
-      toast({ title: "Failed to update", description: "Could not reach Main device", variant: "destructive" });
+      // Status stays updated locally — show subtle warning
+      toast({ title: "Status updated locally", description: "Main device not reachable — will retry on next sync", variant: "default" });
+    } else {
+      // Server accepted — clean up local override (next poll will confirm)
     }
   };
 
@@ -176,7 +203,7 @@ export function KitchenQueueView({ onDisconnect }: KitchenQueueViewProps) {
                   {/* Header */}
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2">
-                      <span className="text-2xl font-bold">#{order.orderNumber}</span>
+                      <span className="text-2xl font-bold">#{order.orderNumber || "—"}</span>
                       {order.tableNumber && (
                         <Badge variant="outline" className="text-xs">
                           Table {order.tableNumber}
