@@ -203,7 +203,7 @@ export function KitchenQueueView({ onDisconnect }: KitchenQueueViewProps) {
                   {/* Header */}
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2">
-                      <span className="text-2xl font-bold">#{order.orderNumber}</span>
+                      <span className="text-2xl font-bold">#{order.orderNumber || "—"}</span>
                       {order.tableNumber && (
                         <Badge variant="outline" className="text-xs">
                           Table {order.tableNumber}
