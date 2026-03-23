@@ -1358,6 +1358,35 @@ export default function PosDashboard() {
                 <span className="text-base font-bold">{formatIntMoney(total)}</span>
               </div>
 
+              {/* Cash received & change */}
+              {cart.length > 0 && (
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between gap-2">
+                    <Label htmlFor="cashReceived" className="text-xs text-muted-foreground whitespace-nowrap">
+                      Cash Received
+                    </Label>
+                    <Input
+                      id="cashReceived"
+                      inputMode="numeric"
+                      value={cashReceived === 0 ? "" : String(cashReceived)}
+                      placeholder="Optional"
+                      onChange={(e) => setCashReceived(parseNonDecimalInt(e.target.value))}
+                      className="h-7 w-24 text-right text-sm"
+                    />
+                  </div>
+                  {cashReceived > 0 && (
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">Change</span>
+                      <span className={`font-bold ${cashReceived >= total ? "text-emerald-600" : "text-destructive"}`}>
+                        {cashReceived >= total
+                          ? formatIntMoney(cashReceived - total)
+                          : `−${formatIntMoney(total - cashReceived)}`}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )}
+
               <Button 
                 variant="secondary" 
                 disabled={cart.length === 0 || !isWorkPeriodActive} 
