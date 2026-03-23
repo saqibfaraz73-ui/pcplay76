@@ -291,6 +291,10 @@ export default function PosDashboard() {
     setPosSettings(s ?? null);
     setShowItemImages(s?.posShowItemImages ?? true);
     setCurrencySymbol(s?.currencySymbol || "Rs");
+    // Pre-fetch tax rate from API if no manual rate is set
+    if (s?.taxEnabled && s.taxApiEnabled && (!s.taxValue || s.taxValue <= 0)) {
+      void fetchTaxRateFromApi(s).catch(() => {});
+    }
   }, []);
 
   const canCreateCustomers = session?.role === "admin";
