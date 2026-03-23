@@ -317,10 +317,18 @@ export default function PosPartyLodge() {
 
   const getItemTotal = (it: ArrivalItem) => it.useManualTotal ? it.manualTotal : it.qty * it.unitPrice;
 
-  const arrivalTotal = React.useMemo(() => {
+  const arrivalSubtotal = React.useMemo(() => {
     if (!arrivalMode.open) return 0;
     return arrivalItems.reduce((sum, it) => sum + getItemTotal(it), 0);
   }, [arrivalMode.open, arrivalItems]);
+
+  const arrivalTaxAmount = React.useMemo(() => {
+    if (!arrivalTaxEnabled || arrivalTaxValue <= 0) return 0;
+    if (arrivalTaxType === "percent") return Math.round(arrivalSubtotal * arrivalTaxValue / 100);
+    return Math.round(arrivalTaxValue);
+  }, [arrivalTaxEnabled, arrivalTaxType, arrivalTaxValue, arrivalSubtotal]);
+
+  const arrivalTotal = arrivalSubtotal + arrivalTaxAmount;
 
   const buildArrivalReceiptData = (): EntryReceiptData | null => {
     if (!arrivalMode.open) return null;
