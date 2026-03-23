@@ -5,6 +5,8 @@ import { isNativeAndroid } from "@/features/pos/bluetooth-printer";
 import { db } from "@/db/appDb";
 import { isDuplicatePrint } from "@/features/pos/print-dedup";
 import { sendToDefaultPrinter } from "@/features/pos/printer-routing";
+import { buildTaxQrEscPos, addTaxQrToPdf, shouldPrintTaxQr } from "@/features/tax/tax-qr";
+import { getTaxLabel } from "@/features/tax/tax-calc";
 import jsPDF from "jspdf";
 
 /* ─── Receipt size feed (same logic as sales) ─── */
