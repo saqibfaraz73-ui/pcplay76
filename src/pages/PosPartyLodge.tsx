@@ -345,6 +345,8 @@ export default function PosPartyLodge() {
         total: getItemTotal(it),
       })),
       grandTotal: arrivalTotal,
+      taxAmount: arrivalTaxAmount > 0 ? arrivalTaxAmount : undefined,
+      taxLabel: arrivalTaxAmount > 0 ? (arrivalTaxType === "percent" ? `Tax (${arrivalTaxValue}%)` : "Tax") : undefined,
       note: arrivalNote.trim() || undefined,
       date: new Date(),
     };
@@ -446,7 +448,9 @@ export default function PosPartyLodge() {
     receiptNo: a.receiptNo,
     partyName: supplierName,
     lines: [{ itemName: a.itemName, qty: a.qty, unit: a.unit, unitPrice: a.unitPrice, total: a.total }],
-    grandTotal: a.total,
+    grandTotal: a.total + (a.taxAmount ?? 0),
+    taxAmount: a.taxAmount,
+    taxLabel: a.taxAmount ? (a.taxType === "percent" ? `Tax (${a.taxValue}%)` : "Tax") : undefined,
     note: a.note,
     date: new Date(a.createdAt),
   });
@@ -1287,10 +1291,11 @@ export default function PosPartyLodge() {
                           <span className="font-medium">{a.itemName}</span>
                           {a.cancelled && <span className="text-xs font-semibold text-destructive">CANCELLED</span>}
                         </div>
-                        <span className={`font-bold ${a.cancelled ? "line-through text-muted-foreground" : "text-destructive"}`}>{formatIntMoney(a.total)}</span>
+                        <span className={`font-bold ${a.cancelled ? "line-through text-muted-foreground" : "text-destructive"}`}>{formatIntMoney(a.total + (a.taxAmount ?? 0))}</span>
                       </div>
                       <div className="text-xs text-muted-foreground mt-1">
                         {a.qty} {a.unit || "units"} × {formatIntMoney(a.unitPrice)}
+                        {a.taxAmount ? ` + Tax: ${formatIntMoney(a.taxAmount)}` : ""}
                       </div>
                       {a.note && <div className="text-xs text-muted-foreground">{a.note}</div>}
                       {a.cancelledReason && <div className="text-xs text-destructive">Reason: {a.cancelledReason}</div>}

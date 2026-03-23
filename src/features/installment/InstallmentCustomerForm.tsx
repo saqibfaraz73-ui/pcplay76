@@ -9,7 +9,8 @@ import { parseNonDecimalInt } from "@/features/pos/format";
 import { db } from "@/db/appDb";
 import type { MenuItem } from "@/db/schema";
 import type { InstallmentCustomer, InstallmentCustomerField, ProfitType, InstallmentFrequency } from "@/db/installment-schema";
-import { Plus, Trash2, ImagePlus, Search } from "lucide-react";
+import { Plus, Trash2, ImagePlus, Search, ChevronDown } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 
 interface Props {
   open: boolean;
@@ -62,6 +63,9 @@ export function InstallmentCustomerForm({ open, customer, onClose, onSave }: Pro
   const [customFields, setCustomFields] = React.useState<InstallmentCustomerField[]>([]);
   const [images, setImages] = React.useState<string[]>([]);
   const [frequency, setFrequency] = React.useState<InstallmentFrequency>("monthly");
+  const [taxType, setTaxType] = React.useState<"percent" | "fixed">("percent");
+  const [taxValue, setTaxValue] = React.useState(0);
+  const [taxEnabled, setTaxEnabled] = React.useState(false);
   const [allItems, setAllItems] = React.useState<MenuItem[]>([]);
   const [itemQuery, setItemQuery] = React.useState("");
   const [showItemPicker, setShowItemPicker] = React.useState(false);
@@ -90,11 +94,15 @@ export function InstallmentCustomerForm({ open, customer, onClose, onSave }: Pro
         setFrequency(customer.frequency ?? "monthly");
         setCustomFields(customer.customFields ?? []);
         setImages(customer.images ?? []);
+        setTaxEnabled(!!(customer.taxType && customer.taxValue));
+        setTaxType(customer.taxType ?? "percent");
+        setTaxValue(customer.taxValue ?? 0);
       } else {
         setName(""); setPhone(""); setAddress(""); setWhatsapp(""); setEmail("");
         setProductName(""); setMarketPrice(0); setProfitType("percent"); setProfitValue(0);
         setTenureMonths(12); setTenureUnit("months"); setDueDate(0); setLateFeePerDay(0);
         setFrequency("monthly"); setCustomFields([]); setImages([]);
+        setTaxEnabled(false); setTaxType("percent"); setTaxValue(0);
       }
     }
   }, [open, customer]);
@@ -104,7 +112,11 @@ export function InstallmentCustomerForm({ open, customer, onClose, onSave }: Pro
   const totalPrice = profitType === "percent"
     ? Math.round(marketPrice * (1 + profitValue / 100))
     : marketPrice + profitValue;
-  const monthlyInstallment = totalPeriods > 0 ? Math.round(totalPrice / totalPeriods) : totalPrice;
+  const taxAmount = taxEnabled && taxValue > 0
+    ? (taxType === "percent" ? Math.round(totalPrice * taxValue / 100) : Math.round(taxValue))
+    : 0;
+  const totalWithTax = totalPrice + taxAmount;
+  const monthlyInstallment = totalPeriods > 0 ? Math.round(totalWithTax / totalPeriods) : totalWithTax;
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -150,7 +162,10 @@ export function InstallmentCustomerForm({ open, customer, onClose, onSave }: Pro
       frequency,
       monthlyInstallment,
       totalPrice,
-      totalBalance: customer?.totalBalance ?? totalPrice, // keep existing balance on edit
+      totalBalance: customer?.totalBalance ?? totalWithTax, // keep existing balance on edit
+      taxType: taxEnabled && taxValue > 0 ? taxType : undefined,
+      taxValue: taxEnabled && taxValue > 0 ? taxValue : undefined,
+      taxAmount: taxAmount > 0 ? taxAmount : undefined,
       dueDate: dueDate > 0 ? dueDate : undefined,
       lateFeePerDay: lateFeePerDay > 0 ? lateFeePerDay : undefined,
       agentId: customer?.agentId,
@@ -161,7 +176,7 @@ export function InstallmentCustomerForm({ open, customer, onClose, onSave }: Pro
     };
     // If this is a new customer or product changed, recalculate balance
     if (!customer) {
-      result.totalBalance = totalPrice;
+      result.totalBalance = totalWithTax;
     }
     onSave(result);
   };
@@ -203,18 +218,18 @@ export function InstallmentCustomerForm({ open, customer, onClose, onSave }: Pro
           {/* Product details */}
           <div className="border-t pt-3 mt-1">
             <div className="text-sm font-semibold mb-2">Product & Installment</div>
-            <div className="grid gap-3 sm:grid-cols-2">
+             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-1 relative">
                 <Label>Product Name *</Label>
                 <div className="flex gap-1">
-                  <Input value={productName} onChange={e => { setProductName(e.target.value); setShowItemPicker(false); }} className="flex-1" />
+                  <Input value={productName} onChange={e => { setProductName(e.target.value); if (!e.target.value) setShowItemPicker(true); }} className="flex-1" placeholder="Type or select..." />
                   <Button type="button" size="icon" variant="outline" onClick={() => setShowItemPicker(v => !v)} title="Select from items">
-                    <Search className="h-4 w-4" />
+                    <ChevronDown className={`h-4 w-4 transition-transform ${showItemPicker ? "rotate-180" : ""}`} />
                   </Button>
                 </div>
                 {showItemPicker && (
-                  <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-background border rounded-md shadow-lg max-h-48 overflow-y-auto">
-                    <div className="p-2">
+                  <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-background border rounded-md shadow-lg max-h-52 overflow-y-auto">
+                    <div className="sticky top-0 bg-background p-2 border-b">
                       <Input
                         value={itemQuery}
                         onChange={e => setItemQuery(e.target.value)}
@@ -226,12 +241,12 @@ export function InstallmentCustomerForm({ open, customer, onClose, onSave }: Pro
                     <div className="px-1 pb-1">
                       {allItems
                         .filter(it => !itemQuery || it.name.toLowerCase().includes(itemQuery.toLowerCase()) || (it.sku ?? "").toLowerCase().includes(itemQuery.toLowerCase()))
-                        .slice(0, 20)
+                        .slice(0, 30)
                         .map(it => (
                           <button
                             key={it.id}
                             type="button"
-                            className="w-full text-left px-3 py-1.5 text-xs hover:bg-muted rounded-sm flex justify-between"
+                            className="w-full text-left px-3 py-2 text-xs hover:bg-muted rounded-sm flex justify-between items-center"
                             onClick={() => {
                               setProductName(it.name);
                               setMarketPrice(it.price);
@@ -240,12 +255,12 @@ export function InstallmentCustomerForm({ open, customer, onClose, onSave }: Pro
                             }}
                           >
                             <span className="truncate">{it.name}</span>
-                            <span className="text-muted-foreground ml-2 shrink-0">{it.price.toLocaleString()}</span>
+                            <span className="text-muted-foreground ml-2 shrink-0 font-medium">{it.price.toLocaleString()}</span>
                           </button>
                         ))
                       }
                       {allItems.filter(it => !itemQuery || it.name.toLowerCase().includes(itemQuery.toLowerCase())).length === 0 && (
-                        <div className="text-xs text-muted-foreground text-center py-2">No items found</div>
+                        <div className="text-xs text-muted-foreground text-center py-3">No items found</div>
                       )}
                     </div>
                   </div>
@@ -288,11 +303,44 @@ export function InstallmentCustomerForm({ open, customer, onClose, onSave }: Pro
               </div>
             </div>
 
+            {/* Tax on total */}
+            <div className="mt-3 rounded-md border p-3">
+              <div className="flex items-center gap-2 mb-2">
+                <Switch checked={taxEnabled} onCheckedChange={setTaxEnabled} className="scale-75" />
+                <span className="text-sm font-medium">Add Tax</span>
+              </div>
+              {taxEnabled && (
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <Label className="text-xs">Tax Type</Label>
+                    <select value={taxType} onChange={e => setTaxType(e.target.value as "percent" | "fixed")} className="h-9 w-full rounded-md border bg-background px-3 text-sm">
+                      <option value="percent">Percentage (%)</option>
+                      <option value="fixed">Fixed Amount</option>
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Tax Value</Label>
+                    <Input value={taxValue || ""} onChange={e => setTaxValue(parseNonDecimalInt(e.target.value))} inputMode="numeric" placeholder={taxType === "percent" ? "e.g. 17" : "e.g. 500"} className="h-9" />
+                  </div>
+                </div>
+              )}
+            </div>
+
             {/* Auto-calculated preview */}
-            <div className="mt-3 rounded-md bg-muted/50 p-3 grid grid-cols-3 gap-2 text-xs">
+            <div className="mt-3 rounded-md bg-muted/50 p-3 grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
               <div>
-                <div className="text-muted-foreground">Total Price</div>
+                <div className="text-muted-foreground">Price + Profit</div>
                 <div className="font-bold text-sm">{totalPrice.toLocaleString()}</div>
+              </div>
+              {taxAmount > 0 && (
+                <div>
+                  <div className="text-muted-foreground">Tax</div>
+                  <div className="font-bold text-sm text-orange-600">{taxAmount.toLocaleString()}</div>
+                </div>
+              )}
+              <div>
+                <div className="text-muted-foreground">Total{taxAmount > 0 ? " (incl. Tax)" : ""}</div>
+                <div className="font-bold text-sm">{totalWithTax.toLocaleString()}</div>
               </div>
               <div>
                 <div className="text-muted-foreground">{frequency === "weekly" ? "Weekly" : frequency === "yearly" ? "Yearly" : "Monthly"}</div>
