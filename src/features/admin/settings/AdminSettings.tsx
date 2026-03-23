@@ -54,6 +54,7 @@ export function AdminSettings() {
   const [taxApiEndpoint, setTaxApiEndpoint] = React.useState("");
   const [taxApiBusinessNtn, setTaxApiBusinessNtn] = React.useState("");
   const [taxQrDisabled, setTaxQrDisabled] = React.useState(false);
+  const [taxTestResult, setTaxTestResult] = React.useState("");
 
   // Service charge settings
   const [serviceChargeEnabled, setServiceChargeEnabled] = React.useState(false);
