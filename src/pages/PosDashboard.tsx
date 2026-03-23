@@ -291,9 +291,12 @@ export default function PosDashboard() {
     setPosSettings(s ?? null);
     setShowItemImages(s?.posShowItemImages ?? true);
     setCurrencySymbol(s?.currencySymbol || "Rs");
-    // Pre-fetch tax rate from API if no manual rate is set
+    // Pre-fetch tax rate from API if no manual rate is set, then re-set settings to trigger re-render
     if (s?.taxEnabled && s.taxApiEnabled && (!s.taxValue || s.taxValue <= 0)) {
-      void fetchTaxRateFromApi(s).catch(() => {});
+      fetchTaxRateFromApi(s).then(() => {
+        // Force re-render so calculateCharges picks up the cached API rate
+        setPosSettings(prev => prev ? { ...prev } : prev);
+      }).catch(() => {});
     }
   }, []);
 
