@@ -601,6 +601,15 @@ export default function CustomPrintPage({ embedded }: { embedded?: boolean }) {
                   </Button>
                 </div>
 
+                {/* Tax toggle */}
+                {settings?.taxEnabled && (
+                  <div className="flex items-center gap-2">
+                    <Switch checked={taxEnabled} onCheckedChange={setTaxEnabled} />
+                    <Label className="text-xs">Add {getTaxLabel(settings)} {settings.taxType === "percent" ? `(${settings.taxValue}%)` : `(${formatIntMoney(settings.taxValue ?? 0)})`}</Label>
+                    {taxAmount > 0 && <span className="text-xs font-semibold ml-auto">{formatIntMoney(taxAmount)}</span>}
+                  </div>
+                )}
+
                 <Separator />
 
                 <div>
