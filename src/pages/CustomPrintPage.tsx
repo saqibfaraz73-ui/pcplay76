@@ -167,7 +167,7 @@ export default function CustomPrintPage({ embedded }: { embedded?: boolean }) {
       doc.setFont("helvetica", "normal");
       y += 4;
     }
-
+    if (note) {
       y += 2;
       doc.line(4, y, 76, y);
       y += 4;
