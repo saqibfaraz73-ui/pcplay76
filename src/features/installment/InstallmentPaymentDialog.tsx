@@ -144,6 +144,7 @@ export function InstallmentPaymentDialog({ customer, payments, settings, agentNa
         receiptNo,
         amount,
         lateFeeAmount: actualLateFee > 0 ? actualLateFee : undefined,
+        taxAmount: taxAmount > 0 ? taxAmount : undefined,
         balanceBefore,
         balanceAfter,
         agentName,
