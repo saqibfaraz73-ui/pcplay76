@@ -389,7 +389,13 @@ export default function PosAdvanceBooking() {
   const advCalcTotal = advLines.reduce((s, l) => s + l.subtotal, 0);
   const advPreTotal = advManualTotal ? Number(advManualTotal) || 0 : advCalcTotal;
   const advDiscountAmt = Math.min(Math.max(0, Number(advDiscount) || 0), advPreTotal);
-  const advTotal = Math.max(0, advPreTotal - advDiscountAmt);
+  const advAfterDiscount = Math.max(0, advPreTotal - advDiscountAmt);
+  const advTaxAmount = React.useMemo(() => {
+    if (!advTaxEnabled || !settings?.taxEnabled || !settings.taxValue) return 0;
+    if (settings.taxType === "percent") return Math.round(advAfterDiscount * settings.taxValue / 100);
+    return Math.round(settings.taxValue);
+  }, [advTaxEnabled, settings, advAfterDiscount]);
+  const advTotal = advAfterDiscount + advTaxAmount;
   const advRemaining = Math.max(0, advTotal - (Number(advAdvance) || 0));
 
   const buildAdvanceOrder = async (): Promise<AdvanceOrder | null> => {
