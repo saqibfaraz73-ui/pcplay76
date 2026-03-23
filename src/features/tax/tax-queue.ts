@@ -94,13 +94,16 @@ async function syncInvoice(item: TaxInvoiceQueueItem, settings: Settings): Promi
   if (!settings.taxApiEndpoint || !settings.taxApiKey) return false;
   
   try {
+    const isApiNinjas = settings.taxApiEndpoint.includes("api-ninjas.com");
     const response = await fetch(settings.taxApiEndpoint, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${settings.taxApiKey}`,
-      },
-      body: JSON.stringify(item.invoiceData),
+      method: isApiNinjas ? "GET" : "POST",
+      headers: isApiNinjas
+        ? { "X-Api-Key": settings.taxApiKey }
+        : {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${settings.taxApiKey}`,
+          },
+      ...(isApiNinjas ? {} : { body: JSON.stringify(item.invoiceData) }),
       signal: AbortSignal.timeout(15000),
     });
     

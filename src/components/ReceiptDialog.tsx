@@ -123,7 +123,8 @@ async function buildReceiptPdf(order: Order, opts?: { creditCustomerName?: strin
   rightLine("Subtotal", formatIntMoney(order.subtotal));
   rightLine("Discount", formatIntMoney(order.discountTotal));
   if ((order.taxAmount ?? 0) > 0) {
-    rightLine("Tax", formatIntMoney(order.taxAmount));
+    const taxLbl = (opts?.settings?.taxLabel || "Tax") + (opts?.settings?.taxType === "percent" && opts?.settings?.taxValue ? ` (${opts.settings.taxValue}%)` : "");
+    rightLine(taxLbl, formatIntMoney(order.taxAmount));
   }
   if ((order.serviceChargeAmount ?? 0) > 0) {
     rightLine("Service", formatIntMoney(order.serviceChargeAmount));

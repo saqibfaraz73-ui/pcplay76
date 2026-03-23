@@ -219,7 +219,7 @@ async function buildEscPosReceipt(
       ? [lr("Discount:", money(order.discountTotal))]
       : []),
     ...(order.taxAmount > 0
-      ? [lr((settings.taxLabel || "Tax") + ":", money(order.taxAmount))]
+      ? [lr((settings.taxLabel || "Tax") + (settings.taxType === "percent" && settings.taxValue ? ` (${settings.taxValue}%)` : "") + ":", money(order.taxAmount))]
       : []),
     ...(order.serviceChargeAmount > 0
       ? [lr((settings.serviceChargeLabel || "Service") + ":", money(order.serviceChargeAmount))]
@@ -249,15 +249,11 @@ async function buildEscPosReceipt(
     settings.taxApiBusinessNtn &&
     !opts?.skipBarcode
   ) {
-    const taxQrData = JSON.stringify({
-      ntn: settings.taxApiBusinessNtn,
-      posId: settings.taxApiPosId || "",
-      inv: order.receiptNo,
-      dt: order.createdAt,
-      tax: order.taxAmount,
-      total: order.total,
+    const { buildTaxQrEscPos: buildTaxQr } = await import("@/features/tax/tax-qr");
+    taxQrCommands = buildTaxQr({
+      settings, receiptNo: order.receiptNo,
+      taxAmount: order.taxAmount, total: order.total, createdAt: order.createdAt,
     });
-    taxQrCommands = "\n" + buildEscPosQr(taxQrData, 5);
   }
 
   const totalContentLines = headerLines.length + 1 + itemLines.length + totals.length + (logoCommands ? 4 : 0);
@@ -566,7 +562,7 @@ export async function printReceiptFromOrder(
       <div style="margin-top:12px">
         <div style="display:flex;justify-content:space-between"><span>Subtotal</span><span>${escapeHtml(formatIntMoney(order.subtotal))}</span></div>
         <div style="display:flex;justify-content:space-between"><span>Discount</span><span>${escapeHtml(formatIntMoney(order.discountTotal))}</span></div>
-        ${order.taxAmount > 0 ? `<div style="display:flex;justify-content:space-between"><span>Tax</span><span>${escapeHtml(formatIntMoney(order.taxAmount))}</span></div>` : ''}
+        ${order.taxAmount > 0 ? `<div style="display:flex;justify-content:space-between"><span>${escapeHtml((settings?.taxLabel || "Tax") + (settings?.taxType === "percent" && settings?.taxValue ? ` (${settings.taxValue}%)` : ""))}</span><span>${escapeHtml(formatIntMoney(order.taxAmount))}</span></div>` : ''}
         ${order.serviceChargeAmount > 0 ? `<div style="display:flex;justify-content:space-between"><span>Service</span><span>${escapeHtml(formatIntMoney(order.serviceChargeAmount))}</span></div>` : ''}
         <div style="display:flex;justify-content:space-between;font-weight:bold"><span>Total</span><span>${escapeHtml(formatIntMoney(order.total))}</span></div>
       </div>
