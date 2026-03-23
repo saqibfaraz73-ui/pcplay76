@@ -32,7 +32,6 @@ const navItems = [
 
 const adminSubNav = [
   { to: "/admin/reports", label: "Reports", icon: BarChart3 },
-  { to: "/admin/labels", label: "Print Barcodes", icon: Tags },
   { to: "/admin/printer", label: "Printer", icon: Printer },
   { to: "/admin/settings", label: "Settings", icon: Settings },
 ];
