@@ -97,6 +97,7 @@ export function ExportPartySection() {
   const [saleNote, setSaleNote] = React.useState("");
   const [saleAdvancePayment, setSaleAdvancePayment] = React.useState(0);
   const [saleDiscount, setSaleDiscount] = React.useState(0);
+  const [saleTaxEnabled, setSaleTaxEnabled] = React.useState(false);
 
   // PDF filter
   const toDateVal = (ts: number) => {
