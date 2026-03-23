@@ -33,7 +33,18 @@ const RECEIPT_SIZE_PT: Record<ReceiptSize, [number, number]> = {
   "2x3": [144, 216],
 };
 
-function buildReceiptPdf(order: Order, opts?: { creditCustomerName?: string; deliveryPersonName?: string; receiptSize?: ReceiptSize; settings?: Settings | null }) {
+async function addTaxQrToPdfInReceipt(doc: import("jspdf").jsPDF, settings: Settings, order: Order, left: number, y: number, width: number): Promise<number> {
+  return addTaxQrToPdf({
+    doc, settings,
+    receiptNo: order.receiptNo,
+    taxAmount: order.taxAmount ?? 0,
+    total: order.total,
+    createdAt: order.createdAt,
+    x: left + (width / 2) - 20, y, size: 40,
+  });
+}
+
+async function buildReceiptPdf(order: Order, opts?: { creditCustomerName?: string; deliveryPersonName?: string; receiptSize?: ReceiptSize; settings?: Settings | null }) {
   const size = opts?.receiptSize ?? "2x3";
   const [pdfW, pdfH] = RECEIPT_SIZE_PT[size];
   const doc = new jsPDF({ unit: "pt", format: [pdfW, pdfH] });
