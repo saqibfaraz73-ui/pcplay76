@@ -217,6 +217,9 @@ export type SupplierArrival = {
   unit?: string;
   unitPrice: number;
   total: number;
+  taxAmount?: number; // optional custom tax amount charged by supplier
+  taxType?: "amount" | "percent"; // how tax was entered
+  taxValue?: number; // raw tax input (amount or percent)
   note?: string;
   cancelled?: boolean;
   cancelledReason?: string;
