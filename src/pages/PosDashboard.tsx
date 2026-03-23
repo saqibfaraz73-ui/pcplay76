@@ -44,11 +44,15 @@ function calculateCharges(
   const taxLabel = settings?.taxLabel || "Tax";
   const serviceLabel = settings?.serviceChargeLabel || "Service";
 
-  if (settings?.taxEnabled && settings.taxValue) {
-    if (settings.taxType === "percent") {
-      taxAmount = Math.round((subtotalAfterDiscount * settings.taxValue) / 100);
-    } else {
-      taxAmount = Math.round(settings.taxValue);
+  if (settings?.taxEnabled) {
+    const rate = getEffectiveTaxPercent(settings);
+    if (rate > 0) {
+      // If manual taxValue is set and type is fixed amount
+      if (settings.taxValue && settings.taxValue > 0 && settings.taxType !== "percent") {
+        taxAmount = Math.round(settings.taxValue);
+      } else {
+        taxAmount = Math.round((subtotalAfterDiscount * rate) / 100);
+      }
     }
   }
 
