@@ -1148,6 +1148,16 @@ export default function PosAdvanceBooking() {
                     <Input type="number" inputMode="numeric" value={bookDiscount} onChange={(e) => setBookDiscount(e.target.value)} placeholder="0" />
                   </div>
                 </div>
+
+                {/* Tax toggle */}
+                {settings?.taxEnabled && (
+                  <div className="flex items-center gap-2">
+                    <Switch checked={bookTaxEnabled} onCheckedChange={setBookTaxEnabled} />
+                    <Label className="text-xs">Add {getTaxLabel(settings)} {settings.taxType === "percent" ? `(${settings.taxValue}%)` : `(${formatIntMoney(settings.taxValue ?? 0)})`}</Label>
+                    {bookTaxAmount > 0 && <span className="text-xs font-semibold ml-auto">{formatIntMoney(bookTaxAmount)}</span>}
+                  </div>
+                )}
+
                 <div className="grid grid-cols-3 gap-3">
                   <div className="space-y-1">
                     <Label className="text-xs">Total</Label>
