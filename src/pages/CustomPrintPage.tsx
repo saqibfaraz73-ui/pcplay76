@@ -285,6 +285,13 @@ export default function CustomPrintPage({ embedded }: { embedded?: boolean }) {
       }
     }
 
+    // Tax line in ESC/POS
+    if (taxAmount > 0) {
+      out.push(hr);
+      out.push(lr(`${getTaxLabel(settings)}:`, formatIntMoney(taxAmount)));
+      out.push(lr("Total:", formatIntMoney(linesTotal + taxAmount)));
+    }
+
     if (note) {
       out.push(hr);
       const words = note.split(" ");
