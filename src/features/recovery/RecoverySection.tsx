@@ -95,6 +95,10 @@ export function RecoverySection() {
   const [showAgentView, setShowAgentView] = React.useState(false);
   const [reportTo, setReportTo] = React.useState(format(new Date(), "yyyy-MM-dd"));
 
+  // Tax toggle per customer (keyed by customer id)
+  const [taxEnabledMap, setTaxEnabledMap] = React.useState<Record<string, boolean>>({});
+  const toggleTax = (custId: string) => setTaxEnabledMap(prev => ({ ...prev, [custId]: !prev[custId] }));
+
   // Current month
   const currentMonth = format(new Date(), "yyyy-MM");
 
