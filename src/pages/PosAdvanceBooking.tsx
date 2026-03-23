@@ -26,6 +26,8 @@ import { sharePdfBytes, savePdfBytes } from "@/features/pos/share-utils";
 import { SaveShareMenu } from "@/components/SaveShareMenu";
 import { Plus, Trash2, X, Check, Ban, Printer, FileText, Share2, Wrench } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
+import { calcGlobalTax, getTaxLabel } from "@/features/tax/tax-calc";
 
 /* ─── helpers ─── */
 
