@@ -381,20 +381,26 @@ export function ExportPartySection() {
   };
 
   // Helper to build receipt data from a saved sale for reprinting
-  const buildReceiptFromSale = (s: ExportSale, customerName: string): EntryReceiptData => ({
-    type: "sale",
-    receiptNo: s.receiptNo,
-    partyName: customerName,
-    lines: [{ itemName: s.itemName, qty: s.qty, unit: s.unit, unitPrice: s.unitPrice, total: s.total }],
-    grandTotal: s.total,
-    discountAmount: s.discountAmount,
-    advancePayment: s.advancePayment,
-    remainingBalance: (s.advancePayment ?? 0) > 0 || (s.discountAmount ?? 0) > 0
-      ? s.total - (s.discountAmount ?? 0) - (s.advancePayment ?? 0)
-      : undefined,
-    note: s.note,
-    date: new Date(s.createdAt),
-  });
+  const buildReceiptFromSale = (s: ExportSale, customerName: string): EntryReceiptData => {
+    const totalWithTax = s.total + (s.taxAmount ?? 0);
+    const netAfterDiscount = totalWithTax - (s.discountAmount ?? 0);
+    return {
+      type: "sale",
+      receiptNo: s.receiptNo,
+      partyName: customerName,
+      lines: [{ itemName: s.itemName, qty: s.qty, unit: s.unit, unitPrice: s.unitPrice, total: s.total }],
+      grandTotal: totalWithTax,
+      taxAmount: s.taxAmount,
+      taxLabel: s.taxAmount ? getTaxLabel(settings) : undefined,
+      discountAmount: s.discountAmount,
+      advancePayment: s.advancePayment,
+      remainingBalance: (s.advancePayment ?? 0) > 0 || (s.discountAmount ?? 0) > 0
+        ? netAfterDiscount - (s.advancePayment ?? 0)
+        : undefined,
+      note: s.note,
+      date: new Date(s.createdAt),
+    };
+  };
 
   // ─── Cancel Sale ───
   const confirmCancelSale = async () => {
