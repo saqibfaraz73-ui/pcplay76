@@ -272,8 +272,8 @@ export async function printBookingKot(order: BookingOrder) {
 
 /* ─── PDF Builders for Share ─── */
 
-export function buildAdvanceReceiptPdf(order: AdvanceOrder, settings: Settings | null): jsPDF {
-  const doc = new jsPDF({ unit: "pt", format: [144, 360] });
+export async function buildAdvanceReceiptPdf(order: AdvanceOrder, settings: Settings | null): Promise<jsPDF> {
+  const doc = new jsPDF({ unit: "pt", format: [144, 420] });
   const left = 6;
   const width = 132;
   let y = 14;
@@ -317,9 +317,18 @@ export function buildAdvanceReceiptPdf(order: AdvanceOrder, settings: Settings |
   y += 2; hr(); y += 2;
   rightLine("Subtotal", money(order.subtotal));
   if (order.discountAmount > 0) rightLine("Discount", money(order.discountAmount));
+  if ((order.taxAmount ?? 0) > 0) rightLine(getTaxLabel(settings), money(order.taxAmount!));
   rightLine("Total", money(order.total), true);
   rightLine("Advance", money(order.advancePayment));
   rightLine("Remaining", money(order.remainingPayment), true);
+
+  if (settings && shouldPrintTaxQr(settings)) {
+    y = await addTaxQrToPdf({
+      doc, settings, receiptNo: order.receiptNo,
+      taxAmount: order.taxAmount ?? 0, total: order.total, createdAt: order.createdAt,
+      x: left + (width - 50) / 2, y, size: 50,
+    });
+  }
 
   return doc;
 }
