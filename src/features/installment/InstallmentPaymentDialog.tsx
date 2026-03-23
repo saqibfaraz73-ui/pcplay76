@@ -94,6 +94,7 @@ export function InstallmentPaymentDialog({ customer, payments, settings, agentNa
   const [saving, setSaving] = React.useState(false);
   const [savedPayment, setSavedPayment] = React.useState<InstallmentPayment | null>(null);
   const [includeDues, setIncludeDues] = React.useState(true);
+  const [taxEnabled, setTaxEnabled] = React.useState(false);
 
   // Frequency-based period check
   const currentPeriod = getCurrentPeriod(customer.frequency);
