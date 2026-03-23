@@ -1,5 +1,6 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
+import { fetchTaxRateFromApi, getEffectiveTaxPercent } from "@/features/tax/tax-calc";
 import { Html5Qrcode } from "html5-qrcode";
 import { playScanBeep } from "@/features/pos/scan-beep";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
