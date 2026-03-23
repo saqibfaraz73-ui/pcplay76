@@ -1,5 +1,6 @@
 import * as React from "react";
 import type { CreditCustomer, DeliveryPerson, Order, ReceiptSize, Settings } from "@/db/schema";
+import { addTaxQrToPdf, shouldPrintTaxQr } from "@/features/tax/tax-qr";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { formatIntMoney, fmtDateTime } from "@/features/pos/format";
