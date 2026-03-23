@@ -139,9 +139,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       if (n.adminOnly && !isAdmin) return false;
       if ((n as any).salesOnly && !salesDashboardEnabled) return false;
       if ((n as any).tablesOnly && !tableManagementEnabled) return false;
+      if ((n as any).kitchenOnly && !kitchenDisplayEnabled) return false;
       return true;
     });
-  }, [isAdmin, isWaiter, isRecoveryAgent, isInstallmentAgent, salesDashboardEnabled]);
+  }, [isAdmin, isWaiter, isRecoveryAgent, isInstallmentAgent, salesDashboardEnabled, tableManagementEnabled, kitchenDisplayEnabled]);
 
   const visibleAdminSubNav = React.useMemo(() => {
     return adminSubNav;
