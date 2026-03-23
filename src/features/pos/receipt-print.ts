@@ -562,7 +562,7 @@ export async function printReceiptFromOrder(
       <div style="margin-top:12px">
         <div style="display:flex;justify-content:space-between"><span>Subtotal</span><span>${escapeHtml(formatIntMoney(order.subtotal))}</span></div>
         <div style="display:flex;justify-content:space-between"><span>Discount</span><span>${escapeHtml(formatIntMoney(order.discountTotal))}</span></div>
-        ${order.taxAmount > 0 ? `<div style="display:flex;justify-content:space-between"><span>Tax</span><span>${escapeHtml(formatIntMoney(order.taxAmount))}</span></div>` : ''}
+        ${order.taxAmount > 0 ? `<div style="display:flex;justify-content:space-between"><span>${escapeHtml((settings?.taxLabel || "Tax") + (settings?.taxType === "percent" && settings?.taxValue ? ` (${settings.taxValue}%)` : ""))}</span><span>${escapeHtml(formatIntMoney(order.taxAmount))}</span></div>` : ''}
         ${order.serviceChargeAmount > 0 ? `<div style="display:flex;justify-content:space-between"><span>Service</span><span>${escapeHtml(formatIntMoney(order.serviceChargeAmount))}</span></div>` : ''}
         <div style="display:flex;justify-content:space-between;font-weight:bold"><span>Total</span><span>${escapeHtml(formatIntMoney(order.total))}</span></div>
       </div>
