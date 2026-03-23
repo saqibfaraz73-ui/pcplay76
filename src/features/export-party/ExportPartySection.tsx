@@ -266,7 +266,13 @@ export function ExportPartySection() {
   }, [saleMode.open, saleItems]);
 
   const saleAfterDiscount = React.useMemo(() => Math.max(0, saleTotal - saleDiscount), [saleTotal, saleDiscount]);
-  const saleRemainingBalance = React.useMemo(() => Math.max(0, saleAfterDiscount - saleAdvancePayment), [saleAfterDiscount, saleAdvancePayment]);
+  const saleTaxAmount = React.useMemo(() => {
+    if (!saleTaxEnabled || !settings?.taxEnabled || !settings.taxValue) return 0;
+    if (settings.taxType === "percent") return Math.round(saleAfterDiscount * settings.taxValue / 100);
+    return Math.round(settings.taxValue);
+  }, [saleTaxEnabled, settings, saleAfterDiscount]);
+  const saleAfterTax = saleAfterDiscount + saleTaxAmount;
+  const saleRemainingBalance = React.useMemo(() => Math.max(0, saleAfterTax - saleAdvancePayment), [saleAfterTax, saleAdvancePayment]);
 
   const buildSaleReceiptData = (): EntryReceiptData | null => {
     if (!saleMode.open) return null;
