@@ -661,13 +661,16 @@ export function AdminSettings() {
                             };
                             setTaxTestResult("⏳ Testing...");
                             try {
+                              const isApiNinjas = taxApiEndpoint.trim().includes("api-ninjas.com");
                               const resp = await fetch(taxApiEndpoint.trim(), {
-                                method: "POST",
-                                headers: {
-                                  "Content-Type": "application/json",
-                                  "Authorization": `Bearer ${taxApiKey.trim()}`,
-                                },
-                                body: JSON.stringify(testPayload),
+                                method: isApiNinjas ? "GET" : "POST",
+                                headers: isApiNinjas
+                                  ? { "X-Api-Key": taxApiKey.trim() }
+                                  : {
+                                      "Content-Type": "application/json",
+                                      "Authorization": `Bearer ${taxApiKey.trim()}`,
+                                    },
+                                ...(!isApiNinjas && { body: JSON.stringify(testPayload) }),
                                 signal: AbortSignal.timeout(15000),
                               });
                               const body = await resp.text();
