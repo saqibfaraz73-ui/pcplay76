@@ -18,6 +18,7 @@ import { AdRewardDialog } from "@/features/licensing/AdRewardDialog";
 import { sharePdfBlob, shareFileBlob, savePdfBlob, saveFileBlob } from "@/features/pos/share-utils";
 import { Switch } from "@/components/ui/switch";
 import { calcGlobalTax, getTaxLabel } from "@/features/tax/tax-calc";
+import { buildTaxQrEscPos, addTaxQrToPdf, shouldPrintTaxQr } from "@/features/tax/tax-qr";
 import { formatIntMoney } from "@/features/pos/format";
 
 interface ReceiptLine {
