@@ -219,7 +219,7 @@ async function buildEscPosReceipt(
       ? [lr("Discount:", money(order.discountTotal))]
       : []),
     ...(order.taxAmount > 0
-      ? [lr((settings.taxLabel || "Tax") + ":", money(order.taxAmount))]
+      ? [lr((settings.taxLabel || "Tax") + (settings.taxType === "percent" && settings.taxValue ? ` (${settings.taxValue}%)` : "") + ":", money(order.taxAmount))]
       : []),
     ...(order.serviceChargeAmount > 0
       ? [lr((settings.serviceChargeLabel || "Service") + ":", money(order.serviceChargeAmount))]
