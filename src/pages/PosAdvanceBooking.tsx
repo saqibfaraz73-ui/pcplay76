@@ -361,6 +361,7 @@ export default function PosAdvanceBooking() {
     setAdvManualTotal("");
     setAdvDiscount("");
     setAdvAdvance("");
+    setAdvTaxEnabled(false);
     setAdvCustName("");
     setAdvCustPhone("");
     setAdvCustAddress("");
