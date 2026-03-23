@@ -11,10 +11,14 @@ import { toast } from "sonner";
 import jsPDF from "jspdf";
 import { isNativeAndroid } from "@/features/pos/bluetooth-printer";
 import { db } from "@/db/appDb";
+import type { Settings } from "@/db/schema";
 import { sendToDefaultPrinter } from "@/features/pos/printer-routing";
 import { canMakeSale, incrementSaleCount } from "@/features/licensing/licensing-db";
 import { AdRewardDialog } from "@/features/licensing/AdRewardDialog";
 import { sharePdfBlob, shareFileBlob, savePdfBlob, saveFileBlob } from "@/features/pos/share-utils";
+import { Switch } from "@/components/ui/switch";
+import { calcGlobalTax, getTaxLabel } from "@/features/tax/tax-calc";
+import { formatIntMoney } from "@/features/pos/format";
 
 interface ReceiptLine {
   id: string;
