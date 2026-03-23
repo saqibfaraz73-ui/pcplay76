@@ -172,7 +172,7 @@ export function ReceiptDialog({
   const getReceiptPdfBytes = React.useCallback(async () => {
     const settings = await db.settings.get("app");
     const receiptSize = settings?.receiptSize ?? "2x3";
-    const doc = buildReceiptPdf(order, { creditCustomerName: customerName, deliveryPersonName, receiptSize, settings: settings ?? null });
+    const doc = await buildReceiptPdf(order, { creditCustomerName: customerName, deliveryPersonName, receiptSize, settings: settings ?? null });
     const bytes = new Uint8Array(doc.output("arraybuffer"));
     const fileName = `receipt_${order.receiptNo}_${Date.now()}.pdf`;
     return { bytes, fileName };
