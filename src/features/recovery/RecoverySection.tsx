@@ -127,6 +127,7 @@ export function RecoverySection() {
     setAllCustomers(c);
     setPayments(p);
     setAgents(staff);
+    setSettings(s ?? null);
     if (s?.restaurantName) setBusinessName(s.restaurantName);
     setAgentCanAddCustomer(!!s?.recoveryAgentAddCustomerEnabled);
   }, []);
