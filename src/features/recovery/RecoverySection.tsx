@@ -227,14 +227,18 @@ export function RecoverySection() {
     const existing = getCurrentMonthStatus(cust.id);
     if (existing?.status === "paid") { toast({ title: "Already marked paid this month" }); return; }
     const receiptNo = await getNextReceiptNo();
+    const isTaxOn = !!taxEnabledMap[cust.id];
+    const taxAmt = isTaxOn ? calcGlobalTax(cust.monthlyBill, settings) : 0;
     const payment: RecoveryPayment = {
       id: uid("rpay"), customerId: cust.id, receiptNo, amount: cust.monthlyBill,
+      taxAmount: taxAmt > 0 ? taxAmt : undefined,
       status: "paid", agentName, month: currentMonth, createdAt: Date.now(),
     };
     await db.recoveryPayments.add(payment);
     const newBalance = Math.max(0, cust.balance - cust.monthlyBill);
     await db.recoveryCustomers.update(cust.id, { balance: newBalance });
-    toast({ title: `${cust.name} marked PAID` });
+    toast({ title: `${cust.name} marked PAID${taxAmt > 0 ? ` + ${getTaxLabel(settings)} ${formatIntMoney(taxAmt)}` : ""}` });
+    void load();
     void load();
   };
 
