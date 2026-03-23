@@ -50,6 +50,19 @@ export default function CustomPrintPage({ embedded }: { embedded?: boolean }) {
     { id: crypto.randomUUID(), label: "Item", value: "" },
   ]);
 
+  // Tax state
+  const [taxEnabled, setTaxEnabled] = useState(false);
+  const [settings, setSettings] = useState<Settings | null>(null);
+
+  // Load settings
+  React.useEffect(() => {
+    db.settings.get("app").then(s => setSettings(s ?? null));
+  }, []);
+
+  // Calculate tax from line values
+  const linesTotal = lines.reduce((s, l) => s + (Number(l.value) || 0), 0);
+  const taxAmount = taxEnabled ? calcGlobalTax(linesTotal, settings) : 0;
+
   // Logo state – store base64 data URL for PDF compatibility
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
