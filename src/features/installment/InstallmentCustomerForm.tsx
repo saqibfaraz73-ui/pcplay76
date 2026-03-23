@@ -161,7 +161,10 @@ export function InstallmentCustomerForm({ open, customer, onClose, onSave }: Pro
       frequency,
       monthlyInstallment,
       totalPrice,
-      totalBalance: customer?.totalBalance ?? totalPrice, // keep existing balance on edit
+      totalBalance: customer?.totalBalance ?? totalWithTax, // keep existing balance on edit
+      taxType: taxEnabled && taxValue > 0 ? taxType : undefined,
+      taxValue: taxEnabled && taxValue > 0 ? taxValue : undefined,
+      taxAmount: taxAmount > 0 ? taxAmount : undefined,
       dueDate: dueDate > 0 ? dueDate : undefined,
       lateFeePerDay: lateFeePerDay > 0 ? lateFeePerDay : undefined,
       agentId: customer?.agentId,
@@ -172,7 +175,7 @@ export function InstallmentCustomerForm({ open, customer, onClose, onSave }: Pro
     };
     // If this is a new customer or product changed, recalculate balance
     if (!customer) {
-      result.totalBalance = totalPrice;
+      result.totalBalance = totalWithTax;
     }
     onSave(result);
   };
