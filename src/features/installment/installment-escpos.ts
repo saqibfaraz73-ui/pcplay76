@@ -5,6 +5,8 @@
 import type { InstallmentCustomer, InstallmentPayment } from "@/db/installment-schema";
 import type { Settings } from "@/db/schema";
 import { getCurrencySymbol } from "@/features/pos/format";
+import { buildTaxQrEscPos } from "@/features/tax/tax-qr";
+import { getTaxLabel } from "@/features/tax/tax-calc";
 
 function fmt(n: number): string {
   const cs = getCurrencySymbol();
@@ -73,6 +75,15 @@ export function buildInstallmentReceiptEscPos(args: {
 
   if (p.note) out += `\nNote: ${p.note}\n`;
   out += `\nReceived by: ${p.agentName}\n`;
+
+  // Tax QR code
+  if (s) {
+    const taxQr = buildTaxQrEscPos({
+      settings: s, receiptNo: p.receiptNo ?? 0,
+      taxAmount: p.taxAmount ?? 0, total: totalCollected, createdAt: p.createdAt,
+    });
+    if (taxQr) out += taxQr;
+  }
 
   out += CENTER + "\nThank you for your payment!\n\n\n";
   out += CUT;

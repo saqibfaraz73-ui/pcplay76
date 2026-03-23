@@ -676,7 +676,7 @@ export default function PosAdvanceBooking() {
       const s = settings;
       const restaurantName = s?.restaurantName || "SANGI POS";
       const { buildAdvanceReceiptPdf } = await import("@/features/pos/advance-receipt");
-      const doc = buildAdvanceReceiptPdf(order, s);
+      const doc = await buildAdvanceReceiptPdf(order, s);
       const bytes = doc.output("arraybuffer");
       const fileName = `advance_${order.receiptNo}_${Date.now()}.pdf`;
       await sharePdfBytes(new Uint8Array(bytes), fileName, `Advance #${order.receiptNo}`);
@@ -698,7 +698,7 @@ export default function PosAdvanceBooking() {
     try {
       const s = settings;
       const { buildBookingReceiptPdf } = await import("@/features/pos/advance-receipt");
-      const doc = buildBookingReceiptPdf(order, s);
+      const doc = await buildBookingReceiptPdf(order, s);
       const bytes = doc.output("arraybuffer");
       const fileName = `booking_${order.receiptNo}_${Date.now()}.pdf`;
       await sharePdfBytes(new Uint8Array(bytes), fileName, `${order.label === "Appointment" ? "Appointment" : "Booking"} #${order.receiptNo}`);

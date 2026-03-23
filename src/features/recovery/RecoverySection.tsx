@@ -34,6 +34,7 @@ import { SaveShareMenu } from "@/components/SaveShareMenu";
 import { RecoveryAgentExport } from "./RecoveryAgentExport";
 import { RecoveryAgentView } from "./RecoveryAgentView";
 import { calcGlobalTax, getTaxLabel } from "@/features/tax/tax-calc";
+import { buildTaxQrEscPos, addTaxQrToPdf, shouldPrintTaxQr } from "@/features/tax/tax-qr";
 
 function uid(prefix: string) {
   return `${prefix}_${Math.random().toString(16).slice(2)}_${Date.now().toString(16)}`;
@@ -483,7 +484,7 @@ export function RecoverySection() {
 
   // ── Share/Print receipt ──
   const shareReceipt = async (cust: RecoveryCustomer, pay: RecoveryPayment) => {
-    const doc = new jsPDF({ unit: "mm", format: [80, 120] });
+    const doc = new jsPDF({ unit: "mm", format: [80, 150] });
     doc.setFontSize(12);
     doc.text(businessName, 40, 8, { align: "center" });
     doc.setFontSize(10);
@@ -495,12 +496,24 @@ export function RecoverySection() {
       `Customer: ${cust.name}`,
       `Package: ${cust.pkg ?? "N/A"}`,
       `Amount: ${pay.amount}`,
+      ...(pay.taxAmount ? [`${getTaxLabel(settings)}: ${formatIntMoney(pay.taxAmount)}`] : []),
+      ...(pay.taxAmount ? [`Total: ${formatIntMoney(pay.amount + pay.taxAmount)}`] : []),
       `Status: ${pay.status.toUpperCase()}`,
       `Month: ${pay.month}`,
       `Agent: ${pay.agentName}`,
       `Date: ${format(pay.createdAt, "dd/MM/yyyy hh:mm a")}`,
     ];
     for (const l of lines) { doc.text(l, 5, y); y += 6; }
+
+    // Tax QR in PDF
+    if (settings && shouldPrintTaxQr(settings)) {
+      y = await addTaxQrToPdf({
+        doc, settings, receiptNo: pay.receiptNo ?? 0,
+        taxAmount: pay.taxAmount ?? 0, total: pay.amount + (pay.taxAmount ?? 0), createdAt: pay.createdAt,
+        x: 20, y: y + 2, size: 40,
+      });
+    }
+
     const fileName = `receipt_${pay.receiptNo ?? pay.id}.pdf`;
     const bytes = new Uint8Array(doc.output("arraybuffer"));
     await sharePdfBytes(bytes, fileName, `Receipt - ${cust.name}`);
@@ -508,7 +521,6 @@ export function RecoverySection() {
 
   const printReceipt = async (cust: RecoveryCustomer, pay: RecoveryPayment) => {
     if (isNativeAndroid()) {
-      // Print on thermal printer via ESC/POS — same as order receipts
       const s = await db.settings.get("app");
       if (!s) throw new Error("Settings not loaded. Configure printer first.");
       const width = s.paperSize === "80" ? 48 : 32;
@@ -529,18 +541,30 @@ export function RecoverySection() {
       out.push(lr("Customer:", cust.name));
       out.push(lr("Package:", cust.pkg ?? "N/A"));
       out.push(lr("Amount:", String(pay.amount)));
+      if (pay.taxAmount) {
+        out.push(lr(`${getTaxLabel(s)}:`, String(pay.taxAmount)));
+        out.push(lr("Total:", String(pay.amount + pay.taxAmount)));
+      }
       out.push(lr("Status:", pay.status.toUpperCase()));
       out.push(lr("Month:", pay.month));
       out.push(lr("Agent:", pay.agentName));
       out.push(lr("Balance:", String(cust.balance)));
       out.push(hr);
+
+      // Tax QR
+      const taxQr = buildTaxQrEscPos({
+        settings: s, receiptNo: pay.receiptNo ?? 0,
+        taxAmount: pay.taxAmount ?? 0, total: pay.amount + (pay.taxAmount ?? 0), createdAt: pay.createdAt,
+      });
+      if (taxQr) out.push(taxQr);
+
       out.push(CENTER_ON);
       out.push("Thank you!");
       out.push(LEFT_ON);
       out.push("");
       out.push("");
       out.push("");
-      out.push("\x1dV\x41\x03"); // partial cut
+      out.push("\x1dV\x41\x03");
 
       const escPos = out.join("\n");
       if (isDuplicatePrint(escPos)) return;
@@ -553,7 +577,10 @@ export function RecoverySection() {
       }
       return;
     }
-    // Web fallback - print dialog
+    // Web fallback
+    const taxHtml = pay.taxAmount
+      ? `<p>${getTaxLabel(settings)}: ${pay.taxAmount}</p><p>Total: ${pay.amount + pay.taxAmount}</p>`
+      : "";
     const w = window.open("", "_blank", "width=350,height=500");
     if (!w) return;
     w.document.write(`<html><head><title>Receipt</title><style>body{font-family:monospace;font-size:12px;padding:10px}h3{text-align:center;margin:0}h2{text-align:center;margin:0 0 4px}</style></head><body>
@@ -562,6 +589,7 @@ export function RecoverySection() {
       <p>Customer: ${cust.name}</p>
       <p>Package: ${cust.pkg ?? "N/A"}</p>
       <p>Amount: ${pay.amount}</p>
+      ${taxHtml}
       <p>Status: <b>${pay.status.toUpperCase()}</b></p>
       <p>Month: ${pay.month}</p>
       <p>Agent: ${pay.agentName}</p>

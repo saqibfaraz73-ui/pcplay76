@@ -4,6 +4,8 @@ import { db } from "@/db/appDb";
 import { sendToDefaultPrinter } from "@/features/pos/printer-routing";
 import type { Settings, CounterId } from "@/db/schema";
 import { sharePdfBytes } from "@/features/pos/share-utils";
+import { buildTaxQrEscPos, addTaxQrToPdf, shouldPrintTaxQr } from "@/features/tax/tax-qr";
+import { getTaxLabel } from "@/features/tax/tax-calc";
 import jsPDF from "jspdf";
 
 /** Get and increment a sequential counter for arrivals or export sales */
@@ -30,6 +32,8 @@ export type EntryReceiptData = {
   partyName: string;
   lines: EntryLine[];
   grandTotal: number;
+  taxAmount?: number;
+  taxLabel?: string; // e.g. "Tax", "GST" — for custom tax on arrivals or global label for exports
   discountAmount?: number;
   advancePayment?: number;
   remainingBalance?: number;
@@ -96,10 +100,22 @@ function buildEscPos(data: EntryReceiptData, settings: Settings): string {
 
   const footerLines = [
     hr,
+    ...(data.taxAmount && data.taxAmount > 0
+      ? [line(`${(data.taxLabel || "Tax")}:`.padEnd(width - money(data.taxAmount).length) + money(data.taxAmount))]
+      : []),
     line("Grand Total:".padEnd(width - money(data.grandTotal).length) + money(data.grandTotal)),
     ...(data.note ? [line(`Note: ${data.note}`)] : []),
     hr,
   ];
+
+  // Tax QR for ESC/POS
+  let taxQr = "";
+  if (settings && data.receiptNo && (data.taxAmount ?? 0) > 0) {
+    taxQr = buildTaxQrEscPos({
+      settings, receiptNo: data.receiptNo,
+      taxAmount: data.taxAmount ?? 0, total: data.grandTotal, createdAt: data.date.getTime(),
+    });
+  }
 
   const totalContentLines = headerLines.length + itemLines.length + footerLines.length;
   const feedCount = getFeedLinesForSize(settings, totalContentLines);
@@ -109,6 +125,7 @@ function buildEscPos(data: EntryReceiptData, settings: Settings): string {
     headerLines.join("\n"),
     itemLines.join("\n"),
     footerLines.join("\n"),
+    taxQr,
     "\n".repeat(feedCount),
     "\x1dV\x41\x03",
   ].join("\n");
@@ -213,6 +230,14 @@ export async function shareEntryReceipt(data: EntryReceiptData) {
 
   doc.line(left, y, 216, y);
   y += 12;
+
+  if ((data.taxAmount ?? 0) > 0) {
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    doc.text(`${data.taxLabel || "Tax"}: ${money(data.taxAmount!)}`, left, y);
+    y += 12;
+  }
+
   doc.setFont("helvetica", "bold");
   doc.setFontSize(10);
   doc.text(`Grand Total: ${money(data.grandTotal)}`, left, y);
@@ -241,6 +266,16 @@ export async function shareEntryReceipt(data: EntryReceiptData) {
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8);
     doc.text(`Note: ${data.note}`, left, y);
+    y += 12;
+  }
+
+  // Tax QR in PDF
+  if (settings && data.receiptNo && shouldPrintTaxQr(settings)) {
+    y = await addTaxQrToPdf({
+      doc, settings, receiptNo: data.receiptNo,
+      taxAmount: data.taxAmount ?? 0, total: data.grandTotal, createdAt: data.date.getTime(),
+      x: left + 60, y, size: 60,
+    });
   }
 
   const safeName = data.partyName.replace(/[^a-zA-Z0-9]/g, "_").slice(0, 20);

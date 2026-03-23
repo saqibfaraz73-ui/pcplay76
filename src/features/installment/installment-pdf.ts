@@ -2,6 +2,7 @@ import jsPDF from "jspdf";
 import type { InstallmentCustomer, InstallmentPayment } from "@/db/installment-schema";
 import type { Settings } from "@/db/schema";
 import { getCurrencySymbol } from "@/features/pos/format";
+import { addTaxQrToPdf, shouldPrintTaxQr } from "@/features/tax/tax-qr";
 
 function fmt(n: number): string {
   const cs = getCurrencySymbol();
@@ -13,11 +14,11 @@ function fmtDt(ts: number): string {
   return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()} ${d.getHours() % 12 || 12}:${String(d.getMinutes()).padStart(2, "0")} ${d.getHours() >= 12 ? "PM" : "AM"}`;
 }
 
-export function buildInstallmentReceiptPdf(args: {
+export async function buildInstallmentReceiptPdf(args: {
   customer: InstallmentCustomer;
   payment: InstallmentPayment;
   settings: Settings | null;
-}): jsPDF {
+}): Promise<jsPDF> {
   const { customer: c, payment: p, settings: s } = args;
   const doc = new jsPDF({ unit: "mm", format: [80, 150] });
   let y = 8;
@@ -90,7 +91,19 @@ export function buildInstallmentReceiptPdf(args: {
 
   doc.setFontSize(7);
   doc.text(`Received by: ${p.agentName}`, 5, y);
-  y += 6;
+  y += 4;
+
+  // Tax QR code in PDF
+  if (s && shouldPrintTaxQr(s)) {
+    const totalCollected = p.amount + (p.lateFeeAmount ?? 0) + (p.taxAmount ?? 0);
+    y = await addTaxQrToPdf({
+      doc, settings: s, receiptNo: p.receiptNo ?? 0,
+      taxAmount: p.taxAmount ?? 0, total: totalCollected, createdAt: p.createdAt,
+      x: 20, y, size: 40,
+    });
+  }
+
+  y += 2;
   doc.setFontSize(6);
   doc.text("Thank you for your payment!", 40, y, { align: "center" });
 

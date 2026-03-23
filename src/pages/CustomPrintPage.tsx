@@ -18,6 +18,7 @@ import { AdRewardDialog } from "@/features/licensing/AdRewardDialog";
 import { sharePdfBlob, shareFileBlob, savePdfBlob, saveFileBlob } from "@/features/pos/share-utils";
 import { Switch } from "@/components/ui/switch";
 import { calcGlobalTax, getTaxLabel } from "@/features/tax/tax-calc";
+import { buildTaxQrEscPos, addTaxQrToPdf, shouldPrintTaxQr } from "@/features/tax/tax-qr";
 import { formatIntMoney } from "@/features/pos/format";
 
 interface ReceiptLine {
@@ -104,10 +105,10 @@ export default function CustomPrintPage({ embedded }: { embedded?: boolean }) {
   };
 
   const buildReceiptPdf = async (): Promise<jsPDF> => {
-    const doc = new jsPDF({ unit: "mm", format: [80, 150] });
+    const doc = new jsPDF({ unit: "mm", format: [80, 180] });
     let y = 8;
 
-    // Logo – logoUrl is already base64 data URL
+    // Logo
     if (logoUrl) {
       try {
         doc.addImage(logoUrl, "JPEG", 25, y, 30, 15);
@@ -167,6 +168,16 @@ export default function CustomPrintPage({ embedded }: { embedded?: boolean }) {
       doc.setFont("helvetica", "normal");
       y += 4;
     }
+
+    // Tax QR in PDF
+    if (settings && shouldPrintTaxQr(settings) && taxAmount > 0) {
+      y = await addTaxQrToPdf({
+        doc, settings, receiptNo: billNo || "0",
+        taxAmount, total: linesTotal + taxAmount, createdAt: Date.now(),
+        x: 20, y: y + 2, size: 40,
+      });
+    }
+
     if (note) {
       y += 2;
       doc.line(4, y, 76, y);
@@ -290,6 +301,15 @@ export default function CustomPrintPage({ embedded }: { embedded?: boolean }) {
       out.push(hr);
       out.push(lr(`${getTaxLabel(settings)}:`, formatIntMoney(taxAmount)));
       out.push(lr("Total:", formatIntMoney(linesTotal + taxAmount)));
+    }
+
+    // Tax QR in ESC/POS
+    if (settings && taxAmount > 0) {
+      const taxQr = buildTaxQrEscPos({
+        settings, receiptNo: billNo || "0",
+        taxAmount, total: linesTotal + taxAmount, createdAt: Date.now(),
+      });
+      if (taxQr) out.push(taxQr);
     }
 
     if (note) {

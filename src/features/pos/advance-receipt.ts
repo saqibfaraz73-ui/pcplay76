@@ -5,6 +5,8 @@ import { isNativeAndroid } from "@/features/pos/bluetooth-printer";
 import { db } from "@/db/appDb";
 import { isDuplicatePrint } from "@/features/pos/print-dedup";
 import { sendToDefaultPrinter } from "@/features/pos/printer-routing";
+import { buildTaxQrEscPos, addTaxQrToPdf, shouldPrintTaxQr } from "@/features/tax/tax-qr";
+import { getTaxLabel } from "@/features/tax/tax-calc";
 import jsPDF from "jspdf";
 
 /* ─── Receipt size feed (same logic as sales) ─── */
@@ -59,20 +61,27 @@ function buildAdvanceEscPos(order: AdvanceOrder, settings: Settings): string {
     }
   }
 
+  const taxLabel = getTaxLabel(settings);
   const footerLines = [
     hr,
     lr("Subtotal:", money(order.subtotal)),
     order.discountAmount > 0 ? lr("Discount:", money(order.discountAmount)) : null,
+    (order.taxAmount ?? 0) > 0 ? lr(`${taxLabel}:`, money(order.taxAmount!)) : null,
     lr("Total:", money(order.total)),
     lr("Advance:", money(order.advancePayment)),
     lr("Remaining:", money(order.remainingPayment)),
     hr,
   ].filter(Boolean) as string[];
 
+  const taxQr = buildTaxQrEscPos({
+    settings, receiptNo: order.receiptNo,
+    taxAmount: order.taxAmount ?? 0, total: order.total, createdAt: order.createdAt,
+  });
+
   const totalContentLines = headerLines.length + itemLines.length + footerLines.length;
   const feedCount = getFeedLinesForSize(settings, totalContentLines);
 
-  return "\x1b@\x1b3\x14" + headerLines.join("\n") + "\n" + itemLines.join("\n") + "\n" + footerLines.join("\n") + "\n".repeat(feedCount) + "\x1dV\x41\x03";
+  return "\x1b@\x1b3\x14" + headerLines.join("\n") + "\n" + itemLines.join("\n") + "\n" + footerLines.join("\n") + taxQr + "\n".repeat(feedCount) + "\x1dV\x41\x03";
 }
 
 /* ─── Advance Order KOT ─── */
@@ -107,6 +116,7 @@ function buildAdvanceKot(order: AdvanceOrder, settings: Settings): string {
   }
 
   out.push(hr);
+  if ((order.taxAmount ?? 0) > 0) out.push(lr(`${getTaxLabel(settings)}:`, money(order.taxAmount!)));
   out.push(lr("Total:", money(order.total)));
   out.push(lr("Advance:", money(order.advancePayment)));
   out.push(lr("Remaining:", money(order.remainingPayment)));
@@ -150,19 +160,26 @@ function buildBookingEscPos(order: BookingOrder, settings: Settings): string {
     hr,
   ].filter(Boolean) as string[];
 
+  const taxLabel = getTaxLabel(settings);
   const footerLines = [
     lr("Price:", money(order.price)),
     order.discountAmount > 0 ? lr("Discount:", money(order.discountAmount)) : null,
+    (order.taxAmount ?? 0) > 0 ? lr(`${taxLabel}:`, money(order.taxAmount!)) : null,
     lr("Total:", money(order.total)),
     lr("Advance:", money(order.advancePayment)),
     lr("Remaining:", money(order.remainingPayment)),
     hr,
   ].filter(Boolean) as string[];
 
+  const taxQr = buildTaxQrEscPos({
+    settings, receiptNo: order.receiptNo,
+    taxAmount: order.taxAmount ?? 0, total: order.total, createdAt: order.createdAt,
+  });
+
   const totalContentLines = headerLines.length + footerLines.length;
   const feedCount = getFeedLinesForSize(settings, totalContentLines);
 
-  return "\x1b@\x1b3\x14" + headerLines.join("\n") + "\n" + footerLines.join("\n") + "\n".repeat(feedCount) + "\x1dV\x41\x03";
+  return "\x1b@\x1b3\x14" + headerLines.join("\n") + "\n" + footerLines.join("\n") + taxQr + "\n".repeat(feedCount) + "\x1dV\x41\x03";
 }
 
 /* ─── Generic send helper ─── */
@@ -234,6 +251,7 @@ export function buildBookingKot(order: BookingOrder, settings: Settings): string
   out.push(lr("Item:", order.bookableItemName));
   out.push(lr("Price:", money(order.price)));
   if (order.discountAmount > 0) out.push(lr("Discount:", money(order.discountAmount)));
+  if ((order.taxAmount ?? 0) > 0) out.push(lr(`${getTaxLabel(settings)}:`, money(order.taxAmount!)));
   out.push(lr("Total:", money(order.total)));
   out.push(lr("Advance:", money(order.advancePayment)));
   out.push(lr("Remaining:", money(order.remainingPayment)));
@@ -254,8 +272,8 @@ export async function printBookingKot(order: BookingOrder) {
 
 /* ─── PDF Builders for Share ─── */
 
-export function buildAdvanceReceiptPdf(order: AdvanceOrder, settings: Settings | null): jsPDF {
-  const doc = new jsPDF({ unit: "pt", format: [144, 360] });
+export async function buildAdvanceReceiptPdf(order: AdvanceOrder, settings: Settings | null): Promise<jsPDF> {
+  const doc = new jsPDF({ unit: "pt", format: [144, 420] });
   const left = 6;
   const width = 132;
   let y = 14;
@@ -299,15 +317,24 @@ export function buildAdvanceReceiptPdf(order: AdvanceOrder, settings: Settings |
   y += 2; hr(); y += 2;
   rightLine("Subtotal", money(order.subtotal));
   if (order.discountAmount > 0) rightLine("Discount", money(order.discountAmount));
+  if ((order.taxAmount ?? 0) > 0) rightLine(getTaxLabel(settings), money(order.taxAmount!));
   rightLine("Total", money(order.total), true);
   rightLine("Advance", money(order.advancePayment));
   rightLine("Remaining", money(order.remainingPayment), true);
 
+  if (settings && shouldPrintTaxQr(settings)) {
+    y = await addTaxQrToPdf({
+      doc, settings, receiptNo: order.receiptNo,
+      taxAmount: order.taxAmount ?? 0, total: order.total, createdAt: order.createdAt,
+      x: left + (width - 50) / 2, y, size: 50,
+    });
+  }
+
   return doc;
 }
 
-export function buildBookingReceiptPdf(order: BookingOrder, settings: Settings | null): jsPDF {
-  const doc = new jsPDF({ unit: "pt", format: [144, 288] });
+export async function buildBookingReceiptPdf(order: BookingOrder, settings: Settings | null): Promise<jsPDF> {
+  const doc = new jsPDF({ unit: "pt", format: [144, 340] });
   const left = 6;
   const width = 132;
   let y = 14;
@@ -342,9 +369,18 @@ export function buildBookingReceiptPdf(order: BookingOrder, settings: Settings |
 
   rightLine("Price", money(order.price));
   if (order.discountAmount > 0) rightLine("Discount", money(order.discountAmount));
+  if ((order.taxAmount ?? 0) > 0) rightLine(getTaxLabel(settings), money(order.taxAmount!));
   rightLine("Total", money(order.total), true);
   rightLine("Advance", money(order.advancePayment));
   rightLine("Remaining", money(order.remainingPayment), true);
+
+  if (settings && shouldPrintTaxQr(settings)) {
+    y = await addTaxQrToPdf({
+      doc, settings, receiptNo: order.receiptNo,
+      taxAmount: order.taxAmount ?? 0, total: order.total, createdAt: order.createdAt,
+      x: left + (width - 50) / 2, y, size: 50,
+    });
+  }
 
   return doc;
 }
