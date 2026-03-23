@@ -58,8 +58,16 @@ export function buildInstallmentReceiptPdf(args: {
     doc.text("Late Fee:", 5, y);
     doc.text(fmt(p.lateFeeAmount), 75, y, { align: "right" });
     y += 4;
+  }
+  if (p.taxAmount) {
+    doc.text("Tax:", 5, y);
+    doc.text(fmt(p.taxAmount), 75, y, { align: "right" });
+    y += 4;
+  }
+  if (p.lateFeeAmount || p.taxAmount) {
+    const totalCollected = p.amount + (p.lateFeeAmount ?? 0) + (p.taxAmount ?? 0);
     doc.text("Total Collected:", 5, y);
-    doc.text(fmt(p.amount + p.lateFeeAmount), 75, y, { align: "right" });
+    doc.text(fmt(totalCollected), 75, y, { align: "right" });
     y += 4;
   }
 

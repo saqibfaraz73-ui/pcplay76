@@ -61,6 +61,7 @@ export function RecoverySection() {
   const [payments, setPayments] = React.useState<RecoveryPayment[]>([]);
   const [agents, setAgents] = React.useState<StaffAccount[]>([]);
   const [businessName, setBusinessName] = React.useState("SANGI POS");
+  const [settings, setSettings] = React.useState<Settings | null>(null);
   const [search, setSearch] = React.useState("");
   const [showAdd, setShowAdd] = React.useState(false);
   const [agentCanAddCustomer, setAgentCanAddCustomer] = React.useState(false);
