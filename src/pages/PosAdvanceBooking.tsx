@@ -999,6 +999,15 @@ export default function PosAdvanceBooking() {
               </div>
             </div>
 
+            {/* Tax toggle */}
+            {settings?.taxEnabled && (
+              <div className="flex items-center gap-2 border-t pt-3">
+                <Switch checked={advTaxEnabled} onCheckedChange={setAdvTaxEnabled} />
+                <Label className="text-xs">Add {getTaxLabel(settings)} {settings.taxType === "percent" ? `(${settings.taxValue}%)` : `(${formatIntMoney(settings.taxValue ?? 0)})`}</Label>
+                {advTaxAmount > 0 && <span className="text-xs font-semibold ml-auto">{formatIntMoney(advTaxAmount)}</span>}
+              </div>
+            )}
+
             <div className="grid grid-cols-3 gap-3">
               <div className="space-y-1">
                 <Label className="text-xs">Discount</Label>
