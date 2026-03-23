@@ -1607,9 +1607,48 @@ export default function PosPartyLodge() {
                   <Label htmlFor="arrNote">Note (optional)</Label>
                   <Input id="arrNote" value={arrivalNote} onChange={(e) => setArrivalNote(e.target.value)} placeholder="e.g., Weekly supply" />
                 </div>
-                <div className="rounded-md border p-3 bg-muted/50">
-                  <div className="text-xs text-muted-foreground">Grand Total ({arrivalItems.length} item{arrivalItems.length > 1 ? "s" : ""})</div>
-                  <div className="text-lg font-bold">{formatIntMoney(arrivalTotal)}</div>
+                {/* Tax (optional) */}
+                <div className="rounded-md border p-3 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <input type="checkbox" id="arrTaxToggle" checked={arrivalTaxEnabled} onChange={(e) => setArrivalTaxEnabled(e.target.checked)} className="rounded" />
+                    <Label htmlFor="arrTaxToggle" className="text-xs font-normal">Add Tax (optional)</Label>
+                  </div>
+                  {arrivalTaxEnabled && (
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-1">
+                        <Label className="text-xs">Tax Type</Label>
+                        <select value={arrivalTaxType} onChange={(e) => setArrivalTaxType(e.target.value as "amount" | "percent")} className="h-8 w-full rounded-md border bg-background px-2 text-xs">
+                          <option value="amount">Flat Amount</option>
+                          <option value="percent">Percentage (%)</option>
+                        </select>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">{arrivalTaxType === "percent" ? "Tax %" : "Tax Amount"}</Label>
+                        <Input inputMode="numeric" value={arrivalTaxValue === 0 ? "" : String(arrivalTaxValue)} onChange={(e) => setArrivalTaxValue(parseNonDecimalInt(e.target.value))} placeholder="0" className="h-8 text-sm" />
+                      </div>
+                    </div>
+                  )}
+                  {arrivalTaxEnabled && arrivalTaxAmount > 0 && (
+                    <div className="text-xs text-muted-foreground">
+                      Tax: {formatIntMoney(arrivalTaxAmount)}{arrivalTaxType === "percent" ? ` (${arrivalTaxValue}% of ${formatIntMoney(arrivalSubtotal)})` : ""}
+                    </div>
+                  )}
+                </div>
+                <div className="rounded-md border p-3 bg-muted/50 space-y-1">
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <span>Subtotal ({arrivalItems.length} item{arrivalItems.length > 1 ? "s" : ""})</span>
+                    <span>{formatIntMoney(arrivalSubtotal)}</span>
+                  </div>
+                  {arrivalTaxAmount > 0 && (
+                    <div className="flex justify-between text-xs text-muted-foreground">
+                      <span>Tax</span>
+                      <span>+{formatIntMoney(arrivalTaxAmount)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between pt-1 border-t">
+                    <span className="text-xs text-muted-foreground">Grand Total</span>
+                    <span className="text-lg font-bold">{formatIntMoney(arrivalTotal)}</span>
+                  </div>
                 </div>
               </>
             )}
