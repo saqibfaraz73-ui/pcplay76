@@ -5,6 +5,8 @@
 import type { InstallmentCustomer, InstallmentPayment } from "@/db/installment-schema";
 import type { Settings } from "@/db/schema";
 import { getCurrencySymbol } from "@/features/pos/format";
+import { buildTaxQrEscPos } from "@/features/tax/tax-qr";
+import { getTaxLabel } from "@/features/tax/tax-calc";
 
 function fmt(n: number): string {
   const cs = getCurrencySymbol();
