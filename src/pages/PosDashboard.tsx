@@ -474,6 +474,7 @@ export default function PosDashboard() {
     setDiscountAmount(0);
     setEditTaxAmount(null);
     setEditServiceAmount(null);
+    setCashReceived(0);
   };
 
   // Save only (no print)
