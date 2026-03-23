@@ -289,7 +289,12 @@ export function ExportPartySection() {
         unitPrice: it.unitPrice,
         total: getItemTotal(it),
       })),
-      grandTotal: saleTotal,
+      grandTotal: saleAfterTax,
+      taxAmount: saleTaxAmount > 0 ? saleTaxAmount : undefined,
+      taxLabel: saleTaxAmount > 0 ? getTaxLabel(settings) : undefined,
+      discountAmount: saleDiscount > 0 ? saleDiscount : undefined,
+      advancePayment: saleAdvancePayment > 0 ? saleAdvancePayment : undefined,
+      remainingBalance: saleAdvancePayment > 0 ? saleRemainingBalance : undefined,
       note: saleNote.trim() || undefined,
       date: new Date(),
     };
