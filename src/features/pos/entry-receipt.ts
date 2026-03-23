@@ -4,6 +4,8 @@ import { db } from "@/db/appDb";
 import { sendToDefaultPrinter } from "@/features/pos/printer-routing";
 import type { Settings, CounterId } from "@/db/schema";
 import { sharePdfBytes } from "@/features/pos/share-utils";
+import { buildTaxQrEscPos, addTaxQrToPdf, shouldPrintTaxQr } from "@/features/tax/tax-qr";
+import { getTaxLabel } from "@/features/tax/tax-calc";
 import jsPDF from "jspdf";
 
 /** Get and increment a sequential counter for arrivals or export sales */
