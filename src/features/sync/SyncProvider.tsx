@@ -108,7 +108,7 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
         });
         listenerRef.current = handle;
 
-        // Register kitchen GET query handler so kitchen/customer displays can poll
+        // Register GET query handler for kitchen endpoints + PIN verification
         try {
           const { getKitchenOrders, getKitchenDisplayOrders } = await import("@/features/kitchen/kitchen-handler");
           await onSyncGetRequest(async (endpoint) => {
@@ -120,10 +120,27 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
               const orders = await getKitchenDisplayOrders();
               return { orders };
             }
+            if (endpoint.startsWith("verify-pin:")) {
+              const submittedPin = endpoint.slice("verify-pin:".length);
+              const currentConfig = loadConfig();
+              const mainPin = currentConfig.syncPin;
+              const appSettings = await db.settings.get("app");
+              const pinRequired = !!appSettings?.syncPinRequired;
+
+              if (!pinRequired) return { ok: true };
+              if (!mainPin) {
+                return {
+                  ok: false,
+                  error: "PIN is required but not set on Main device. Admin must set a PIN on Device Sync page.",
+                };
+              }
+              if (submittedPin === mainPin) return { ok: true };
+              return { ok: false, error: "Wrong PIN. Enter the correct PIN set on Main device." };
+            }
             return { error: "Unknown endpoint" };
           });
         } catch (e) {
-          console.warn("[Sync] Failed to register kitchen GET handler:", e);
+          console.warn("[Sync] Failed to register sync GET handler:", e);
         }
       };
 
