@@ -153,7 +153,21 @@ export default function CustomPrintPage({ embedded }: { embedded?: boolean }) {
       y += 4;
     }
 
-    if (note) {
+    // Tax line
+    if (taxAmount > 0) {
+      doc.setLineWidth(0.2);
+      doc.line(4, y, 76, y);
+      y += 4;
+      doc.text(`${getTaxLabel(settings)}:`, 4, y);
+      doc.text(formatIntMoney(taxAmount), 76, y, { align: "right" });
+      y += 4;
+      doc.setFont("helvetica", "bold");
+      doc.text("Total:", 4, y);
+      doc.text(formatIntMoney(linesTotal + taxAmount), 76, y, { align: "right" });
+      doc.setFont("helvetica", "normal");
+      y += 4;
+    }
+
       y += 2;
       doc.line(4, y, 76, y);
       y += 4;
