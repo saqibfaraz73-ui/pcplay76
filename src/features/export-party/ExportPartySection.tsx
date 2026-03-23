@@ -1183,17 +1183,20 @@ export function ExportPartySection() {
                               <span className="font-medium">{s.itemName}</span>
                               {s.cancelled && <span className="text-xs font-semibold text-destructive">CANCELLED</span>}
                             </div>
-                            <span className={`font-bold ${s.cancelled ? "line-through text-muted-foreground" : "text-red-600"}`}>+{formatIntMoney(s.total)}</span>
+                            <span className={`font-bold ${s.cancelled ? "line-through text-muted-foreground" : "text-red-600"}`}>+{formatIntMoney(s.total + (s.taxAmount ?? 0))}</span>
                           </div>
-                          <div className="text-xs text-muted-foreground mt-1">{s.qty} {s.unit || "units"} × {formatIntMoney(s.unitPrice)}</div>
+                          <div className="text-xs text-muted-foreground mt-1">
+                            {s.qty} {s.unit || "units"} × {formatIntMoney(s.unitPrice)}
+                            {s.taxAmount ? ` + ${getTaxLabel(settings)}: ${formatIntMoney(s.taxAmount)}` : ""}
+                          </div>
                           {(s.discountAmount ?? 0) > 0 && <div className="text-xs text-muted-foreground">Discount: {formatIntMoney(s.discountAmount!)}</div>}
                           {(s.advancePayment ?? 0) > 0 && <div className="text-xs font-medium text-primary">Advance: {formatIntMoney(s.advancePayment!)}</div>}
-                          {(s.advancePayment ?? 0) > 0 && <div className="text-xs text-muted-foreground">Remaining: {formatIntMoney(s.total - (s.discountAmount ?? 0) - (s.advancePayment ?? 0))}</div>}
+                          {(s.advancePayment ?? 0) > 0 && <div className="text-xs text-muted-foreground">Remaining: {formatIntMoney(s.total + (s.taxAmount ?? 0) - (s.discountAmount ?? 0) - (s.advancePayment ?? 0))}</div>}
                           {s.note && <div className="text-xs text-muted-foreground">{s.note}</div>}
                           {s.cancelledReason && <div className="text-xs text-destructive">Reason: {s.cancelledReason}</div>}
                           <div className="flex items-center justify-between mt-1">
                             <div className="text-xs text-muted-foreground">{fmtDateTime(s.createdAt)}</div>
-                            <div className="text-xs font-medium">Bal: {formatIntMoney(s.total - (s.discountAmount ?? 0) - (s.advancePayment ?? 0))}</div>
+                            <div className="text-xs font-medium">Bal: {formatIntMoney(s.total + (s.taxAmount ?? 0) - (s.discountAmount ?? 0) - (s.advancePayment ?? 0))}</div>
                           </div>
                           <div className="flex gap-1 mt-1.5">
                             <Button variant="outline" size="sm" className="text-xs h-6 px-2" onClick={() => void printEntryReceipt(rd).catch((e: any) => toast({ title: "Print failed", description: e?.message, variant: "destructive" }))}>
