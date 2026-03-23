@@ -484,7 +484,7 @@ export function RecoverySection() {
 
   // ── Share/Print receipt ──
   const shareReceipt = async (cust: RecoveryCustomer, pay: RecoveryPayment) => {
-    const doc = new jsPDF({ unit: "mm", format: [80, 120] });
+    const doc = new jsPDF({ unit: "mm", format: [80, 150] });
     doc.setFontSize(12);
     doc.text(businessName, 40, 8, { align: "center" });
     doc.setFontSize(10);
@@ -496,12 +496,24 @@ export function RecoverySection() {
       `Customer: ${cust.name}`,
       `Package: ${cust.pkg ?? "N/A"}`,
       `Amount: ${pay.amount}`,
+      ...(pay.taxAmount ? [`${getTaxLabel(settings)}: ${formatIntMoney(pay.taxAmount)}`] : []),
+      ...(pay.taxAmount ? [`Total: ${formatIntMoney(pay.amount + pay.taxAmount)}`] : []),
       `Status: ${pay.status.toUpperCase()}`,
       `Month: ${pay.month}`,
       `Agent: ${pay.agentName}`,
       `Date: ${format(pay.createdAt, "dd/MM/yyyy hh:mm a")}`,
     ];
     for (const l of lines) { doc.text(l, 5, y); y += 6; }
+
+    // Tax QR in PDF
+    if (settings && shouldPrintTaxQr(settings)) {
+      y = await addTaxQrToPdf({
+        doc, settings, receiptNo: pay.receiptNo ?? 0,
+        taxAmount: pay.taxAmount ?? 0, total: pay.amount + (pay.taxAmount ?? 0), createdAt: pay.createdAt,
+        x: 20, y: y + 2, size: 40,
+      });
+    }
+
     const fileName = `receipt_${pay.receiptNo ?? pay.id}.pdf`;
     const bytes = new Uint8Array(doc.output("arraybuffer"));
     await sharePdfBytes(bytes, fileName, `Receipt - ${cust.name}`);
