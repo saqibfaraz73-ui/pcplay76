@@ -111,7 +111,11 @@ export function InstallmentCustomerForm({ open, customer, onClose, onSave }: Pro
   const totalPrice = profitType === "percent"
     ? Math.round(marketPrice * (1 + profitValue / 100))
     : marketPrice + profitValue;
-  const monthlyInstallment = totalPeriods > 0 ? Math.round(totalPrice / totalPeriods) : totalPrice;
+  const taxAmount = taxEnabled && taxValue > 0
+    ? (taxType === "percent" ? Math.round(totalPrice * taxValue / 100) : Math.round(taxValue))
+    : 0;
+  const totalWithTax = totalPrice + taxAmount;
+  const monthlyInstallment = totalPeriods > 0 ? Math.round(totalWithTax / totalPeriods) : totalWithTax;
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
