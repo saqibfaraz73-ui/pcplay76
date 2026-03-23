@@ -21,7 +21,7 @@ export function buildTaxQrPayload(args: {
     `POS: ${s.taxApiPosId ?? ""}`,
     `Invoice: ${receiptNo}`,
     `Date: ${dateStr}`,
-    `Tax: ${taxAmount}`,
+    `Tax (${s.taxValue ?? 0}%): ${taxAmount}`,
     `Total: ${total}`,
   ].join("\n");
 }
