@@ -14,11 +14,11 @@ function fmtDt(ts: number): string {
   return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()} ${d.getHours() % 12 || 12}:${String(d.getMinutes()).padStart(2, "0")} ${d.getHours() >= 12 ? "PM" : "AM"}`;
 }
 
-export function buildInstallmentReceiptPdf(args: {
+export async function buildInstallmentReceiptPdf(args: {
   customer: InstallmentCustomer;
   payment: InstallmentPayment;
   settings: Settings | null;
-}): jsPDF {
+}): Promise<jsPDF> {
   const { customer: c, payment: p, settings: s } = args;
   const doc = new jsPDF({ unit: "mm", format: [80, 150] });
   let y = 8;
