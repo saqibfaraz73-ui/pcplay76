@@ -61,20 +61,27 @@ function buildAdvanceEscPos(order: AdvanceOrder, settings: Settings): string {
     }
   }
 
+  const taxLabel = getTaxLabel(settings);
   const footerLines = [
     hr,
     lr("Subtotal:", money(order.subtotal)),
     order.discountAmount > 0 ? lr("Discount:", money(order.discountAmount)) : null,
+    (order.taxAmount ?? 0) > 0 ? lr(`${taxLabel}:`, money(order.taxAmount!)) : null,
     lr("Total:", money(order.total)),
     lr("Advance:", money(order.advancePayment)),
     lr("Remaining:", money(order.remainingPayment)),
     hr,
   ].filter(Boolean) as string[];
 
+  const taxQr = buildTaxQrEscPos({
+    settings, receiptNo: order.receiptNo,
+    taxAmount: order.taxAmount ?? 0, total: order.total, createdAt: order.createdAt,
+  });
+
   const totalContentLines = headerLines.length + itemLines.length + footerLines.length;
   const feedCount = getFeedLinesForSize(settings, totalContentLines);
 
-  return "\x1b@\x1b3\x14" + headerLines.join("\n") + "\n" + itemLines.join("\n") + "\n" + footerLines.join("\n") + "\n".repeat(feedCount) + "\x1dV\x41\x03";
+  return "\x1b@\x1b3\x14" + headerLines.join("\n") + "\n" + itemLines.join("\n") + "\n" + footerLines.join("\n") + taxQr + "\n".repeat(feedCount) + "\x1dV\x41\x03";
 }
 
 /* ─── Advance Order KOT ─── */
