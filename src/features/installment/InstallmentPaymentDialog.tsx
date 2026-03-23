@@ -16,6 +16,8 @@ import { sendToDefaultPrinter } from "@/features/pos/printer-routing";
 import { sharePdfBytes, savePdfBytes } from "@/features/pos/share-utils";
 import { SaveShareMenu } from "@/components/SaveShareMenu";
 import { Printer } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { calcGlobalTax, getTaxLabel } from "@/features/tax/tax-calc";
 
 interface Props {
   customer: InstallmentCustomer;
