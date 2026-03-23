@@ -89,6 +89,10 @@ export default function PosPartyLodge() {
   });
   const [arrivalItems, setArrivalItems] = React.useState<ArrivalItem[]>([makeEmptyItem()]);
   const [arrivalNote, setArrivalNote] = React.useState("");
+  // Tax for arrival (custom: amount or percent)
+  const [arrivalTaxEnabled, setArrivalTaxEnabled] = React.useState(false);
+  const [arrivalTaxType, setArrivalTaxType] = React.useState<"amount" | "percent">("amount");
+  const [arrivalTaxValue, setArrivalTaxValue] = React.useState(0);
   // Supplier form
   const [sName, setSName] = React.useState("");
   const [sContact, setSContact] = React.useState("");
