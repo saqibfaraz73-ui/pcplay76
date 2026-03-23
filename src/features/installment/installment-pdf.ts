@@ -2,6 +2,7 @@ import jsPDF from "jspdf";
 import type { InstallmentCustomer, InstallmentPayment } from "@/db/installment-schema";
 import type { Settings } from "@/db/schema";
 import { getCurrencySymbol } from "@/features/pos/format";
+import { addTaxQrToPdf, shouldPrintTaxQr } from "@/features/tax/tax-qr";
 
 function fmt(n: number): string {
   const cs = getCurrencySymbol();
