@@ -9,7 +9,8 @@ import { parseNonDecimalInt } from "@/features/pos/format";
 import { db } from "@/db/appDb";
 import type { MenuItem } from "@/db/schema";
 import type { InstallmentCustomer, InstallmentCustomerField, ProfitType, InstallmentFrequency } from "@/db/installment-schema";
-import { Plus, Trash2, ImagePlus, Search } from "lucide-react";
+import { Plus, Trash2, ImagePlus, Search, ChevronDown } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 
 interface Props {
   open: boolean;
