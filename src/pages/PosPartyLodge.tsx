@@ -297,6 +297,9 @@ export default function PosPartyLodge() {
       unit: sup.stockUnit ?? "",
     }]);
     setArrivalNote("");
+    setArrivalTaxEnabled(false);
+    setArrivalTaxType("amount");
+    setArrivalTaxValue(0);
     setArrivalMode({ open: true, supplier: sup });
   };
 
