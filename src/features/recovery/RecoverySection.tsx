@@ -34,6 +34,7 @@ import { SaveShareMenu } from "@/components/SaveShareMenu";
 import { RecoveryAgentExport } from "./RecoveryAgentExport";
 import { RecoveryAgentView } from "./RecoveryAgentView";
 import { calcGlobalTax, getTaxLabel } from "@/features/tax/tax-calc";
+import { buildTaxQrEscPos, addTaxQrToPdf, shouldPrintTaxQr } from "@/features/tax/tax-qr";
 
 function uid(prefix: string) {
   return `${prefix}_${Math.random().toString(16).slice(2)}_${Date.now().toString(16)}`;
