@@ -32,6 +32,8 @@ export type EntryReceiptData = {
   partyName: string;
   lines: EntryLine[];
   grandTotal: number;
+  taxAmount?: number;
+  taxLabel?: string; // e.g. "Tax", "GST" — for custom tax on arrivals or global label for exports
   discountAmount?: number;
   advancePayment?: number;
   remainingBalance?: number;
