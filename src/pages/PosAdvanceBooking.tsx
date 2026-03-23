@@ -26,6 +26,8 @@ import { sharePdfBytes, savePdfBytes } from "@/features/pos/share-utils";
 import { SaveShareMenu } from "@/components/SaveShareMenu";
 import { Plus, Trash2, X, Check, Ban, Printer, FileText, Share2, Wrench } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
+import { calcGlobalTax, getTaxLabel } from "@/features/tax/tax-calc";
 
 /* ─── helpers ─── */
 
@@ -484,12 +486,19 @@ export default function PosAdvanceBooking() {
   const [bookIsMaintenance, setBookIsMaintenance] = React.useState(false);
   const [bookLabel, setBookLabel] = React.useState<BookingLabel>("Booking");
 
+  const [bookTaxEnabled, setBookTaxEnabled] = React.useState(false);
+
   const selectedBookItem = bookableItems.find((b) => b.id === bookItemId);
   const bookItemPrice = selectedBookItem?.price ?? 0;
   const bookPrice = bookManualPrice !== "" ? (Number(bookManualPrice) || 0) : bookItemPrice;
   const bookEndTime = calcEndTime(bookStart, Number(bookDuration) || 0, bookDurationUnit);
   const bookDiscountAmt = Math.min(Math.max(0, Number(bookDiscount) || 0), bookPrice);
-  const bookTotal = Math.max(0, bookPrice - bookDiscountAmt);
+  const bookAfterDiscount = Math.max(0, bookPrice - bookDiscountAmt);
+  const bookTaxAmount = React.useMemo(() => {
+    if (!bookTaxEnabled) return 0;
+    return calcGlobalTax(bookAfterDiscount, settings);
+  }, [bookTaxEnabled, settings, bookAfterDiscount]);
+  const bookTotal = bookAfterDiscount + bookTaxAmount;
   const bookRemaining = Math.max(0, bookTotal - (Number(bookAdvance) || 0));
 
   const openBookDlg = () => {
@@ -506,6 +515,7 @@ export default function PosAdvanceBooking() {
     setBookCustAddress("");
     setBookIsMaintenance(false);
     setBookLabel("Booking");
+    setBookTaxEnabled(false);
     setBookDlg(true);
   };
 
@@ -553,6 +563,7 @@ export default function PosAdvanceBooking() {
       endTime: bookEndTime,
       price: finalPrice,
       discountAmount: finalDiscount,
+      taxAmount: bookIsMaintenance ? undefined : (bookTaxAmount > 0 ? bookTaxAmount : undefined),
       total: finalTotal,
       advancePayment: finalAdvance,
       remainingPayment: finalRemaining,
@@ -988,6 +999,15 @@ export default function PosAdvanceBooking() {
               </div>
             </div>
 
+            {/* Tax toggle */}
+            {settings?.taxEnabled && (
+              <div className="flex items-center gap-2 border-t pt-3">
+                <Switch checked={advTaxEnabled} onCheckedChange={setAdvTaxEnabled} />
+                <Label className="text-xs">Add {getTaxLabel(settings)} {settings.taxType === "percent" ? `(${settings.taxValue}%)` : `(${formatIntMoney(settings.taxValue ?? 0)})`}</Label>
+                {advTaxAmount > 0 && <span className="text-xs font-semibold ml-auto">{formatIntMoney(advTaxAmount)}</span>}
+              </div>
+            )}
+
             <div className="grid grid-cols-3 gap-3">
               <div className="space-y-1">
                 <Label className="text-xs">Discount</Label>
@@ -1128,6 +1148,16 @@ export default function PosAdvanceBooking() {
                     <Input type="number" inputMode="numeric" value={bookDiscount} onChange={(e) => setBookDiscount(e.target.value)} placeholder="0" />
                   </div>
                 </div>
+
+                {/* Tax toggle */}
+                {settings?.taxEnabled && (
+                  <div className="flex items-center gap-2">
+                    <Switch checked={bookTaxEnabled} onCheckedChange={setBookTaxEnabled} />
+                    <Label className="text-xs">Add {getTaxLabel(settings)} {settings.taxType === "percent" ? `(${settings.taxValue}%)` : `(${formatIntMoney(settings.taxValue ?? 0)})`}</Label>
+                    {bookTaxAmount > 0 && <span className="text-xs font-semibold ml-auto">{formatIntMoney(bookTaxAmount)}</span>}
+                  </div>
+                )}
+
                 <div className="grid grid-cols-3 gap-3">
                   <div className="space-y-1">
                     <Label className="text-xs">Total</Label>

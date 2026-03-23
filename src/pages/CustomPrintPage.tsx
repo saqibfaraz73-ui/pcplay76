@@ -11,10 +11,14 @@ import { toast } from "sonner";
 import jsPDF from "jspdf";
 import { isNativeAndroid } from "@/features/pos/bluetooth-printer";
 import { db } from "@/db/appDb";
+import type { Settings } from "@/db/schema";
 import { sendToDefaultPrinter } from "@/features/pos/printer-routing";
 import { canMakeSale, incrementSaleCount } from "@/features/licensing/licensing-db";
 import { AdRewardDialog } from "@/features/licensing/AdRewardDialog";
 import { sharePdfBlob, shareFileBlob, savePdfBlob, saveFileBlob } from "@/features/pos/share-utils";
+import { Switch } from "@/components/ui/switch";
+import { calcGlobalTax, getTaxLabel } from "@/features/tax/tax-calc";
+import { formatIntMoney } from "@/features/pos/format";
 
 interface ReceiptLine {
   id: string;
@@ -45,6 +49,19 @@ export default function CustomPrintPage({ embedded }: { embedded?: boolean }) {
   const [lines, setLines] = useState<ReceiptLine[]>([
     { id: crypto.randomUUID(), label: "Item", value: "" },
   ]);
+
+  // Tax state
+  const [taxEnabled, setTaxEnabled] = useState(false);
+  const [settings, setSettings] = useState<Settings | null>(null);
+
+  // Load settings
+  React.useEffect(() => {
+    db.settings.get("app").then(s => setSettings(s ?? null));
+  }, []);
+
+  // Calculate tax from line values
+  const linesTotal = lines.reduce((s, l) => s + (Number(l.value) || 0), 0);
+  const taxAmount = taxEnabled ? calcGlobalTax(linesTotal, settings) : 0;
 
   // Logo state – store base64 data URL for PDF compatibility
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
@@ -136,6 +153,20 @@ export default function CustomPrintPage({ embedded }: { embedded?: boolean }) {
       y += 4;
     }
 
+    // Tax line
+    if (taxAmount > 0) {
+      doc.setLineWidth(0.2);
+      doc.line(4, y, 76, y);
+      y += 4;
+      doc.text(`${getTaxLabel(settings)}:`, 4, y);
+      doc.text(formatIntMoney(taxAmount), 76, y, { align: "right" });
+      y += 4;
+      doc.setFont("helvetica", "bold");
+      doc.text("Total:", 4, y);
+      doc.text(formatIntMoney(linesTotal + taxAmount), 76, y, { align: "right" });
+      doc.setFont("helvetica", "normal");
+      y += 4;
+    }
     if (note) {
       y += 2;
       doc.line(4, y, 76, y);
@@ -252,6 +283,13 @@ export default function CustomPrintPage({ embedded }: { embedded?: boolean }) {
       } else {
         out.push(line.label.slice(0, WIDTH));
       }
+    }
+
+    // Tax line in ESC/POS
+    if (taxAmount > 0) {
+      out.push(hr);
+      out.push(lr(`${getTaxLabel(settings)}:`, formatIntMoney(taxAmount)));
+      out.push(lr("Total:", formatIntMoney(linesTotal + taxAmount)));
     }
 
     if (note) {
@@ -563,6 +601,15 @@ export default function CustomPrintPage({ embedded }: { embedded?: boolean }) {
                   </Button>
                 </div>
 
+                {/* Tax toggle */}
+                {settings?.taxEnabled && (
+                  <div className="flex items-center gap-2">
+                    <Switch checked={taxEnabled} onCheckedChange={setTaxEnabled} />
+                    <Label className="text-xs">Add {getTaxLabel(settings)} {settings.taxType === "percent" ? `(${settings.taxValue}%)` : `(${formatIntMoney(settings.taxValue ?? 0)})`}</Label>
+                    {taxAmount > 0 && <span className="text-xs font-semibold ml-auto">{formatIntMoney(taxAmount)}</span>}
+                  </div>
+                )}
+
                 <Separator />
 
                 <div>
@@ -608,6 +655,19 @@ export default function CustomPrintPage({ embedded }: { embedded?: boolean }) {
                           <span>{line.value}</span>
                         </div>
                       ) : null
+                    )}
+                    {taxAmount > 0 && (
+                      <>
+                        <Separator className="my-1 bg-black/30" />
+                        <div className="flex justify-between">
+                          <span>{getTaxLabel(settings)}:</span>
+                          <span>{formatIntMoney(taxAmount)}</span>
+                        </div>
+                        <div className="flex justify-between font-bold">
+                          <span>Total:</span>
+                          <span>{formatIntMoney(linesTotal + taxAmount)}</span>
+                        </div>
+                      </>
                     )}
                     {note && (
                       <>

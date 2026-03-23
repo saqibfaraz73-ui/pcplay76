@@ -58,7 +58,13 @@ export function buildInstallmentReceiptEscPos(args: {
 
   if (p.lateFeeAmount) {
     out += `Late Fee:    ${fmt(p.lateFeeAmount)}\n`;
-    out += BOLD_ON + `Total:       ${fmt(p.amount + p.lateFeeAmount)}\n` + BOLD_OFF;
+  }
+  if (p.taxAmount) {
+    out += `Tax:         ${fmt(p.taxAmount)}\n`;
+  }
+  const totalCollected = p.amount + (p.lateFeeAmount ?? 0) + (p.taxAmount ?? 0);
+  if (p.lateFeeAmount || p.taxAmount) {
+    out += BOLD_ON + `Total:       ${fmt(totalCollected)}\n` + BOLD_OFF;
   }
 
   out += LINE;

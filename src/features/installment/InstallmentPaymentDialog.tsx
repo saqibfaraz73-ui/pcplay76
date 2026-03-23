@@ -16,6 +16,7 @@ import { sendToDefaultPrinter } from "@/features/pos/printer-routing";
 import { sharePdfBytes, savePdfBytes } from "@/features/pos/share-utils";
 import { SaveShareMenu } from "@/components/SaveShareMenu";
 import { Printer } from "lucide-react";
+import { calcGlobalTax, getTaxLabel } from "@/features/tax/tax-calc";
 
 interface Props {
   customer: InstallmentCustomer;
@@ -92,6 +93,7 @@ export function InstallmentPaymentDialog({ customer, payments, settings, agentNa
   const [saving, setSaving] = React.useState(false);
   const [savedPayment, setSavedPayment] = React.useState<InstallmentPayment | null>(null);
   const [includeDues, setIncludeDues] = React.useState(true);
+  const [taxEnabled, setTaxEnabled] = React.useState(false);
 
   // Frequency-based period check
   const currentPeriod = getCurrentPeriod(customer.frequency);
@@ -119,6 +121,7 @@ export function InstallmentPaymentDialog({ customer, payments, settings, agentNa
   }, [includeDues, accumulatedDues, customer.monthlyInstallment]);
 
   const balanceBefore = customer.totalBalance;
+  const taxAmount = taxEnabled ? calcGlobalTax(amount, settings) : 0;
   const balanceAfter = Math.max(0, balanceBefore - amount);
   const actualLateFee = includeLateFee ? lateFee : 0;
 
@@ -140,6 +143,7 @@ export function InstallmentPaymentDialog({ customer, payments, settings, agentNa
         receiptNo,
         amount,
         lateFeeAmount: actualLateFee > 0 ? actualLateFee : undefined,
+        taxAmount: taxAmount > 0 ? taxAmount : undefined,
         balanceBefore,
         balanceAfter,
         agentName,
@@ -291,8 +295,17 @@ export function InstallmentPaymentDialog({ customer, payments, settings, agentNa
             <Input value={note} onChange={e => setNote(e.target.value)} placeholder="e.g. Cash payment" disabled={!canPay} />
           </div>
 
+          {/* Tax toggle */}
+          {settings?.taxEnabled && (
+            <div className="flex items-center gap-2">
+              <Switch checked={taxEnabled} onCheckedChange={setTaxEnabled} className="scale-75" />
+              <span className="text-xs">Add {getTaxLabel(settings)} {settings.taxType === "percent" ? `(${settings.taxValue}%)` : `(${formatIntMoney(settings.taxValue ?? 0)})`}</span>
+              {taxAmount > 0 && <span className="text-xs font-semibold ml-auto">{formatIntMoney(taxAmount)}</span>}
+            </div>
+          )}
+
           <div className="rounded bg-muted/50 p-2 text-xs">
-            <div>Total to collect: <strong>{formatIntMoney(amount + actualLateFee)}</strong> (Payment {formatIntMoney(amount)} + Late Fee {formatIntMoney(actualLateFee)})</div>
+            <div>Total to collect: <strong>{formatIntMoney(amount + actualLateFee + taxAmount)}</strong> (Payment {formatIntMoney(amount)} + Late Fee {formatIntMoney(actualLateFee)}{taxAmount > 0 ? ` + ${getTaxLabel(settings)} ${formatIntMoney(taxAmount)}` : ""})</div>
             <div>Balance after payment: <strong>{formatIntMoney(balanceAfter)}</strong></div>
             {balanceAfter <= 0 && <div className="text-green-600 font-semibold mt-1">✅ This will clear the account!</div>}
           </div>

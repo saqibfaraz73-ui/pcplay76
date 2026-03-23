@@ -1,5 +1,6 @@
 import React from "react";
 import { FileNamePrompt } from "@/components/FileNamePrompt";
+import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { isNativeAndroid } from "@/features/pos/bluetooth-printer";
 import { sendToDefaultPrinter } from "@/features/pos/printer-routing";
@@ -32,6 +33,7 @@ import { sharePdfBytes, savePdfBytes } from "@/features/pos/share-utils";
 import { SaveShareMenu } from "@/components/SaveShareMenu";
 import { RecoveryAgentExport } from "./RecoveryAgentExport";
 import { RecoveryAgentView } from "./RecoveryAgentView";
+import { calcGlobalTax, getTaxLabel } from "@/features/tax/tax-calc";
 
 function uid(prefix: string) {
   return `${prefix}_${Math.random().toString(16).slice(2)}_${Date.now().toString(16)}`;
@@ -61,6 +63,7 @@ export function RecoverySection() {
   const [payments, setPayments] = React.useState<RecoveryPayment[]>([]);
   const [agents, setAgents] = React.useState<StaffAccount[]>([]);
   const [businessName, setBusinessName] = React.useState("SANGI POS");
+  const [settings, setSettings] = React.useState<Settings | null>(null);
   const [search, setSearch] = React.useState("");
   const [showAdd, setShowAdd] = React.useState(false);
   const [agentCanAddCustomer, setAgentCanAddCustomer] = React.useState(false);
@@ -91,6 +94,10 @@ export function RecoverySection() {
   const [reportFrom, setReportFrom] = React.useState(format(new Date(), "yyyy-MM-dd"));
   const [showAgentView, setShowAgentView] = React.useState(false);
   const [reportTo, setReportTo] = React.useState(format(new Date(), "yyyy-MM-dd"));
+
+  // Tax toggle per customer (keyed by customer id)
+  const [taxEnabledMap, setTaxEnabledMap] = React.useState<Record<string, boolean>>({});
+  const toggleTax = (custId: string) => setTaxEnabledMap(prev => ({ ...prev, [custId]: !prev[custId] }));
 
   // Current month
   const currentMonth = format(new Date(), "yyyy-MM");
@@ -126,6 +133,7 @@ export function RecoverySection() {
     setAllCustomers(c);
     setPayments(p);
     setAgents(staff);
+    setSettings(s ?? null);
     if (s?.restaurantName) setBusinessName(s.restaurantName);
     setAgentCanAddCustomer(!!s?.recoveryAgentAddCustomerEnabled);
   }, []);
@@ -219,14 +227,18 @@ export function RecoverySection() {
     const existing = getCurrentMonthStatus(cust.id);
     if (existing?.status === "paid") { toast({ title: "Already marked paid this month" }); return; }
     const receiptNo = await getNextReceiptNo();
+    const isTaxOn = !!taxEnabledMap[cust.id];
+    const taxAmt = isTaxOn ? calcGlobalTax(cust.monthlyBill, settings) : 0;
     const payment: RecoveryPayment = {
       id: uid("rpay"), customerId: cust.id, receiptNo, amount: cust.monthlyBill,
+      taxAmount: taxAmt > 0 ? taxAmt : undefined,
       status: "paid", agentName, month: currentMonth, createdAt: Date.now(),
     };
     await db.recoveryPayments.add(payment);
     const newBalance = Math.max(0, cust.balance - cust.monthlyBill);
     await db.recoveryCustomers.update(cust.id, { balance: newBalance });
-    toast({ title: `${cust.name} marked PAID` });
+    toast({ title: `${cust.name} marked PAID${taxAmt > 0 ? ` + ${getTaxLabel(settings)} ${formatIntMoney(taxAmt)}` : ""}` });
+    void load();
     void load();
   };
 
@@ -1003,6 +1015,12 @@ export function RecoverySection() {
                   <div className="flex items-center gap-1 flex-wrap justify-end">
                     {!monthStatus && (
                       <>
+                        {settings?.taxEnabled && (
+                          <div className="flex items-center gap-1 mr-1">
+                            <Switch checked={!!taxEnabledMap[c.id]} onCheckedChange={() => toggleTax(c.id)} className="scale-[0.6]" />
+                            <span className="text-[10px] text-muted-foreground">{getTaxLabel(settings)}</span>
+                          </div>
+                        )}
                         <Button variant="default" size="sm" className="h-7 text-xs" onClick={() => void markPaid(c)}>
                           <CheckCircle className="h-3 w-3 mr-1" /> Paid
                         </Button>
