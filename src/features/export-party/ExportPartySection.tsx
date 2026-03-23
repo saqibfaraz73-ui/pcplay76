@@ -317,8 +317,8 @@ export function ExportPartySection() {
       const receiptData = buildSaleReceiptData();
       if (receiptData) receiptData.receiptNo = entryNo;
 
-      // Net amount to add to balance = total - discount (advance is handled via payment record)
-      const netTotal = saleAfterDiscount;
+      // Net amount to add to balance = total - discount + tax (advance is handled via payment record)
+      const netTotal = saleAfterTax;
 
       await db.transaction("rw", [db.exportCustomers, db.exportSales, db.exportPayments], async () => {
         let isFirst = true;
