@@ -377,6 +377,7 @@ export default function PosPartyLodge() {
       if (receiptData) receiptData.receiptNo = entryNo;
 
       await db.transaction("rw", [db.suppliers, db.supplierArrivals], async () => {
+        let isFirst = true;
         for (const it of validItems) {
           const total = getItemTotal(it);
           totalAdded += total;
@@ -389,13 +390,20 @@ export default function PosPartyLodge() {
             unit: it.unit || undefined,
             unitPrice: it.unitPrice,
             total,
+            // Store tax on first item only to avoid double-counting
+            taxAmount: isFirst && arrivalTaxAmount > 0 ? arrivalTaxAmount : undefined,
+            taxType: isFirst && arrivalTaxAmount > 0 ? arrivalTaxType : undefined,
+            taxValue: isFirst && arrivalTaxAmount > 0 ? arrivalTaxValue : undefined,
             note: arrivalNote.trim() || undefined,
             createdAt: Date.now(),
           };
           await db.supplierArrivals.put(arrival);
+          isFirst = false;
         }
+        // Total added to balance includes tax
+        const balanceToAdd = totalAdded + arrivalTaxAmount;
         await db.suppliers.update(sup.id, {
-          totalBalance: sup.totalBalance + totalAdded,
+          totalBalance: sup.totalBalance + balanceToAdd,
         });
       });
 
