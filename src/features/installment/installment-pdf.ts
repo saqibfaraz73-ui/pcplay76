@@ -91,7 +91,19 @@ export async function buildInstallmentReceiptPdf(args: {
 
   doc.setFontSize(7);
   doc.text(`Received by: ${p.agentName}`, 5, y);
-  y += 6;
+  y += 4;
+
+  // Tax QR code in PDF
+  if (s && shouldPrintTaxQr(s)) {
+    const totalCollected = p.amount + (p.lateFeeAmount ?? 0) + (p.taxAmount ?? 0);
+    y = await addTaxQrToPdf({
+      doc, settings: s, receiptNo: p.receiptNo ?? 0,
+      taxAmount: p.taxAmount ?? 0, total: totalCollected, createdAt: p.createdAt,
+      x: 20, y, size: 40,
+    });
+  }
+
+  y += 2;
   doc.setFontSize(6);
   doc.text("Thank you for your payment!", 40, y, { align: "center" });
 
