@@ -303,11 +303,44 @@ export function InstallmentCustomerForm({ open, customer, onClose, onSave }: Pro
               </div>
             </div>
 
+            {/* Tax on total */}
+            <div className="mt-3 rounded-md border p-3">
+              <div className="flex items-center gap-2 mb-2">
+                <Switch checked={taxEnabled} onCheckedChange={setTaxEnabled} className="scale-75" />
+                <span className="text-sm font-medium">Add Tax</span>
+              </div>
+              {taxEnabled && (
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <Label className="text-xs">Tax Type</Label>
+                    <select value={taxType} onChange={e => setTaxType(e.target.value as "percent" | "fixed")} className="h-9 w-full rounded-md border bg-background px-3 text-sm">
+                      <option value="percent">Percentage (%)</option>
+                      <option value="fixed">Fixed Amount</option>
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Tax Value</Label>
+                    <Input value={taxValue || ""} onChange={e => setTaxValue(parseNonDecimalInt(e.target.value))} inputMode="numeric" placeholder={taxType === "percent" ? "e.g. 17" : "e.g. 500"} className="h-9" />
+                  </div>
+                </div>
+              )}
+            </div>
+
             {/* Auto-calculated preview */}
-            <div className="mt-3 rounded-md bg-muted/50 p-3 grid grid-cols-3 gap-2 text-xs">
+            <div className="mt-3 rounded-md bg-muted/50 p-3 grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
               <div>
-                <div className="text-muted-foreground">Total Price</div>
+                <div className="text-muted-foreground">Price + Profit</div>
                 <div className="font-bold text-sm">{totalPrice.toLocaleString()}</div>
+              </div>
+              {taxAmount > 0 && (
+                <div>
+                  <div className="text-muted-foreground">Tax</div>
+                  <div className="font-bold text-sm text-orange-600">{taxAmount.toLocaleString()}</div>
+                </div>
+              )}
+              <div>
+                <div className="text-muted-foreground">Total{taxAmount > 0 ? " (incl. Tax)" : ""}</div>
+                <div className="font-bold text-sm">{totalWithTax.toLocaleString()}</div>
               </div>
               <div>
                 <div className="text-muted-foreground">{frequency === "weekly" ? "Weekly" : frequency === "yearly" ? "Yearly" : "Monthly"}</div>
