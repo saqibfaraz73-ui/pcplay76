@@ -412,6 +412,7 @@ export default function PosAdvanceBooking() {
       lines,
       subtotal: advCalcTotal,
       discountAmount: advDiscountAmt,
+      taxAmount: advTaxAmount > 0 ? advTaxAmount : undefined,
       total: advTotal,
       advancePayment: Number(advAdvance) || 0,
       remainingPayment: advRemaining,
