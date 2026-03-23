@@ -2,12 +2,16 @@ import React from "react";
 import { Link } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { db } from "@/db/appDb";
 import { useAuth } from "@/auth/AuthProvider";
 import { useWorkPeriod } from "@/features/pos/WorkPeriodProvider";
 import { formatIntMoney, fmtDate, fmtTime12 } from "@/features/pos/format";
 import { isSameLocalDay } from "@/features/pos/time";
 import type { Order, Expense } from "@/db/schema";
+import type { KitchenOrder, KitchenOrderStatus } from "@/db/kitchen-schema";
+import { updateKitchenOrderStatus } from "@/features/kitchen/kitchen-handler";
+import { useToast } from "@/hooks/use-toast";
 import {
   ShoppingCart,
   ClipboardList,
@@ -28,6 +32,8 @@ import {
   Trash2,
   ChefHat,
   FileText,
+  Clock,
+  CheckCircle2,
 } from "lucide-react";
 import appLogo from "@/assets/app-logo.jpg";
 
@@ -382,57 +388,8 @@ export default function PosHome() {
         </div>
       </div>
 
-      {/* Recent orders */}
-      {!isWaiter && stats && stats.recentOrders.length > 0 && (
-        <div>
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-              Recent Orders
-            </h2>
-            <Link to="/pos/orders">
-              <Button variant="ghost" size="sm" className="text-xs">
-                View All →
-              </Button>
-            </Link>
-          </div>
-          <Card className="border shadow-sm">
-            <CardContent className="p-0">
-              <div className="divide-y">
-                {stats.recentOrders.map((order) => (
-                  <div
-                    key={order.id}
-                    className="flex items-center justify-between px-4 py-3"
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="rounded-lg bg-muted p-2">
-                        <Receipt className="h-4 w-4 text-muted-foreground" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium">
-                          #{order.receiptNo}
-                        </p>
-                        <p className="text-xs text-muted-foreground truncate">
-                          {order.lines.length} item{order.lines.length > 1 ? "s" : ""} •{" "}
-                          {order.paymentMethod}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="text-right shrink-0">
-                      <p className="text-sm font-bold">{formatIntMoney(order.total)}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {new Date(order.createdAt).toLocaleTimeString([], {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
+      {/* KDS Order Queue for Admin */}
+      {isAdmin && settings?.kitchenDisplayEnabled && <AdminKdsQueue />}
 
     </div>
   );
