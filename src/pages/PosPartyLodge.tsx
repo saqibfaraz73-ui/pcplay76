@@ -1291,10 +1291,11 @@ export default function PosPartyLodge() {
                           <span className="font-medium">{a.itemName}</span>
                           {a.cancelled && <span className="text-xs font-semibold text-destructive">CANCELLED</span>}
                         </div>
-                        <span className={`font-bold ${a.cancelled ? "line-through text-muted-foreground" : "text-destructive"}`}>{formatIntMoney(a.total)}</span>
+                        <span className={`font-bold ${a.cancelled ? "line-through text-muted-foreground" : "text-destructive"}`}>{formatIntMoney(a.total + (a.taxAmount ?? 0))}</span>
                       </div>
                       <div className="text-xs text-muted-foreground mt-1">
                         {a.qty} {a.unit || "units"} × {formatIntMoney(a.unitPrice)}
+                        {a.taxAmount ? ` + Tax: ${formatIntMoney(a.taxAmount)}` : ""}
                       </div>
                       {a.note && <div className="text-xs text-muted-foreground">{a.note}</div>}
                       {a.cancelledReason && <div className="text-xs text-destructive">Reason: {a.cancelledReason}</div>}
