@@ -334,7 +334,8 @@ export function ExportPartySection() {
             unit: it.unit || undefined,
             unitPrice: it.unitPrice,
             total,
-            // Store advance/discount on first item only to avoid double-counting
+            // Store advance/discount/tax on first item only to avoid double-counting
+            taxAmount: isFirst && saleTaxAmount > 0 ? saleTaxAmount : undefined,
             advancePayment: isFirst ? (saleAdvancePayment || undefined) : undefined,
             discountAmount: isFirst ? (saleDiscount || undefined) : undefined,
             note: saleNote.trim() || undefined,
