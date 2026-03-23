@@ -100,10 +100,22 @@ function buildEscPos(data: EntryReceiptData, settings: Settings): string {
 
   const footerLines = [
     hr,
+    ...(data.taxAmount && data.taxAmount > 0
+      ? [line(`${(data.taxLabel || "Tax")}:`.padEnd(width - money(data.taxAmount).length) + money(data.taxAmount))]
+      : []),
     line("Grand Total:".padEnd(width - money(data.grandTotal).length) + money(data.grandTotal)),
     ...(data.note ? [line(`Note: ${data.note}`)] : []),
     hr,
   ];
+
+  // Tax QR for ESC/POS
+  let taxQr = "";
+  if (settings && data.receiptNo && (data.taxAmount ?? 0) > 0) {
+    taxQr = buildTaxQrEscPos({
+      settings, receiptNo: data.receiptNo,
+      taxAmount: data.taxAmount ?? 0, total: data.grandTotal, createdAt: data.date.getTime(),
+    });
+  }
 
   const totalContentLines = headerLines.length + itemLines.length + footerLines.length;
   const feedCount = getFeedLinesForSize(settings, totalContentLines);
@@ -113,6 +125,7 @@ function buildEscPos(data: EntryReceiptData, settings: Settings): string {
     headerLines.join("\n"),
     itemLines.join("\n"),
     footerLines.join("\n"),
+    taxQr,
     "\n".repeat(feedCount),
     "\x1dV\x41\x03",
   ].join("\n");
