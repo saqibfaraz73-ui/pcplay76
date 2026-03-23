@@ -1015,6 +1015,12 @@ export function RecoverySection() {
                   <div className="flex items-center gap-1 flex-wrap justify-end">
                     {!monthStatus && (
                       <>
+                        {settings?.taxEnabled && (
+                          <div className="flex items-center gap-1 mr-1">
+                            <Switch checked={!!taxEnabledMap[c.id]} onCheckedChange={() => toggleTax(c.id)} className="scale-[0.6]" />
+                            <span className="text-[10px] text-muted-foreground">{getTaxLabel(settings)}</span>
+                          </div>
+                        )}
                         <Button variant="default" size="sm" className="h-7 text-xs" onClick={() => void markPaid(c)}>
                           <CheckCircle className="h-3 w-3 mr-1" /> Paid
                         </Button>
