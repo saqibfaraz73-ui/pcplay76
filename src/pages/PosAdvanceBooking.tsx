@@ -349,6 +349,7 @@ export default function PosAdvanceBooking() {
   const [advManualTotal, setAdvManualTotal] = React.useState<string>("");
   const [advDiscount, setAdvDiscount] = React.useState("");
   const [advAdvance, setAdvAdvance] = React.useState("");
+  const [advTaxEnabled, setAdvTaxEnabled] = React.useState(false);
   const [advCustName, setAdvCustName] = React.useState("");
   const [advCustPhone, setAdvCustPhone] = React.useState("");
   const [advCustAddress, setAdvCustAddress] = React.useState("");
