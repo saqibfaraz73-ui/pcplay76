@@ -230,6 +230,14 @@ export async function shareEntryReceipt(data: EntryReceiptData) {
 
   doc.line(left, y, 216, y);
   y += 12;
+
+  if ((data.taxAmount ?? 0) > 0) {
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    doc.text(`${data.taxLabel || "Tax"}: ${money(data.taxAmount!)}`, left, y);
+    y += 12;
+  }
+
   doc.setFont("helvetica", "bold");
   doc.setFontSize(10);
   doc.text(`Grand Total: ${money(data.grandTotal)}`, left, y);
@@ -258,6 +266,16 @@ export async function shareEntryReceipt(data: EntryReceiptData) {
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8);
     doc.text(`Note: ${data.note}`, left, y);
+    y += 12;
+  }
+
+  // Tax QR in PDF
+  if (settings && data.receiptNo && shouldPrintTaxQr(settings)) {
+    y = await addTaxQrToPdf({
+      doc, settings, receiptNo: data.receiptNo,
+      taxAmount: data.taxAmount ?? 0, total: data.grandTotal, createdAt: data.date.getTime(),
+      x: left + 60, y, size: 60,
+    });
   }
 
   const safeName = data.partyName.replace(/[^a-zA-Z0-9]/g, "_").slice(0, 20);
