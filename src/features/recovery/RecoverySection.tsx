@@ -1,5 +1,6 @@
 import React from "react";
 import { FileNamePrompt } from "@/components/FileNamePrompt";
+import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { isNativeAndroid } from "@/features/pos/bluetooth-printer";
 import { sendToDefaultPrinter } from "@/features/pos/printer-routing";
