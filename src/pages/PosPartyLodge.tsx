@@ -448,7 +448,9 @@ export default function PosPartyLodge() {
     receiptNo: a.receiptNo,
     partyName: supplierName,
     lines: [{ itemName: a.itemName, qty: a.qty, unit: a.unit, unitPrice: a.unitPrice, total: a.total }],
-    grandTotal: a.total,
+    grandTotal: a.total + (a.taxAmount ?? 0),
+    taxAmount: a.taxAmount,
+    taxLabel: a.taxAmount ? (a.taxType === "percent" ? `Tax (${a.taxValue}%)` : "Tax") : undefined,
     note: a.note,
     date: new Date(a.createdAt),
   });
