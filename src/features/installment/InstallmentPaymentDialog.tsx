@@ -214,7 +214,7 @@ export function InstallmentPaymentDialog({ customer, payments, settings, agentNa
                 await savePdfBytes(new Uint8Array(bytes), fn ?? `installment_receipt_${savedPayment.receiptNo}.pdf`);
               }}
               onShare={async () => {
-                const doc = buildInstallmentReceiptPdf({ customer, payment: savedPayment, settings });
+                const doc = await buildInstallmentReceiptPdf({ customer, payment: savedPayment, settings });
                 const bytes = doc.output("arraybuffer");
                 await sharePdfBytes(new Uint8Array(bytes), `installment_receipt_${savedPayment.receiptNo}.pdf`);
               }}
