@@ -126,6 +126,9 @@ export default function PosDashboard() {
   const [editTaxAmount, setEditTaxAmount] = React.useState<number | null>(null);
   const [editServiceAmount, setEditServiceAmount] = React.useState<number | null>(null);
 
+  // Cash received for change calculation
+  const [cashReceived, setCashReceived] = React.useState<number>(0);
+
   // Barcode scanner for POS search — fullscreen continuous mode
   const [posScanning, setPosScanning] = React.useState(false);
   const [scanCount, setScanCount] = React.useState(0);
