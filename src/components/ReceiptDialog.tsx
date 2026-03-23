@@ -294,7 +294,7 @@ export function ReceiptDialog({
           </div>
         </div>
 
-        <DialogFooter className="flex flex-wrap gap-2">
+        <DialogFooter className="flex flex-wrap gap-2 pb-16 sm:pb-0">
           <SaveShareMenu
             label="Receipt PDF"
             getDefaultFileName={() => `receipt_${order.receiptNo}_${Date.now()}.pdf`}
