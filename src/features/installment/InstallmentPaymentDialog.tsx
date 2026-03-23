@@ -209,7 +209,7 @@ export function InstallmentPaymentDialog({ customer, payments, settings, agentNa
               label="Receipt"
               getDefaultFileName={() => `installment_receipt_${savedPayment.receiptNo}_${Date.now()}.pdf`}
               onSave={async (fn) => {
-                const doc = buildInstallmentReceiptPdf({ customer, payment: savedPayment, settings });
+                const doc = await buildInstallmentReceiptPdf({ customer, payment: savedPayment, settings });
                 const bytes = doc.output("arraybuffer");
                 await savePdfBytes(new Uint8Array(bytes), fn ?? `installment_receipt_${savedPayment.receiptNo}.pdf`);
               }}
