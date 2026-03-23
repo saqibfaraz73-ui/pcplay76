@@ -288,24 +288,14 @@ export default function PosHome() {
       });
     }
 
-    if (!isWaiter && settings?.kitchenDisplayEnabled) {
-      actions.push(
-        isAdmin
-          ? {
-              to: "/admin/kitchen",
-              label: "Order Status",
-              icon: ChefHat,
-              color: "bg-rose-500/10 text-rose-600 border-rose-200",
-              description: "Live order tracking",
-            }
-          : {
-              to: "/kitchen",
-              label: "Secondary Display",
-              icon: ChefHat,
-              color: "bg-rose-500/10 text-rose-600 border-rose-200",
-              description: "Connect secondary device",
-            }
-      );
+    if (!isWaiter && !isAdmin && settings?.kitchenDisplayEnabled) {
+      actions.push({
+        to: "/kitchen",
+        label: "Secondary Display",
+        icon: ChefHat,
+        color: "bg-rose-500/10 text-rose-600 border-rose-200",
+        description: "Connect secondary device",
+      });
     }
 
     if (!isWaiter && settings?.taxEnabled) {
