@@ -1445,6 +1445,15 @@ export function ExportPartySection() {
                     <Input inputMode="numeric" value={saleAdvancePayment === 0 ? "" : String(saleAdvancePayment)} onChange={(e) => setSaleAdvancePayment(parseNonDecimalInt(e.target.value))} placeholder="0" className="h-8 text-sm" />
                   </div>
                 </div>
+                {/* Tax toggle */}
+                {settings?.taxEnabled && (
+                  <div className="flex items-center gap-2 rounded-md border p-2">
+                    <input type="checkbox" id="saleTaxToggle" checked={saleTaxEnabled} onChange={(e) => setSaleTaxEnabled(e.target.checked)} className="rounded" />
+                    <Label htmlFor="saleTaxToggle" className="text-xs font-normal">
+                      Add {settings.taxLabel || "Tax"} ({settings.taxType === "percent" ? `${settings.taxValue}%` : formatIntMoney(settings.taxValue ?? 0)})
+                    </Label>
+                  </div>
+                )}
                 <div className="rounded-md border p-3 bg-muted/50 space-y-1">
                   <div className="flex justify-between text-xs text-muted-foreground">
                     <span>Grand Total ({saleItems.length} item{saleItems.length > 1 ? "s" : ""})</span>
@@ -1460,6 +1469,12 @@ export function ExportPartySection() {
                     <div className="flex justify-between text-xs font-medium">
                       <span>After Discount</span>
                       <span>{formatIntMoney(saleAfterDiscount)}</span>
+                    </div>
+                  )}
+                  {saleTaxAmount > 0 && (
+                    <div className="flex justify-between text-xs text-muted-foreground">
+                      <span>{settings?.taxLabel || "Tax"}</span>
+                      <span>+{formatIntMoney(saleTaxAmount)}</span>
                     </div>
                   )}
                   {saleAdvancePayment > 0 && (
