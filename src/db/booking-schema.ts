@@ -18,6 +18,7 @@ export type AdvanceOrder = {
   lines: AdvanceOrderLine[];
   subtotal: number;
   discountAmount: number;
+  taxAmount?: number; // tax amount from global settings
   total: number;
   advancePayment: number;
   remainingPayment: number;
