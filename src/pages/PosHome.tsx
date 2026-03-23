@@ -2,12 +2,16 @@ import React from "react";
 import { Link } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { db } from "@/db/appDb";
 import { useAuth } from "@/auth/AuthProvider";
 import { useWorkPeriod } from "@/features/pos/WorkPeriodProvider";
 import { formatIntMoney, fmtDate, fmtTime12 } from "@/features/pos/format";
 import { isSameLocalDay } from "@/features/pos/time";
 import type { Order, Expense } from "@/db/schema";
+import type { KitchenOrder, KitchenOrderStatus } from "@/db/kitchen-schema";
+import { updateKitchenOrderStatus } from "@/features/kitchen/kitchen-handler";
+import { useToast } from "@/hooks/use-toast";
 import {
   ShoppingCart,
   ClipboardList,
@@ -28,6 +32,8 @@ import {
   Trash2,
   ChefHat,
   FileText,
+  Clock,
+  CheckCircle2,
 } from "lucide-react";
 import appLogo from "@/assets/app-logo.jpg";
 
@@ -39,8 +45,92 @@ type TodayStats = {
   deliverySales: number;
   totalExpenses: number;
   netRevenue: number;
-  recentOrders: Order[];
 };
+
+const KDS_STATUS_LABELS: Record<KitchenOrderStatus, string> = {
+  pending: "New", preparing: "Preparing", ready: "Ready", served: "Served", cancelled: "Cancelled",
+};
+const KDS_STATUS_COLORS: Record<KitchenOrderStatus, string> = {
+  pending: "bg-yellow-500/10 text-yellow-700 border-yellow-500/30",
+  preparing: "bg-blue-500/10 text-blue-700 border-blue-500/30",
+  ready: "bg-green-500/10 text-green-700 border-green-500/30",
+  served: "bg-muted text-muted-foreground border-muted",
+  cancelled: "bg-destructive/10 text-destructive border-destructive/30",
+};
+const KDS_FLOW: KitchenOrderStatus[] = ["pending", "preparing", "ready", "served"];
+
+function AdminKdsQueue() {
+  const { toast } = useToast();
+  const [orders, setOrders] = React.useState<KitchenOrder[]>([]);
+
+  const load = React.useCallback(async () => {
+    const all = await db.kitchenOrders.orderBy("createdAt").reverse().limit(20).toArray();
+    setOrders(all.filter(o => o.status !== "served" && o.status !== "cancelled"));
+  }, []);
+
+  React.useEffect(() => {
+    load();
+    const iv = setInterval(load, 3000);
+    return () => clearInterval(iv);
+  }, [load]);
+
+  const advance = async (order: KitchenOrder) => {
+    const idx = KDS_FLOW.indexOf(order.status);
+    if (idx < 0 || idx >= KDS_FLOW.length - 1) return;
+    const next = KDS_FLOW[idx + 1];
+    await updateKitchenOrderStatus(order.id, next);
+    toast({ title: `#${order.orderNumber} → ${KDS_STATUS_LABELS[next]}` });
+    load();
+  };
+
+  if (orders.length === 0) return null;
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+          <ChefHat className="h-4 w-4" /> Kitchen Queue
+        </h2>
+        <Link to="/admin/kitchen">
+          <Button variant="ghost" size="sm" className="text-xs">View All →</Button>
+        </Link>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        {orders.slice(0, 6).map(order => (
+          <Card key={order.id} className="border shadow-sm">
+            <CardContent className="p-3 space-y-1.5">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-sm">#{order.orderNumber}</span>
+                <Badge className={KDS_STATUS_COLORS[order.status]} variant="outline">
+                  {KDS_STATUS_LABELS[order.status]}
+                </Badge>
+              </div>
+              <div className="space-y-0.5">
+                {order.items.map((item, i) => (
+                  <div key={i} className="flex justify-between text-xs text-muted-foreground">
+                    <span className="truncate">{item.name}</span>
+                    <span className="font-medium shrink-0 ml-2">×{item.qty}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="flex items-center justify-between pt-1 border-t">
+                <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                  <Clock className="h-3 w-3" />
+                  {new Date(order.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                </span>
+                <Button size="sm" variant="outline" className="h-6 text-[10px] px-2" onClick={() => advance(order)}>
+                  {order.status === "pending" && "Start"}
+                  {order.status === "preparing" && "Ready"}
+                  {order.status === "ready" && "Served"}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export default function PosHome() {
   const { session } = useAuth();
@@ -88,7 +178,6 @@ export default function PosHome() {
       deliverySales,
       totalExpenses,
       netRevenue: totalSales - totalExpenses,
-      recentOrders: todayOrders.slice(-5).reverse(),
     });
   }
 
@@ -382,57 +471,8 @@ export default function PosHome() {
         </div>
       </div>
 
-      {/* Recent orders */}
-      {!isWaiter && stats && stats.recentOrders.length > 0 && (
-        <div>
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-              Recent Orders
-            </h2>
-            <Link to="/pos/orders">
-              <Button variant="ghost" size="sm" className="text-xs">
-                View All →
-              </Button>
-            </Link>
-          </div>
-          <Card className="border shadow-sm">
-            <CardContent className="p-0">
-              <div className="divide-y">
-                {stats.recentOrders.map((order) => (
-                  <div
-                    key={order.id}
-                    className="flex items-center justify-between px-4 py-3"
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="rounded-lg bg-muted p-2">
-                        <Receipt className="h-4 w-4 text-muted-foreground" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium">
-                          #{order.receiptNo}
-                        </p>
-                        <p className="text-xs text-muted-foreground truncate">
-                          {order.lines.length} item{order.lines.length > 1 ? "s" : ""} •{" "}
-                          {order.paymentMethod}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="text-right shrink-0">
-                      <p className="text-sm font-bold">{formatIntMoney(order.total)}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {new Date(order.createdAt).toLocaleTimeString([], {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
+      {/* KDS Order Queue for Admin */}
+      {isAdmin && settings?.kitchenDisplayEnabled && <AdminKdsQueue />}
 
     </div>
   );
