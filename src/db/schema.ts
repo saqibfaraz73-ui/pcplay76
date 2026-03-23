@@ -502,6 +502,7 @@ export type RecoveryPayment = {
   customerId: string;
   receiptNo?: number;
   amount: number;
+  taxAmount?: number; // tax amount from global settings
   status: RecoveryPaymentStatus;
   agentName: string; // recovery agent who processed
   note?: string;
