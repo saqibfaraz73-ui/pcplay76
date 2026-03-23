@@ -251,6 +251,7 @@ export function buildBookingKot(order: BookingOrder, settings: Settings): string
   out.push(lr("Item:", order.bookableItemName));
   out.push(lr("Price:", money(order.price)));
   if (order.discountAmount > 0) out.push(lr("Discount:", money(order.discountAmount)));
+  if ((order.taxAmount ?? 0) > 0) out.push(lr(`${getTaxLabel(settings)}:`, money(order.taxAmount!)));
   out.push(lr("Total:", money(order.total)));
   out.push(lr("Advance:", money(order.advancePayment)));
   out.push(lr("Remaining:", money(order.remainingPayment)));
