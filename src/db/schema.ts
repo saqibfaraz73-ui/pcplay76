@@ -250,6 +250,7 @@ export type ExportSale = {
   unit?: string;
   unitPrice: number;
   total: number;
+  taxAmount?: number; // tax amount from global settings
   advancePayment?: number; // optional advance payment received
   discountAmount?: number; // optional discount on the sale
   note?: string;
