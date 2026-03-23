@@ -295,8 +295,17 @@ export function InstallmentPaymentDialog({ customer, payments, settings, agentNa
             <Input value={note} onChange={e => setNote(e.target.value)} placeholder="e.g. Cash payment" disabled={!canPay} />
           </div>
 
+          {/* Tax toggle */}
+          {settings?.taxEnabled && (
+            <div className="flex items-center gap-2">
+              <Switch checked={taxEnabled} onCheckedChange={setTaxEnabled} className="scale-75" />
+              <span className="text-xs">Add {getTaxLabel(settings)} {settings.taxType === "percent" ? `(${settings.taxValue}%)` : `(${formatIntMoney(settings.taxValue ?? 0)})`}</span>
+              {taxAmount > 0 && <span className="text-xs font-semibold ml-auto">{formatIntMoney(taxAmount)}</span>}
+            </div>
+          )}
+
           <div className="rounded bg-muted/50 p-2 text-xs">
-            <div>Total to collect: <strong>{formatIntMoney(amount + actualLateFee)}</strong> (Payment {formatIntMoney(amount)} + Late Fee {formatIntMoney(actualLateFee)})</div>
+            <div>Total to collect: <strong>{formatIntMoney(amount + actualLateFee + taxAmount)}</strong> (Payment {formatIntMoney(amount)} + Late Fee {formatIntMoney(actualLateFee)}{taxAmount > 0 ? ` + ${getTaxLabel(settings)} ${formatIntMoney(taxAmount)}` : ""})</div>
             <div>Balance after payment: <strong>{formatIntMoney(balanceAfter)}</strong></div>
             {balanceAfter <= 0 && <div className="text-green-600 font-semibold mt-1">✅ This will clear the account!</div>}
           </div>
