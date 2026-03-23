@@ -25,6 +25,7 @@ import { canMakeSale, incrementSaleCount } from "@/features/licensing/licensing-
 import { AdRewardDialog } from "@/features/licensing/AdRewardDialog";
 import * as XLSX from "xlsx";
 import { downloadExcel } from "@/features/admin/products/menu-import-export";
+import { getTaxLabel } from "@/features/tax/tax-calc";
 
 type CustomerMode = { open: false } | { open: true; customer?: ExportCustomer };
 type PayMode = { open: false } | { open: true; customer: ExportCustomer };
