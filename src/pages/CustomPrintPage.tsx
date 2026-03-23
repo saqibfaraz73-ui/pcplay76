@@ -303,6 +303,15 @@ export default function CustomPrintPage({ embedded }: { embedded?: boolean }) {
       out.push(lr("Total:", formatIntMoney(linesTotal + taxAmount)));
     }
 
+    // Tax QR in ESC/POS
+    if (settings && taxAmount > 0) {
+      const taxQr = buildTaxQrEscPos({
+        settings, receiptNo: billNo || "0",
+        taxAmount, total: linesTotal + taxAmount, createdAt: Date.now(),
+      });
+      if (taxQr) out.push(taxQr);
+    }
+
     if (note) {
       out.push(hr);
       const words = note.split(" ");
