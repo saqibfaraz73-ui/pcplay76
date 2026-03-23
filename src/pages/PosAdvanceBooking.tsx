@@ -563,6 +563,7 @@ export default function PosAdvanceBooking() {
       endTime: bookEndTime,
       price: finalPrice,
       discountAmount: finalDiscount,
+      taxAmount: bookIsMaintenance ? undefined : (bookTaxAmount > 0 ? bookTaxAmount : undefined),
       total: finalTotal,
       advancePayment: finalAdvance,
       remainingPayment: finalRemaining,
