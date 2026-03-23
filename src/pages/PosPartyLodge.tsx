@@ -345,6 +345,8 @@ export default function PosPartyLodge() {
         total: getItemTotal(it),
       })),
       grandTotal: arrivalTotal,
+      taxAmount: arrivalTaxAmount > 0 ? arrivalTaxAmount : undefined,
+      taxLabel: arrivalTaxAmount > 0 ? (arrivalTaxType === "percent" ? `Tax (${arrivalTaxValue}%)` : "Tax") : undefined,
       note: arrivalNote.trim() || undefined,
       date: new Date(),
     };
