@@ -469,8 +469,6 @@ export default function PosHome() {
         </div>
       </div>
 
-      {/* KDS Order Queue for Admin */}
-      {isAdmin && settings?.kitchenDisplayEnabled && <AdminKdsQueue />}
 
     </div>
   );
