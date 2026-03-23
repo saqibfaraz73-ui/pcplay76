@@ -30,6 +30,11 @@ export type InstallmentCustomer = {
   totalPrice: number; // auto-calculated (market + profit)
   totalBalance: number; // remaining balance (decreases on payment)
 
+  // Tax on total price (optional, added at customer creation)
+  taxType?: "percent" | "fixed";
+  taxValue?: number;
+  taxAmount?: number; // calculated tax amount
+
   // Installment frequency
   frequency?: InstallmentFrequency; // defaults to "monthly" if not set
 

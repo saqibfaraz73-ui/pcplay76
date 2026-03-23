@@ -62,6 +62,9 @@ export function InstallmentCustomerForm({ open, customer, onClose, onSave }: Pro
   const [customFields, setCustomFields] = React.useState<InstallmentCustomerField[]>([]);
   const [images, setImages] = React.useState<string[]>([]);
   const [frequency, setFrequency] = React.useState<InstallmentFrequency>("monthly");
+  const [taxType, setTaxType] = React.useState<"percent" | "fixed">("percent");
+  const [taxValue, setTaxValue] = React.useState(0);
+  const [taxEnabled, setTaxEnabled] = React.useState(false);
   const [allItems, setAllItems] = React.useState<MenuItem[]>([]);
   const [itemQuery, setItemQuery] = React.useState("");
   const [showItemPicker, setShowItemPicker] = React.useState(false);
