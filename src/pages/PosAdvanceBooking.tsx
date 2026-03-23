@@ -515,6 +515,7 @@ export default function PosAdvanceBooking() {
     setBookCustAddress("");
     setBookIsMaintenance(false);
     setBookLabel("Booking");
+    setBookTaxEnabled(false);
     setBookDlg(true);
   };
 
