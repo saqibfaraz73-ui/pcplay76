@@ -418,13 +418,14 @@ export default function PosPartyLodge() {
             .where("supplierId").equals(sup.id)
             .filter(a => a.receiptNo === entryNo && a.itemName === (it.itemName.trim() || sup.itemName || "—"))
             .first();
-          if (arrivalRecord) await syncPartyArrivalOptional(updatedSup ?? { ...sup, totalBalance: sup.totalBalance + totalAdded }, arrivalRecord);
+          if (arrivalRecord) await syncPartyArrivalOptional(updatedSup ?? { ...sup, totalBalance: sup.totalBalance + totalAdded + arrivalTaxAmount }, arrivalRecord);
         }
       } catch {}
 
+      const balanceAdded = totalAdded + arrivalTaxAmount;
       toast({
         title: `Arrival #${entryNo} recorded`,
-        description: `${validItems.length} item(s) totalling ${formatIntMoney(totalAdded)} added to balance`,
+        description: `${validItems.length} item(s) totalling ${formatIntMoney(balanceAdded)}${arrivalTaxAmount > 0 ? ` (incl. tax ${formatIntMoney(arrivalTaxAmount)})` : ""} added to balance`,
       });
       setArrivalMode({ open: false });
       await refresh();
