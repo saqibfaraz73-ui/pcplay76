@@ -247,6 +247,7 @@ export function ExportPartySection() {
     setSaleNote("");
     setSaleAdvancePayment(0);
     setSaleDiscount(0);
+    setSaleTaxEnabled(false);
     setSaleMode({ open: true, customer: cust });
   };
 
