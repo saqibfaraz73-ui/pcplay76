@@ -27,6 +27,7 @@ const navItems = [
   { to: "/home", label: "Dashboard", icon: Home },
   { to: "/pos", label: "Sales", icon: ShoppingCart, salesOnly: true },
   { to: "/pos/tables", label: "Tables", icon: UtensilsCrossed, tablesOnly: true },
+  { to: "/admin/kitchen", label: "Queue", icon: ChefHat, kitchenOnly: true },
   { to: "/admin", label: "Admin", icon: ClipboardList, adminOnly: true },
 ];
 
