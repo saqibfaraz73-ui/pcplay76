@@ -1,5 +1,6 @@
 import * as React from "react";
 import type { CreditCustomer, DeliveryPerson, Order, ReceiptSize, Settings } from "@/db/schema";
+import { addTaxQrToPdf, shouldPrintTaxQr } from "@/features/tax/tax-qr";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { formatIntMoney, fmtDateTime } from "@/features/pos/format";
@@ -32,7 +33,18 @@ const RECEIPT_SIZE_PT: Record<ReceiptSize, [number, number]> = {
   "2x3": [144, 216],
 };
 
-function buildReceiptPdf(order: Order, opts?: { creditCustomerName?: string; deliveryPersonName?: string; receiptSize?: ReceiptSize; settings?: Settings | null }) {
+async function addTaxQrToPdfInReceipt(doc: import("jspdf").jsPDF, settings: Settings, order: Order, left: number, y: number, width: number): Promise<number> {
+  return addTaxQrToPdf({
+    doc, settings,
+    receiptNo: order.receiptNo,
+    taxAmount: order.taxAmount ?? 0,
+    total: order.total,
+    createdAt: order.createdAt,
+    x: left + (width / 2) - 20, y, size: 40,
+  });
+}
+
+async function buildReceiptPdf(order: Order, opts?: { creditCustomerName?: string; deliveryPersonName?: string; receiptSize?: ReceiptSize; settings?: Settings | null }) {
   const size = opts?.receiptSize ?? "2x3";
   const [pdfW, pdfH] = RECEIPT_SIZE_PT[size];
   const doc = new jsPDF({ unit: "pt", format: [pdfW, pdfH] });
@@ -118,33 +130,10 @@ function buildReceiptPdf(order: Order, opts?: { creditCustomerName?: string; del
   }
   rightLine("Total", formatIntMoney(order.total), true);
 
-  // Tax authority QR (only when tax API is enabled and QR not disabled)
-  if (
-    opts?.settings?.taxEnabled &&
-    opts?.settings?.taxApiEnabled &&
-    !opts?.settings?.taxQrDisabled &&
-    opts?.settings?.taxApiBusinessNtn
-  ) {
+  // Tax authority QR image
+  if (opts?.settings && shouldPrintTaxQr(opts.settings) && order.receiptNo) {
     y += 6;
-    const taxQrData = JSON.stringify({
-      ntn: opts.settings.taxApiBusinessNtn,
-      posId: opts.settings.taxApiPosId || "",
-      inv: order.receiptNo,
-      dt: order.createdAt,
-      tax: order.taxAmount,
-      total: order.total,
-    });
-    // Simple text placeholder for QR in PDF — actual QR requires a library
-    doc.setFontSize(6);
-    doc.setFont("helvetica", "normal");
-    doc.text("Tax Verification QR:", left, y);
-    y += lineH * 0.8;
-    doc.text(`NTN: ${opts.settings.taxApiBusinessNtn}`, left, y);
-    y += lineH * 0.8;
-    doc.text(`POS: ${opts.settings.taxApiPosId || "N/A"}`, left, y);
-    y += lineH * 0.8;
-    doc.text(`Invoice: ${order.receiptNo}`, left, y);
-    y += lineH;
+    y = await addTaxQrToPdfInReceipt(doc, opts.settings, order, left, y, width);
   }
 
   y += 4;
@@ -183,7 +172,7 @@ export function ReceiptDialog({
   const getReceiptPdfBytes = React.useCallback(async () => {
     const settings = await db.settings.get("app");
     const receiptSize = settings?.receiptSize ?? "2x3";
-    const doc = buildReceiptPdf(order, { creditCustomerName: customerName, deliveryPersonName, receiptSize, settings: settings ?? null });
+    const doc = await buildReceiptPdf(order, { creditCustomerName: customerName, deliveryPersonName, receiptSize, settings: settings ?? null });
     const bytes = new Uint8Array(doc.output("arraybuffer"));
     const fileName = `receipt_${order.receiptNo}_${Date.now()}.pdf`;
     return { bytes, fileName };
@@ -316,7 +305,7 @@ export function ReceiptDialog({
           </div>
         </div>
 
-        <DialogFooter className="flex flex-wrap gap-2">
+        <DialogFooter className="flex flex-wrap gap-2 pb-16 sm:pb-0">
           <SaveShareMenu
             label="Receipt PDF"
             getDefaultFileName={() => `receipt_${order.receiptNo}_${Date.now()}.pdf`}
