@@ -105,10 +105,10 @@ export default function CustomPrintPage({ embedded }: { embedded?: boolean }) {
   };
 
   const buildReceiptPdf = async (): Promise<jsPDF> => {
-    const doc = new jsPDF({ unit: "mm", format: [80, 150] });
+    const doc = new jsPDF({ unit: "mm", format: [80, 180] });
     let y = 8;
 
-    // Logo – logoUrl is already base64 data URL
+    // Logo
     if (logoUrl) {
       try {
         doc.addImage(logoUrl, "JPEG", 25, y, 30, 15);
@@ -168,6 +168,16 @@ export default function CustomPrintPage({ embedded }: { embedded?: boolean }) {
       doc.setFont("helvetica", "normal");
       y += 4;
     }
+
+    // Tax QR in PDF
+    if (settings && shouldPrintTaxQr(settings) && taxAmount > 0) {
+      y = await addTaxQrToPdf({
+        doc, settings, receiptNo: billNo || "0",
+        taxAmount, total: linesTotal + taxAmount, createdAt: Date.now(),
+        x: 20, y: y + 2, size: 40,
+      });
+    }
+
     if (note) {
       y += 2;
       doc.line(4, y, 76, y);
