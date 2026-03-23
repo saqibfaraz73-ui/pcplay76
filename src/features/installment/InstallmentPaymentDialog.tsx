@@ -122,6 +122,7 @@ export function InstallmentPaymentDialog({ customer, payments, settings, agentNa
   }, [includeDues, accumulatedDues, customer.monthlyInstallment]);
 
   const balanceBefore = customer.totalBalance;
+  const taxAmount = taxEnabled ? calcGlobalTax(amount, settings) : 0;
   const balanceAfter = Math.max(0, balanceBefore - amount);
   const actualLateFee = includeLateFee ? lateFee : 0;
 
