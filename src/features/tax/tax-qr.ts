@@ -14,14 +14,16 @@ export function buildTaxQrPayload(args: {
   createdAt: number;
 }): string {
   const { settings: s, receiptNo, taxAmount, total, createdAt } = args;
-  return JSON.stringify({
-    ntn: s.taxApiBusinessNtn ?? "",
-    posId: s.taxApiPosId ?? "",
-    inv: receiptNo,
-    dt: createdAt,
-    tax: taxAmount,
-    total,
-  });
+  const dt = new Date(createdAt);
+  const dateStr = `${String(dt.getDate()).padStart(2, "0")}/${String(dt.getMonth() + 1).padStart(2, "0")}/${dt.getFullYear()} ${String(dt.getHours()).padStart(2, "0")}:${String(dt.getMinutes()).padStart(2, "0")}`;
+  return [
+    `NTN: ${s.taxApiBusinessNtn ?? ""}`,
+    `POS: ${s.taxApiPosId ?? ""}`,
+    `Invoice: ${receiptNo}`,
+    `Date: ${dateStr}`,
+    `Tax: ${taxAmount}`,
+    `Total: ${total}`,
+  ].join("\n");
 }
 
 /** Check if tax QR should be printed */
