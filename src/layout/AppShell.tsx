@@ -27,12 +27,12 @@ const navItems = [
   { to: "/home", label: "Dashboard", icon: Home },
   { to: "/pos", label: "Sales", icon: ShoppingCart, salesOnly: true },
   { to: "/pos/tables", label: "Tables", icon: UtensilsCrossed, tablesOnly: true },
+  { to: "/admin/kitchen", label: "Queue", icon: ChefHat, kitchenOnly: true },
   { to: "/admin", label: "Admin", icon: ClipboardList, adminOnly: true },
 ];
 
 const adminSubNav = [
   { to: "/admin/reports", label: "Reports", icon: BarChart3 },
-  { to: "/admin/labels", label: "Print Barcodes", icon: Tags },
   { to: "/admin/printer", label: "Printer", icon: Printer },
   { to: "/admin/settings", label: "Settings", icon: Settings },
 ];
@@ -139,9 +139,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       if (n.adminOnly && !isAdmin) return false;
       if ((n as any).salesOnly && !salesDashboardEnabled) return false;
       if ((n as any).tablesOnly && !tableManagementEnabled) return false;
+      if ((n as any).kitchenOnly && !kitchenDisplayEnabled) return false;
       return true;
     });
-  }, [isAdmin, isWaiter, isRecoveryAgent, isInstallmentAgent, salesDashboardEnabled]);
+  }, [isAdmin, isWaiter, isRecoveryAgent, isInstallmentAgent, salesDashboardEnabled, tableManagementEnabled, kitchenDisplayEnabled]);
 
   const visibleAdminSubNav = React.useMemo(() => {
     return adminSubNav;

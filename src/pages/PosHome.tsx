@@ -34,6 +34,7 @@ import {
   FileText,
   Clock,
   CheckCircle2,
+  Tags,
 } from "lucide-react";
 import appLogo from "@/assets/app-logo.jpg";
 
@@ -320,6 +321,13 @@ export default function PosHome() {
     }
 
     if (isAdmin) {
+      actions.push({
+        to: "/admin/labels",
+        label: "Print Barcodes",
+        icon: Tags,
+        color: "bg-stone-500/10 text-stone-600 border-stone-200",
+        description: "Print product labels",
+      });
       actions.push({
         to: "/admin/reports",
         label: "Reports",
