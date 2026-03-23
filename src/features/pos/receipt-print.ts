@@ -249,15 +249,11 @@ async function buildEscPosReceipt(
     settings.taxApiBusinessNtn &&
     !opts?.skipBarcode
   ) {
-    const taxQrData = JSON.stringify({
-      ntn: settings.taxApiBusinessNtn,
-      posId: settings.taxApiPosId || "",
-      inv: order.receiptNo,
-      dt: order.createdAt,
-      tax: order.taxAmount,
-      total: order.total,
+    const { buildTaxQrEscPos: buildTaxQr } = await import("@/features/tax/tax-qr");
+    taxQrCommands = buildTaxQr({
+      settings, receiptNo: order.receiptNo,
+      taxAmount: order.taxAmount, total: order.total, createdAt: order.createdAt,
     });
-    taxQrCommands = "\n" + buildEscPosQr(taxQrData, 5);
   }
 
   const totalContentLines = headerLines.length + 1 + itemLines.length + totals.length + (logoCommands ? 4 : 0);
