@@ -54,6 +54,7 @@ export function AdminSettings() {
   const [taxApiEndpoint, setTaxApiEndpoint] = React.useState("");
   const [taxApiBusinessNtn, setTaxApiBusinessNtn] = React.useState("");
   const [taxQrDisabled, setTaxQrDisabled] = React.useState(false);
+  const [taxTestResult, setTaxTestResult] = React.useState("");
 
   // Service charge settings
   const [serviceChargeEnabled, setServiceChargeEnabled] = React.useState(false);
@@ -636,6 +637,57 @@ export function AdminSettings() {
                           onChange={(e) => setTaxApiEndpoint(e.target.value)}
                           placeholder={taxCountry === "PK" ? "https://tp.fbr.gov.pk/..." : "https://api.example.com/..."}
                         />
+                      </div>
+
+                      {/* Test Connection Button */}
+                      <div className="space-y-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          disabled={!taxApiEndpoint.trim() || !taxApiKey.trim()}
+                          onClick={async () => {
+                            const testPayload = {
+                              businessNtn: taxApiBusinessNtn || "TEST-NTN",
+                              posId: taxApiPosId || "TEST-POS",
+                              receiptNo: 0,
+                              dateTime: Date.now(),
+                              subtotal: 100,
+                              taxAmount: 10,
+                              total: 110,
+                              taxLabel: "Tax",
+                              taxPercent: 10,
+                              items: [{ name: "Test Item", qty: 1, unitPrice: 100, subtotal: 100 }],
+                            };
+                            setTaxTestResult("⏳ Testing...");
+                            try {
+                              const resp = await fetch(taxApiEndpoint.trim(), {
+                                method: "POST",
+                                headers: {
+                                  "Content-Type": "application/json",
+                                  "Authorization": `Bearer ${taxApiKey.trim()}`,
+                                },
+                                body: JSON.stringify(testPayload),
+                                signal: AbortSignal.timeout(15000),
+                              });
+                              const body = await resp.text();
+                              if (resp.ok) {
+                                setTaxTestResult(`✅ Success (${resp.status}):\n${body.slice(0, 500)}`);
+                              } else {
+                                setTaxTestResult(`❌ Error (${resp.status}):\n${body.slice(0, 500)}`);
+                              }
+                            } catch (err: any) {
+                              setTaxTestResult(`❌ Failed: ${err?.message || String(err)}`);
+                            }
+                          }}
+                        >
+                          🔗 Test Connection
+                        </Button>
+                        {taxTestResult && (
+                          <pre className="text-xs bg-muted p-2 rounded-md whitespace-pre-wrap max-h-40 overflow-auto">
+                            {taxTestResult}
+                          </pre>
+                        )}
                       </div>
                     </div>
                     <p className="text-xs text-muted-foreground">
