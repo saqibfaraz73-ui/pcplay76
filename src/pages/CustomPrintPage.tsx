@@ -656,6 +656,19 @@ export default function CustomPrintPage({ embedded }: { embedded?: boolean }) {
                         </div>
                       ) : null
                     )}
+                    {taxAmount > 0 && (
+                      <>
+                        <Separator className="my-1 bg-black/30" />
+                        <div className="flex justify-between">
+                          <span>{getTaxLabel(settings)}:</span>
+                          <span>{formatIntMoney(taxAmount)}</span>
+                        </div>
+                        <div className="flex justify-between font-bold">
+                          <span>Total:</span>
+                          <span>{formatIntMoney(linesTotal + taxAmount)}</span>
+                        </div>
+                      </>
+                    )}
                     {note && (
                       <>
                         <Separator className="my-1 bg-black/30" />
