@@ -349,6 +349,7 @@ export default function PosAdvanceBooking() {
   const [advManualTotal, setAdvManualTotal] = React.useState<string>("");
   const [advDiscount, setAdvDiscount] = React.useState("");
   const [advAdvance, setAdvAdvance] = React.useState("");
+  const [advTaxEnabled, setAdvTaxEnabled] = React.useState(false);
   const [advCustName, setAdvCustName] = React.useState("");
   const [advCustPhone, setAdvCustPhone] = React.useState("");
   const [advCustAddress, setAdvCustAddress] = React.useState("");
@@ -360,6 +361,7 @@ export default function PosAdvanceBooking() {
     setAdvManualTotal("");
     setAdvDiscount("");
     setAdvAdvance("");
+    setAdvTaxEnabled(false);
     setAdvCustName("");
     setAdvCustPhone("");
     setAdvCustAddress("");
@@ -387,7 +389,13 @@ export default function PosAdvanceBooking() {
   const advCalcTotal = advLines.reduce((s, l) => s + l.subtotal, 0);
   const advPreTotal = advManualTotal ? Number(advManualTotal) || 0 : advCalcTotal;
   const advDiscountAmt = Math.min(Math.max(0, Number(advDiscount) || 0), advPreTotal);
-  const advTotal = Math.max(0, advPreTotal - advDiscountAmt);
+  const advAfterDiscount = Math.max(0, advPreTotal - advDiscountAmt);
+  const advTaxAmount = React.useMemo(() => {
+    if (!advTaxEnabled || !settings?.taxEnabled || !settings.taxValue) return 0;
+    if (settings.taxType === "percent") return Math.round(advAfterDiscount * settings.taxValue / 100);
+    return Math.round(settings.taxValue);
+  }, [advTaxEnabled, settings, advAfterDiscount]);
+  const advTotal = advAfterDiscount + advTaxAmount;
   const advRemaining = Math.max(0, advTotal - (Number(advAdvance) || 0));
 
   const buildAdvanceOrder = async (): Promise<AdvanceOrder | null> => {
@@ -404,6 +412,7 @@ export default function PosAdvanceBooking() {
       lines,
       subtotal: advCalcTotal,
       discountAmount: advDiscountAmt,
+      taxAmount: advTaxAmount > 0 ? advTaxAmount : undefined,
       total: advTotal,
       advancePayment: Number(advAdvance) || 0,
       remainingPayment: advRemaining,

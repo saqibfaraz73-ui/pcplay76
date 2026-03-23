@@ -56,6 +56,7 @@ export type InstallmentPayment = {
   receiptNo?: number;
   amount: number; // payment amount (excluding late fee)
   lateFeeAmount?: number; // late fee charged on this payment
+  taxAmount?: number; // tax amount from global settings
   balanceBefore: number;
   balanceAfter: number;
   agentName: string; // who recorded

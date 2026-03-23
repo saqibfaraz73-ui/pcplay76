@@ -89,6 +89,10 @@ export default function PosPartyLodge() {
   });
   const [arrivalItems, setArrivalItems] = React.useState<ArrivalItem[]>([makeEmptyItem()]);
   const [arrivalNote, setArrivalNote] = React.useState("");
+  // Tax for arrival (custom: amount or percent)
+  const [arrivalTaxEnabled, setArrivalTaxEnabled] = React.useState(false);
+  const [arrivalTaxType, setArrivalTaxType] = React.useState<"amount" | "percent">("amount");
+  const [arrivalTaxValue, setArrivalTaxValue] = React.useState(0);
   // Supplier form
   const [sName, setSName] = React.useState("");
   const [sContact, setSContact] = React.useState("");
@@ -293,6 +297,9 @@ export default function PosPartyLodge() {
       unit: sup.stockUnit ?? "",
     }]);
     setArrivalNote("");
+    setArrivalTaxEnabled(false);
+    setArrivalTaxType("amount");
+    setArrivalTaxValue(0);
     setArrivalMode({ open: true, supplier: sup });
   };
 
@@ -310,10 +317,18 @@ export default function PosPartyLodge() {
 
   const getItemTotal = (it: ArrivalItem) => it.useManualTotal ? it.manualTotal : it.qty * it.unitPrice;
 
-  const arrivalTotal = React.useMemo(() => {
+  const arrivalSubtotal = React.useMemo(() => {
     if (!arrivalMode.open) return 0;
     return arrivalItems.reduce((sum, it) => sum + getItemTotal(it), 0);
   }, [arrivalMode.open, arrivalItems]);
+
+  const arrivalTaxAmount = React.useMemo(() => {
+    if (!arrivalTaxEnabled || arrivalTaxValue <= 0) return 0;
+    if (arrivalTaxType === "percent") return Math.round(arrivalSubtotal * arrivalTaxValue / 100);
+    return Math.round(arrivalTaxValue);
+  }, [arrivalTaxEnabled, arrivalTaxType, arrivalTaxValue, arrivalSubtotal]);
+
+  const arrivalTotal = arrivalSubtotal + arrivalTaxAmount;
 
   const buildArrivalReceiptData = (): EntryReceiptData | null => {
     if (!arrivalMode.open) return null;
@@ -362,6 +377,7 @@ export default function PosPartyLodge() {
       if (receiptData) receiptData.receiptNo = entryNo;
 
       await db.transaction("rw", [db.suppliers, db.supplierArrivals], async () => {
+        let isFirst = true;
         for (const it of validItems) {
           const total = getItemTotal(it);
           totalAdded += total;
@@ -374,13 +390,20 @@ export default function PosPartyLodge() {
             unit: it.unit || undefined,
             unitPrice: it.unitPrice,
             total,
+            // Store tax on first item only to avoid double-counting
+            taxAmount: isFirst && arrivalTaxAmount > 0 ? arrivalTaxAmount : undefined,
+            taxType: isFirst && arrivalTaxAmount > 0 ? arrivalTaxType : undefined,
+            taxValue: isFirst && arrivalTaxAmount > 0 ? arrivalTaxValue : undefined,
             note: arrivalNote.trim() || undefined,
             createdAt: Date.now(),
           };
           await db.supplierArrivals.put(arrival);
+          isFirst = false;
         }
+        // Total added to balance includes tax
+        const balanceToAdd = totalAdded + arrivalTaxAmount;
         await db.suppliers.update(sup.id, {
-          totalBalance: sup.totalBalance + totalAdded,
+          totalBalance: sup.totalBalance + balanceToAdd,
         });
       });
 
@@ -395,13 +418,14 @@ export default function PosPartyLodge() {
             .where("supplierId").equals(sup.id)
             .filter(a => a.receiptNo === entryNo && a.itemName === (it.itemName.trim() || sup.itemName || "—"))
             .first();
-          if (arrivalRecord) await syncPartyArrivalOptional(updatedSup ?? { ...sup, totalBalance: sup.totalBalance + totalAdded }, arrivalRecord);
+          if (arrivalRecord) await syncPartyArrivalOptional(updatedSup ?? { ...sup, totalBalance: sup.totalBalance + totalAdded + arrivalTaxAmount }, arrivalRecord);
         }
       } catch {}
 
+      const balanceAdded = totalAdded + arrivalTaxAmount;
       toast({
         title: `Arrival #${entryNo} recorded`,
-        description: `${validItems.length} item(s) totalling ${formatIntMoney(totalAdded)} added to balance`,
+        description: `${validItems.length} item(s) totalling ${formatIntMoney(balanceAdded)}${arrivalTaxAmount > 0 ? ` (incl. tax ${formatIntMoney(arrivalTaxAmount)})` : ""} added to balance`,
       });
       setArrivalMode({ open: false });
       await refresh();
@@ -1583,9 +1607,48 @@ export default function PosPartyLodge() {
                   <Label htmlFor="arrNote">Note (optional)</Label>
                   <Input id="arrNote" value={arrivalNote} onChange={(e) => setArrivalNote(e.target.value)} placeholder="e.g., Weekly supply" />
                 </div>
-                <div className="rounded-md border p-3 bg-muted/50">
-                  <div className="text-xs text-muted-foreground">Grand Total ({arrivalItems.length} item{arrivalItems.length > 1 ? "s" : ""})</div>
-                  <div className="text-lg font-bold">{formatIntMoney(arrivalTotal)}</div>
+                {/* Tax (optional) */}
+                <div className="rounded-md border p-3 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <input type="checkbox" id="arrTaxToggle" checked={arrivalTaxEnabled} onChange={(e) => setArrivalTaxEnabled(e.target.checked)} className="rounded" />
+                    <Label htmlFor="arrTaxToggle" className="text-xs font-normal">Add Tax (optional)</Label>
+                  </div>
+                  {arrivalTaxEnabled && (
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-1">
+                        <Label className="text-xs">Tax Type</Label>
+                        <select value={arrivalTaxType} onChange={(e) => setArrivalTaxType(e.target.value as "amount" | "percent")} className="h-8 w-full rounded-md border bg-background px-2 text-xs">
+                          <option value="amount">Flat Amount</option>
+                          <option value="percent">Percentage (%)</option>
+                        </select>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">{arrivalTaxType === "percent" ? "Tax %" : "Tax Amount"}</Label>
+                        <Input inputMode="numeric" value={arrivalTaxValue === 0 ? "" : String(arrivalTaxValue)} onChange={(e) => setArrivalTaxValue(parseNonDecimalInt(e.target.value))} placeholder="0" className="h-8 text-sm" />
+                      </div>
+                    </div>
+                  )}
+                  {arrivalTaxEnabled && arrivalTaxAmount > 0 && (
+                    <div className="text-xs text-muted-foreground">
+                      Tax: {formatIntMoney(arrivalTaxAmount)}{arrivalTaxType === "percent" ? ` (${arrivalTaxValue}% of ${formatIntMoney(arrivalSubtotal)})` : ""}
+                    </div>
+                  )}
+                </div>
+                <div className="rounded-md border p-3 bg-muted/50 space-y-1">
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <span>Subtotal ({arrivalItems.length} item{arrivalItems.length > 1 ? "s" : ""})</span>
+                    <span>{formatIntMoney(arrivalSubtotal)}</span>
+                  </div>
+                  {arrivalTaxAmount > 0 && (
+                    <div className="flex justify-between text-xs text-muted-foreground">
+                      <span>Tax</span>
+                      <span>+{formatIntMoney(arrivalTaxAmount)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between pt-1 border-t">
+                    <span className="text-xs text-muted-foreground">Grand Total</span>
+                    <span className="text-lg font-bold">{formatIntMoney(arrivalTotal)}</span>
+                  </div>
                 </div>
               </>
             )}

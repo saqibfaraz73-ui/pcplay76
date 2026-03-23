@@ -18,6 +18,7 @@ export type AdvanceOrder = {
   lines: AdvanceOrderLine[];
   subtotal: number;
   discountAmount: number;
+  taxAmount?: number; // tax amount from global settings
   total: number;
   advancePayment: number;
   remainingPayment: number;
@@ -58,7 +59,8 @@ export type BookingOrder = {
   endTime: string; // e.g. "10:30"
   price: number;
   discountAmount: number;
-  total: number; // price - discount
+  taxAmount?: number; // tax amount from global settings
+  total: number; // price - discount + tax
   advancePayment: number;
   remainingPayment: number;
   isMaintenance?: boolean; // if true, slot is blocked as "Not Available" and not counted in sales

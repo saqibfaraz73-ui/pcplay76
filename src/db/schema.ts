@@ -217,6 +217,9 @@ export type SupplierArrival = {
   unit?: string;
   unitPrice: number;
   total: number;
+  taxAmount?: number; // optional custom tax amount charged by supplier
+  taxType?: "amount" | "percent"; // how tax was entered
+  taxValue?: number; // raw tax input (amount or percent)
   note?: string;
   cancelled?: boolean;
   cancelledReason?: string;
@@ -247,6 +250,7 @@ export type ExportSale = {
   unit?: string;
   unitPrice: number;
   total: number;
+  taxAmount?: number; // tax amount from global settings
   advancePayment?: number; // optional advance payment received
   discountAmount?: number; // optional discount on the sale
   note?: string;
@@ -498,6 +502,7 @@ export type RecoveryPayment = {
   customerId: string;
   receiptNo?: number;
   amount: number;
+  taxAmount?: number; // tax amount from global settings
   status: RecoveryPaymentStatus;
   agentName: string; // recovery agent who processed
   note?: string;

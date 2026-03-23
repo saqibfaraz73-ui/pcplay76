@@ -97,6 +97,7 @@ export function ExportPartySection() {
   const [saleNote, setSaleNote] = React.useState("");
   const [saleAdvancePayment, setSaleAdvancePayment] = React.useState(0);
   const [saleDiscount, setSaleDiscount] = React.useState(0);
+  const [saleTaxEnabled, setSaleTaxEnabled] = React.useState(false);
 
   // PDF filter
   const toDateVal = (ts: number) => {
@@ -246,6 +247,7 @@ export function ExportPartySection() {
     setSaleNote("");
     setSaleAdvancePayment(0);
     setSaleDiscount(0);
+    setSaleTaxEnabled(false);
     setSaleMode({ open: true, customer: cust });
   };
 
@@ -264,7 +266,13 @@ export function ExportPartySection() {
   }, [saleMode.open, saleItems]);
 
   const saleAfterDiscount = React.useMemo(() => Math.max(0, saleTotal - saleDiscount), [saleTotal, saleDiscount]);
-  const saleRemainingBalance = React.useMemo(() => Math.max(0, saleAfterDiscount - saleAdvancePayment), [saleAfterDiscount, saleAdvancePayment]);
+  const saleTaxAmount = React.useMemo(() => {
+    if (!saleTaxEnabled || !settings?.taxEnabled || !settings.taxValue) return 0;
+    if (settings.taxType === "percent") return Math.round(saleAfterDiscount * settings.taxValue / 100);
+    return Math.round(settings.taxValue);
+  }, [saleTaxEnabled, settings, saleAfterDiscount]);
+  const saleAfterTax = saleAfterDiscount + saleTaxAmount;
+  const saleRemainingBalance = React.useMemo(() => Math.max(0, saleAfterTax - saleAdvancePayment), [saleAfterTax, saleAdvancePayment]);
 
   const buildSaleReceiptData = (): EntryReceiptData | null => {
     if (!saleMode.open) return null;
@@ -309,8 +317,8 @@ export function ExportPartySection() {
       const receiptData = buildSaleReceiptData();
       if (receiptData) receiptData.receiptNo = entryNo;
 
-      // Net amount to add to balance = total - discount (advance is handled via payment record)
-      const netTotal = saleAfterDiscount;
+      // Net amount to add to balance = total - discount + tax (advance is handled via payment record)
+      const netTotal = saleAfterTax;
 
       await db.transaction("rw", [db.exportCustomers, db.exportSales, db.exportPayments], async () => {
         let isFirst = true;
@@ -326,7 +334,8 @@ export function ExportPartySection() {
             unit: it.unit || undefined,
             unitPrice: it.unitPrice,
             total,
-            // Store advance/discount on first item only to avoid double-counting
+            // Store advance/discount/tax on first item only to avoid double-counting
+            taxAmount: isFirst && saleTaxAmount > 0 ? saleTaxAmount : undefined,
             advancePayment: isFirst ? (saleAdvancePayment || undefined) : undefined,
             discountAmount: isFirst ? (saleDiscount || undefined) : undefined,
             note: saleNote.trim() || undefined,
@@ -1436,6 +1445,15 @@ export function ExportPartySection() {
                     <Input inputMode="numeric" value={saleAdvancePayment === 0 ? "" : String(saleAdvancePayment)} onChange={(e) => setSaleAdvancePayment(parseNonDecimalInt(e.target.value))} placeholder="0" className="h-8 text-sm" />
                   </div>
                 </div>
+                {/* Tax toggle */}
+                {settings?.taxEnabled && (
+                  <div className="flex items-center gap-2 rounded-md border p-2">
+                    <input type="checkbox" id="saleTaxToggle" checked={saleTaxEnabled} onChange={(e) => setSaleTaxEnabled(e.target.checked)} className="rounded" />
+                    <Label htmlFor="saleTaxToggle" className="text-xs font-normal">
+                      Add {settings.taxLabel || "Tax"} ({settings.taxType === "percent" ? `${settings.taxValue}%` : formatIntMoney(settings.taxValue ?? 0)})
+                    </Label>
+                  </div>
+                )}
                 <div className="rounded-md border p-3 bg-muted/50 space-y-1">
                   <div className="flex justify-between text-xs text-muted-foreground">
                     <span>Grand Total ({saleItems.length} item{saleItems.length > 1 ? "s" : ""})</span>
@@ -1451,6 +1469,12 @@ export function ExportPartySection() {
                     <div className="flex justify-between text-xs font-medium">
                       <span>After Discount</span>
                       <span>{formatIntMoney(saleAfterDiscount)}</span>
+                    </div>
+                  )}
+                  {saleTaxAmount > 0 && (
+                    <div className="flex justify-between text-xs text-muted-foreground">
+                      <span>{settings?.taxLabel || "Tax"}</span>
+                      <span>+{formatIntMoney(saleTaxAmount)}</span>
                     </div>
                   )}
                   {saleAdvancePayment > 0 && (
