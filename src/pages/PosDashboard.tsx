@@ -1,5 +1,6 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
+import { fetchTaxRateFromApi, getEffectiveTaxPercent } from "@/features/tax/tax-calc";
 import { Html5Qrcode } from "html5-qrcode";
 import { playScanBeep } from "@/features/pos/scan-beep";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -43,11 +44,15 @@ function calculateCharges(
   const taxLabel = settings?.taxLabel || "Tax";
   const serviceLabel = settings?.serviceChargeLabel || "Service";
 
-  if (settings?.taxEnabled && settings.taxValue) {
-    if (settings.taxType === "percent") {
-      taxAmount = Math.round((subtotalAfterDiscount * settings.taxValue) / 100);
-    } else {
-      taxAmount = Math.round(settings.taxValue);
+  if (settings?.taxEnabled) {
+    const rate = getEffectiveTaxPercent(settings);
+    if (rate > 0) {
+      // If manual taxValue is set and type is fixed amount
+      if (settings.taxValue && settings.taxValue > 0 && settings.taxType !== "percent") {
+        taxAmount = Math.round(settings.taxValue);
+      } else {
+        taxAmount = Math.round((subtotalAfterDiscount * rate) / 100);
+      }
     }
   }
 
@@ -286,6 +291,10 @@ export default function PosDashboard() {
     setPosSettings(s ?? null);
     setShowItemImages(s?.posShowItemImages ?? true);
     setCurrencySymbol(s?.currencySymbol || "Rs");
+    // Pre-fetch tax rate from API if no manual rate is set
+    if (s?.taxEnabled && s.taxApiEnabled && (!s.taxValue || s.taxValue <= 0)) {
+      void fetchTaxRateFromApi(s).catch(() => {});
+    }
   }, []);
 
   const canCreateCustomers = session?.role === "admin";
