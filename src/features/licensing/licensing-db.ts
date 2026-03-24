@@ -24,6 +24,8 @@ export type LicenseRecord = {
   customPrintCount: number;
   labelPrintCount: number;
   installmentCount: number;
+  recoveryCount: number;
+  daybookCount: number;
 };
 
 const MODULE_LIMIT = 15;
@@ -31,7 +33,9 @@ const TOTAL_LIMIT = 60;
 const LODGE_LIMIT = 5;
 const EXPENSE_LIMIT = 5;
 const PRINT_LIMIT = 5;
-const INSTALLMENT_LIMIT = 10;
+const INSTALLMENT_LIMIT = 5;
+const RECOVERY_LIMIT = 5;
+const DAYBOOK_LIMIT = 5;
 
 /**
  * Generate a deterministic device ID from stable hardware/browser properties.
@@ -90,6 +94,8 @@ export async function getLicense(): Promise<LicenseRecord> {
       customPrintCount: 0,
       labelPrintCount: 0,
       installmentCount: 0,
+      recoveryCount: 0,
+      daybookCount: 0,
     };
     await (db as any).license.put(rec);
   }
@@ -161,7 +167,8 @@ export async function updateLicense(partial: Partial<Omit<LicenseRecord, "id">>)
 
 export type SalesModule =
   | "cash" | "credit" | "delivery" | "table"
-  | "partyLodge" | "expenses" | "customPrint" | "labelPrint" | "installment";
+  | "partyLodge" | "expenses" | "customPrint" | "labelPrint" | "installment"
+  | "recovery" | "daybook";
 
 const moduleKey: Record<SalesModule, keyof LicenseRecord> = {
   cash: "cashSalesCount",
@@ -173,6 +180,8 @@ const moduleKey: Record<SalesModule, keyof LicenseRecord> = {
   customPrint: "customPrintCount",
   labelPrint: "labelPrintCount",
   installment: "installmentCount",
+  recovery: "recoveryCount",
+  daybook: "daybookCount",
 };
 
 const moduleLimit: Partial<Record<SalesModule, number>> = {
@@ -181,6 +190,8 @@ const moduleLimit: Partial<Record<SalesModule, number>> = {
   customPrint: PRINT_LIMIT,
   labelPrint: PRINT_LIMIT,
   installment: INSTALLMENT_LIMIT,
+  recovery: RECOVERY_LIMIT,
+  daybook: DAYBOOK_LIMIT,
 };
 
 export type CanSaleResult = {
