@@ -235,7 +235,7 @@ export async function canMakeSale(module: SalesModule, count: number = 1): Promi
   const limit = moduleLimit[module] ?? MODULE_LIMIT;
 
   // For sales modules, also check total limit
-  if (module !== "partyLodge" && module !== "expenses" && module !== "customPrint" && module !== "labelPrint" && module !== "installment") {
+  if (module !== "partyLodge" && module !== "expenses" && module !== "customPrint" && module !== "labelPrint" && module !== "installment" && module !== "recovery" && module !== "daybook") {
     const total = lic.cashSalesCount + lic.creditSalesCount + lic.deliverySalesCount + lic.tableSalesCount;
     if (total >= TOTAL_LIMIT) {
       return {
