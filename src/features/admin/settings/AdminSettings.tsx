@@ -207,6 +207,13 @@ export function AdminSettings() {
 
     const lic = await getLicense();
     setIsPremium(lic.isPremium);
+
+    // Load tax queue stats
+    try {
+      const { getQueueStats } = await import("@/features/tax/tax-queue");
+      const stats = await getQueueStats();
+      setTaxQueueStats(stats);
+    } catch { /* queue not initialized */ }
   }, []);
 
   React.useEffect(() => {
