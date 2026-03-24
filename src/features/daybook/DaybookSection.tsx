@@ -7,6 +7,8 @@ import { formatIntMoney, parseNonDecimalInt, fmtDateTime } from "@/features/pos/
 import { sharePdfBytes, savePdfBytes } from "@/features/pos/share-utils";
 import { buildSpendingSharePdf, buildDaybookReportPdf, buildBalancePdf } from "./daybook-pdf";
 import { useToast } from "@/hooks/use-toast";
+import { canMakeSale, incrementSaleCount } from "@/features/licensing/licensing-db";
+import { UpgradeDialog } from "@/features/licensing/UpgradeDialog";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -42,6 +44,10 @@ export default function DaybookSection() {
   const [addEntryOpen, setAddEntryOpen] = React.useState(false);
   const [entryType, setEntryType] = React.useState<"payment" | "spending">("payment");
   const [deleteTarget, setDeleteTarget] = React.useState<{ type: "account" | "entry"; id: string; label: string } | null>(null);
+
+  // Upgrade dialog
+  const [upgradeOpen, setUpgradeOpen] = React.useState(false);
+  const [upgradeMsg, setUpgradeMsg] = React.useState("");
 
   // Account form
   const [accName, setAccName] = React.useState("");
@@ -138,6 +144,14 @@ export default function DaybookSection() {
   const saveEntry = async () => {
     if (!entryAccountId) { toast({ title: "Select an account", variant: "destructive" }); return; }
     if (entryAmount <= 0) { toast({ title: "Amount must be > 0", variant: "destructive" }); return; }
+
+    // License check
+    const check = await canMakeSale("daybook");
+    if (!check.allowed) {
+      setUpgradeMsg(check.message);
+      setUpgradeOpen(true);
+      return;
+    }
 
     const account = accounts.find(a => a.id === entryAccountId);
     if (!account) return;

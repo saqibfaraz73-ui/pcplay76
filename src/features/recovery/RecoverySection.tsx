@@ -1137,6 +1137,8 @@ export function RecoverySection() {
         customers={allCustomers}
         agents={agents}
       />
+
+      <UpgradeDialog open={upgradeOpen} onOpenChange={setUpgradeOpen} message={upgradeMsg} />
     </div>
   );
 }
