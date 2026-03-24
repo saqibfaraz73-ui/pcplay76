@@ -422,53 +422,92 @@ export function AdminSettings() {
         )}
       </div>
 
-      {match("license", "device", "premium", "app id", "activation") && <Card>
+      {match("license", "device", "premium", "activation") && <Card>
         <CardHeader>
-          <CardTitle>License Information</CardTitle>
-          <CardDescription>Device ID, premium status, and license details.</CardDescription>
+          <CardTitle>Device ID</CardTitle>
+          <CardDescription>{isPremium ? "This device is activated (Premium)." : "Share this ID with support for activation."}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
-          <div className="space-y-1">
-            <Label className="text-xs text-muted-foreground">Device ID</Label>
-            <p className="font-mono text-xs bg-muted p-2 rounded select-all break-all">{licenseDeviceId || "Loading..."}</p>
+          <div
+            className="font-mono text-xs bg-muted p-2 rounded cursor-pointer select-all break-all"
+            onClick={() => {
+              navigator.clipboard?.writeText(licenseDeviceId);
+              toast({ title: "Device ID copied" });
+            }}
+          >
+            {licenseDeviceId || "Loading..."}
           </div>
-          <div className="space-y-1">
-            <Label className="text-xs text-muted-foreground">App ID</Label>
-            <p className="font-mono text-xs bg-muted p-2 rounded select-all break-all">app.lovable.317dd68ab3cd4e6ab5089be67871d951</p>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className={`h-3 w-3 rounded-full ${isPremium ? "bg-green-500" : "bg-red-500"}`} />
-            <span className="text-sm font-medium">{isPremium ? "Premium Active" : "Free Version"}</span>
-          </div>
-          {licensedDeviceId && (
-            <div className="space-y-1">
-              <Label className="text-xs text-muted-foreground">Licensed To</Label>
-              <p className="font-mono text-xs bg-muted p-2 rounded select-all break-all">{licensedDeviceId}</p>
-            </div>
-          )}
-          {isPremium && licenseValidUntil && licenseValidUntil > 0 && (
-            <div className="space-y-1">
-              <Label className="text-xs text-muted-foreground">License Expires</Label>
-              <p className="text-sm font-medium">
-                {Date.now() > licenseValidUntil
-                  ? <span className="text-destructive">Expired</span>
-                  : new Date(licenseValidUntil).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" })
-                }
-              </p>
-              {Date.now() < licenseValidUntil && (
-                <p className="text-xs text-muted-foreground">
-                  {(() => {
-                    const rem = licenseValidUntil - Date.now();
-                    const days = Math.floor(rem / 86400000);
-                    const hours = Math.floor((rem % 86400000) / 3600000);
-                    return `${days}d ${hours}h remaining`;
-                  })()}
-                </p>
+          <p className="text-[10px] text-muted-foreground">Tap to copy</p>
+
+          {isPremium && (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <div className="h-3 w-3 rounded-full bg-green-500" />
+                <span className="text-sm font-medium">Premium Active</span>
+              </div>
+
+              {licenseValidUntil && licenseValidUntil > 0 && (
+                <LicenseRemainingTime validUntil={licenseValidUntil} />
+              )}
+
+              {(!licenseValidUntil || licenseValidUntil === 0) && (
+                <p className="text-xs text-muted-foreground">Lifetime license — no expiry</p>
               )}
             </div>
           )}
-          {isPremium && (!licenseValidUntil || licenseValidUntil === 0) && (
-            <p className="text-xs text-muted-foreground">Lifetime license — no expiry</p>
+
+          {!isPremium && (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <div className="h-3 w-3 rounded-full bg-red-500" />
+                <span className="text-sm font-medium">Free Version</span>
+              </div>
+              <input
+                type="file"
+                accept=".sangi"
+                className="hidden"
+                ref={(el) => { (window as any).__licFileInput = el; }}
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  try {
+                    const text = await file.text();
+                    const decoded = decodeLicenseBase64(text);
+                    if (!decoded) {
+                      toast({ title: "Invalid license file", description: "The file is invalid or corrupted.", variant: "destructive" });
+                      return;
+                    }
+                    if (decoded.deviceId !== licenseDeviceId) {
+                      toast({ title: "License mismatch", description: "This license file is for a different device.", variant: "destructive" });
+                      return;
+                    }
+                    let validUntilTs: number | undefined;
+                    if (decoded.validUntilTs && decoded.validUntilTs > 0) {
+                      validUntilTs = decoded.validUntilTs;
+                    } else if (decoded.validUntil) {
+                      validUntilTs = new Date(decoded.validUntil).getTime();
+                    }
+                    await updateLicense({ isPremium: true, licensedDeviceId: decoded.deviceId, validUntil: validUntilTs });
+                    setIsPremium(true);
+                    setLicenseValidUntil(validUntilTs);
+                    toast({ title: "🎉 Premium Activated!", description: "Your device is now premium." });
+                  } catch {
+                    toast({ title: "Could not read file", variant: "destructive" });
+                  }
+                  e.target.value = "";
+                }}
+              />
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => (window as any).__licFileInput?.click()}
+              >
+                📄 Import License File
+              </Button>
+              <p className="text-[10px] text-muted-foreground">
+                Select the <code>license.sangi</code> file received from support.
+              </p>
+            </div>
           )}
         </CardContent>
       </Card>}
