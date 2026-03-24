@@ -311,6 +311,9 @@ export type Settings = {
   taxApiBusinessNtn?: string; // business NTN / GSTIN / TIN number
   taxQrOnReceipt?: boolean; // if true, print tax authority QR on receipts (requires taxApiEnabled or taxEnabled)
   taxQrDisabled?: boolean; // admin can force-disable QR even when API is connected
+  taxApiFetchRate?: boolean; // if true, fetch tax % from API response instead of manual entry
+  taxReceiptFeeEnabled?: boolean; // if true, charge a per-receipt fee (e.g. FBR Rs 1)
+  taxReceiptFee?: number; // per-receipt fee amount (default 1)
   // Service charge settings
   serviceChargeEnabled?: boolean;
   serviceChargeType?: ChargeType;

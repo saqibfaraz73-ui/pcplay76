@@ -54,7 +54,11 @@ export function AdminSettings() {
   const [taxApiEndpoint, setTaxApiEndpoint] = React.useState("");
   const [taxApiBusinessNtn, setTaxApiBusinessNtn] = React.useState("");
   const [taxQrDisabled, setTaxQrDisabled] = React.useState(false);
+  const [taxApiFetchRate, setTaxApiFetchRate] = React.useState(false);
+  const [taxReceiptFeeEnabled, setTaxReceiptFeeEnabled] = React.useState(false);
+  const [taxReceiptFee, setTaxReceiptFee] = React.useState<number>(1);
   const [taxTestResult, setTaxTestResult] = React.useState("");
+  const [taxQueueStats, setTaxQueueStats] = React.useState<{ pending: number; synced: number; failed: number } | null>(null);
 
   // Service charge settings
   const [serviceChargeEnabled, setServiceChargeEnabled] = React.useState(false);
@@ -149,6 +153,9 @@ export function AdminSettings() {
     setTaxApiEndpoint(s.taxApiEndpoint ?? "");
     setTaxApiBusinessNtn(s.taxApiBusinessNtn ?? "");
     setTaxQrDisabled(!!s.taxQrDisabled);
+    setTaxApiFetchRate(!!s.taxApiFetchRate);
+    setTaxReceiptFeeEnabled(!!s.taxReceiptFeeEnabled);
+    setTaxReceiptFee(s.taxReceiptFee ?? 1);
     setServiceChargeEnabled(!!s.serviceChargeEnabled);
     setServiceChargeType(s.serviceChargeType ?? "percent");
     setServiceChargeValue(s.serviceChargeValue ?? 0);
@@ -200,6 +207,13 @@ export function AdminSettings() {
 
     const lic = await getLicense();
     setIsPremium(lic.isPremium);
+
+    // Load tax queue stats
+    try {
+      const { getQueueStats } = await import("@/features/tax/tax-queue");
+      const stats = await getQueueStats();
+      setTaxQueueStats(stats);
+    } catch { /* queue not initialized */ }
   }, []);
 
   React.useEffect(() => {
@@ -229,6 +243,9 @@ export function AdminSettings() {
         taxApiEndpoint: taxApiEndpoint.trim() || undefined,
         taxApiBusinessNtn: taxApiBusinessNtn.trim() || undefined,
         taxQrDisabled,
+        taxApiFetchRate,
+        taxReceiptFeeEnabled,
+        taxReceiptFee: taxReceiptFeeEnabled ? taxReceiptFee : undefined,
         serviceChargeEnabled,
         serviceChargeType,
         serviceChargeValue,
@@ -697,6 +714,38 @@ export function AdminSettings() {
                       ⚠️ Credentials stored locally. Invoices are queued offline and synced when internet returns.
                     </p>
 
+                    {/* Fetch Tax Rate from API */}
+                    <div className="flex items-center justify-between gap-3 rounded-md border p-3">
+                      <div>
+                        <div className="text-sm font-medium">Fetch Tax % from API</div>
+                        <div className="text-xs text-muted-foreground">Use tax rate returned by the API instead of manual entry. Cached for 30 minutes.</div>
+                      </div>
+                      <Switch checked={taxApiFetchRate} onCheckedChange={setTaxApiFetchRate} />
+                    </div>
+
+                    {/* FBR Receipt Fee */}
+                    <div className="flex items-center justify-between gap-3 rounded-md border p-3">
+                      <div>
+                        <div className="text-sm font-medium">Charge Receipt Fee (FBR)</div>
+                        <div className="text-xs text-muted-foreground">Add a per-receipt fee to each sale (e.g. Rs 1 FBR fee charged to customer).</div>
+                      </div>
+                      <Switch checked={taxReceiptFeeEnabled} onCheckedChange={setTaxReceiptFeeEnabled} />
+                    </div>
+                    {taxReceiptFeeEnabled && (
+                      <div className="space-y-2 pl-3 border-l-2 border-primary/20">
+                        <Label>Receipt Fee Amount</Label>
+                        <Input
+                          type="number"
+                          inputMode="numeric"
+                          value={taxReceiptFee || ""}
+                          onChange={(e) => setTaxReceiptFee(Number(e.target.value) || 0)}
+                          placeholder="e.g. 1"
+                          className="max-w-[200px]"
+                        />
+                        <p className="text-xs text-muted-foreground">This amount will be added to every sale's tax line.</p>
+                      </div>
+                    )}
+
                     {/* QR on receipt control */}
                     <div className="flex items-center justify-between gap-3 rounded-md border p-3">
                       <div>
@@ -705,6 +754,71 @@ export function AdminSettings() {
                       </div>
                       <Switch checked={taxQrDisabled} onCheckedChange={setTaxQrDisabled} />
                     </div>
+
+                    {/* Tax Invoice Queue Status */}
+                    {taxQueueStats && (taxQueueStats.pending > 0 || taxQueueStats.synced > 0 || taxQueueStats.failed > 0) && (
+                      <div className="rounded-md border p-3 space-y-2">
+                        <div className="text-sm font-medium">📊 Tax Invoice Sync Status</div>
+                        <div className="grid grid-cols-3 gap-2 text-center text-xs">
+                          <div className="rounded-md bg-muted p-2">
+                            <div className="text-lg font-bold text-yellow-600">{taxQueueStats.pending}</div>
+                            <div className="text-muted-foreground">Pending</div>
+                          </div>
+                          <div className="rounded-md bg-muted p-2">
+                            <div className="text-lg font-bold text-green-600">{taxQueueStats.synced}</div>
+                            <div className="text-muted-foreground">Synced</div>
+                          </div>
+                          <div className="rounded-md bg-muted p-2">
+                            <div className="text-lg font-bold text-red-600">{taxQueueStats.failed}</div>
+                            <div className="text-muted-foreground">Failed</div>
+                          </div>
+                        </div>
+                        {(taxQueueStats.pending > 0 || taxQueueStats.failed > 0) && (
+                          <div className="flex gap-2">
+                            {taxQueueStats.pending > 0 && (
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={async () => {
+                                  try {
+                                    const { syncPendingTaxInvoices } = await import("@/features/tax/tax-queue");
+                                    const result = await syncPendingTaxInvoices();
+                                    toast({ title: `Synced: ${result.synced}, Failed: ${result.failed}` });
+                                    const { getQueueStats } = await import("@/features/tax/tax-queue");
+                                    setTaxQueueStats(await getQueueStats());
+                                  } catch (e: any) {
+                                    toast({ title: "Sync failed", description: e?.message, variant: "destructive" });
+                                  }
+                                }}
+                              >
+                                🔄 Sync Now
+                              </Button>
+                            )}
+                            {taxQueueStats.failed > 0 && (
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={async () => {
+                                  try {
+                                    const { retryFailedInvoices } = await import("@/features/tax/tax-queue");
+                                    const count = await retryFailedInvoices();
+                                    toast({ title: `${count} invoices queued for retry` });
+                                    const { getQueueStats } = await import("@/features/tax/tax-queue");
+                                    setTaxQueueStats(await getQueueStats());
+                                  } catch (e: any) {
+                                    toast({ title: "Retry failed", description: e?.message, variant: "destructive" });
+                                  }
+                                }}
+                              >
+                                🔁 Retry Failed
+                              </Button>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

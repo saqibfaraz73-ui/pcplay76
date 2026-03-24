@@ -54,6 +54,10 @@ function calculateCharges(
         taxAmount = Math.round((subtotalAfterDiscount * rate) / 100);
       }
     }
+    // Add per-receipt fee (e.g. FBR Rs 1)
+    if (settings.taxReceiptFeeEnabled && settings.taxReceiptFee && settings.taxReceiptFee > 0) {
+      taxAmount += Math.round(settings.taxReceiptFee);
+    }
   }
 
   if (settings?.serviceChargeEnabled && settings.serviceChargeValue) {

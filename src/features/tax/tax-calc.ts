@@ -12,7 +12,7 @@ const CACHE_TTL = 30 * 60 * 1000; // 30 minutes
 
 /** Fetch tax rate from API and cache it. Works with API Ninjas sales tax endpoint. */
 export async function fetchTaxRateFromApi(settings: Settings | null): Promise<number | null> {
-  if (!settings?.taxApiEnabled || !settings.taxApiEndpoint || !settings.taxApiKey) return null;
+  if (!settings?.taxApiEnabled || !settings.taxApiEndpoint || !settings.taxApiKey || !settings.taxApiFetchRate) return null;
 
   // Return cached value if fresh
   if (cachedApiTaxRate !== null && Date.now() - cacheTimestamp < CACHE_TTL) {
@@ -85,15 +85,24 @@ export function calcGlobalTax(subtotal: number, settings: Settings | null): numb
   if (!settings?.taxEnabled) return 0;
 
   const rate = getEffectiveTaxPercent(settings);
-  if (!rate || rate <= 0) return 0;
+  let tax = 0;
 
-  // If manual taxValue is set and type is fixed amount (not percent)
-  if (settings.taxValue && settings.taxValue > 0 && settings.taxType !== "percent") {
-    return Math.round(settings.taxValue);
+  if (rate > 0) {
+    // If manual taxValue is set and type is fixed amount (not percent)
+    if (settings.taxValue && settings.taxValue > 0 && settings.taxType !== "percent") {
+      tax = Math.round(settings.taxValue);
+    } else {
+      // Percent-based (either manual or from API)
+      tax = Math.round(subtotal * rate / 100);
+    }
   }
 
-  // Percent-based (either manual or from API)
-  return Math.round(subtotal * rate / 100);
+  // Add per-receipt fee (e.g. FBR Rs 1)
+  if (settings.taxReceiptFeeEnabled && settings.taxReceiptFee && settings.taxReceiptFee > 0) {
+    tax += Math.round(settings.taxReceiptFee);
+  }
+
+  return tax;
 }
 
 /** Get the tax label from settings (e.g. "GST", "VAT") */
