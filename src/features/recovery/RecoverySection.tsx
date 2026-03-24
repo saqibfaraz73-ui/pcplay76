@@ -33,6 +33,7 @@ import { sharePdfBytes, savePdfBytes } from "@/features/pos/share-utils";
 import { SaveShareMenu } from "@/components/SaveShareMenu";
 import { RecoveryAgentExport } from "./RecoveryAgentExport";
 import { RecoveryAgentView } from "./RecoveryAgentView";
+import { RecoveryBackup } from "./RecoveryBackup";
 import { calcGlobalTax, getTaxLabel } from "@/features/tax/tax-calc";
 import { buildTaxQrEscPos, addTaxQrToPdf, shouldPrintTaxQr } from "@/features/tax/tax-qr";
 
