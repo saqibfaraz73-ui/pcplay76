@@ -12,7 +12,7 @@ const CACHE_TTL = 30 * 60 * 1000; // 30 minutes
 
 /** Fetch tax rate from API and cache it. Works with API Ninjas sales tax endpoint. */
 export async function fetchTaxRateFromApi(settings: Settings | null): Promise<number | null> {
-  if (!settings?.taxApiEnabled || !settings.taxApiEndpoint || !settings.taxApiKey) return null;
+  if (!settings?.taxApiEnabled || !settings.taxApiEndpoint || !settings.taxApiKey || !settings.taxApiFetchRate) return null;
 
   // Return cached value if fresh
   if (cachedApiTaxRate !== null && Date.now() - cacheTimestamp < CACHE_TTL) {
