@@ -43,15 +43,34 @@ export async function fetchTaxRateFromApi(settings: Settings | null): Promise<nu
     // or object like { total_rate: "0.0825" } or { tax_rate: 8.25 } or { rate: 15 }
     let rate: number | null = null;
 
+    const parseRate = (item: any): number | null => {
+      // Try total_rate first (e.g. "0.0825" → 8.25%)
+      if (item.total_rate != null) {
+        const v = parseFloat(item.total_rate);
+        if (!isNaN(v) && v > 0) return v * 100;
+      }
+      // Fallback to state_rate (API Ninjas free plan returns this as valid number)
+      if (item.state_rate != null) {
+        const v = parseFloat(item.state_rate);
+        if (!isNaN(v) && v > 0) return v * 100;
+      }
+      // Generic tax_rate (already in percent, e.g. 8.25)
+      if (item.tax_rate != null) {
+        const v = parseFloat(item.tax_rate);
+        if (!isNaN(v) && v > 0) return v;
+      }
+      // Generic rate field
+      if (item.rate != null) {
+        const v = parseFloat(item.rate);
+        if (!isNaN(v) && v > 0) return v;
+      }
+      return null;
+    };
+
     if (Array.isArray(data) && data.length > 0) {
-      const item = data[0];
-      if (item.total_rate != null) rate = parseFloat(item.total_rate) * 100;
-      else if (item.tax_rate != null) rate = parseFloat(item.tax_rate);
-      else if (item.rate != null) rate = parseFloat(item.rate);
+      rate = parseRate(data[0]);
     } else if (data && typeof data === "object") {
-      if (data.total_rate != null) rate = parseFloat(data.total_rate) * 100;
-      else if (data.tax_rate != null) rate = parseFloat(data.tax_rate);
-      else if (data.rate != null) rate = parseFloat(data.rate);
+      rate = parseRate(data);
     }
 
     if (rate != null && !isNaN(rate) && rate > 0) {

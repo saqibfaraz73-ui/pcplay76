@@ -244,7 +244,7 @@ export default function DaybookSection() {
     a.download = `daybook_backup_${toDateVal(Date.now())}.json`;
     a.click();
     URL.revokeObjectURL(url);
-    toast({ title: "Backup exported" });
+    toast({ title: "Backup exported", description: `${accounts.length} accounts, ${entries.length} entries, ${images.length} images` });
   };
 
   const importBackup = async (e: React.ChangeEvent<HTMLInputElement>) => {
