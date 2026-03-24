@@ -36,6 +36,7 @@ import type { KitchenOrder } from "./kitchen-schema";
 import type { LicenseRecord } from "@/features/licensing/licensing-db";
 import type { InstallmentCustomer, InstallmentPayment } from "./installment-schema";
 import type { TaxInvoiceQueueItem } from "@/features/tax/tax-queue";
+import type { DaybookAccount, DaybookEntry, DaybookImage } from "./daybook-schema";
 
 export class SangiPosDb extends Dexie {
   categories!: Table<Category, string>;
@@ -76,7 +77,9 @@ export class SangiPosDb extends Dexie {
   installmentCustomers!: Table<InstallmentCustomer, string>;
   installmentPayments!: Table<InstallmentPayment, string>;
   taxInvoiceQueue!: Table<TaxInvoiceQueueItem, string>;
-  
+  daybookAccounts!: Table<DaybookAccount, string>;
+  daybookEntries!: Table<DaybookEntry, string>;
+  daybookImages!: Table<DaybookImage, string>;
 
   constructor() {
     super("sangi_pos_db_v1");
@@ -775,6 +778,51 @@ export class SangiPosDb extends Dexie {
       installmentCustomers: "id, agentId, name, phone, createdAt",
       installmentPayments: "id, customerId, receiptNo, month, createdAt",
       taxInvoiceQueue: "id, orderId, status, createdAt",
+      settings: "id",
+      counters: "id",
+    });
+
+    // v27: add daybook (cash/bank tracking)
+    this.version(27).stores({
+      categories: "id, name, createdAt",
+      items: "id, categoryId, name, price, createdAt",
+      inventory: "itemId, quantity, updatedAt",
+      inventoryAdjustments: "id, itemId, createdAt",
+      customers: "id, name, createdAt",
+      creditPayments: "id, customerId, createdAt",
+      orders: "id, receiptNo, status, paymentMethod, workPeriodId, deliveryPersonId, createdAt",
+      workPeriods: "id, cashier, startedAt, isClosed",
+      expenses: "id, name, createdAt, workPeriodId",
+      suppliers: "id, name, createdAt",
+      supplierPayments: "id, supplierId, createdAt",
+      supplierArrivals: "id, supplierId, receiptNo, createdAt",
+      exportCustomers: "id, name, createdAt",
+      exportSales: "id, customerId, receiptNo, createdAt",
+      exportPayments: "id, customerId, createdAt",
+      deliveryPersons: "id, name, createdAt",
+      deliveryCustomers: "id, name, createdAt",
+      waiters: "id, name, createdAt",
+      restaurantTables: "id, tableNumber, createdAt",
+      tableOrders: "id, tableId, waiterId, status, createdAt, completedAt",
+      adminAccount: "id",
+      staffAccounts: "id, name, role, createdAt",
+      license: "id",
+      advanceOrders: "id, receiptNo, status, createdAt",
+      bookableItems: "id, name, createdAt",
+      bookingOrders: "id, receiptNo, bookableItemId, status, date, createdAt",
+      recoveryCustomers: "id, agentId, name, createdAt",
+      recoveryPayments: "id, customerId, receiptNo, agentName, month, createdAt",
+      labours: "id, name, createdAt",
+      labourTransactions: "id, labourId, type, createdAt",
+      labourAttendance: "id, labourId, date, status, createdAt",
+      labourProduction: "id, labourId, createdAt",
+      kitchenOrders: "id, sourceOrderId, status, createdAt",
+      installmentCustomers: "id, agentId, name, phone, createdAt",
+      installmentPayments: "id, customerId, receiptNo, month, createdAt",
+      taxInvoiceQueue: "id, orderId, status, createdAt",
+      daybookAccounts: "id, type, createdAt",
+      daybookEntries: "id, type, accountId, createdAt",
+      daybookImages: "id, entryId, createdAt",
       settings: "id",
       counters: "id",
     });

@@ -35,6 +35,7 @@ import {
   Clock,
   CheckCircle2,
   Tags,
+  BookOpen,
 } from "lucide-react";
 import appLogo from "@/assets/app-logo.jpg";
 
@@ -218,6 +219,13 @@ export default function PosHome() {
         icon: Users,
         color: "bg-purple-500/10 text-purple-600 border-purple-200",
         description: "Credit customers",
+      });
+      actions.push({
+        to: "/daybook",
+        label: "Daybook",
+        icon: BookOpen,
+        color: "bg-cyan-500/10 text-cyan-600 border-cyan-200",
+        description: "Cash & bank tracking",
       });
     }
 
