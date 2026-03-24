@@ -415,6 +415,7 @@ export function InstallmentSection() {
         {canEdit && <TabsTrigger value="reports">Reports</TabsTrigger>}
         {isAdmin && <TabsTrigger value="agentview">Agent View</TabsTrigger>}
         {isAdmin && <TabsTrigger value="agents">Agents</TabsTrigger>}
+        {isAdmin && <TabsTrigger value="backup">Backup</TabsTrigger>}
       </TabsList>
 
       <TabsContent value="customers">
