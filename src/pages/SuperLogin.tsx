@@ -1,7 +1,7 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
-import { CalendarIcon, Clock } from "lucide-react";
+import { CalendarIcon, Clock, Copy } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -117,7 +117,8 @@ export default function SuperLogin() {
   };
 
   const handleActivate = async () => {
-    if (!customerDeviceId.trim()) {
+    const targetId = customerDeviceId.trim();
+    if (!targetId) {
       toast({ title: "Enter a Device ID first", variant: "destructive" });
       return;
     }
@@ -128,9 +129,9 @@ export default function SuperLogin() {
     setLoading(true);
     try {
       const validUntilTs = getValidUntilTimestamp();
-      await updateLicense({ isPremium: true, licensedDeviceId: customerDeviceId.trim(), validUntil: validUntilTs });
+      await updateLicense({ isPremium: true, licensedDeviceId: targetId, validUntil: validUntilTs });
       setIsPremium(true);
-      setLicensedDeviceId(customerDeviceId.trim());
+      setLicensedDeviceId(targetId);
       setCurrentValidUntil(validUntilTs);
       let expiryMsg = "";
       if (activationMode === "duration" && validUntilTs) {
@@ -141,7 +142,7 @@ export default function SuperLogin() {
       } else if (validUntilDate) {
         expiryMsg = ` (valid until ${format(validUntilDate, "PPP")})`;
       }
-      toast({ title: `Premium activated for ${customerDeviceId.trim()}${expiryMsg}` });
+      toast({ title: `Premium activated for ${targetId}${expiryMsg}` });
     } finally {
       setLoading(false);
     }
@@ -163,7 +164,8 @@ export default function SuperLogin() {
   };
 
   const handleGenerateFile = async () => {
-    if (!customerDeviceId.trim()) {
+    const targetId = customerDeviceId.trim();
+    if (!targetId) {
       toast({ title: "Enter a Device ID first", variant: "destructive" });
       return;
     }
@@ -177,7 +179,7 @@ export default function SuperLogin() {
 
     setLoading(true);
     try {
-      const { uri } = await generateLicenseFile(customerDeviceId.trim(), validUntilISO, validUntilTs);
+      const { uri } = await generateLicenseFile(targetId, validUntilISO, validUntilTs);
 
       let desc = "License file created";
       if (activationMode === "duration" && validUntilTs) {
@@ -199,7 +201,7 @@ export default function SuperLogin() {
       }
     } catch {
       try {
-        const base64 = generateLicenseBase64(customerDeviceId.trim(), validUntilISO, validUntilTs);
+        const base64 = generateLicenseBase64(targetId, validUntilISO, validUntilTs);
         await navigator.clipboard.writeText(base64);
         toast({ title: "License data copied to clipboard!", description: "Send this text to the customer. They save it as 'license.sangi' in Sangi Pos/Backup folder." });
       } catch (err2: any) {
@@ -257,7 +259,16 @@ export default function SuperLogin() {
             <CardTitle className="text-sm">This Device</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="font-mono text-xs bg-muted p-2 rounded select-all break-all">{currentDeviceId}</p>
+            <div
+              className="font-mono text-xs bg-muted p-2 rounded cursor-pointer select-all break-all"
+              onClick={() => {
+                navigator.clipboard?.writeText(currentDeviceId);
+                toast({ title: "Device ID copied" });
+              }}
+            >
+              {currentDeviceId}
+            </div>
+            <p className="text-[10px] text-muted-foreground mt-1">Tap to copy</p>
           </CardContent>
         </Card>
       )}
@@ -266,17 +277,37 @@ export default function SuperLogin() {
       <Card>
         <CardHeader>
           <CardTitle>Device Premium Activation</CardTitle>
-          <CardDescription>Enter the customer's Device ID to activate premium. The built APK will only work as premium on that specific device.</CardDescription>
+          <CardDescription>Enter the customer's Device ID to generate a license file. You can activate any device — not just this one.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <Label>Customer Device ID</Label>
-            <Input
-              value={customerDeviceId}
-              onChange={(e) => setCustomerDeviceId(e.target.value.trim())}
-              placeholder="e.g. SNG-XXXXXXXX-XXXX"
-              className="font-mono text-xs"
-            />
+            <div className="flex gap-2">
+              <Input
+                value={customerDeviceId}
+                onChange={(e) => setCustomerDeviceId(e.target.value)}
+                placeholder="e.g. SNG-XXXXXXXX-XXXX"
+                className="font-mono text-xs flex-1"
+              />
+              <Button
+                variant="outline"
+                size="icon"
+                className="shrink-0"
+                onClick={async () => {
+                  try {
+                    const text = await navigator.clipboard.readText();
+                    if (text) {
+                      setCustomerDeviceId(text.trim());
+                      toast({ title: "Pasted from clipboard" });
+                    }
+                  } catch {
+                    toast({ title: "Could not paste", variant: "destructive" });
+                  }
+                }}
+              >
+                <Copy className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
 
           {/* Activation type toggle */}
@@ -306,7 +337,7 @@ export default function SuperLogin() {
 
           {activationMode === "date" && (
             <div className="space-y-2">
-              <Label>Valid Until (optional)</Label>
+              <Label>Valid Until (optional — leave empty for lifetime)</Label>
               <Popover>
                 <PopoverTrigger asChild>
                   <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !validUntilDate && "text-muted-foreground")}>
@@ -372,13 +403,13 @@ export default function SuperLogin() {
           )}
 
           <div className="border-t pt-3 space-y-2">
-            <p className="text-xs text-muted-foreground">Or generate an encrypted license file to send to the customer:</p>
+            <p className="text-xs font-medium">Generate license file for customer:</p>
+            <p className="text-[10px] text-muted-foreground">
+              Enter ANY device ID above, set expiry if needed, then generate. The file will only work on that specific device.
+            </p>
             <Button variant="outline" className="w-full" onClick={() => void handleGenerateFile()} disabled={loading}>
               {loading ? "Processing..." : "📄 Generate & Share License File"}
             </Button>
-            <p className="text-[10px] text-muted-foreground">
-              Customer places <code>license.sangi</code> in their Sangi Pos/Backup folder, then reopens the app.
-            </p>
           </div>
         </CardContent>
       </Card>
