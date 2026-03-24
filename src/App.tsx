@@ -30,6 +30,7 @@ import PrivacyPolicy from "./pages/PrivacyPolicy";
 import DataDeletion from "./pages/DataDeletion";
 import ProductLabelsPage from "./pages/ProductLabelsPage";
 import CustomPrintPage from "./pages/CustomPrintPage";
+import DaybookPage from "./pages/DaybookPage";
 import KitchenPage from "./pages/KitchenPage";
 import { AuthProvider } from "@/auth/AuthProvider";
 import { ProtectedRoute } from "@/auth/ProtectedRoute";
