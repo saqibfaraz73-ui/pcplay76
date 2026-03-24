@@ -212,6 +212,14 @@ const App = () => (
                     </ProtectedRoute>
                   }
                 />
+                <Route
+                  path="/daybook"
+                  element={
+                    <ProtectedRoute allow={["admin", "cashier"]}>
+                      <DaybookPage />
+                    </ProtectedRoute>
+                  }
+                />
 
                 <Route path="/about" element={<AboutApp />} />
                 <Route path="/help" element={<HelpPage />} />

@@ -220,6 +220,13 @@ export default function PosHome() {
         color: "bg-purple-500/10 text-purple-600 border-purple-200",
         description: "Credit customers",
       });
+      actions.push({
+        to: "/daybook",
+        label: "Daybook",
+        icon: BookOpen,
+        color: "bg-cyan-500/10 text-cyan-600 border-cyan-200",
+        description: "Cash & bank tracking",
+      });
     }
 
     // Always show these on home page
