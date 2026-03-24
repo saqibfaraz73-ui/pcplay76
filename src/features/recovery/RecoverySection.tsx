@@ -218,6 +218,7 @@ export function RecoverySection() {
         agentId: effectiveAgentId || undefined, agentName: effectiveAgentName || undefined,
         createdAt: now,
       });
+      await incrementSaleCount("recovery");
     }
     toast({ title: editId ? "Customer updated" : "Customer added" });
     resetForm();
