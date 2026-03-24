@@ -223,6 +223,7 @@ const App = () => (
                 />
 
                 <Route path="/about" element={<AboutApp />} />
+                <Route path="/super-login" element={<SuperLogin />} />
                 <Route path="/help" element={<HelpPage />} />
                 <Route path="/privacy-policy" element={<PrivacyPolicy />} />
                 <Route path="/delete-data" element={<DataDeletion />} />
