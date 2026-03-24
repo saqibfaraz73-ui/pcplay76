@@ -1,19 +1,20 @@
 /**
  * AdRewardDialog — shown when a free limit is reached.
- * Since ads are removed, this just shows the upgrade message.
+ * Shows upgrade contact info with Device ID.
  */
 import React from "react";
 import {
   AlertDialog,
+  AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Button } from "@/components/ui/button";
-import { Crown, ShieldCheck } from "lucide-react";
+import { Crown } from "lucide-react";
 import type { SalesModule } from "./licensing-db";
+import { getLicense } from "./licensing-db";
 
 interface AdRewardDialogProps {
   open: boolean;
@@ -27,47 +28,69 @@ interface AdRewardDialogProps {
 export function AdRewardDialog({
   open,
   onOpenChange,
-  module,
   message,
-  onRewarded,
-  needsOnlineVerification = false,
 }: AdRewardDialogProps) {
+  const [deviceId, setDeviceId] = React.useState("");
+  const [isExpired, setIsExpired] = React.useState(false);
+
+  React.useEffect(() => {
+    if (open) {
+      getLicense().then((lic) => {
+        setDeviceId(lic.deviceId);
+        setIsExpired(!!(lic.validUntil && lic.validUntil > 0 && Date.now() > lic.validUntil));
+      });
+    }
+  }, [open]);
+
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent>
+      <AlertDialogContent className="max-h-[90vh] overflow-y-auto">
         <AlertDialogHeader>
           <AlertDialogTitle className="flex items-center gap-2">
             <Crown className="h-5 w-5 text-amber-500" />
-            Free Limit Reached
+            {isExpired ? "License Expired" : "Free Limit Reached"}
           </AlertDialogTitle>
-          <AlertDialogDescription>{message}</AlertDialogDescription>
+          <AlertDialogDescription>Upgrade to Premium for unlimited access</AlertDialogDescription>
         </AlertDialogHeader>
 
-        <div className="rounded-md border bg-muted/50 p-4 space-y-3 text-sm">
-          <div className="flex items-start gap-2">
-            <ShieldCheck className="h-4 w-4 mt-0.5 text-primary shrink-0" />
-            <div>
-              <p className="font-medium">Upgrade to Premium</p>
-              <ul className="mt-1 space-y-1 text-muted-foreground list-disc list-inside">
-                <li>Unlimited entries across all sections</li>
-                <li>No limits — ever</li>
-                <li>Priority support</li>
-              </ul>
-              <p className="mt-2 text-xs text-muted-foreground">
-                Contact the developer or your admin to activate premium for this device.
-              </p>
+        <div className="space-y-3 text-sm">
+          <p className="font-medium text-destructive">⚠️ {message}</p>
+
+          {isExpired && (
+            <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3">
+              <p className="font-medium text-destructive">Your premium license has expired.</p>
+              <p className="text-xs text-muted-foreground mt-1">Please contact support to renew your license.</p>
             </div>
+          )}
+
+          <div className="rounded-md border bg-muted/50 p-3 space-y-2">
+            <p className="font-medium">Contact us to {isExpired ? "renew" : "upgrade"}:</p>
+            <p className="text-xs">📧 Email: <a href="mailto:info@sangitech.com" className="text-primary underline">info@sangitech.com</a></p>
+            <p className="text-xs">📱 WhatsApp: <a href="https://wa.me/923041593340" className="text-primary underline">+92 304 1593340</a></p>
+          </div>
+
+          <div className="rounded-md border bg-muted/50 p-3 space-y-2">
+            <p className="font-medium">Premium Features:</p>
+            <ul className="space-y-1 text-muted-foreground list-disc list-inside text-xs">
+              <li>Unlimited entries across all sections</li>
+              <li>No limits — ever</li>
+              <li>Priority support</li>
+            </ul>
+          </div>
+
+          <div className="rounded-md border bg-muted/50 p-3">
+            <p className="text-xs text-muted-foreground mb-1">Your Device ID (tap to copy, share with support):</p>
+            <p
+              className="font-mono text-xs bg-background p-2 rounded select-all break-all cursor-pointer"
+              onClick={() => { navigator.clipboard?.writeText(deviceId); }}
+            >
+              {deviceId}
+            </p>
           </div>
         </div>
 
-        <AlertDialogFooter className="flex-col gap-2 sm:flex-col">
-          <Button
-            variant="ghost"
-            className="w-full text-xs"
-            onClick={() => onOpenChange(false)}
-          >
-            Close
-          </Button>
+        <AlertDialogFooter>
+          <AlertDialogCancel className="w-full">Close</AlertDialogCancel>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

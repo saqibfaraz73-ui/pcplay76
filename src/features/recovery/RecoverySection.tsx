@@ -36,6 +36,8 @@ import { RecoveryAgentView } from "./RecoveryAgentView";
 import { RecoveryBackup } from "./RecoveryBackup";
 import { calcGlobalTax, getTaxLabel } from "@/features/tax/tax-calc";
 import { buildTaxQrEscPos, addTaxQrToPdf, shouldPrintTaxQr } from "@/features/tax/tax-qr";
+import { canMakeSale, incrementSaleCount } from "@/features/licensing/licensing-db";
+import { UpgradeDialog } from "@/features/licensing/UpgradeDialog";
 
 function uid(prefix: string) {
   return `${prefix}_${Math.random().toString(16).slice(2)}_${Date.now().toString(16)}`;
@@ -100,6 +102,10 @@ export function RecoverySection() {
   // Tax toggle per customer (keyed by customer id)
   const [taxEnabledMap, setTaxEnabledMap] = React.useState<Record<string, boolean>>({});
   const toggleTax = (custId: string) => setTaxEnabledMap(prev => ({ ...prev, [custId]: !prev[custId] }));
+
+  // Upgrade dialog
+  const [upgradeOpen, setUpgradeOpen] = React.useState(false);
+  const [upgradeMsg, setUpgradeMsg] = React.useState("");
 
   // Current month
   const currentMonth = format(new Date(), "yyyy-MM");
@@ -194,6 +200,13 @@ export function RecoverySection() {
         agentId: realAgentId || undefined, agentName: assignedAgent?.name || undefined,
       });
     } else {
+      // License check for new customers
+      const check = await canMakeSale("recovery");
+      if (!check.allowed) {
+        setUpgradeMsg(check.message);
+        setUpgradeOpen(true);
+        return;
+      }
       // For recovery agents adding customers, auto-assign to themselves
       const effectiveAgentId = isRecovery && myAgentId ? myAgentId : realAgentId;
       const effectiveAgentName = isRecovery ? agentName : assignedAgent?.name;
@@ -205,6 +218,7 @@ export function RecoverySection() {
         agentId: effectiveAgentId || undefined, agentName: effectiveAgentName || undefined,
         createdAt: now,
       });
+      await incrementSaleCount("recovery");
     }
     toast({ title: editId ? "Customer updated" : "Customer added" });
     resetForm();
@@ -1123,6 +1137,8 @@ export function RecoverySection() {
         customers={allCustomers}
         agents={agents}
       />
+
+      <UpgradeDialog open={upgradeOpen} onOpenChange={setUpgradeOpen} message={upgradeMsg} />
     </div>
   );
 }
