@@ -27,6 +27,49 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
+/** Live countdown of remaining premium time */
+function LicenseRemainingTime({ validUntil }: { validUntil: number }) {
+  const [now, setNow] = React.useState(Date.now());
+  React.useEffect(() => {
+    const interval = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const remaining = validUntil - now;
+  if (remaining <= 0) {
+    return <p className="text-sm font-medium text-destructive">⏰ License expired</p>;
+  }
+
+  const totalSeconds = Math.floor(remaining / 1000);
+  const days = Math.floor(totalSeconds / 86400);
+  const hours = Math.floor((totalSeconds % 86400) / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  const parts: string[] = [];
+  if (days > 0) parts.push(`${days}d`);
+  if (hours > 0) parts.push(`${hours}h`);
+  if (minutes > 0) parts.push(`${minutes}m`);
+  if (days === 0) parts.push(`${seconds}s`);
+
+  const expiryDate = new Date(validUntil);
+  const isShort = remaining < 3600000;
+
+  return (
+    <div className={`rounded-md border p-3 ${isShort ? "border-destructive/40 bg-destructive/10" : "border-primary/40 bg-primary/5"}`}>
+      <p className={`text-sm font-bold font-mono ${isShort ? "text-destructive" : "text-primary"}`}>
+        <Clock className="inline h-3.5 w-3.5 mr-1" />
+        ⏱ Expires in: {parts.join(" ")}
+      </p>
+      <p className="text-[10px] text-muted-foreground mt-1">
+        {days > 0
+          ? `Valid until ${expiryDate.toLocaleDateString()} at ${expiryDate.toLocaleTimeString()}`
+          : `Expires at ${expiryDate.toLocaleTimeString()}`}
+      </p>
+    </div>
+  );
+}
+
 function id(prefix: string) {
   return `${prefix}_${Math.random().toString(16).slice(2)}_${Date.now().toString(16)}`;
 }
