@@ -32,6 +32,7 @@ import { importSkuFromFile } from "@/features/admin/products/sku-import";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { exportMenuItemsToExcel, importMenuItemsFromCSV, downloadExcel } from "./menu-import-export";
+import { ProductsBackup } from "./ProductsBackup";
 
 type EditMode =
   | { type: "none" }
