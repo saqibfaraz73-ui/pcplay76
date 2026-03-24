@@ -210,6 +210,9 @@ export function AdminSettings() {
 
     const lic = await getLicense();
     setIsPremium(lic.isPremium);
+    setLicenseDeviceId(lic.deviceId);
+    setLicenseValidUntil(lic.validUntil);
+    setLicensedDeviceId(lic.licensedDeviceId ?? "");
 
     // Load tax queue stats
     try {
