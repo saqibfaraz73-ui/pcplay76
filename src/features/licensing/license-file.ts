@@ -1,32 +1,25 @@
 /**
  * Encrypted license file system.
- * 
- * The Super Admin generates an encrypted `.sangi` license file containing
- * the customer's device ID. The customer places this file in their
- * "Sangi Pos" folder. On next app launch, the app reads & decrypts
- * the file and auto-activates premium if the device ID matches.
- * 
- * Encryption uses a simple XOR cipher with a secret key so the file
- * cannot be edited by hand — only Super Login can produce valid files.
  */
 
 import { Filesystem, Directory, Encoding } from "@capacitor/filesystem";
 import { Share } from "@capacitor/share";
+import { Capacitor } from "@capacitor/core";
 import { folderPath, ensureSangiFolders } from "@/features/files/sangi-folders";
 
 const ENCRYPTION_KEY = "7718";
 const LICENSE_FILE_NAME = "license.sangi";
-const FILE_MAGIC = "SANGILIC"; // magic header to verify valid file
+const FILE_MAGIC = "SANGILIC";
 
 interface LicenseFilePayload {
   magic: string;
   deviceId: string;
   activatedAt: string;
-  validUntil?: string; // ISO date string for expiry (optional)
+  validUntil?: string;
+  validUntilTs?: number;
   checksum: string;
 }
 
-/** Simple XOR encrypt/decrypt */
 function xorCipher(text: string, key: string): string {
   let result = "";
   for (let i = 0; i < text.length; i++) {
@@ -35,9 +28,8 @@ function xorCipher(text: string, key: string): string {
   return result;
 }
 
-/** Generate a checksum for integrity verification */
-function generateChecksum(deviceId: string, activatedAt: string, validUntil?: string): string {
-  const input = `${FILE_MAGIC}:${deviceId}:${activatedAt}:${validUntil ?? ""}:${ENCRYPTION_KEY}`;
+function generateChecksum(deviceId: string, activatedAt: string, validUntil?: string, validUntilTs?: number): string {
+  const input = `${FILE_MAGIC}:${deviceId}:${activatedAt}:${validUntil ?? ""}:${validUntilTs ?? ""}:${ENCRYPTION_KEY}`;
   let hash = 0;
   for (let i = 0; i < input.length; i++) {
     const c = input.charCodeAt(i);
@@ -46,34 +38,24 @@ function generateChecksum(deviceId: string, activatedAt: string, validUntil?: st
   return Math.abs(hash).toString(16).toUpperCase().padStart(8, "0");
 }
 
-/** Generate the encrypted license payload as a base64 string (no filesystem needed) */
-export function generateLicenseBase64(deviceId: string, validUntil?: string): string {
+export function generateLicenseBase64(deviceId: string, validUntil?: string, validUntilTs?: number): string {
   const activatedAt = new Date().toISOString();
-  const checksum = generateChecksum(deviceId, activatedAt, validUntil);
-  const payload: LicenseFilePayload = { magic: FILE_MAGIC, deviceId, activatedAt, validUntil, checksum };
+  const checksum = generateChecksum(deviceId, activatedAt, validUntil, validUntilTs);
+  const payload: LicenseFilePayload = { magic: FILE_MAGIC, deviceId, activatedAt, validUntil, validUntilTs, checksum };
   const json = JSON.stringify(payload);
   const encrypted = xorCipher(json, ENCRYPTION_KEY);
   return btoa(encrypted);
 }
 
-/** Create an encrypted license file and return its URI for sharing */
-export async function generateLicenseFile(deviceId: string, validUntil?: string): Promise<{ path: string; uri: string }> {
+export async function generateLicenseFile(deviceId: string, validUntil?: string, validUntilTs?: number): Promise<{ path: string; uri: string }> {
   const activatedAt = new Date().toISOString();
-  const checksum = generateChecksum(deviceId, activatedAt, validUntil);
+  const checksum = generateChecksum(deviceId, activatedAt, validUntil, validUntilTs);
 
-  const payload: LicenseFilePayload = {
-    magic: FILE_MAGIC,
-    deviceId,
-    activatedAt,
-    validUntil,
-    checksum,
-  };
-
+  const payload: LicenseFilePayload = { magic: FILE_MAGIC, deviceId, activatedAt, validUntil, validUntilTs, checksum };
   const json = JSON.stringify(payload);
   const encrypted = xorCipher(json, ENCRYPTION_KEY);
   const base64 = btoa(encrypted);
 
-  // Try app-private Data first, then Documents (legacy), then Cache as fallback
   const attempts: { directory: Directory; path: string }[] = [
     { directory: Directory.Data, path: `${folderPath("Backup")}/${LICENSE_FILE_NAME}` },
     { directory: Directory.Documents, path: `${folderPath("Backup")}/${LICENSE_FILE_NAME}` },
@@ -102,7 +84,6 @@ export async function generateLicenseFile(deviceId: string, validUntil?: string)
   throw new Error("Could not write license file to any directory");
 }
 
-/** Share the license file with the customer */
 export async function shareLicenseFile(uri: string) {
   await Share.share({
     title: "Sangi POS Premium License",
@@ -111,32 +92,28 @@ export async function shareLicenseFile(uri: string) {
   });
 }
 
-/** Decrypt a base64 license string and return payload if valid */
-export function decodeLicenseBase64(base64: string): { deviceId: string; activatedAt: string; validUntil?: string } | null {
+export function decodeLicenseBase64(base64: string): { deviceId: string; activatedAt: string; validUntil?: string; validUntilTs?: number } | null {
   try {
     const encrypted = atob(base64.trim());
     const json = xorCipher(encrypted, ENCRYPTION_KEY);
     const payload: LicenseFilePayload = JSON.parse(json);
     if (payload.magic !== FILE_MAGIC) return null;
-    const expectedChecksum = generateChecksum(payload.deviceId, payload.activatedAt, payload.validUntil);
+    const expectedChecksum = generateChecksum(payload.deviceId, payload.activatedAt, payload.validUntil, payload.validUntilTs);
     if (payload.checksum !== expectedChecksum) return null;
-    return { deviceId: payload.deviceId, activatedAt: payload.activatedAt, validUntil: payload.validUntil };
+    return { deviceId: payload.deviceId, activatedAt: payload.activatedAt, validUntil: payload.validUntil, validUntilTs: payload.validUntilTs };
   } catch {
     return null;
   }
 }
 
-/** Try to read and decrypt a license file from the Sangi Pos folder.
- *  Returns the device ID if valid, null otherwise. */
-export async function readLicenseFile(): Promise<{ deviceId: string; activatedAt: string; validUntil?: string } | null> {
-  // Check multiple possible locations and directories
+export async function readLicenseFile(): Promise<{ deviceId: string; activatedAt: string; validUntil?: string; validUntilTs?: number } | null> {
+  if (!Capacitor.isNativePlatform()) return null;
   const possiblePaths = [
     `${folderPath("Backup")}/${LICENSE_FILE_NAME}`,
     `Sangi Pos/${LICENSE_FILE_NAME}`,
     LICENSE_FILE_NAME,
   ];
 
-  // Try Data (app-private), Documents (legacy), and ExternalStorage
   const directories = [Directory.Data, Directory.Documents, Directory.ExternalStorage];
 
   for (const dir of directories) {
@@ -154,7 +131,7 @@ export async function readLicenseFile(): Promise<{ deviceId: string; activatedAt
         const decoded = decodeLicenseBase64(base64);
         if (decoded) return decoded;
       } catch {
-        // File doesn't exist or can't be read — try next
+        // File doesn't exist — try next
       }
     }
   }

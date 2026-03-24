@@ -94,6 +94,21 @@ const features = [
 
 export default function AboutApp() {
   const navigate = useNavigate();
+  const tapCountRef = React.useRef(0);
+  const tapTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleVersionTap = () => {
+    tapCountRef.current += 1;
+    if (tapTimerRef.current) clearTimeout(tapTimerRef.current);
+    if (tapCountRef.current >= 7) {
+      tapCountRef.current = 0;
+      navigate("/super-login");
+      return;
+    }
+    tapTimerRef.current = setTimeout(() => {
+      tapCountRef.current = 0;
+    }, 2000);
+  };
 
   return (
     <div className="space-y-6 pb-20 pt-2">
@@ -132,13 +147,15 @@ export default function AboutApp() {
         </CardContent>
       </Card>
 
-      <div className="text-center text-xs text-muted-foreground select-none cursor-default space-y-1">
+      <div
+        className="text-center text-xs text-muted-foreground select-none cursor-default space-y-1"
+        onClick={handleVersionTap}
+      >
         <p>SANGI POS &mdash; Offline POS System &mdash; v2.6</p>
-        <a href="/privacy-policy" className="text-primary underline">Privacy Policy</a>
+        <a href="/privacy-policy" className="text-primary underline" onClick={(e) => e.stopPropagation()}>Privacy Policy</a>
         <span className="mx-1">•</span>
-        <a href="/delete-data" className="text-primary underline">Delete Your Data</a>
+        <a href="/delete-data" className="text-primary underline" onClick={(e) => e.stopPropagation()}>Delete Your Data</a>
       </div>
     </div>
   );
 }
-

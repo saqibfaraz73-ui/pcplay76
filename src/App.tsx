@@ -26,6 +26,7 @@ import PosAdvanceBooking from "./pages/PosAdvanceBooking";
 import RecoveryPage from "./pages/RecoveryPage";
 import AboutApp from "./pages/AboutApp";
 import HelpPage from "./pages/HelpPage";
+import SuperLogin from "./pages/SuperLogin";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import DataDeletion from "./pages/DataDeletion";
 import ProductLabelsPage from "./pages/ProductLabelsPage";
@@ -222,6 +223,7 @@ const App = () => (
                 />
 
                 <Route path="/about" element={<AboutApp />} />
+                <Route path="/super-login" element={<SuperLogin />} />
                 <Route path="/help" element={<HelpPage />} />
                 <Route path="/privacy-policy" element={<PrivacyPolicy />} />
                 <Route path="/delete-data" element={<DataDeletion />} />
