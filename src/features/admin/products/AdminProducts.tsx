@@ -1093,6 +1093,9 @@ export function AdminProducts() {
         </DialogContent>
       </Dialog>
 
+      {/* Products Backup & Restore */}
+      <ProductsBackup onRestore={refresh} />
+
       {/* Delete confirmation dialog */}
       <AlertDialog open={!!deleteConfirm} onOpenChange={(open) => !open && setDeleteConfirm(null)}>
         <AlertDialogContent>
