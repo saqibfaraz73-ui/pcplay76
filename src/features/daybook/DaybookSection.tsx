@@ -191,6 +191,7 @@ export default function DaybookSection() {
       }
     });
 
+    await incrementSaleCount("daybook");
     toast({ title: entryType === "payment" ? "Payment added" : "Spending added", description: `${formatIntMoney(entryAmount)} — ${account.name}` });
     setAddEntryOpen(false);
     await refresh();
@@ -569,6 +570,8 @@ export default function DaybookSection() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <UpgradeDialog open={upgradeOpen} onOpenChange={setUpgradeOpen} message={upgradeMsg} />
     </div>
   );
 }
