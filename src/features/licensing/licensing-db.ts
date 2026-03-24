@@ -1,21 +1,20 @@
 /**
- * Licensing DB — Google Play Store Billing + AdMob system
- *
- * Premium status is EXCLUSIVELY determined by Google Play Store.
- * The local DB only stores usage counts and ad bonus credits.
- *
- * Free limits per section: 5 entries
- * After limit: watch a rewarded ad → get +3 entries
- * Premium (Play Store): no limits, no ads
+ * Licensing DB — Device-specific activation system.
+ * Premium is activated via Super Admin login (device-specific PIN)
+ * or via PRELOADED_DEVICE_ID baked into the APK build.
  */
-
 import { db } from "@/db/appDb";
-import { checkPlayStorePremium } from "./play-store-billing";
-import { getCachedConfig } from "./remote-config";
+import { PRELOADED_DEVICE_ID } from "./preloaded-license";
+import { readLicenseFile } from "./license-file";
 
 export type LicenseRecord = {
   id: "license";
-  // Usage counters
+  deviceId: string;
+  licensedDeviceId?: string;
+  activationKey?: string;
+  isPremium: boolean;
+  validUntil?: number; // timestamp – license expires after this date
+  upgradeMessage?: string;
   cashSalesCount: number;
   creditSalesCount: number;
   deliverySalesCount: number;
@@ -25,142 +24,138 @@ export type LicenseRecord = {
   customPrintCount: number;
   labelPrintCount: number;
   installmentCount: number;
-  // Ad bonus credits per module
-  cashAdBonus: number;
-  creditAdBonus: number;
-  deliveryAdBonus: number;
-  tableAdBonus: number;
-  partyAdBonus: number;
-  expensesAdBonus: number;
-  customPrintAdBonus: number;
-  labelPrintAdBonus: number;
-  installmentAdBonus: number;
 };
 
-// Runtime-only premium state (sourced from Play Store on every getLicense call)
-let _isPremiumCache: boolean = false;
-
-/** Allow play-store-billing to set cache immediately after purchase + persist to DB */
-export async function setPremiumCache(val: boolean) {
-  _isPremiumCache = val;
-  // Persist to DB so it survives app restarts
-  try {
-    const rec = (await (db as any).license.get("license")) as LicenseRecord | undefined;
-    if (rec) {
-      await (db as any).license.put({ ...rec, premiumCached: val, premiumCachedAt: Date.now() });
-    }
-  } catch {}
-}
-
-/** Free entries per section before watching an ad (overridden by remote config) */
-export const FREE_LIMIT = 5;
-/** Entries granted after watching a rewarded ad (overridden by remote config) */
-export const AD_BONUS = 5;
-
-/** Get current free limit (uses remote config if available) */
-export function getFreeLimitValue(): number {
-  return getCachedConfig().free_limit ?? FREE_LIMIT;
-}
-
-/** Get current ad bonus (uses remote config if available) */
-export function getAdBonusValue(): number {
-  return getCachedConfig().ad_bonus ?? AD_BONUS;
-}
-/** Warning threshold — show warning after 7 days */
-export const ONLINE_WARNING_INTERVAL = 7 * 24 * 60 * 60 * 1000;
-/** Hard block — force verification after 8 days (7 + 24hr grace) */
-export const ONLINE_CHECK_INTERVAL = 8 * 24 * 60 * 60 * 1000;
-
-function defaultRecord(): LicenseRecord {
-  return {
-    id: "license",
-    cashSalesCount: 0,
-    creditSalesCount: 0,
-    deliverySalesCount: 0,
-    tableSalesCount: 0,
-    partyLodgeCount: 0,
-    expensesCount: 0,
-    customPrintCount: 0,
-    labelPrintCount: 0,
-    installmentCount: 0,
-    cashAdBonus: 0,
-    creditAdBonus: 0,
-    deliveryAdBonus: 0,
-    tableAdBonus: 0,
-    partyAdBonus: 0,
-    expensesAdBonus: 0,
-    customPrintAdBonus: 0,
-    labelPrintAdBonus: 0,
-    installmentAdBonus: 0,
-  };
-}
+const MODULE_LIMIT = 15;
+const TOTAL_LIMIT = 60;
+const LODGE_LIMIT = 5;
+const EXPENSE_LIMIT = 5;
+const PRINT_LIMIT = 5;
+const INSTALLMENT_LIMIT = 10;
 
 /**
- * Get license state. isPremium is ALWAYS sourced from Play Store — never from DB.
+ * Generate a deterministic device ID from stable hardware/browser properties.
+ * Same device will always produce the same ID, even after uninstall/reinstall.
  */
-export async function getLicense(): Promise<LicenseRecord & { isPremium: boolean; deviceId: string }> {
+function generateDeviceId(): string {
+  const nav = typeof navigator !== "undefined" ? navigator : null;
+  const scr = typeof screen !== "undefined" ? screen : null;
+
+  const parts = [
+    nav?.userAgent ?? "",
+    nav?.language ?? "",
+    nav?.languages?.join(",") ?? "",
+    String(scr?.width ?? 0),
+    String(scr?.height ?? 0),
+    String(scr?.colorDepth ?? 0),
+    String(scr?.pixelDepth ?? 0),
+    String(new Date().getTimezoneOffset()),
+    String(nav?.hardwareConcurrency ?? 0),
+    String((nav as any)?.deviceMemory ?? 0),
+    String(nav?.maxTouchPoints ?? 0),
+    nav?.platform ?? "",
+  ];
+  const seed = parts.join("|");
+
+  // djb2 hash — deterministic
+  let h1 = 5381;
+  let h2 = 52711;
+  for (let i = 0; i < seed.length; i++) {
+    const c = seed.charCodeAt(i);
+    h1 = ((h1 << 5) + h1 + c) | 0;
+    h2 = ((h2 << 5) + h2 + c) | 0;
+  }
+  const hex1 = Math.abs(h1).toString(16).toUpperCase().padStart(8, "0");
+  const hex2 = Math.abs(h2).toString(16).toUpperCase().padStart(4, "0").slice(0, 4);
+  return `SNG-${hex1}-${hex2}`;
+}
+
+export async function getLicense(): Promise<LicenseRecord> {
   let rec = (await (db as any).license.get("license")) as LicenseRecord | undefined;
+  const deviceId = generateDeviceId();
 
   if (!rec) {
-    rec = defaultRecord();
+    const preloadMatch = PRELOADED_DEVICE_ID && PRELOADED_DEVICE_ID === deviceId;
+    rec = {
+      id: "license",
+      deviceId,
+      isPremium: preloadMatch,
+      licensedDeviceId: preloadMatch ? PRELOADED_DEVICE_ID : undefined,
+      cashSalesCount: 0,
+      creditSalesCount: 0,
+      deliverySalesCount: 0,
+      tableSalesCount: 0,
+      partyLodgeCount: 0,
+      expensesCount: 0,
+      customPrintCount: 0,
+      labelPrintCount: 0,
+      installmentCount: 0,
+    };
     await (db as any).license.put(rec);
   }
 
-  // Ensure all bonus/count fields exist (migration for older records)
-  const allFields: (keyof LicenseRecord)[] = [
-    "cashSalesCount", "creditSalesCount", "deliverySalesCount", "tableSalesCount",
-    "partyLodgeCount", "expensesCount", "customPrintCount", "labelPrintCount", "installmentCount",
-    "cashAdBonus", "creditAdBonus", "deliveryAdBonus", "tableAdBonus",
-    "partyAdBonus", "expensesAdBonus", "customPrintAdBonus", "labelPrintAdBonus", "installmentAdBonus",
-  ];
-  let needsUpdate = false;
-  for (const field of allFields) {
-    if ((rec as any)[field] === undefined) {
-      (rec as any)[field] = 0;
-      needsUpdate = true;
-    }
+  // Backfill deviceId
+  if (!rec.deviceId) {
+    rec = { ...rec, deviceId };
+    await (db as any).license.put(rec);
   }
-  if (needsUpdate) await (db as any).license.put(rec);
 
-  // ── Premium status: Play Store → DB cache fallback → dev override ──
-  let playStoreChecked = false;
-  try {
-    const status = await checkPlayStorePremium();
-    playStoreChecked = true;
-    _isPremiumCache = status.isPremium;
-    // Update DB cache based on Play Store result
-    if (status.isPremium) {
-      await (db as any).license.put({ ...rec, premiumCached: true, premiumCachedAt: Date.now(), lastOnlineVerifiedAt: Date.now() });
-    } else {
-      // Play Store explicitly says not premium — clear cache
-      await (db as any).license.put({ ...rec, premiumCached: false, premiumCachedAt: 0, lastOnlineVerifiedAt: Date.now() });
-    }
-  } catch {
-    // Play Store check failed (offline) — use DB-persisted cache as fallback
-    if ((rec as any).premiumCached === true) {
-      const cachedAt = (rec as any).premiumCachedAt || 0;
-      const THIRTY_DAYS = 30 * 24 * 60 * 60 * 1000;
-      if (Date.now() - cachedAt < THIRTY_DAYS) {
-        console.log("[Licensing] Using DB-cached premium status (Play Store unavailable, cache valid)");
-        _isPremiumCache = true;
+  // Check preloaded ID
+  if (!rec.isPremium && PRELOADED_DEVICE_ID && PRELOADED_DEVICE_ID === rec.deviceId) {
+    rec = { ...rec, isPremium: true, licensedDeviceId: PRELOADED_DEVICE_ID };
+    await (db as any).license.put(rec);
+  }
+
+  // Check for encrypted license file activation
+  if (!rec.isPremium) {
+    try {
+      const licFile = await readLicenseFile();
+      if (licFile && licFile.deviceId === rec.deviceId) {
+        let validUntilTs: number | undefined;
+        if (licFile.validUntilTs && licFile.validUntilTs > 0) {
+          validUntilTs = licFile.validUntilTs;
+        } else if (licFile.validUntil) {
+          const parts = licFile.validUntil.split("T")[0].split("-").map(Number);
+          if (parts.length === 3) {
+            validUntilTs = new Date(parts[0], parts[1] - 1, parts[2], 23, 59, 59, 999).getTime();
+          } else {
+            validUntilTs = new Date(licFile.validUntil).getTime();
+          }
+        }
+        // Don't activate if already expired
+        if (validUntilTs && validUntilTs > 0 && Date.now() > validUntilTs) {
+          // expired — don't activate
+        } else {
+          rec = { ...rec, isPremium: true, licensedDeviceId: licFile.deviceId, validUntil: validUntilTs };
+          await (db as any).license.put(rec);
+        }
       }
+    } catch {
+      // License file not found or invalid
     }
   }
 
-  // Dev override via 7-tap About page gesture
-  if (!_isPremiumCache && (rec as any).devPremiumOverride === true) {
-    _isPremiumCache = true;
+  // Premium only valid if current device matches
+  if (rec.isPremium && rec.licensedDeviceId) {
+    if (rec.deviceId !== rec.licensedDeviceId) {
+      return { ...rec, isPremium: false };
+    }
   }
 
-  return { ...rec, isPremium: _isPremiumCache, deviceId: "" };
+  // Check license expiry
+  if (rec.isPremium && rec.validUntil && rec.validUntil > 0) {
+    if (Date.now() > rec.validUntil) {
+      const expired = { ...rec, isPremium: false, upgradeMessage: "Your premium license has expired. Please contact support to renew." };
+      await (db as any).license.put(expired);
+      return expired;
+    }
+  }
+
+  return rec;
 }
 
-/**
- * Update only usage counters and ad bonus fields.
- * isPremium is intentionally excluded — only Play Store controls it.
- */
 export async function updateLicense(partial: Partial<Omit<LicenseRecord, "id">>): Promise<void> {
-  const current = (await (db as any).license.get("license")) as LicenseRecord | undefined ?? defaultRecord();
+  const current = await getLicense();
   await (db as any).license.put({ ...current, ...partial });
 }
 
@@ -168,7 +163,7 @@ export type SalesModule =
   | "cash" | "credit" | "delivery" | "table"
   | "partyLodge" | "expenses" | "customPrint" | "labelPrint" | "installment";
 
-const countKey: Record<SalesModule, keyof LicenseRecord> = {
+const moduleKey: Record<SalesModule, keyof LicenseRecord> = {
   cash: "cashSalesCount",
   credit: "creditSalesCount",
   delivery: "deliverySalesCount",
@@ -180,131 +175,58 @@ const countKey: Record<SalesModule, keyof LicenseRecord> = {
   installment: "installmentCount",
 };
 
-const bonusKey: Record<SalesModule, keyof LicenseRecord> = {
-  cash: "cashAdBonus",
-  credit: "creditAdBonus",
-  delivery: "deliveryAdBonus",
-  table: "tableAdBonus",
-  partyLodge: "partyAdBonus",
-  expenses: "expensesAdBonus",
-  customPrint: "customPrintAdBonus",
-  labelPrint: "labelPrintAdBonus",
-  installment: "installmentAdBonus",
+const moduleLimit: Partial<Record<SalesModule, number>> = {
+  partyLodge: LODGE_LIMIT,
+  expenses: EXPENSE_LIMIT,
+  customPrint: PRINT_LIMIT,
+  labelPrint: PRINT_LIMIT,
+  installment: INSTALLMENT_LIMIT,
 };
 
 export type CanSaleResult = {
   allowed: boolean;
   message: string;
   remaining?: number;
-  needsAd?: boolean;
-  needsOnlineVerification?: boolean;
-  /** Warning: user has 24hr grace period remaining */
-  onlineWarning?: { hoursRemaining: number };
 };
 
-/**
- * Check if an action is allowed.
- * - Premium (Play Store): always allowed
- * - Free: up to FREE_LIMIT + adBonus entries
- * - At limit: needsAd = true
- */
-export async function canMakeSale(
-  module: SalesModule,
-  count: number = 1
-): Promise<CanSaleResult> {
-  // Check if periodic online verification is needed
-  const onlineStatus = await getOnlineCheckStatus();
-  if (onlineStatus.status === "blocked") {
-    return {
-      allowed: false,
-      message: "Periodic internet verification required. Please connect to the internet to verify your subscription status.",
-      needsOnlineVerification: true,
-    };
-  }
-
+export async function canMakeSale(module: SalesModule, count: number = 1): Promise<CanSaleResult> {
   const lic = await getLicense();
   if (lic.isPremium) return { allowed: true, message: "" };
 
-  const freeLimit = getFreeLimitValue();
-  const adBonus = getAdBonusValue();
-  const used = (lic[countKey[module]] as number) ?? 0;
-  const bonus = (lic[bonusKey[module]] as number) ?? 0;
-  const totalAllowed = freeLimit + bonus;
-  const remaining = totalAllowed - used;
+  const moduleCount = (lic[moduleKey[module]] as number) ?? 0;
+  const limit = moduleLimit[module] ?? MODULE_LIMIT;
 
-  if (used + count > totalAllowed) {
+  // For sales modules, also check total limit
+  if (module !== "partyLodge" && module !== "expenses" && module !== "customPrint" && module !== "labelPrint" && module !== "installment") {
+    const total = lic.cashSalesCount + lic.creditSalesCount + lic.deliverySalesCount + lic.tableSalesCount;
+    if (total >= TOTAL_LIMIT) {
+      return {
+        allowed: false,
+        message: lic.upgradeMessage || `You have used ${total}/${TOTAL_LIMIT} free entries. Please upgrade to Premium to continue.`,
+      };
+    }
+  }
+
+  const remaining = limit - moduleCount;
+  if (moduleCount + count > limit) {
     return {
       allowed: false,
       remaining: Math.max(0, remaining),
-      needsAd: true,
-      message:
-        remaining > 0
-          ? `You have ${remaining} free ${module} entr${remaining === 1 ? "y" : "ies"} left. Watch an ad to get ${adBonus} more.`
-          : `Free limit reached (${freeLimit} entries). Watch a short ad to get ${adBonus} more entries.`,
+      message: lic.upgradeMessage || `You have used ${moduleCount}/${limit} free entries. ${remaining > 0 ? `Only ${remaining} remaining.` : "Limit reached."} Please upgrade to Premium to continue.`,
     };
   }
-
   return { allowed: true, message: "", remaining };
 }
 
 /**
- * Grant ad bonus entries for a module (called after user watches an ad).
+ * Increment sale count. Safe inside Dexie transactions.
  */
-export async function grantAdBonus(module: SalesModule): Promise<void> {
+export async function incrementSaleCount(module: SalesModule, count: number = 1): Promise<void> {
   const rec = (await (db as any).license.get("license")) as LicenseRecord | undefined;
-  if (!rec) return;
-  const key = bonusKey[module];
-  const current = (rec[key] as number) ?? 0;
-  await (db as any).license.put({ ...rec, [key]: current + getAdBonusValue() });
-}
-
-/**
- * Increment usage count. Safe inside Dexie transactions.
- */
-export async function incrementSaleCount(
-  module: SalesModule,
-  count: number = 1
-): Promise<void> {
-  const rec = (await (db as any).license.get("license")) as LicenseRecord | undefined;
-  if (!rec) return;
-  if (_isPremiumCache) return; // premium users never count
-  const key = countKey[module];
+  if (!rec || rec.isPremium) return;
+  const key = moduleKey[module];
   await (db as any).license.put({
     ...rec,
     [key]: ((rec[key] as number) ?? 0) + count,
   });
-}
-
-/**
- * Check if the user needs to connect to internet for periodic verification.
- * Returns true if more than 7 days have passed since last online check.
- */
-export type OnlineCheckStatus = "ok" | "warning" | "blocked";
-
-/**
- * Check online verification status:
- * - "ok": within 7 days
- * - "warning": 7-8 days (24hr grace period, show warning but allow usage)
- * - "blocked": 8+ days (hard block)
- */
-export async function getOnlineCheckStatus(): Promise<{ status: OnlineCheckStatus; hoursRemaining: number }> {
-  const rec = (await (db as any).license.get("license")) as any;
-  if (!rec) return { status: "ok", hoursRemaining: 0 };
-  const lastVerified = rec.lastOnlineVerifiedAt || 0;
-  if (lastVerified === 0) return { status: "ok", hoursRemaining: 0 }; // Fresh install
-  const elapsed = Date.now() - lastVerified;
-  if (elapsed > ONLINE_CHECK_INTERVAL) {
-    return { status: "blocked", hoursRemaining: 0 };
-  }
-  if (elapsed > ONLINE_WARNING_INTERVAL) {
-    const msRemaining = ONLINE_CHECK_INTERVAL - elapsed;
-    return { status: "warning", hoursRemaining: Math.max(0, Math.ceil(msRemaining / (60 * 60 * 1000))) };
-  }
-  return { status: "ok", hoursRemaining: 0 };
-}
-
-/** @deprecated Use getOnlineCheckStatus instead */
-export async function needsOnlineCheck(): Promise<boolean> {
-  const { status } = await getOnlineCheckStatus();
-  return status === "blocked";
 }
