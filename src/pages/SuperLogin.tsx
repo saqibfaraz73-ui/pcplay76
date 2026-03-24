@@ -1,7 +1,7 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
-import { CalendarIcon, Clock, Copy } from "lucide-react";
+import { CalendarIcon, Clock, Copy, Share2, Save } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -163,7 +163,7 @@ export default function SuperLogin() {
     }
   };
 
-  const handleGenerateFile = async () => {
+  const handleGenerateAndShare = async () => {
     const targetId = customerDeviceId.trim();
     if (!targetId) {
       toast({ title: "Enter a Device ID first", variant: "destructive" });
@@ -180,33 +180,73 @@ export default function SuperLogin() {
     setLoading(true);
     try {
       const { uri } = await generateLicenseFile(targetId, validUntilISO, validUntilTs);
-
-      let desc = "License file created";
-      if (activationMode === "duration" && validUntilTs) {
-        const msgParts: string[] = [];
-        if (durationHours > 0) msgParts.push(`${durationHours}h`);
-        if (durationMinutes > 0) msgParts.push(`${durationMinutes}m`);
-        desc += ` (valid for ${msgParts.join(" ")})`;
-      } else if (validUntilDate) {
-        desc += ` (valid until ${format(validUntilDate, "PPP")})`;
-      } else {
-        desc += " (lifetime)";
-      }
-
-      toast({ title: desc });
-      try {
-        await shareLicenseFile(uri);
-      } catch {
-        toast({ title: "File saved to Sangi Pos/Backup folder", description: "Share manually if needed" });
-      }
+      toast({ title: "License file created" });
+      await shareLicenseFile(uri);
     } catch {
+      // Fallback: copy base64 to clipboard
       try {
         const base64 = generateLicenseBase64(targetId, validUntilISO, validUntilTs);
         await navigator.clipboard.writeText(base64);
-        toast({ title: "License data copied to clipboard!", description: "Send this text to the customer. They save it as 'license.sangi' in Sangi Pos/Backup folder." });
+        toast({ title: "License data copied to clipboard!", description: "Send this text to the customer. They save it as 'license.sangi'." });
       } catch (err2: any) {
         toast({ title: "Could not generate license", description: err2?.message, variant: "destructive" });
       }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGenerateAndSave = async () => {
+    const targetId = customerDeviceId.trim();
+    if (!targetId) {
+      toast({ title: "Enter a Device ID first", variant: "destructive" });
+      return;
+    }
+    if (activationMode === "duration" && durationHours === 0 && durationMinutes === 0) {
+      toast({ title: "Set a duration first", variant: "destructive" });
+      return;
+    }
+
+    const validUntilISO = getValidUntilISO();
+    const validUntilTs = activationMode === "duration" ? getValidUntilTimestamp() : undefined;
+
+    setLoading(true);
+    try {
+      const base64 = generateLicenseBase64(targetId, validUntilISO, validUntilTs);
+
+      // Try native file save first
+      try {
+        const { uri } = await generateLicenseFile(targetId, validUntilISO, validUntilTs);
+        let expiryMsg = "";
+        if (activationMode === "duration" && validUntilTs) {
+          const msgParts: string[] = [];
+          if (durationHours > 0) msgParts.push(`${durationHours}h`);
+          if (durationMinutes > 0) msgParts.push(`${durationMinutes}m`);
+          expiryMsg = ` (valid for ${msgParts.join(" ")})`;
+        } else if (validUntilDate) {
+          expiryMsg = ` (valid until ${format(validUntilDate, "PPP")})`;
+        } else {
+          expiryMsg = " (lifetime)";
+        }
+        toast({ title: `License file saved${expiryMsg}`, description: "Saved to Sangi Pos/Backup folder" });
+        return;
+      } catch {
+        // Not native — use browser download
+      }
+
+      // Browser fallback: trigger download
+      const blob = new Blob([base64], { type: "application/octet-stream" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "license.sangi";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast({ title: "License file downloaded", description: "license.sangi saved to Downloads" });
+    } catch (err: any) {
+      toast({ title: "Could not save license", description: err?.message, variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -405,11 +445,18 @@ export default function SuperLogin() {
           <div className="border-t pt-3 space-y-2">
             <p className="text-xs font-medium">Generate license file for customer:</p>
             <p className="text-[10px] text-muted-foreground">
-              Enter ANY device ID above, set expiry if needed, then generate. The file will only work on that specific device.
+              Enter ANY device ID above, set expiry if needed, then share or save the file. It will only work on that specific device.
             </p>
-            <Button variant="outline" className="w-full" onClick={() => void handleGenerateFile()} disabled={loading}>
-              {loading ? "Processing..." : "📄 Generate & Share License File"}
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" className="flex-1 gap-1.5" onClick={() => void handleGenerateAndShare()} disabled={loading}>
+                <Share2 className="h-4 w-4" />
+                {loading ? "..." : "Share"}
+              </Button>
+              <Button variant="outline" className="flex-1 gap-1.5" onClick={() => void handleGenerateAndSave()} disabled={loading}>
+                <Save className="h-4 w-4" />
+                {loading ? "..." : "Save to Device"}
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
