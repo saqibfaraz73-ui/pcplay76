@@ -26,6 +26,7 @@ import PosAdvanceBooking from "./pages/PosAdvanceBooking";
 import RecoveryPage from "./pages/RecoveryPage";
 import AboutApp from "./pages/AboutApp";
 import HelpPage from "./pages/HelpPage";
+import SuperLogin from "./pages/SuperLogin";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import DataDeletion from "./pages/DataDeletion";
 import ProductLabelsPage from "./pages/ProductLabelsPage";
