@@ -279,6 +279,57 @@ export function AdminSettings() {
         </CardContent>
       </Card>}
 
+      {/* License Info */}
+      {match("license", "device", "premium", "app id", "activation") && <Card>
+        <CardHeader>
+          <CardTitle>License Information</CardTitle>
+          <CardDescription>Device ID, premium status, and license details.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">Device ID</Label>
+            <p className="font-mono text-xs bg-muted p-2 rounded select-all break-all">{licenseDeviceId || "Loading..."}</p>
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">App ID</Label>
+            <p className="font-mono text-xs bg-muted p-2 rounded select-all break-all">app.lovable.317dd68ab3cd4e6ab5089be67871d951</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className={`h-3 w-3 rounded-full ${isPremium ? "bg-green-500" : "bg-red-500"}`} />
+            <span className="text-sm font-medium">{isPremium ? "Premium Active" : "Free Version"}</span>
+          </div>
+          {licensedDeviceId && (
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">Licensed To</Label>
+              <p className="font-mono text-xs bg-muted p-2 rounded select-all break-all">{licensedDeviceId}</p>
+            </div>
+          )}
+          {isPremium && licenseValidUntil && licenseValidUntil > 0 && (
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">License Expires</Label>
+              <p className="text-sm font-medium">
+                {Date.now() > licenseValidUntil
+                  ? <span className="text-destructive">Expired</span>
+                  : new Date(licenseValidUntil).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" })
+                }
+              </p>
+              {Date.now() < licenseValidUntil && (
+                <p className="text-xs text-muted-foreground">
+                  {(() => {
+                    const rem = licenseValidUntil - Date.now();
+                    const days = Math.floor(rem / 86400000);
+                    const hours = Math.floor((rem % 86400000) / 3600000);
+                    return `${days}d ${hours}h remaining`;
+                  })()}
+                </p>
+              )}
+            </div>
+          )}
+          {isPremium && (!licenseValidUntil || licenseValidUntil === 0) && (
+            <p className="text-xs text-muted-foreground">Lifetime license — no expiry</p>
+          )}
+        </CardContent>
+      </Card>}
 
   const save = async () => {
     try {
