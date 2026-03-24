@@ -35,6 +35,7 @@ import {
   Clock,
   CheckCircle2,
   Tags,
+  BookOpen,
 } from "lucide-react";
 import appLogo from "@/assets/app-logo.jpg";
 
