@@ -33,6 +33,7 @@ import { sharePdfBytes, savePdfBytes } from "@/features/pos/share-utils";
 import { SaveShareMenu } from "@/components/SaveShareMenu";
 import { RecoveryAgentExport } from "./RecoveryAgentExport";
 import { RecoveryAgentView } from "./RecoveryAgentView";
+import { RecoveryBackup } from "./RecoveryBackup";
 import { calcGlobalTax, getTaxLabel } from "@/features/tax/tax-calc";
 import { buildTaxQrEscPos, addTaxQrToPdf, shouldPrintTaxQr } from "@/features/tax/tax-qr";
 
@@ -1075,6 +1076,9 @@ export function RecoverySection() {
           })}
         </div>
       )}
+
+      {/* Backup & Restore */}
+      {(isAdmin || isCashier) && <RecoveryBackup onRestore={load} />}
 
       {/* Report Dialog */}
       <AlertDialog open={showReport} onOpenChange={setShowReport}>

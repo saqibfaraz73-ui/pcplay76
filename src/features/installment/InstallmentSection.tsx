@@ -27,6 +27,7 @@ import { buildInstallmentReceiptPdf, buildPaymentHistoryPdf } from "./installmen
 import { sharePdfBytes, savePdfBytes, saveFileBlob, shareFileBlob } from "@/features/pos/share-utils";
 import { canMakeSale, incrementSaleCount } from "@/features/licensing/licensing-db";
 import { InstallmentImageViewer } from "./InstallmentImageViewer";
+import { InstallmentBackup } from "./InstallmentBackup";
 
 function getCurrentMonth(): string {
   const d = new Date();
@@ -415,6 +416,7 @@ export function InstallmentSection() {
         {canEdit && <TabsTrigger value="reports">Reports</TabsTrigger>}
         {isAdmin && <TabsTrigger value="agentview">Agent View</TabsTrigger>}
         {isAdmin && <TabsTrigger value="agents">Agents</TabsTrigger>}
+        {isAdmin && <TabsTrigger value="backup">Backup</TabsTrigger>}
       </TabsList>
 
       <TabsContent value="customers">
@@ -896,6 +898,12 @@ export function InstallmentSection() {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+      )}
+
+      {isAdmin && (
+        <TabsContent value="backup">
+          <InstallmentBackup onRestore={refresh} />
         </TabsContent>
       )}
 
