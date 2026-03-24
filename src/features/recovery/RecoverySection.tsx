@@ -1076,6 +1076,9 @@ export function RecoverySection() {
         </div>
       )}
 
+      {/* Backup & Restore */}
+      {(isAdmin || isCashier) && <RecoveryBackup onRestore={load} />}
+
       {/* Report Dialog */}
       <AlertDialog open={showReport} onOpenChange={setShowReport}>
         <AlertDialogContent>
