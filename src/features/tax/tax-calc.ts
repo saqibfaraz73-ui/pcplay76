@@ -85,15 +85,24 @@ export function calcGlobalTax(subtotal: number, settings: Settings | null): numb
   if (!settings?.taxEnabled) return 0;
 
   const rate = getEffectiveTaxPercent(settings);
-  if (!rate || rate <= 0) return 0;
+  let tax = 0;
 
-  // If manual taxValue is set and type is fixed amount (not percent)
-  if (settings.taxValue && settings.taxValue > 0 && settings.taxType !== "percent") {
-    return Math.round(settings.taxValue);
+  if (rate > 0) {
+    // If manual taxValue is set and type is fixed amount (not percent)
+    if (settings.taxValue && settings.taxValue > 0 && settings.taxType !== "percent") {
+      tax = Math.round(settings.taxValue);
+    } else {
+      // Percent-based (either manual or from API)
+      tax = Math.round(subtotal * rate / 100);
+    }
   }
 
-  // Percent-based (either manual or from API)
-  return Math.round(subtotal * rate / 100);
+  // Add per-receipt fee (e.g. FBR Rs 1)
+  if (settings.taxReceiptFeeEnabled && settings.taxReceiptFee && settings.taxReceiptFee > 0) {
+    tax += Math.round(settings.taxReceiptFee);
+  }
+
+  return tax;
 }
 
 /** Get the tax label from settings (e.g. "GST", "VAT") */
