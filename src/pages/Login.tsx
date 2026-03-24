@@ -67,6 +67,10 @@ export default function Login() {
   // Master reset
   const [masterPin, setMasterPin] = React.useState("");
 
+  // 7-tap super login refs
+  const tapCountRef = React.useRef(0);
+  const tapTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
   React.useEffect(() => {
     (async () => {
       const registered = await isAdminRegistered();
@@ -221,8 +225,18 @@ export default function Login() {
     <div className="mx-auto flex min-h-[calc(100dvh-6rem)] max-w-lg flex-col items-center justify-center px-4">
       {/* Logo — tap 7 times to open super admin */}
       <div className="mb-6 flex flex-col items-center">
-      <div
-          className="h-20 w-20 overflow-hidden rounded-xl border-2 border-primary/20 shadow-lg select-none"
+        <div
+          className="h-20 w-20 overflow-hidden rounded-xl border-2 border-primary/20 shadow-lg select-none cursor-default"
+          onClick={() => {
+            tapCountRef.current += 1;
+            if (tapTimerRef.current) clearTimeout(tapTimerRef.current);
+            if (tapCountRef.current >= 7) {
+              tapCountRef.current = 0;
+              navigate("/super-login");
+              return;
+            }
+            tapTimerRef.current = setTimeout(() => { tapCountRef.current = 0; }, 2000);
+          }}
         >
           <img src={appLogo} alt="SANGI POS logo" className="h-full w-full object-cover" loading="eager" draggable={false} />
         </div>
