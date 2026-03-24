@@ -900,6 +900,12 @@ export function InstallmentSection() {
         </TabsContent>
       )}
 
+      {isAdmin && (
+        <TabsContent value="backup">
+          <InstallmentBackup onRestore={refresh} />
+        </TabsContent>
+      )}
+
       {/* Defaulter Export to Agent Dialog */}
       {defaulterExportOpen && (
         <Dialog open onOpenChange={() => setDefaulterExportOpen(false)}>
