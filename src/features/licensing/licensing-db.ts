@@ -187,7 +187,34 @@ export type CanSaleResult = {
   allowed: boolean;
   message: string;
   remaining?: number;
+  needsAd?: boolean;
+  needsOnlineVerification?: boolean;
 };
+
+/** @deprecated No longer used — ads removed */
+export const FREE_LIMIT = 15;
+
+/** @deprecated No longer used — ads removed */
+export function getAdBonusValue(): number { return 0; }
+
+/** @deprecated No longer used — ads removed */
+export async function grantAdBonus(_module: SalesModule): Promise<void> {}
+
+/** @deprecated No longer used */
+export type OnlineCheckStatus = "ok" | "warning" | "blocked";
+
+/** @deprecated Always returns ok */
+export async function getOnlineCheckStatus(): Promise<{ status: OnlineCheckStatus; hoursRemaining: number }> {
+  return { status: "ok", hoursRemaining: 0 };
+}
+
+/** @deprecated */
+export async function needsOnlineCheck(): Promise<boolean> {
+  return false;
+}
+
+/** @deprecated */
+export async function setPremiumCache(_val: boolean): Promise<void> {}
 
 export async function canMakeSale(module: SalesModule, count: number = 1): Promise<CanSaleResult> {
   const lic = await getLicense();
