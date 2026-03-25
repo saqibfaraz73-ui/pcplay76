@@ -36,7 +36,7 @@ import type { KitchenOrder } from "./kitchen-schema";
 import type { LicenseRecord } from "@/features/licensing/licensing-db";
 import type { InstallmentCustomer, InstallmentPayment } from "./installment-schema";
 import type { TaxInvoiceQueueItem } from "@/features/tax/tax-queue";
-import type { DaybookAccount, DaybookEntry, DaybookImage } from "./daybook-schema";
+import type { DaybookAccount, DaybookEntry, DaybookImage, DaybookNote } from "./daybook-schema";
 
 export class SangiPosDb extends Dexie {
   categories!: Table<Category, string>;
@@ -80,6 +80,7 @@ export class SangiPosDb extends Dexie {
   daybookAccounts!: Table<DaybookAccount, string>;
   daybookEntries!: Table<DaybookEntry, string>;
   daybookImages!: Table<DaybookImage, string>;
+  daybookNotes!: Table<DaybookNote, string>;
 
   constructor() {
     super("sangi_pos_db_v1");

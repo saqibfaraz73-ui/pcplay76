@@ -28,3 +28,9 @@ export type DaybookImage = {
   dataUrl: string; // base64 data URL
   createdAt: number;
 };
+
+export type DaybookNote = {
+  id: string;
+  text: string;
+  createdAt: number;
+};
