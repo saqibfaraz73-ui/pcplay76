@@ -38,14 +38,18 @@ export default function DaybookSection() {
   const [accounts, setAccounts] = React.useState<DaybookAccount[]>([]);
   const [entries, setEntries] = React.useState<DaybookEntry[]>([]);
   const [images, setImages] = React.useState<DaybookImage[]>([]);
+  const [notes, setNotes] = React.useState<DaybookNote[]>([]);
   const [settings, setSettings] = React.useState<Settings | null>(null);
 
   // Dialogs
   const [addAccountOpen, setAddAccountOpen] = React.useState(false);
   const [addEntryOpen, setAddEntryOpen] = React.useState(false);
   const [entryType, setEntryType] = React.useState<"payment" | "spending">("payment");
-  const [deleteTarget, setDeleteTarget] = React.useState<{ type: "account" | "entry"; id: string; label: string } | null>(null);
+  const [deleteTarget, setDeleteTarget] = React.useState<{ type: "account" | "entry" | "note"; id: string; label: string } | null>(null);
 
+  // Notes
+  const [addNoteOpen, setAddNoteOpen] = React.useState(false);
+  const [noteText, setNoteText] = React.useState("");
   // Upgrade dialog
   const [upgradeOpen, setUpgradeOpen] = React.useState(false);
   const [upgradeMsg, setUpgradeMsg] = React.useState("");
@@ -71,15 +75,17 @@ export default function DaybookSection() {
   const backupFileRef = React.useRef<HTMLInputElement>(null);
 
   const refresh = React.useCallback(async () => {
-    const [accs, ents, imgs, s] = await Promise.all([
+    const [accs, ents, imgs, nts, s] = await Promise.all([
       db.daybookAccounts.orderBy("createdAt").toArray(),
       db.daybookEntries.orderBy("createdAt").reverse().toArray(),
       db.daybookImages.orderBy("createdAt").toArray(),
+      db.daybookNotes.orderBy("createdAt").reverse().toArray(),
       db.settings.get("app"),
     ]);
     setAccounts(accs);
     setEntries(ents);
     setImages(imgs);
+    setNotes(nts);
     setSettings(s ?? null);
   }, []);
 
