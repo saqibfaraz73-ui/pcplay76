@@ -208,7 +208,6 @@ export default function DaybookSection() {
   const confirmDelete = async () => {
     if (!deleteTarget) return;
     if (deleteTarget.type === "account") {
-      // Delete account and all its entries + images
       const relatedEntries = entries.filter(e => e.accountId === deleteTarget.id);
       const relatedImageIds = images.filter(img => relatedEntries.some(e => e.id === img.entryId)).map(i => i.id);
       await db.transaction("rw", [db.daybookAccounts, db.daybookEntries, db.daybookImages], async () => {
@@ -216,8 +215,9 @@ export default function DaybookSection() {
         await db.daybookEntries.where("accountId").equals(deleteTarget.id).delete();
         for (const imgId of relatedImageIds) await db.daybookImages.delete(imgId);
       });
+    } else if (deleteTarget.type === "note") {
+      await db.daybookNotes.delete(deleteTarget.id);
     } else {
-      // Delete entry — reverse balance change
       const entry = entries.find(e => e.id === deleteTarget.id);
       if (entry) {
         const account = accounts.find(a => a.id === entry.accountId);
@@ -231,6 +231,21 @@ export default function DaybookSection() {
     }
     toast({ title: "Deleted" });
     setDeleteTarget(null);
+    await refresh();
+  };
+
+  // ── Save Note ──
+  const saveNote = async () => {
+    if (!noteText.trim()) { toast({ title: "Note cannot be empty", variant: "destructive" }); return; }
+    const note: DaybookNote = {
+      id: makeId("dbn"),
+      text: noteText.trim(),
+      createdAt: Date.now(),
+    };
+    await db.daybookNotes.put(note);
+    toast({ title: "Note added" });
+    setNoteText("");
+    setAddNoteOpen(false);
     await refresh();
   };
 
