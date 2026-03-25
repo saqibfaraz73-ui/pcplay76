@@ -272,7 +272,7 @@ export default function DaybookSection() {
 
   // ── Backup / Restore ──
   const exportBackup = async () => {
-    const data = { accounts, entries, images };
+    const data = { accounts, entries, images, notes };
     const json = JSON.stringify(data);
     const blob = new Blob([json], { type: "application/json" });
     const url = URL.createObjectURL(blob);
@@ -291,15 +291,15 @@ export default function DaybookSection() {
       const text = await file.text();
       const data = JSON.parse(text);
       if (!data.accounts || !data.entries) throw new Error("Invalid backup file");
-      await db.transaction("rw", [db.daybookAccounts, db.daybookEntries, db.daybookImages], async () => {
-        // Clear existing
+      await db.transaction("rw", [db.daybookAccounts, db.daybookEntries, db.daybookImages, db.daybookNotes], async () => {
         await db.daybookAccounts.clear();
         await db.daybookEntries.clear();
         await db.daybookImages.clear();
-        // Restore
+        await db.daybookNotes.clear();
         await db.daybookAccounts.bulkPut(data.accounts);
         await db.daybookEntries.bulkPut(data.entries);
         if (data.images) await db.daybookImages.bulkPut(data.images);
+        if (data.notes) await db.daybookNotes.bulkPut(data.notes);
       });
       toast({ title: "Backup restored", description: `${data.accounts.length} accounts, ${data.entries.length} entries` });
       await refresh();
