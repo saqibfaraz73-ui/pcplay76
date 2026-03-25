@@ -179,17 +179,49 @@ export default function SuperLogin() {
 
     setLoading(true);
     try {
-      const { uri } = await generateLicenseFile(targetId, validUntilISO, validUntilTs);
-      toast({ title: "License file created" });
-      await shareLicenseFile(uri);
-    } catch {
-      // Fallback: copy base64 to clipboard
+      // Try native Capacitor share first
       try {
-        const base64 = generateLicenseBase64(targetId, validUntilISO, validUntilTs);
-        await navigator.clipboard.writeText(base64);
-        toast({ title: "License data copied to clipboard!", description: "Send this text to the customer. They save it as 'license.sangi'." });
-      } catch (err2: any) {
-        toast({ title: "Could not generate license", description: err2?.message, variant: "destructive" });
+        const { uri } = await generateLicenseFile(targetId, validUntilISO, validUntilTs);
+        toast({ title: "License file created" });
+        await shareLicenseFile(uri);
+        return;
+      } catch {
+        // Not native platform
+      }
+
+      // Web Share API with file
+      const base64 = generateLicenseBase64(targetId, validUntilISO, validUntilTs);
+      const blob = new Blob([base64], { type: "application/octet-stream" });
+      const file = new File([blob], "license.sangi", { type: "application/octet-stream" });
+
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          title: "Sangi POS Premium License",
+          files: [file],
+        });
+        toast({ title: "License file shared" });
+      } else if (navigator.share) {
+        // Share without file support — share as text
+        await navigator.share({
+          title: "Sangi POS Premium License",
+          text: base64,
+        });
+        toast({ title: "License data shared" });
+      } else {
+        // Final fallback: download
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "license.sangi";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        toast({ title: "License file downloaded", description: "license.sangi saved to Downloads" });
+      }
+    } catch (err: any) {
+      if (err?.name !== "AbortError") {
+        toast({ title: "Could not share license", description: err?.message, variant: "destructive" });
       }
     } finally {
       setLoading(false);
