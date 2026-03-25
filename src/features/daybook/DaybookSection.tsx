@@ -602,14 +602,31 @@ export default function DaybookSection() {
         </DialogContent>
       </Dialog>
 
+      {/* ── Add Note Dialog ── */}
+      <Dialog open={addNoteOpen} onOpenChange={setAddNoteOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Add Note</DialogTitle></DialogHeader>
+          <div className="space-y-2">
+            <Label>Note</Label>
+            <Textarea value={noteText} onChange={e => setNoteText(e.target.value)} placeholder="Write your note here..." rows={4} />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAddNoteOpen(false)}>Cancel</Button>
+            <Button onClick={() => void saveNote()} disabled={!noteText.trim()}>Save Note</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* ── Delete Confirmation ── */}
       <AlertDialog open={!!deleteTarget} onOpenChange={v => !v && setDeleteTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete {deleteTarget?.type === "account" ? "Account" : "Entry"}?</AlertDialogTitle>
+            <AlertDialogTitle>Delete {deleteTarget?.type === "account" ? "Account" : deleteTarget?.type === "note" ? "Note" : "Entry"}?</AlertDialogTitle>
             <AlertDialogDescription>
               {deleteTarget?.type === "account"
                 ? `Delete "${deleteTarget.label}" and all its transactions? This cannot be undone.`
+                : deleteTarget?.type === "note"
+                ? `Delete this note? This cannot be undone.`
                 : `Delete entry of ${deleteTarget?.label}? Balance will be reversed. This cannot be undone.`}
             </AlertDialogDescription>
           </AlertDialogHeader>
