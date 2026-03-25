@@ -1,6 +1,6 @@
 import React from "react";
 import { db } from "@/db/appDb";
-import type { DaybookAccount, DaybookEntry, DaybookImage } from "@/db/daybook-schema";
+import type { DaybookAccount, DaybookEntry, DaybookImage, DaybookNote } from "@/db/daybook-schema";
 import type { Settings } from "@/db/schema";
 import { makeId } from "@/features/admin/id";
 import { formatIntMoney, parseNonDecimalInt, fmtDateTime } from "@/features/pos/format";
@@ -16,13 +16,14 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SaveShareMenu } from "@/components/SaveShareMenu";
+import { Textarea } from "@/components/ui/textarea";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
   Plus, Trash2, Banknote, Building2, ArrowDownCircle, ArrowUpCircle,
-  ImagePlus, Download, Upload, FileText,
+  ImagePlus, Download, Upload, FileText, StickyNote,
 } from "lucide-react";
 
 const toDateVal = (ts: number) => {
