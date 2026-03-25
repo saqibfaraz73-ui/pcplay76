@@ -266,17 +266,35 @@ export default function SuperLogin() {
         // Not native — use browser download
       }
 
-      // Browser fallback: trigger download
+      // Browser: use File System Access API to let user pick save location
       const blob = new Blob([base64], { type: "application/octet-stream" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "license.sangi";
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      toast({ title: "License file downloaded", description: "license.sangi saved to Downloads" });
+      try {
+        const handle = await (window as any).showSaveFilePicker({
+          suggestedName: "license.sangi",
+          types: [
+            {
+              description: "Sangi License File",
+              accept: { "application/octet-stream": [".sangi"] },
+            },
+          ],
+        });
+        const writable = await handle.createWritable();
+        await writable.write(blob);
+        await writable.close();
+        toast({ title: "License file saved successfully" });
+      } catch (pickerErr: any) {
+        if (pickerErr?.name === "AbortError") return; // user cancelled
+        // Fallback: auto-download
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "license.sangi";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        toast({ title: "License file downloaded", description: "license.sangi saved to Downloads" });
+      }
     } catch (err: any) {
       toast({ title: "Could not save license", description: err?.message, variant: "destructive" });
     } finally {
