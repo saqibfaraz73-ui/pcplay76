@@ -1,6 +1,6 @@
 import React from "react";
 import { db } from "@/db/appDb";
-import type { DaybookAccount, DaybookEntry, DaybookImage } from "@/db/daybook-schema";
+import type { DaybookAccount, DaybookEntry, DaybookImage, DaybookNote } from "@/db/daybook-schema";
 import type { Settings } from "@/db/schema";
 import { makeId } from "@/features/admin/id";
 import { formatIntMoney, parseNonDecimalInt, fmtDateTime } from "@/features/pos/format";
@@ -16,13 +16,14 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SaveShareMenu } from "@/components/SaveShareMenu";
+import { Textarea } from "@/components/ui/textarea";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
   Plus, Trash2, Banknote, Building2, ArrowDownCircle, ArrowUpCircle,
-  ImagePlus, Download, Upload, FileText,
+  ImagePlus, Download, Upload, FileText, StickyNote,
 } from "lucide-react";
 
 const toDateVal = (ts: number) => {
@@ -37,14 +38,18 @@ export default function DaybookSection() {
   const [accounts, setAccounts] = React.useState<DaybookAccount[]>([]);
   const [entries, setEntries] = React.useState<DaybookEntry[]>([]);
   const [images, setImages] = React.useState<DaybookImage[]>([]);
+  const [notes, setNotes] = React.useState<DaybookNote[]>([]);
   const [settings, setSettings] = React.useState<Settings | null>(null);
 
   // Dialogs
   const [addAccountOpen, setAddAccountOpen] = React.useState(false);
   const [addEntryOpen, setAddEntryOpen] = React.useState(false);
   const [entryType, setEntryType] = React.useState<"payment" | "spending">("payment");
-  const [deleteTarget, setDeleteTarget] = React.useState<{ type: "account" | "entry"; id: string; label: string } | null>(null);
+  const [deleteTarget, setDeleteTarget] = React.useState<{ type: "account" | "entry" | "note"; id: string; label: string } | null>(null);
 
+  // Notes
+  const [addNoteOpen, setAddNoteOpen] = React.useState(false);
+  const [noteText, setNoteText] = React.useState("");
   // Upgrade dialog
   const [upgradeOpen, setUpgradeOpen] = React.useState(false);
   const [upgradeMsg, setUpgradeMsg] = React.useState("");
@@ -70,15 +75,17 @@ export default function DaybookSection() {
   const backupFileRef = React.useRef<HTMLInputElement>(null);
 
   const refresh = React.useCallback(async () => {
-    const [accs, ents, imgs, s] = await Promise.all([
+    const [accs, ents, imgs, nts, s] = await Promise.all([
       db.daybookAccounts.orderBy("createdAt").toArray(),
       db.daybookEntries.orderBy("createdAt").reverse().toArray(),
       db.daybookImages.orderBy("createdAt").toArray(),
+      db.daybookNotes.orderBy("createdAt").reverse().toArray(),
       db.settings.get("app"),
     ]);
     setAccounts(accs);
     setEntries(ents);
     setImages(imgs);
+    setNotes(nts);
     setSettings(s ?? null);
   }, []);
 
@@ -201,7 +208,6 @@ export default function DaybookSection() {
   const confirmDelete = async () => {
     if (!deleteTarget) return;
     if (deleteTarget.type === "account") {
-      // Delete account and all its entries + images
       const relatedEntries = entries.filter(e => e.accountId === deleteTarget.id);
       const relatedImageIds = images.filter(img => relatedEntries.some(e => e.id === img.entryId)).map(i => i.id);
       await db.transaction("rw", [db.daybookAccounts, db.daybookEntries, db.daybookImages], async () => {
@@ -209,8 +215,9 @@ export default function DaybookSection() {
         await db.daybookEntries.where("accountId").equals(deleteTarget.id).delete();
         for (const imgId of relatedImageIds) await db.daybookImages.delete(imgId);
       });
+    } else if (deleteTarget.type === "note") {
+      await db.daybookNotes.delete(deleteTarget.id);
     } else {
-      // Delete entry — reverse balance change
       const entry = entries.find(e => e.id === deleteTarget.id);
       if (entry) {
         const account = accounts.find(a => a.id === entry.accountId);
@@ -224,6 +231,21 @@ export default function DaybookSection() {
     }
     toast({ title: "Deleted" });
     setDeleteTarget(null);
+    await refresh();
+  };
+
+  // ── Save Note ──
+  const saveNote = async () => {
+    if (!noteText.trim()) { toast({ title: "Note cannot be empty", variant: "destructive" }); return; }
+    const note: DaybookNote = {
+      id: makeId("dbn"),
+      text: noteText.trim(),
+      createdAt: Date.now(),
+    };
+    await db.daybookNotes.put(note);
+    toast({ title: "Note added" });
+    setNoteText("");
+    setAddNoteOpen(false);
     await refresh();
   };
 
@@ -250,7 +272,7 @@ export default function DaybookSection() {
 
   // ── Backup / Restore ──
   const exportBackup = async () => {
-    const data = { accounts, entries, images };
+    const data = { accounts, entries, images, notes };
     const json = JSON.stringify(data);
     const blob = new Blob([json], { type: "application/json" });
     const url = URL.createObjectURL(blob);
@@ -269,15 +291,15 @@ export default function DaybookSection() {
       const text = await file.text();
       const data = JSON.parse(text);
       if (!data.accounts || !data.entries) throw new Error("Invalid backup file");
-      await db.transaction("rw", [db.daybookAccounts, db.daybookEntries, db.daybookImages], async () => {
-        // Clear existing
+      await db.transaction("rw", [db.daybookAccounts, db.daybookEntries, db.daybookImages, db.daybookNotes], async () => {
         await db.daybookAccounts.clear();
         await db.daybookEntries.clear();
         await db.daybookImages.clear();
-        // Restore
+        await db.daybookNotes.clear();
         await db.daybookAccounts.bulkPut(data.accounts);
         await db.daybookEntries.bulkPut(data.entries);
         if (data.images) await db.daybookImages.bulkPut(data.images);
+        if (data.notes) await db.daybookNotes.bulkPut(data.notes);
       });
       toast({ title: "Backup restored", description: `${data.accounts.length} accounts, ${data.entries.length} entries` });
       await refresh();
@@ -413,7 +435,34 @@ export default function DaybookSection() {
         </CardContent>
       </Card>
 
-      {/* ── Reports Section ── */}
+      {/* ── Notes Section ── */}
+      <Card>
+        <CardHeader className="py-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base flex items-center gap-2"><StickyNote className="h-4 w-4" /> Notes ({notes.length})</CardTitle>
+            <Button variant="outline" size="sm" onClick={() => { setNoteText(""); setAddNoteOpen(true); }}>
+              <Plus className="h-3.5 w-3.5 mr-1" /> Add Note
+            </Button>
+          </div>
+          <CardDescription>Personal notes — not included in reports</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          {notes.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No notes yet.</p>
+          ) : notes.map(n => (
+            <div key={n.id} className="flex items-start justify-between gap-2 rounded-md border p-3">
+              <div className="min-w-0 flex-1">
+                <p className="text-sm whitespace-pre-wrap">{n.text}</p>
+                <p className="text-[10px] text-muted-foreground mt-1">{fmtDateTime(n.createdAt)}</p>
+              </div>
+              <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => setDeleteTarget({ type: "note", id: n.id, label: n.text.slice(0, 30) })}>
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader className="py-3">
           <CardTitle className="text-base">Reports & Share</CardTitle>
@@ -553,14 +602,31 @@ export default function DaybookSection() {
         </DialogContent>
       </Dialog>
 
+      {/* ── Add Note Dialog ── */}
+      <Dialog open={addNoteOpen} onOpenChange={setAddNoteOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Add Note</DialogTitle></DialogHeader>
+          <div className="space-y-2">
+            <Label>Note</Label>
+            <Textarea value={noteText} onChange={e => setNoteText(e.target.value)} placeholder="Write your note here..." rows={4} />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAddNoteOpen(false)}>Cancel</Button>
+            <Button onClick={() => void saveNote()} disabled={!noteText.trim()}>Save Note</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* ── Delete Confirmation ── */}
       <AlertDialog open={!!deleteTarget} onOpenChange={v => !v && setDeleteTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete {deleteTarget?.type === "account" ? "Account" : "Entry"}?</AlertDialogTitle>
+            <AlertDialogTitle>Delete {deleteTarget?.type === "account" ? "Account" : deleteTarget?.type === "note" ? "Note" : "Entry"}?</AlertDialogTitle>
             <AlertDialogDescription>
               {deleteTarget?.type === "account"
                 ? `Delete "${deleteTarget.label}" and all its transactions? This cannot be undone.`
+                : deleteTarget?.type === "note"
+                ? `Delete this note? This cannot be undone.`
                 : `Delete entry of ${deleteTarget?.label}? Balance will be reversed. This cannot be undone.`}
             </AlertDialogDescription>
           </AlertDialogHeader>
