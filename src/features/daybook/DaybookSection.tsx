@@ -435,7 +435,34 @@ export default function DaybookSection() {
         </CardContent>
       </Card>
 
-      {/* ── Reports Section ── */}
+      {/* ── Notes Section ── */}
+      <Card>
+        <CardHeader className="py-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base flex items-center gap-2"><StickyNote className="h-4 w-4" /> Notes ({notes.length})</CardTitle>
+            <Button variant="outline" size="sm" onClick={() => { setNoteText(""); setAddNoteOpen(true); }}>
+              <Plus className="h-3.5 w-3.5 mr-1" /> Add Note
+            </Button>
+          </div>
+          <CardDescription>Personal notes — not included in reports</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          {notes.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No notes yet.</p>
+          ) : notes.map(n => (
+            <div key={n.id} className="flex items-start justify-between gap-2 rounded-md border p-3">
+              <div className="min-w-0 flex-1">
+                <p className="text-sm whitespace-pre-wrap">{n.text}</p>
+                <p className="text-[10px] text-muted-foreground mt-1">{fmtDateTime(n.createdAt)}</p>
+              </div>
+              <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => setDeleteTarget({ type: "note", id: n.id, label: n.text.slice(0, 30) })}>
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader className="py-3">
           <CardTitle className="text-base">Reports & Share</CardTitle>
