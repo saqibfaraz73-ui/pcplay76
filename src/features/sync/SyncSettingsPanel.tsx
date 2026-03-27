@@ -137,6 +137,7 @@ export function SyncSettingsPanel() {
   const [pinInput, setPinInput] = useState("");
   const [syncPin, setSyncPin] = useState(config.syncPin ?? "");
   const [loading, setLoading] = useState(false);
+  const [subDevices, setSubDevices] = useState<Array<{ deviceId: string; lastSeen: number; syncCount: number }>>([]);
 
   const isAndroid = isNativeAndroid();
 
