@@ -123,7 +123,7 @@ async function handleOrderSync(order: Order, sourceDeviceId?: string): Promise<v
 }
 
 /** Save a synced table order (keeps Sub's original workPeriodId). Only saves completed/cancelled orders to avoid "stuck" open orders on Main. */
-async function handleTableOrderSync(tableOrder: TableOrder & { _waiterName?: string; _tableNumber?: string }): Promise<void> {
+async function handleTableOrderSync(tableOrder: TableOrder & { _waiterName?: string; _tableNumber?: string }, sourceDeviceId?: string): Promise<void> {
   const isOpenOrder = tableOrder.status === "open";
 
   // For open table orders: don't save to Main's table management (they'd get stuck),
