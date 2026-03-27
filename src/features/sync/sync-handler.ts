@@ -40,10 +40,10 @@ export async function handleSyncData(
 
   switch (endpoint as SyncEndpoint) {
     case "order":
-      await handleOrderSync(payload.data as Order);
+      await handleOrderSync(payload.data as Order, payload.sourceDeviceId);
       break;
     case "table-order":
-      await handleTableOrderSync(payload.data as TableOrder);
+      await handleTableOrderSync(payload.data as TableOrder, payload.sourceDeviceId);
       break;
     case "credit-payment":
       await handleCreditPaymentSync(payload.data);
