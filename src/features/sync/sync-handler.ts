@@ -16,6 +16,31 @@ import type { SyncPayload, PrintJobPayload, SyncEndpoint } from "./sync-types";
 const recentSyncEvents = new Map<string, number>();
 const SYNC_DEDUP_WINDOW_MS = 3000;
 
+/** Track connected sub devices: deviceId → { lastSeen, syncCount } */
+const connectedSubDevices = new Map<string, { lastSeen: number; syncCount: number }>();
+
+/** Get list of recently active sub devices (seen within last 60s) */
+export function getConnectedSubDevices(): Array<{ deviceId: string; lastSeen: number; syncCount: number }> {
+  const cutoff = Date.now() - 60_000;
+  const result: Array<{ deviceId: string; lastSeen: number; syncCount: number }> = [];
+  for (const [id, info] of connectedSubDevices) {
+    if (info.lastSeen >= cutoff) {
+      result.push({ deviceId: id, ...info });
+    }
+  }
+  return result.sort((a, b) => b.lastSeen - a.lastSeen);
+}
+
+/** Get total count of active sub devices */
+export function getConnectedSubDeviceCount(): number {
+  const cutoff = Date.now() - 60_000;
+  let count = 0;
+  for (const info of connectedSubDevices.values()) {
+    if (info.lastSeen >= cutoff) count++;
+  }
+  return count;
+}
+
 /**
  * Route incoming sync data to the correct handler based on endpoint.
  */
@@ -34,6 +59,15 @@ export async function handleSyncData(
   // Cleanup old entries
   for (const [k, t] of recentSyncEvents) {
     if (now - t > SYNC_DEDUP_WINDOW_MS * 2) recentSyncEvents.delete(k);
+  }
+
+  // Track connected sub device
+  if (payload.sourceDeviceId && payload.sourceDeviceId !== "bulk") {
+    const existing = connectedSubDevices.get(payload.sourceDeviceId);
+    connectedSubDevices.set(payload.sourceDeviceId, {
+      lastSeen: now,
+      syncCount: (existing?.syncCount ?? 0) + 1,
+    });
   }
 
   console.log(`[Sync] Received ${endpoint} from ${payload.sourceDeviceId}`);
