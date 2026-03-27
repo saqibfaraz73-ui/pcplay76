@@ -412,9 +412,28 @@ export function SyncSettingsPanel() {
                 Role: <strong className="text-foreground">{config.role === "main" ? "Main Device" : "Sub Device"}</strong>
               </p>
               {config.role === "main" && status === "connected" && (
-                <p>
-                  Server IP: <code className="bg-muted px-2 py-0.5 rounded text-foreground font-mono">{serverIp}:{serverPort}</code>
-                </p>
+                <>
+                  <p>
+                    Server IP: <code className="bg-muted px-2 py-0.5 rounded text-foreground font-mono">{serverIp}:{serverPort}</code>
+                  </p>
+                  <div className="flex items-center gap-2 mt-1">
+                    <Smartphone className="h-4 w-4 text-primary" />
+                    <span className="font-medium text-foreground">{subDevices.length} Sub Device{subDevices.length !== 1 ? "s" : ""} Connected</span>
+                  </div>
+                  {subDevices.length > 0 && (
+                    <div className="mt-2 space-y-1">
+                      {subDevices.map((d) => {
+                        const ago = Math.round((Date.now() - d.lastSeen) / 1000);
+                        return (
+                          <div key={d.deviceId} className="flex items-center justify-between rounded border px-2 py-1 text-xs">
+                            <code className="font-mono text-foreground">{d.deviceId}</code>
+                            <span className="text-muted-foreground">{d.syncCount} syncs • {ago < 5 ? "just now" : `${ago}s ago`}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </>
               )}
               {config.role === "sub" && config.mainAppIp && (
                 <p>
