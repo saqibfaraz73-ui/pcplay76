@@ -211,6 +211,8 @@ async function handleTableOrderSync(tableOrder: TableOrder & { _waiterName?: str
   // Ensure denormalized names are stored on the order for report display
   if (_waiterName && !cleanOrder.waiterName) cleanOrder.waiterName = _waiterName;
   if (_tableNumber && !cleanOrder.tableNumber) cleanOrder.tableNumber = _tableNumber;
+  // Tag as synced from sub device
+  if (sourceDeviceId) cleanOrder.syncedFrom = sourceDeviceId;
 
   // Remap workPeriodId to Main's active work period so reports group correctly
   const mainWp = await db.workPeriods.filter((wp) => !wp.isClosed).first();
