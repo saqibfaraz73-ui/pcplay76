@@ -150,7 +150,7 @@ export function SyncSettingsPanel() {
 
   const canBeMain = !isWaiter || waiterMainAppEnabled;
 
-  // Check server status on mount and periodically refresh IP for Main devices
+  // Check server status on mount and periodically refresh IP + connected devices for Main
   useEffect(() => {
     if (config.role !== "main" || !isAndroid) return;
     const refresh = () => {
@@ -161,9 +161,10 @@ export function SyncSettingsPanel() {
           setServerPort(s.port);
         }
       });
+      setSubDevices(getConnectedSubDevices());
     };
     refresh();
-    const interval = setInterval(refresh, 5000); // refresh IP every 5s
+    const interval = setInterval(refresh, 5000); // refresh every 5s
     return () => clearInterval(interval);
   }, [config.role, isAndroid]);
 
