@@ -10,7 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ensureSeedData } from "@/db/seed";
 import { AdminTablesWaiters } from "@/features/admin/tables/AdminTablesWaiters";
 import { Trash2, Plus, Search, X, Pencil } from "lucide-react";
-import { getLicense, updateLicense } from "@/features/licensing/licensing-db";
+import { getLicense, updateLicense, generateDeviceId } from "@/features/licensing/licensing-db";
 import { decodeLicenseBase64 } from "@/features/licensing/license-file";
 import { TAX_COUNTRIES } from "@/features/tax/tax-presets";
 import { Clock } from "lucide-react";
