@@ -61,6 +61,15 @@ export async function handleSyncData(
     if (now - t > SYNC_DEDUP_WINDOW_MS * 2) recentSyncEvents.delete(k);
   }
 
+  // Track connected sub device
+  if (payload.sourceDeviceId && payload.sourceDeviceId !== "bulk") {
+    const existing = connectedSubDevices.get(payload.sourceDeviceId);
+    connectedSubDevices.set(payload.sourceDeviceId, {
+      lastSeen: now,
+      syncCount: (existing?.syncCount ?? 0) + 1,
+    });
+  }
+
   console.log(`[Sync] Received ${endpoint} from ${payload.sourceDeviceId}`);
 
   switch (endpoint as SyncEndpoint) {
