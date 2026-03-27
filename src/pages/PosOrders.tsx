@@ -284,16 +284,26 @@ export default function PosOrders() {
         <p className="text-sm text-muted-foreground">View receipts and cancel orders.</p>
       </header>
 
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as OrderTab)}>
+        <TabsList className="w-full flex-wrap h-auto gap-1">
+          <TabsTrigger value="all">All</TabsTrigger>
+          <TabsTrigger value="sales">Sales</TabsTrigger>
+          <TabsTrigger value="tables">Tables</TabsTrigger>
+          <TabsTrigger value="delivery">Delivery</TabsTrigger>
+          <TabsTrigger value="synced">Synced</TabsTrigger>
+        </TabsList>
+      </Tabs>
+
       <Card>
         <CardHeader>
-          <CardTitle>Recent Orders</CardTitle>
+          <CardTitle>Recent Orders ({filteredOrders.length})</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
-          {unifiedOrders.length === 0 ? (
-            <div className="text-sm text-muted-foreground">No orders yet.</div>
+          {filteredOrders.length === 0 ? (
+            <div className="text-sm text-muted-foreground">No orders in this section.</div>
           ) : (
             <div className="space-y-2">
-              {unifiedOrders.map((o) => {
+              {filteredOrders.map((o) => {
                 const isCashier = session?.role === "cashier";
                 const canCancelByRole = !isCashier || posSettings?.cashierCancelOrderEnabled !== false;
                 const canCancel = canCancelByRole && (
