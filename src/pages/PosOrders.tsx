@@ -72,6 +72,7 @@ type OrderTab = "all" | "sales" | "tables" | "delivery" | "synced";
 export default function PosOrders() {
   const { toast } = useToast();
   const { session } = useAuth();
+  const [activeTab, setActiveTab] = React.useState<OrderTab>("all");
   const [orders, setOrders] = React.useState<Order[]>([]);
   const [customers, setCustomers] = React.useState<CreditCustomer[]>([]);
   const [deliveryPersons, setDeliveryPersons] = React.useState<DeliveryPerson[]>([]);
