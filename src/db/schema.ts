@@ -146,6 +146,7 @@ export type Order = {
   total: number;
   cancelledReason?: string;
   workPeriodId?: string; // link order to a work period
+  syncedFrom?: string; // sourceDeviceId if received via sync
   createdAt: number;
   updatedAt: number;
 };
@@ -444,6 +445,7 @@ export type TableOrder = {
   receiptNo?: number;
   cancelledReason?: string;
   workPeriodId?: string;
+  syncedFrom?: string; // sourceDeviceId if received via sync
   createdAt: number;
   updatedAt: number;
   completedAt?: number;

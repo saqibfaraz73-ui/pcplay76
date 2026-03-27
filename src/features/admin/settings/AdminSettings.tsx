@@ -10,7 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ensureSeedData } from "@/db/seed";
 import { AdminTablesWaiters } from "@/features/admin/tables/AdminTablesWaiters";
 import { Trash2, Plus, Search, X, Pencil } from "lucide-react";
-import { getLicense, updateLicense } from "@/features/licensing/licensing-db";
+import { getLicense, updateLicense, generateDeviceId } from "@/features/licensing/licensing-db";
 import { decodeLicenseBase64 } from "@/features/licensing/license-file";
 import { TAX_COUNTRIES } from "@/features/tax/tax-presets";
 import { Clock } from "lucide-react";
@@ -173,7 +173,7 @@ export function AdminSettings() {
 
   
   const [isPremium, setIsPremium] = React.useState(false);
-  const [licenseDeviceId, setLicenseDeviceId] = React.useState("");
+  const [licenseDeviceId, setLicenseDeviceId] = React.useState(() => generateDeviceId());
   const [licenseValidUntil, setLicenseValidUntil] = React.useState<number | undefined>(undefined);
   const [licensedDeviceId, setLicensedDeviceId] = React.useState("");
   const [searchQuery, setSearchQuery] = React.useState("");

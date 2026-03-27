@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ReceiptDialog } from "@/components/ReceiptDialog";
 import { formatIntMoney, fmtDateTime } from "@/features/pos/format";
 import { cancelOrder } from "@/features/pos/pos-db";
@@ -67,9 +68,11 @@ type UnifiedOrder = {
   label?: string;
 };
 
+type OrderTab = "all" | "sales" | "tables" | "delivery" | "synced";
 export default function PosOrders() {
   const { toast } = useToast();
   const { session } = useAuth();
+  const [activeTab, setActiveTab] = React.useState<OrderTab>("all");
   const [orders, setOrders] = React.useState<Order[]>([]);
   const [customers, setCustomers] = React.useState<CreditCustomer[]>([]);
   const [deliveryPersons, setDeliveryPersons] = React.useState<DeliveryPerson[]>([]);
@@ -163,6 +166,19 @@ export default function PosOrders() {
     }));
     return [...regular, ...table, ...advance, ...booking].sort((a, b) => b.createdAt - a.createdAt).slice(0, 200);
   }, [orders, tableOrders, advanceOrders, bookingOrders, tablesById, waitersById]);
+
+  const filteredOrders = React.useMemo(() => {
+    if (activeTab === "all") return unifiedOrders;
+    if (activeTab === "sales") return unifiedOrders.filter((o) => o.source === "regular" && o.paymentMethod !== "delivery" && !o.order?.syncedFrom);
+    if (activeTab === "tables") return unifiedOrders.filter((o) => o.source === "table" && !(tableOrders.find(t => t.id === o.id)?.syncedFrom));
+    if (activeTab === "delivery") return unifiedOrders.filter((o) => (o.source === "regular" && o.paymentMethod === "delivery") || o.source === "advance" || o.source === "booking");
+    if (activeTab === "synced") return unifiedOrders.filter((o) => {
+      if (o.source === "regular") return !!o.order?.syncedFrom;
+      if (o.source === "table") return !!(tableOrders.find(t => t.id === o.id)?.syncedFrom);
+      return false;
+    });
+    return unifiedOrders;
+  }, [unifiedOrders, activeTab, tableOrders]);
 
   const openCancelDialog = (id: string, source: "regular" | "table" | "advance" | "booking") => {
     setCancelTarget({ id, source });
@@ -268,16 +284,26 @@ export default function PosOrders() {
         <p className="text-sm text-muted-foreground">View receipts and cancel orders.</p>
       </header>
 
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as OrderTab)}>
+        <TabsList className="w-full flex-wrap h-auto gap-1">
+          <TabsTrigger value="all">All</TabsTrigger>
+          <TabsTrigger value="sales">Sales</TabsTrigger>
+          <TabsTrigger value="tables">Tables</TabsTrigger>
+          <TabsTrigger value="delivery">Delivery</TabsTrigger>
+          <TabsTrigger value="synced">Synced</TabsTrigger>
+        </TabsList>
+      </Tabs>
+
       <Card>
         <CardHeader>
-          <CardTitle>Recent Orders</CardTitle>
+          <CardTitle>Recent Orders ({filteredOrders.length})</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
-          {unifiedOrders.length === 0 ? (
-            <div className="text-sm text-muted-foreground">No orders yet.</div>
+          {filteredOrders.length === 0 ? (
+            <div className="text-sm text-muted-foreground">No orders in this section.</div>
           ) : (
             <div className="space-y-2">
-              {unifiedOrders.map((o) => {
+              {filteredOrders.map((o) => {
                 const isCashier = session?.role === "cashier";
                 const canCancelByRole = !isCashier || posSettings?.cashierCancelOrderEnabled !== false;
                 const canCancel = canCancelByRole && (

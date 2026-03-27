@@ -40,10 +40,10 @@ export async function handleSyncData(
 
   switch (endpoint as SyncEndpoint) {
     case "order":
-      await handleOrderSync(payload.data as Order);
+      await handleOrderSync(payload.data as Order, payload.sourceDeviceId);
       break;
     case "table-order":
-      await handleTableOrderSync(payload.data as TableOrder);
+      await handleTableOrderSync(payload.data as TableOrder, payload.sourceDeviceId);
       break;
     case "credit-payment":
       await handleCreditPaymentSync(payload.data);
@@ -84,12 +84,14 @@ export async function handleSyncData(
 }
 
 /** Save a synced order into the Main device's database, remapping workPeriodId to Main's active work period */
-async function handleOrderSync(order: Order): Promise<void> {
+async function handleOrderSync(order: Order, sourceDeviceId?: string): Promise<void> {
   const existing = await db.orders.get(order.id);
   if (existing) {
     console.log(`[Sync] Order ${order.id} already exists, skipping`);
     return;
   }
+  // Tag as synced from sub device
+  if (sourceDeviceId) order.syncedFrom = sourceDeviceId;
   // Remap workPeriodId to Main's active (open) work period so reports group correctly
   const mainWp = await db.workPeriods.filter((wp) => !wp.isClosed).first();
   if (mainWp) {
@@ -121,7 +123,7 @@ async function handleOrderSync(order: Order): Promise<void> {
 }
 
 /** Save a synced table order (keeps Sub's original workPeriodId). Only saves completed/cancelled orders to avoid "stuck" open orders on Main. */
-async function handleTableOrderSync(tableOrder: TableOrder & { _waiterName?: string; _tableNumber?: string }): Promise<void> {
+async function handleTableOrderSync(tableOrder: TableOrder & { _waiterName?: string; _tableNumber?: string }, sourceDeviceId?: string): Promise<void> {
   const isOpenOrder = tableOrder.status === "open";
 
   // For open table orders: don't save to Main's table management (they'd get stuck),
@@ -209,6 +211,8 @@ async function handleTableOrderSync(tableOrder: TableOrder & { _waiterName?: str
   // Ensure denormalized names are stored on the order for report display
   if (_waiterName && !cleanOrder.waiterName) cleanOrder.waiterName = _waiterName;
   if (_tableNumber && !cleanOrder.tableNumber) cleanOrder.tableNumber = _tableNumber;
+  // Tag as synced from sub device
+  if (sourceDeviceId) cleanOrder.syncedFrom = sourceDeviceId;
 
   // Remap workPeriodId to Main's active work period so reports group correctly
   const mainWp = await db.workPeriods.filter((wp) => !wp.isClosed).first();

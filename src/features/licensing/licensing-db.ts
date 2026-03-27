@@ -41,7 +41,7 @@ const DAYBOOK_LIMIT = 5;
  * Generate a deterministic device ID from stable hardware/browser properties.
  * Same device will always produce the same ID, even after uninstall/reinstall.
  */
-function generateDeviceId(): string {
+export function generateDeviceId(): string {
   const nav = typeof navigator !== "undefined" ? navigator : null;
   const scr = typeof screen !== "undefined" ? screen : null;
 
