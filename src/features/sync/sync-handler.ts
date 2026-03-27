@@ -84,12 +84,14 @@ export async function handleSyncData(
 }
 
 /** Save a synced order into the Main device's database, remapping workPeriodId to Main's active work period */
-async function handleOrderSync(order: Order): Promise<void> {
+async function handleOrderSync(order: Order, sourceDeviceId?: string): Promise<void> {
   const existing = await db.orders.get(order.id);
   if (existing) {
     console.log(`[Sync] Order ${order.id} already exists, skipping`);
     return;
   }
+  // Tag as synced from sub device
+  if (sourceDeviceId) order.syncedFrom = sourceDeviceId;
   // Remap workPeriodId to Main's active (open) work period so reports group correctly
   const mainWp = await db.workPeriods.filter((wp) => !wp.isClosed).first();
   if (mainWp) {
