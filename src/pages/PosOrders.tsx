@@ -167,6 +167,19 @@ export default function PosOrders() {
     return [...regular, ...table, ...advance, ...booking].sort((a, b) => b.createdAt - a.createdAt).slice(0, 200);
   }, [orders, tableOrders, advanceOrders, bookingOrders, tablesById, waitersById]);
 
+  const filteredOrders = React.useMemo(() => {
+    if (activeTab === "all") return unifiedOrders;
+    if (activeTab === "sales") return unifiedOrders.filter((o) => o.source === "regular" && o.paymentMethod !== "delivery" && !o.order?.syncedFrom);
+    if (activeTab === "tables") return unifiedOrders.filter((o) => o.source === "table" && !(tableOrders.find(t => t.id === o.id)?.syncedFrom));
+    if (activeTab === "delivery") return unifiedOrders.filter((o) => (o.source === "regular" && o.paymentMethod === "delivery") || o.source === "advance" || o.source === "booking");
+    if (activeTab === "synced") return unifiedOrders.filter((o) => {
+      if (o.source === "regular") return !!o.order?.syncedFrom;
+      if (o.source === "table") return !!(tableOrders.find(t => t.id === o.id)?.syncedFrom);
+      return false;
+    });
+    return unifiedOrders;
+  }, [unifiedOrders, activeTab, tableOrders]);
+
   const openCancelDialog = (id: string, source: "regular" | "table" | "advance" | "booking") => {
     setCancelTarget({ id, source });
     setCancelReason("");
