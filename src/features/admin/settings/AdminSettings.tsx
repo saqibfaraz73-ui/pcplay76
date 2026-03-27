@@ -173,7 +173,7 @@ export function AdminSettings() {
 
   
   const [isPremium, setIsPremium] = React.useState(false);
-  const [licenseDeviceId, setLicenseDeviceId] = React.useState("");
+  const [licenseDeviceId, setLicenseDeviceId] = React.useState(() => generateDeviceId());
   const [licenseValidUntil, setLicenseValidUntil] = React.useState<number | undefined>(undefined);
   const [licensedDeviceId, setLicensedDeviceId] = React.useState("");
   const [searchQuery, setSearchQuery] = React.useState("");
