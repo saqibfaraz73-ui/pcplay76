@@ -29,7 +29,7 @@ import {
   isNativeAndroid,
 } from "./local-sync-server";
 import { setMainAppUrl, pingMainApp, verifyPinWithMain } from "./sync-client";
-import { handleSyncData } from "./sync-handler";
+import { handleSyncData, getConnectedSubDevices } from "./sync-handler";
 import { getKitchenOrders, getKitchenDisplayOrders } from "@/features/kitchen/kitchen-handler";
 
 const STORAGE_KEY = "sangi_sync_config";
