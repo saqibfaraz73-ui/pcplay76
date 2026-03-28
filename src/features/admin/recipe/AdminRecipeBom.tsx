@@ -24,7 +24,7 @@ function useCurrencySymbol() {
 
 /* ───────── Making Items Manager ───────── */
 
-function MakingItemsManager({ onChanged }: { onChanged: () => void }) {
+function MakingItemsManager({ onChanged, cur }: { onChanged: () => void; cur: string }) {
   const { toast } = useToast();
   const [items, setItems] = React.useState<MenuItem[]>([]);
   const [search, setSearch] = React.useState("");
