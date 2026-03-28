@@ -200,15 +200,8 @@ export default function SuperLogin() {
           files: [file],
         });
         toast({ title: "License file shared" });
-      } else if (navigator.share) {
-        // Share without file support — share as text
-        await navigator.share({
-          title: "Sangi POS Premium License",
-          text: base64,
-        });
-        toast({ title: "License data shared" });
       } else {
-        // Final fallback: download
+        // Fallback: download as file
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
