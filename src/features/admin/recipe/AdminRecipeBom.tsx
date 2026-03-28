@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Plus, Trash2, Search, ChefHat, Save } from "lucide-react";
+import { Plus, Trash2, Search, ChefHat, Save, DollarSign } from "lucide-react";
 import { db } from "@/db/appDb";
 import type { MenuItem, RecipeIngredient, StockUnit } from "@/db/schema";
 import { STOCK_UNITS } from "@/db/schema";
@@ -15,6 +15,7 @@ export function AdminRecipeBom() {
   const [search, setSearch] = React.useState("");
   const [selectedItemId, setSelectedItemId] = React.useState<string | null>(null);
   const [recipe, setRecipe] = React.useState<RecipeIngredient[]>([]);
+  const [makingCost, setMakingCost] = React.useState<number>(0);
   const [dirty, setDirty] = React.useState(false);
 
   const load = React.useCallback(async () => {
@@ -31,6 +32,13 @@ export function AdminRecipeBom() {
 
   const inventoryItems = items.filter((i) => i.trackInventory);
 
+  // Build a map of item buyingPrice for cost calculation
+  const itemCostMap = React.useMemo(() => {
+    const map: Record<string, number> = {};
+    items.forEach((i) => { map[i.id] = i.buyingPrice ?? 0; });
+    return map;
+  }, [items]);
+
   const selectedItem = items.find((i) => i.id === selectedItemId);
 
   const selectItem = (item: MenuItem) => {
@@ -39,6 +47,7 @@ export function AdminRecipeBom() {
     }
     setSelectedItemId(item.id);
     setRecipe(item.recipe ?? []);
+    setMakingCost(item.recipeMakingCost ?? 0);
     setDirty(false);
   };
 
@@ -65,15 +74,25 @@ export function AdminRecipeBom() {
     setDirty(true);
   };
 
+  // Calculate ingredient costs
+  const ingredientCosts = recipe.map((r) => {
+    const unitCost = itemCostMap[r.itemId] ?? 0;
+    return r.qty * unitCost;
+  });
+  const totalIngredientCost = ingredientCosts.reduce((s, c) => s + c, 0);
+  const totalRecipeCost = totalIngredientCost + (makingCost || 0);
+
   const saveRecipe = async () => {
     if (!selectedItemId) return;
     const cleaned = recipe.filter((r) => r.itemId && r.qty > 0);
     await db.items.update(selectedItemId, {
       recipe: cleaned.length > 0 ? cleaned : undefined,
+      recipeMakingCost: makingCost > 0 ? makingCost : undefined,
+      buyingPrice: totalRecipeCost > 0 ? Math.round(totalRecipeCost) : undefined,
     });
     setDirty(false);
     await load();
-    toast({ title: "Recipe saved" });
+    toast({ title: "Recipe saved — buying cost updated to ₹" + Math.round(totalRecipeCost) });
   };
 
   const availableForAdd = inventoryItems.filter(
@@ -112,11 +131,14 @@ export function AdminRecipeBom() {
                   }`}
                 >
                   <div className="font-medium">{item.name}</div>
-                  {item.recipe && item.recipe.length > 0 && (
-                    <div className="text-[10px] opacity-70">
-                      {item.recipe.length} ingredient{item.recipe.length > 1 ? "s" : ""}
-                    </div>
-                  )}
+                  <div className="flex items-center gap-2 text-[10px] opacity-70">
+                    {item.recipe && item.recipe.length > 0 && (
+                      <span>{item.recipe.length} ingredient{item.recipe.length > 1 ? "s" : ""}</span>
+                    )}
+                    {item.buyingPrice ? (
+                      <span>Cost: ₹{item.buyingPrice}</span>
+                    ) : null}
+                  </div>
                 </button>
               ))}
               {compositeItems.length === 0 && (
@@ -157,70 +179,120 @@ export function AdminRecipeBom() {
 
                 {recipe.length === 0 && (
                   <p className="text-xs text-muted-foreground py-4 text-center">
-                    No ingredients added. Click "Add Ingredient" to define what raw materials are needed.
+                    No ingredients added. Add inventory-tracked items with buying price to calculate recipe cost.
                   </p>
                 )}
 
-                {recipe.map((ingredient, idx) => (
-                  <div key={idx} className="flex items-center gap-1.5 rounded-md border p-2">
-                    <select
-                      value={ingredient.itemId}
-                      onChange={(e) => {
-                        const item = items.find((i) => i.id === e.target.value);
-                        updateIngredient(idx, {
-                          itemId: e.target.value,
-                          itemName: item?.name ?? "",
-                          unit: item?.stockUnit ?? "pcs",
-                        });
-                      }}
-                      className="h-8 flex-1 min-w-0 rounded-md border bg-background px-2 text-xs"
-                    >
-                      {inventoryItems
-                        .filter((i) => i.id !== selectedItemId)
-                        .map((item) => (
-                          <option key={item.id} value={item.id}>
-                            {item.name}
-                          </option>
-                        ))}
-                    </select>
+                {/* Ingredient rows */}
+                {recipe.map((ingredient, idx) => {
+                  const unitCost = itemCostMap[ingredient.itemId] ?? 0;
+                  const lineCost = ingredient.qty * unitCost;
+                  return (
+                    <div key={idx} className="rounded-md border p-2 space-y-1">
+                      <div className="flex items-center gap-1.5">
+                        <select
+                          value={ingredient.itemId}
+                          onChange={(e) => {
+                            const item = items.find((i) => i.id === e.target.value);
+                            updateIngredient(idx, {
+                              itemId: e.target.value,
+                              itemName: item?.name ?? "",
+                              unit: item?.stockUnit ?? "pcs",
+                            });
+                          }}
+                          className="h-8 flex-1 min-w-0 rounded-md border bg-background px-2 text-xs"
+                        >
+                          {inventoryItems
+                            .filter((i) => i.id !== selectedItemId)
+                            .map((item) => (
+                              <option key={item.id} value={item.id}>
+                                {item.name}
+                              </option>
+                            ))}
+                        </select>
 
-                    <Input
-                      type="number"
-                      inputMode="decimal"
-                      value={ingredient.qty || ""}
-                      onChange={(e) => updateIngredient(idx, { qty: parseFloat(e.target.value) || 0 })}
-                      className="h-8 w-16 text-xs px-1"
-                      placeholder="Qty"
-                    />
+                        <Input
+                          type="number"
+                          inputMode="decimal"
+                          value={ingredient.qty || ""}
+                          onChange={(e) => updateIngredient(idx, { qty: parseFloat(e.target.value) || 0 })}
+                          className="h-8 w-16 text-xs px-1"
+                          placeholder="Qty"
+                        />
 
-                    <select
-                      value={ingredient.unit}
-                      onChange={(e) => updateIngredient(idx, { unit: e.target.value as StockUnit })}
-                      className="h-8 w-20 rounded-md border bg-background px-1 text-xs"
-                    >
-                      {STOCK_UNITS.map((u) => (
-                        <option key={u.value} value={u.value}>
-                          {u.label}
-                        </option>
-                      ))}
-                    </select>
+                        <select
+                          value={ingredient.unit}
+                          onChange={(e) => updateIngredient(idx, { unit: e.target.value as StockUnit })}
+                          className="h-8 w-20 rounded-md border bg-background px-1 text-xs"
+                        >
+                          {STOCK_UNITS.map((u) => (
+                            <option key={u.value} value={u.value}>
+                              {u.label}
+                            </option>
+                          ))}
+                        </select>
 
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7 shrink-0 text-destructive"
-                      onClick={() => removeIngredient(idx)}
-                    >
-                      <Trash2 className="h-3 w-3" />
-                    </Button>
-                  </div>
-                ))}
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 shrink-0 text-destructive"
+                          onClick={() => removeIngredient(idx)}
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
+                      {/* Cost line */}
+                      <div className="flex items-center justify-between text-[10px] text-muted-foreground px-1">
+                        <span>Unit cost: ₹{unitCost}{unitCost === 0 ? " (set buying price in Products)" : ""}</span>
+                        <span className="font-medium text-foreground">₹{lineCost.toFixed(2)}</span>
+                      </div>
+                    </div>
+                  );
+                })}
 
+                {/* Making cost & total */}
                 {recipe.length > 0 && (
-                  <p className="text-[10px] text-muted-foreground">
-                    When this item is sold, ingredient stock will be automatically deducted.
-                  </p>
+                  <div className="space-y-2 pt-2 border-t">
+                    <div className="flex items-center gap-2">
+                      <Label className="text-xs whitespace-nowrap">Making Cost (optional):</Label>
+                      <Input
+                        type="number"
+                        inputMode="decimal"
+                        value={makingCost || ""}
+                        onChange={(e) => { setMakingCost(parseFloat(e.target.value) || 0); setDirty(true); }}
+                        className="h-8 w-24 text-xs"
+                        placeholder="₹0"
+                      />
+                    </div>
+
+                    <div className="rounded-md bg-muted p-2 space-y-1">
+                      <div className="flex justify-between text-xs">
+                        <span>Ingredients Cost:</span>
+                        <span>₹{totalIngredientCost.toFixed(2)}</span>
+                      </div>
+                      {makingCost > 0 && (
+                        <div className="flex justify-between text-xs">
+                          <span>Making Cost:</span>
+                          <span>₹{makingCost.toFixed(2)}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between text-xs font-bold border-t pt-1">
+                        <span>Total Recipe Cost (Buy Price):</span>
+                        <span className="text-primary">₹{totalRecipeCost.toFixed(2)}</span>
+                      </div>
+                      {selectedItem.price > 0 && (
+                        <div className="flex justify-between text-[10px] text-muted-foreground">
+                          <span>Selling Price: ₹{selectedItem.price}</span>
+                          <span>Profit: ₹{(selectedItem.price - totalRecipeCost).toFixed(2)}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    <p className="text-[10px] text-muted-foreground">
+                      Saving will auto-update the product's buying price to ₹{Math.round(totalRecipeCost)}.
+                    </p>
+                  </div>
                 )}
 
                 <div className="flex justify-end pt-2">
