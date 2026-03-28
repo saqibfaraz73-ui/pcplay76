@@ -18,7 +18,7 @@ export function AdminRecipeBom() {
   const [dirty, setDirty] = React.useState(false);
 
   const load = React.useCallback(async () => {
-    const all = await db.menuItems.toArray();
+    const all = await db.items.toArray();
     setItems(all);
   }, []);
 
@@ -68,7 +68,7 @@ export function AdminRecipeBom() {
   const saveRecipe = async () => {
     if (!selectedItemId) return;
     const cleaned = recipe.filter((r) => r.itemId && r.qty > 0);
-    await db.menuItems.update(selectedItemId, {
+    await db.items.update(selectedItemId, {
       recipe: cleaned.length > 0 ? cleaned : undefined,
     });
     setDirty(false);
