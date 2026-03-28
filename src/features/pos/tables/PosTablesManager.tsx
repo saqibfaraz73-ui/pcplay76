@@ -91,7 +91,6 @@ export function PosTablesManager() {
   const [newCustomerName, setNewCustomerName] = React.useState("");
   const [newCustomerMobile, setNewCustomerMobile] = React.useState("");
   const [cashReceived, setCashReceived] = React.useState<number>(0);
-  const [newCustomerMobile, setNewCustomerMobile] = React.useState("");
 
   // Cancel dialog in checkout
   const [cancelCheckoutOpen, setCancelCheckoutOpen] = React.useState(false);
