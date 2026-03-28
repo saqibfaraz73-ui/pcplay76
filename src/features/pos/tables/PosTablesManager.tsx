@@ -968,7 +968,7 @@ export function PosTablesManager() {
 
       {/* Category Tabs */}
       <Tabs value={activeCategoryId ?? "all"} onValueChange={(v) => setActiveCategoryId(v === "all" ? null : v)}>
-        <TabsList className="flex overflow-x-auto no-scrollbar w-full justify-start flex-nowrap h-auto">
+        <TabsList className={cn("flex w-full justify-start h-auto", settings?.posVerticalScroll ? "flex-wrap gap-1" : "overflow-x-auto no-scrollbar flex-nowrap")}>
           <TabsTrigger value="all" className="shrink-0">All</TabsTrigger>
           {categories.map((c) => (
             <TabsTrigger key={c.id} value={c.id} className="shrink-0">{c.name}</TabsTrigger>

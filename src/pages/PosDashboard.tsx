@@ -981,7 +981,7 @@ export default function PosDashboard() {
           {/* Categories */}
           <Card className="p-2">
             <Tabs value={activeCategoryId ?? "all"} onValueChange={(v) => setActiveCategoryId(v === "all" ? null : v)}>
-              <TabsList className="flex w-full overflow-x-auto no-scrollbar justify-start gap-1 h-auto flex-nowrap">
+              <TabsList className={cn("flex w-full justify-start gap-1 h-auto", posSettings?.posVerticalScroll ? "flex-wrap" : "overflow-x-auto no-scrollbar flex-nowrap")}>
                 <TabsTrigger value="all" className="text-xs px-2 py-1 shrink-0">All</TabsTrigger>
                 {categories.map((c) => (
                   <TabsTrigger key={c.id} value={c.id} className="text-xs px-2 py-1 shrink-0">
