@@ -357,6 +357,9 @@ export function AdminInventory() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      </Dialog>
+
+      <AdminInventoryAdjustments />
     </div>
   );
 }
