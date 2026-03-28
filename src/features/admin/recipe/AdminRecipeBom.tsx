@@ -166,7 +166,7 @@ function MakingItemsManager({ onChanged, cur }: { onChanged: () => void; cur: st
             <div className="min-w-0 flex-1">
               <div className="font-medium truncate">{item.name}</div>
               <div className="text-muted-foreground">
-                Cost: ₹{item.buyingPrice ?? 0}/{item.stockUnit ?? "pcs"} · Stock: {stockMap[item.id] ?? 0}
+                Cost: {cur}{item.buyingPrice ?? 0}/{item.stockUnit ?? "pcs"} · Stock: {stockMap[item.id] ?? 0}
               </div>
             </div>
             <div className="flex gap-1 shrink-0">
@@ -197,7 +197,7 @@ function MakingItemsManager({ onChanged, cur }: { onChanged: () => void; cur: st
                 <Input
                   type="number" inputMode="decimal"
                   value={buyingPrice || ""} onChange={(e) => setBuyingPrice(parseFloat(e.target.value) || 0)}
-                  className="h-8 text-xs" placeholder="₹0"
+                  className="h-8 text-xs" placeholder={`${cur}0`}
                 />
               </div>
               <div>
@@ -233,7 +233,7 @@ function MakingItemsManager({ onChanged, cur }: { onChanged: () => void; cur: st
 
 /* ───────── Recipe Editor ───────── */
 
-function RecipeEditorPanel({ onMakingItemsChanged }: { onMakingItemsChanged: number }) {
+function RecipeEditorPanel({ onMakingItemsChanged, cur }: { onMakingItemsChanged: number; cur: string }) {
   const { toast } = useToast();
   const [items, setItems] = React.useState<MenuItem[]>([]);
   const [search, setSearch] = React.useState("");
@@ -311,7 +311,7 @@ function RecipeEditorPanel({ onMakingItemsChanged }: { onMakingItemsChanged: num
     });
     setDirty(false);
     await load();
-    toast({ title: "Recipe saved — buying cost updated to ₹" + Math.round(totalRecipeCost) });
+    toast({ title: "Recipe saved — buying cost updated to " + cur + Math.round(totalRecipeCost) });
   };
 
   const availableForAdd = makingItems.filter(
@@ -346,7 +346,7 @@ function RecipeEditorPanel({ onMakingItemsChanged }: { onMakingItemsChanged: num
                   {item.recipe && item.recipe.length > 0 && (
                     <span>{item.recipe.length} ingredient{item.recipe.length > 1 ? "s" : ""}</span>
                   )}
-                  {item.buyingPrice ? <span>Cost: ₹{item.buyingPrice}</span> : null}
+                  {item.buyingPrice ? <span>Cost: {cur}{item.buyingPrice}</span> : null}
                 </div>
               </button>
             ))}
@@ -444,8 +444,8 @@ function RecipeEditorPanel({ onMakingItemsChanged }: { onMakingItemsChanged: num
                       </Button>
                     </div>
                     <div className="flex items-center justify-between text-[10px] text-muted-foreground px-1">
-                      <span>Unit cost: ₹{unitCost}{unitCost === 0 ? " (set price in Making Items)" : ""}</span>
-                      <span className="font-medium text-foreground">₹{lineCost.toFixed(2)}</span>
+                      <span>Unit cost: {cur}{unitCost}{unitCost === 0 ? " (set price in Making Items)" : ""}</span>
+                      <span className="font-medium text-foreground">{cur}{lineCost.toFixed(2)}</span>
                     </div>
                   </div>
                 );
@@ -459,35 +459,35 @@ function RecipeEditorPanel({ onMakingItemsChanged }: { onMakingItemsChanged: num
                       type="number" inputMode="decimal"
                       value={makingCost || ""}
                       onChange={(e) => { setMakingCost(parseFloat(e.target.value) || 0); setDirty(true); }}
-                      className="h-8 w-24 text-xs" placeholder="₹0"
+                      className="h-8 w-24 text-xs" placeholder={`${cur}0`}
                     />
                   </div>
 
                   <div className="rounded-md bg-muted p-2 space-y-1">
                     <div className="flex justify-between text-xs">
                       <span>Ingredients Cost:</span>
-                      <span>₹{totalIngredientCost.toFixed(2)}</span>
+                      <span>{cur}{totalIngredientCost.toFixed(2)}</span>
                     </div>
                     {makingCost > 0 && (
                       <div className="flex justify-between text-xs">
                         <span>Making Cost:</span>
-                        <span>₹{makingCost.toFixed(2)}</span>
+                        <span>{cur}{makingCost.toFixed(2)}</span>
                       </div>
                     )}
                     <div className="flex justify-between text-xs font-bold border-t pt-1">
                       <span>Total Recipe Cost (Buy Price):</span>
-                      <span className="text-primary">₹{totalRecipeCost.toFixed(2)}</span>
+                      <span className="text-primary">{cur}{totalRecipeCost.toFixed(2)}</span>
                     </div>
                     {selectedItem.price > 0 && (
                       <div className="flex justify-between text-[10px] text-muted-foreground">
-                        <span>Selling Price: ₹{selectedItem.price}</span>
-                        <span>Profit: ₹{(selectedItem.price - totalRecipeCost).toFixed(2)}</span>
+                        <span>Selling Price: {cur}{selectedItem.price}</span>
+                        <span>Profit: {cur}{(selectedItem.price - totalRecipeCost).toFixed(2)}</span>
                       </div>
                     )}
                   </div>
 
                   <p className="text-[10px] text-muted-foreground">
-                    Saving will auto-update the product's buying price to ₹{Math.round(totalRecipeCost)}.
+                    Saving will auto-update the product's buying price to {cur}{Math.round(totalRecipeCost)}.
                   </p>
                 </div>
               )}
