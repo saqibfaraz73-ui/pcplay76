@@ -64,6 +64,7 @@ export type MenuItem = {
   addOns?: ItemAddOn[]; // optional per-item add-ons (e.g. Extra Cheese, Gift Wrap)
   includedItems?: ComboIncludedItem[]; // optional combo/platter included items
   recipe?: RecipeIngredient[]; // optional recipe/BOM for composite items
+  recipeMakingCost?: number; // optional additional making/labor cost for recipe
   createdAt: number;
 };
 
