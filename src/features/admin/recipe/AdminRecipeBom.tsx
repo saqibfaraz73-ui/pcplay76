@@ -12,6 +12,16 @@ import { STOCK_UNITS } from "@/db/schema";
 import { useToast } from "@/hooks/use-toast";
 import { makeId } from "@/features/admin/id";
 
+function useCurrencySymbol() {
+  const [sym, setSym] = React.useState("₹");
+  React.useEffect(() => {
+    db.settings.get("app").then((s) => {
+      if (s?.currencySymbol) setSym(s.currencySymbol);
+    });
+  }, []);
+  return sym;
+}
+
 /* ───────── Making Items Manager ───────── */
 
 function MakingItemsManager({ onChanged }: { onChanged: () => void }) {
