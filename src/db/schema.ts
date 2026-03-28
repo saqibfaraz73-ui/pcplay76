@@ -54,6 +54,7 @@ export type MenuItem = {
   name: string;
   isActive?: boolean; // default true; if false, hidden from POS/Tables dashboards
   isRawMaterial?: boolean; // if true, this is a making/raw material item (hidden from POS, used in recipes)
+  minStock?: number; // optional minimum stock level for low-stock reminder
   sku?: string; // optional SKU / barcode
   price: number;
   buyingPrice?: number; // optional cost/buying price (integers)
