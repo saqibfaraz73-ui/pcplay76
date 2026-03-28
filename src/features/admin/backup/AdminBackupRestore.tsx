@@ -130,6 +130,16 @@ export function AdminBackupRestore() {
         recoveryPayments: await db.recoveryPayments.toArray(),
         installmentCustomers: await db.installmentCustomers.toArray(),
         installmentPayments: await db.installmentPayments.toArray(),
+        labours: await db.labours.toArray(),
+        labourTransactions: await db.labourTransactions.toArray(),
+        labourAttendance: await db.labourAttendance.toArray(),
+        labourProduction: await db.labourProduction.toArray(),
+        kitchenOrders: await db.kitchenOrders.toArray(),
+        taxInvoiceQueue: await db.taxInvoiceQueue.toArray(),
+        daybookAccounts: await db.daybookAccounts.toArray(),
+        daybookEntries: await db.daybookEntries.toArray(),
+        daybookImages: await db.daybookImages.toArray(),
+        daybookNotes: await db.daybookNotes.toArray(),
       },
     };
     const fileName = `backup_${payload.createdAt}.json`;
