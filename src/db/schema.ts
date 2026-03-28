@@ -409,6 +409,7 @@ export type Settings = {
   labelBtName?: string; // Bluetooth friendly name for label printer
   labelUsbDevice?: string; // USB device name for label printer
   labelUsbLabel?: string; // USB friendly label for label printer
+  posVerticalScroll?: boolean; // if true, items grid scrolls vertically instead of horizontally
   updatedAt: number;
 };
 

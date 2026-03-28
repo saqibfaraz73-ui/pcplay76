@@ -1034,7 +1034,7 @@ export function PosTablesManager() {
 
             if (hasOptions) {
               return (
-                <DropdownMenu key={item.id}>
+                <DropdownMenu key={item.id} modal={false}>
                   <DropdownMenuTrigger asChild disabled={outOfStock}>
                     {itemCard}
                   </DropdownMenuTrigger>

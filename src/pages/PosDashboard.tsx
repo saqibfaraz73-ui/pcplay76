@@ -1052,7 +1052,7 @@ export default function PosDashboard() {
 
                 if (hasOptions) {
                   return (
-                    <DropdownMenu key={i.id}>
+                    <DropdownMenu key={i.id} modal={false}>
                       <DropdownMenuTrigger asChild disabled={!isWorkPeriodActive}>
                         {itemCard}
                       </DropdownMenuTrigger>
