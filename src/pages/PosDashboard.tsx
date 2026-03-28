@@ -993,19 +993,16 @@ export default function PosDashboard() {
           </Card>
 
           {/* Items Grid */}
-          {posSettings?.posVerticalScroll ? (
-            <div className="w-full overflow-y-auto pb-2" style={{ maxHeight: "50vh" }}>
-              <div className="grid grid-cols-4 gap-2">
-                {filtered.map((i) => {
-                  return renderItemCard(i);
-                })}
-              </div>
-            </div>
-          ) : (
-          <div className="w-full overflow-x-auto overflow-y-hidden pb-2 overscroll-x-contain touch-manipulation" style={{ WebkitOverflowScrolling: "touch" }}>
+          <div className={posSettings?.posVerticalScroll
+            ? "w-full overflow-y-auto pb-2"
+            : "w-full overflow-x-auto overflow-y-hidden pb-2 overscroll-x-contain touch-manipulation"
+          } style={posSettings?.posVerticalScroll ? { maxHeight: "50vh" } : { WebkitOverflowScrolling: "touch" }}>
             <div
-              className="grid grid-rows-2 grid-flow-col gap-2"
-              style={{ gridAutoColumns: 'calc(25% - 0.375rem)' }}
+              className={posSettings?.posVerticalScroll
+                ? "grid grid-cols-4 gap-2"
+                : "grid grid-rows-2 grid-flow-col gap-2"
+              }
+              style={posSettings?.posVerticalScroll ? undefined : { gridAutoColumns: 'calc(25% - 0.375rem)' }}
             >
               {filtered.map((i) => {
                 const qty = inventory[i.id] ?? 0;
