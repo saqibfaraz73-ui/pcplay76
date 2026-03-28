@@ -6,6 +6,7 @@ import { AdminInventory } from "@/features/admin/inventory/AdminInventory";
 import { AdminCustomers } from "@/features/admin/customers/AdminCustomers";
 import { AdminBackupRestore } from "@/features/admin/backup/AdminBackupRestore";
 import { DataCleanup } from "@/features/admin/settings/DataCleanup";
+import { AdminRecipeBom } from "@/features/admin/recipe/AdminRecipeBom";
 import { ensureSeedData } from "@/db/seed";
 
 export default function AdminDashboard() {
@@ -26,12 +27,14 @@ export default function AdminDashboard() {
         <TabsList className="flex w-full overflow-x-auto justify-start gap-1 no-scrollbar flex-wrap sm:flex-nowrap">
           <TabsTrigger value="products">Products</TabsTrigger>
           <TabsTrigger value="inventory">Inventory</TabsTrigger>
+          <TabsTrigger value="recipe">Recipe/BOM</TabsTrigger>
           <TabsTrigger value="customers">Customers</TabsTrigger>
           <TabsTrigger value="backup">Backup</TabsTrigger>
           <TabsTrigger value="cleanup">Cleanup</TabsTrigger>
         </TabsList>
         <TabsContent value="products"><AdminProducts /></TabsContent>
         <TabsContent value="inventory"><AdminInventory /></TabsContent>
+        <TabsContent value="recipe"><AdminRecipeBom /></TabsContent>
         <TabsContent value="customers"><AdminCustomers /></TabsContent>
         <TabsContent value="backup"><AdminBackupRestore /></TabsContent>
         <TabsContent value="cleanup"><DataCleanup /></TabsContent>

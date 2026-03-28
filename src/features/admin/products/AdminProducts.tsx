@@ -1048,13 +1048,6 @@ export function AdminProducts() {
                 )}
               </div>
 
-              {/* Recipe / Ingredients (BOM) */}
-              <RecipeEditor
-                recipe={itemRecipe}
-                onChange={setItemRecipe}
-                allItems={items}
-                currentItemId={mode.type === "item" ? mode.item?.id ?? itemIdDraft : undefined}
-              />
 
               {/* Expiry date picker */}
               {settings?.expiryDateEnabled && (
