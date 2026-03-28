@@ -47,6 +47,16 @@ type BackupPayloadV1 = {
     recoveryPayments?: any[];
     installmentCustomers?: any[];
     installmentPayments?: any[];
+    labours?: any[];
+    labourTransactions?: any[];
+    labourAttendance?: any[];
+    labourProduction?: any[];
+    kitchenOrders?: any[];
+    taxInvoiceQueue?: any[];
+    daybookAccounts?: any[];
+    daybookEntries?: any[];
+    daybookImages?: any[];
+    daybookNotes?: any[];
   };
 };
 
