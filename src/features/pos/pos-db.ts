@@ -190,6 +190,20 @@ export async function createOrder(args: {
       await db.inventory.put({ itemId: realId, quantity: available - l.qty, updatedAt: now });
     }
 
+    // Recipe/BOM: auto-deduct ingredient items
+    for (const l of args.cart) {
+      const realId = getRealItemId(l.itemId);
+      const item = args.itemsById[realId];
+      if (!item?.recipe || item.recipe.length === 0) continue;
+      for (const ingredient of item.recipe) {
+        const ingRow = await db.inventory.get(ingredient.itemId);
+        const ingAvailable = ingRow?.quantity ?? 0;
+        const deductQty = ingredient.qty * l.qty;
+        const newQty = Math.max(0, ingAvailable - deductQty);
+        await db.inventory.put({ itemId: ingredient.itemId, quantity: newQty, updatedAt: now });
+      }
+    }
+
     const order: Order = {
       id: makeId("ord"),
       receiptNo,
