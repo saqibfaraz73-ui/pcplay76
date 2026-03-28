@@ -90,6 +90,8 @@ export function PosTablesManager() {
   const [creditCustomerId, setCreditCustomerId] = React.useState<string>("");
   const [newCustomerName, setNewCustomerName] = React.useState("");
   const [newCustomerMobile, setNewCustomerMobile] = React.useState("");
+  const [cashReceived, setCashReceived] = React.useState<number>(0);
+  const [newCustomerMobile, setNewCustomerMobile] = React.useState("");
 
   // Cancel dialog in checkout
   const [cancelCheckoutOpen, setCancelCheckoutOpen] = React.useState(false);
@@ -635,6 +637,7 @@ export function PosTablesManager() {
       setCreditCustomerId("");
       setNewCustomerName("");
       setNewCustomerMobile("");
+      setCashReceived(0);
       setDiscountAmount(0);
       setEditTaxAmount(null);
       setEditServiceAmount(null);
