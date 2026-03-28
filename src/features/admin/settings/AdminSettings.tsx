@@ -84,6 +84,7 @@ export function AdminSettings() {
   const [showAddress, setShowAddress] = React.useState(false);
   const [showPhone, setShowPhone] = React.useState(false);
   const [posShowItemImages, setPosShowItemImages] = React.useState(true);
+  const [posVerticalScroll, setPosVerticalScroll] = React.useState(false);
 
   // Tax settings
   const [taxEnabled, setTaxEnabled] = React.useState(false);
@@ -189,6 +190,7 @@ export function AdminSettings() {
     setShowAddress(!!s.showAddress);
     setShowPhone(!!s.showPhone);
     setPosShowItemImages(s.posShowItemImages ?? true);
+    setPosVerticalScroll(!!s.posVerticalScroll);
     setTaxEnabled(!!s.taxEnabled);
     setTaxType(s.taxType ?? "percent");
     setTaxValue(s.taxValue ?? 0);
@@ -282,6 +284,7 @@ export function AdminSettings() {
         address: address.trim() || undefined,
         phone: phone.trim() || undefined,
         posShowItemImages,
+        posVerticalScroll,
         taxEnabled,
         taxType,
         taxValue,
@@ -612,6 +615,13 @@ export function AdminSettings() {
                 <div className="text-xs text-muted-foreground">If disabled, POS will hide product images for faster performance.</div>
               </div>
               <Switch checked={posShowItemImages} onCheckedChange={setPosShowItemImages} />
+            </div>
+            <div className="flex items-center justify-between gap-3 rounded-md border p-3">
+              <div>
+                <div className="text-sm font-medium">Vertical item scroll</div>
+                <div className="text-xs text-muted-foreground">Scroll items up/down instead of left/right in POS and Tables.</div>
+              </div>
+              <Switch checked={posVerticalScroll} onCheckedChange={setPosVerticalScroll} />
             </div>
             <div className="flex items-center justify-between gap-3 rounded-md border p-3">
               <div>

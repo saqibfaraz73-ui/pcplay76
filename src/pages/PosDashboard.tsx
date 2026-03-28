@@ -981,7 +981,7 @@ export default function PosDashboard() {
           {/* Categories */}
           <Card className="p-2">
             <Tabs value={activeCategoryId ?? "all"} onValueChange={(v) => setActiveCategoryId(v === "all" ? null : v)}>
-              <TabsList className="flex w-full overflow-x-auto no-scrollbar justify-start gap-1 h-auto flex-nowrap">
+              <TabsList className={cn("flex w-full justify-start gap-1 h-auto", posSettings?.posVerticalScroll ? "flex-wrap" : "overflow-x-auto no-scrollbar flex-nowrap")}>
                 <TabsTrigger value="all" className="text-xs px-2 py-1 shrink-0">All</TabsTrigger>
                 {categories.map((c) => (
                   <TabsTrigger key={c.id} value={c.id} className="text-xs px-2 py-1 shrink-0">
@@ -992,11 +992,17 @@ export default function PosDashboard() {
             </Tabs>
           </Card>
 
-          {/* Items Grid - 4 cols × 2 rows (8 visible), horizontal scroll for more */}
-          <div className="w-full overflow-x-auto overflow-y-hidden pb-2 overscroll-x-contain touch-manipulation" style={{ WebkitOverflowScrolling: "touch" }}>
+          {/* Items Grid */}
+          <div className={posSettings?.posVerticalScroll
+            ? "w-full overflow-y-auto pb-2"
+            : "w-full overflow-x-auto overflow-y-hidden pb-2 overscroll-x-contain touch-manipulation"
+          } style={posSettings?.posVerticalScroll ? { maxHeight: "50vh" } : { WebkitOverflowScrolling: "touch" }}>
             <div
-              className="grid grid-rows-2 grid-flow-col gap-2"
-              style={{ gridAutoColumns: 'calc(25% - 0.375rem)' }}
+              className={posSettings?.posVerticalScroll
+                ? "grid grid-cols-4 gap-2"
+                : "grid grid-rows-2 grid-flow-col gap-2"
+              }
+              style={posSettings?.posVerticalScroll ? undefined : { gridAutoColumns: 'calc(25% - 0.375rem)' }}
             >
               {filtered.map((i) => {
                 const qty = inventory[i.id] ?? 0;
@@ -1052,7 +1058,7 @@ export default function PosDashboard() {
 
                 if (hasOptions) {
                   return (
-                    <DropdownMenu key={i.id}>
+                    <DropdownMenu key={i.id} modal={false}>
                       <DropdownMenuTrigger asChild disabled={!isWorkPeriodActive}>
                         {itemCard}
                       </DropdownMenuTrigger>
