@@ -509,7 +509,7 @@ function RecipeEditorPanel({ onMakingItemsChanged, cur }: { onMakingItemsChanged
 
 export function AdminRecipeBom() {
   const [refreshKey, setRefreshKey] = React.useState(0);
-
+  const cur = useCurrencySymbol();
   return (
     <div className="space-y-4">
       <Tabs defaultValue="making-items">
@@ -530,12 +530,12 @@ export function AdminRecipeBom() {
               </p>
             </CardHeader>
             <CardContent>
-              <MakingItemsManager onChanged={() => setRefreshKey((k) => k + 1)} />
+              <MakingItemsManager onChanged={() => setRefreshKey((k) => k + 1)} cur={cur} />
             </CardContent>
           </Card>
         </TabsContent>
         <TabsContent value="recipe">
-          <RecipeEditorPanel onMakingItemsChanged={refreshKey} />
+          <RecipeEditorPanel onMakingItemsChanged={refreshKey} cur={cur} />
         </TabsContent>
       </Tabs>
     </div>
