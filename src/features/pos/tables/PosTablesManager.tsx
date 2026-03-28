@@ -984,11 +984,17 @@ export function PosTablesManager() {
         className="max-w-sm"
       />
 
-      {/* Items Grid - 4 cols × 2 rows, horizontal scroll (same as Sales Dashboard) */}
-      <div className="w-full overflow-x-auto overflow-y-hidden pb-2 overscroll-x-contain touch-manipulation" style={{ WebkitOverflowScrolling: "touch" }}>
+      {/* Items Grid */}
+      <div className={settings?.posVerticalScroll
+        ? "w-full overflow-y-auto pb-2"
+        : "w-full overflow-x-auto overflow-y-hidden pb-2 overscroll-x-contain touch-manipulation"
+      } style={settings?.posVerticalScroll ? { maxHeight: "50vh" } : { WebkitOverflowScrolling: "touch" }}>
         <div
-          className="grid grid-rows-2 grid-flow-col gap-2"
-          style={{ gridAutoColumns: 'calc(25% - 0.375rem)' }}
+          className={settings?.posVerticalScroll
+            ? "grid grid-cols-4 gap-2"
+            : "grid grid-rows-2 grid-flow-col gap-2"
+          }
+          style={settings?.posVerticalScroll ? undefined : { gridAutoColumns: 'calc(25% - 0.375rem)' }}
         >
           {filteredItems.map((item) => {
             const inCart = cart.find((l) => l.itemId === item.id);
