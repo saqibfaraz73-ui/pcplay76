@@ -1369,6 +1369,35 @@ export function PosTablesManager() {
                     )}
                   </span>
                 </div>
+
+                {/* Cash Received / Change (optional) */}
+                {!creditCustomerId && !newCustomerName.trim() && (() => {
+                  const checkoutTotal = Math.max(0, currentTableOrder.subtotal - Math.min(discountAmount, currentTableOrder.subtotal)) +
+                    (editTaxAmount ?? currentTableOrder.taxAmount) +
+                    (editServiceAmount ?? currentTableOrder.serviceChargeAmount);
+                  const change = cashReceived > 0 ? cashReceived - checkoutTotal : 0;
+                  return (
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <Label className="text-sm whitespace-nowrap">Cash Received</Label>
+                        <Input
+                          type="number"
+                          inputMode="numeric"
+                          value={cashReceived || ""}
+                          onChange={(e) => setCashReceived(parseNonDecimalInt(e.target.value))}
+                          className="h-8 w-28"
+                          placeholder="Optional"
+                        />
+                      </div>
+                      {cashReceived > 0 && change >= 0 && (
+                        <div className="flex justify-between text-sm font-medium text-primary">
+                          <span>Change</span>
+                          <span>{formatIntMoney(change)}</span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
 
               {/* Credit Customer */}
