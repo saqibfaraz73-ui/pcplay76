@@ -47,6 +47,16 @@ type BackupPayloadV1 = {
     recoveryPayments?: any[];
     installmentCustomers?: any[];
     installmentPayments?: any[];
+    labours?: any[];
+    labourTransactions?: any[];
+    labourAttendance?: any[];
+    labourProduction?: any[];
+    kitchenOrders?: any[];
+    taxInvoiceQueue?: any[];
+    daybookAccounts?: any[];
+    daybookEntries?: any[];
+    daybookImages?: any[];
+    daybookNotes?: any[];
   };
 };
 
@@ -120,6 +130,16 @@ export function AdminBackupRestore() {
         recoveryPayments: await db.recoveryPayments.toArray(),
         installmentCustomers: await db.installmentCustomers.toArray(),
         installmentPayments: await db.installmentPayments.toArray(),
+        labours: await db.labours.toArray(),
+        labourTransactions: await db.labourTransactions.toArray(),
+        labourAttendance: await db.labourAttendance.toArray(),
+        labourProduction: await db.labourProduction.toArray(),
+        kitchenOrders: await db.kitchenOrders.toArray(),
+        taxInvoiceQueue: await db.taxInvoiceQueue.toArray(),
+        daybookAccounts: await db.daybookAccounts.toArray(),
+        daybookEntries: await db.daybookEntries.toArray(),
+        daybookImages: await db.daybookImages.toArray(),
+        daybookNotes: await db.daybookNotes.toArray(),
       },
     };
     const fileName = `backup_${payload.createdAt}.json`;
@@ -195,6 +215,9 @@ export function AdminBackupRestore() {
         db.advanceOrders, db.bookableItems, db.bookingOrders,
         db.recoveryCustomers, db.recoveryPayments,
         db.installmentCustomers, db.installmentPayments,
+        db.labours, db.labourTransactions, db.labourAttendance, db.labourProduction,
+        db.kitchenOrders, db.taxInvoiceQueue,
+        db.daybookAccounts, db.daybookEntries, db.daybookImages, db.daybookNotes,
       ],
       async () => {
         await Promise.all([
@@ -210,6 +233,9 @@ export function AdminBackupRestore() {
           db.advanceOrders.clear(), db.bookableItems.clear(), db.bookingOrders.clear(),
           db.recoveryCustomers.clear(), db.recoveryPayments.clear(),
           db.installmentCustomers.clear(), db.installmentPayments.clear(),
+          db.labours.clear(), db.labourTransactions.clear(), db.labourAttendance.clear(), db.labourProduction.clear(),
+          db.kitchenOrders.clear(), db.taxInvoiceQueue.clear(),
+          db.daybookAccounts.clear(), db.daybookEntries.clear(), db.daybookImages.clear(), db.daybookNotes.clear(),
         ]);
         await db.categories.bulkAdd(payload.data.categories);
         await db.items.bulkAdd(payload.data.items);
@@ -245,6 +271,16 @@ export function AdminBackupRestore() {
         if (payload.data.recoveryPayments?.length) await db.recoveryPayments.bulkAdd(payload.data.recoveryPayments);
         if (payload.data.installmentCustomers?.length) await db.installmentCustomers.bulkAdd(payload.data.installmentCustomers);
         if (payload.data.installmentPayments?.length) await db.installmentPayments.bulkAdd(payload.data.installmentPayments);
+        if (payload.data.labours?.length) await db.labours.bulkAdd(payload.data.labours);
+        if (payload.data.labourTransactions?.length) await db.labourTransactions.bulkAdd(payload.data.labourTransactions);
+        if (payload.data.labourAttendance?.length) await db.labourAttendance.bulkAdd(payload.data.labourAttendance);
+        if (payload.data.labourProduction?.length) await db.labourProduction.bulkAdd(payload.data.labourProduction);
+        if (payload.data.kitchenOrders?.length) await db.kitchenOrders.bulkAdd(payload.data.kitchenOrders);
+        if (payload.data.taxInvoiceQueue?.length) await db.taxInvoiceQueue.bulkAdd(payload.data.taxInvoiceQueue);
+        if (payload.data.daybookAccounts?.length) await db.daybookAccounts.bulkAdd(payload.data.daybookAccounts);
+        if (payload.data.daybookEntries?.length) await db.daybookEntries.bulkAdd(payload.data.daybookEntries);
+        if (payload.data.daybookImages?.length) await db.daybookImages.bulkAdd(payload.data.daybookImages);
+        if (payload.data.daybookNotes?.length) await db.daybookNotes.bulkAdd(payload.data.daybookNotes);
         await db.settings.bulkAdd(payload.data.settings);
         await db.counters.bulkAdd(payload.data.counters);
       },
