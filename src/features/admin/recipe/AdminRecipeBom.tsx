@@ -77,11 +77,11 @@ function MakingItemsManager({ onChanged }: { onChanged: () => void }) {
       });
       toast({ title: "Making item updated" });
     } else {
-      const id = makeId();
+      const id = makeId("raw");
       // We need a categoryId — use a placeholder for raw materials
       let rawCat = (await db.categories.toArray()).find((c) => c.name === "__raw_materials__");
       if (!rawCat) {
-        rawCat = { id: makeId(), name: "__raw_materials__", isActive: false, createdAt: Date.now() };
+        rawCat = { id: makeId("cat"), name: "__raw_materials__", isActive: false, createdAt: Date.now() };
         await db.categories.put(rawCat);
       }
       const newItem: MenuItem = {
