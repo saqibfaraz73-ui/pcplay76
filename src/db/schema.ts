@@ -6,14 +6,19 @@ export type Category = {
   createdAt: number;
 };
 
-export type StockUnit = "pcs" | "kg" | "ltr" | "ft" | "m";
+export type StockUnit = "pcs" | "kg" | "g" | "ltr" | "ml" | "ft" | "m" | "box" | "pack" | "dozen";
 
 export const STOCK_UNITS: { value: StockUnit; label: string }[] = [
   { value: "pcs", label: "Pieces" },
   { value: "kg", label: "Kg" },
+  { value: "g", label: "Gram" },
   { value: "ltr", label: "Liters" },
+  { value: "ml", label: "ML" },
   { value: "ft", label: "Feet" },
   { value: "m", label: "Meters" },
+  { value: "box", label: "Box" },
+  { value: "pack", label: "Pack" },
+  { value: "dozen", label: "Dozen" },
 ];
 
 export type ItemVariation = {
@@ -35,6 +40,14 @@ export type ComboIncludedItem = {
   qty: number;
 };
 
+// Recipe ingredient for composite items (e.g. burger needs bun, cheese, patty)
+export type RecipeIngredient = {
+  itemId: string; // reference to another MenuItem (raw material)
+  itemName: string; // denormalized name for display
+  qty: number; // quantity needed per unit
+  unit: StockUnit; // unit of measurement
+};
+
 export type MenuItem = {
   id: string;
   categoryId: string;
@@ -50,6 +63,7 @@ export type MenuItem = {
   variations?: ItemVariation[]; // optional product variations (e.g. Small, Medium, Large)
   addOns?: ItemAddOn[]; // optional per-item add-ons (e.g. Extra Cheese, Gift Wrap)
   includedItems?: ComboIncludedItem[]; // optional combo/platter included items
+  recipe?: RecipeIngredient[]; // optional recipe/BOM for composite items
   createdAt: number;
 };
 

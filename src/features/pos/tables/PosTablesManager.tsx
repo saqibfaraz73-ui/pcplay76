@@ -90,6 +90,7 @@ export function PosTablesManager() {
   const [creditCustomerId, setCreditCustomerId] = React.useState<string>("");
   const [newCustomerName, setNewCustomerName] = React.useState("");
   const [newCustomerMobile, setNewCustomerMobile] = React.useState("");
+  const [cashReceived, setCashReceived] = React.useState<number>(0);
 
   // Cancel dialog in checkout
   const [cancelCheckoutOpen, setCancelCheckoutOpen] = React.useState(false);
@@ -345,6 +346,20 @@ export function PosTablesManager() {
         const row = await db.inventory.get(realId);
         const current = row?.quantity ?? 0;
         await db.inventory.put({ itemId: realId, quantity: current - l.qty, updatedAt: now });
+      }
+
+      // Recipe/BOM: auto-deduct ingredient items for composite products
+      for (const l of cart) {
+        const realId = getRealItemId(l.itemId);
+        const item = itemsById[realId];
+        if (!item?.recipe || item.recipe.length === 0) continue;
+        for (const ingredient of item.recipe) {
+          const ingRow = await db.inventory.get(ingredient.itemId);
+          const ingAvailable = ingRow?.quantity ?? 0;
+          const deductQty = ingredient.qty * l.qty;
+          const newQty = Math.max(0, ingAvailable - deductQty);
+          await db.inventory.put({ itemId: ingredient.itemId, quantity: newQty, updatedAt: now });
+        }
       }
 
       if (existingOrder) {
@@ -635,6 +650,7 @@ export function PosTablesManager() {
       setCreditCustomerId("");
       setNewCustomerName("");
       setNewCustomerMobile("");
+      setCashReceived(0);
       setDiscountAmount(0);
       setEditTaxAmount(null);
       setEditServiceAmount(null);
@@ -1367,6 +1383,35 @@ export function PosTablesManager() {
                     )}
                   </span>
                 </div>
+
+                {/* Cash Received / Change (optional) */}
+                {!creditCustomerId && !newCustomerName.trim() && (() => {
+                  const checkoutTotal = Math.max(0, currentTableOrder.subtotal - Math.min(discountAmount, currentTableOrder.subtotal)) +
+                    (editTaxAmount ?? currentTableOrder.taxAmount) +
+                    (editServiceAmount ?? currentTableOrder.serviceChargeAmount);
+                  const change = cashReceived > 0 ? cashReceived - checkoutTotal : 0;
+                  return (
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <Label className="text-sm whitespace-nowrap">Cash Received</Label>
+                        <Input
+                          type="number"
+                          inputMode="numeric"
+                          value={cashReceived || ""}
+                          onChange={(e) => setCashReceived(parseNonDecimalInt(e.target.value))}
+                          className="h-8 w-28"
+                          placeholder="Optional"
+                        />
+                      </div>
+                      {cashReceived > 0 && change >= 0 && (
+                        <div className="flex justify-between text-sm font-medium text-primary">
+                          <span>Change</span>
+                          <span>{formatIntMoney(change)}</span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
 
               {/* Credit Customer */}

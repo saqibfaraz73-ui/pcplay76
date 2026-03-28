@@ -94,21 +94,24 @@ export function AdminInventoryAdjustments() {
   const [settings, setSettings] = React.useState<Settings | null>(null);
   const [items, setItems] = React.useState<MenuItem[]>([]);
   const [rows, setRows] = React.useState<Array<{ adj: InventoryAdjustment; item: MenuItem | undefined }>>([]);
+  const [currentStock, setCurrentStock] = React.useState<Record<string, number>>({});
   const [itemId, setItemId] = React.useState<string>("");
   const [from, setFrom] = React.useState<Date>(() => startOfDay(new Date()));
   const [to, setTo] = React.useState<Date>(() => endOfDay(new Date()));
   
 
   const refresh = React.useCallback(async () => {
-    const [s, its, adjs] = await Promise.all([
+    const [s, its, adjs, inv] = await Promise.all([
       db.settings.get("app"),
       db.items.orderBy("createdAt").toArray(),
       db.inventoryAdjustments.orderBy("createdAt").reverse().toArray(),
+      db.inventory.toArray(),
     ]);
     setSettings(s ?? null);
     setItems(its);
     const byId = new Map(its.map((i) => [i.id, i] as const));
     setRows(adjs.map((adj) => ({ adj, item: byId.get(adj.itemId) })));
+    setCurrentStock(Object.fromEntries(inv.map((r) => [r.itemId, r.quantity])));
     setItemId((prev) => prev || its.find((i) => i.trackInventory)?.id || "");
   }, []);
 
@@ -157,12 +160,28 @@ export function AdminInventoryAdjustments() {
     }
   };
 
+  // Calculate stock added/removed summary in date range
+  const stockSummary = React.useMemo(() => {
+    const summary: Record<string, { added: number; removed: number; set: number; current: number; name: string }> = {};
+    const relevantItems = itemId ? filtered : filtered;
+    for (const r of relevantItems) {
+      const id = r.adj.itemId;
+      if (!summary[id]) {
+        summary[id] = { added: 0, removed: 0, set: 0, current: currentStock[id] ?? 0, name: r.item?.name ?? id };
+      }
+      if (r.adj.type === "add") summary[id].added += r.adj.delta;
+      else if (r.adj.type === "remove") summary[id].removed += r.adj.delta;
+      else if (r.adj.type === "set") summary[id].set++;
+    }
+    return Object.entries(summary);
+  }, [filtered, currentStock, itemId]);
+
   return (
     <div className="space-y-4">
       <Card>
         <CardHeader>
-          <CardTitle>Adjustments History</CardTitle>
-          <CardDescription>Filter by item and date range; export to PDF for printing/sharing.</CardDescription>
+          <CardTitle>Inventory History</CardTitle>
+          <CardDescription>Track stock changes, additions, and removals with date range filtering.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid gap-3 md:grid-cols-3">
@@ -189,11 +208,31 @@ export function AdminInventoryAdjustments() {
           </div>
 
           <div className="flex flex-wrap gap-2">
-            <SaveShareMenu label="Adjustments PDF" getDefaultFileName={() => `inventory_adjustments_${format(from, "yyyy-MM-dd")}_${format(to, "yyyy-MM-dd")}.pdf`} onSave={(fn) => void savePdf(fn)} onShare={() => void exportPdf()} />
+            <SaveShareMenu label="History PDF" getDefaultFileName={() => `inventory_history_${format(from, "yyyy-MM-dd")}_${format(to, "yyyy-MM-dd")}.pdf`} onSave={(fn) => void savePdf(fn)} onShare={() => void exportPdf()} />
             <Button variant="outline" onClick={() => void refresh()}>
               Refresh
             </Button>
           </div>
+
+          {/* Stock Summary Card */}
+          {stockSummary.length > 0 && (
+            <div className="rounded-md border">
+              <div className="px-3 py-2 bg-muted/40 text-xs font-medium">Stock Summary (Selected Range)</div>
+              <div className="divide-y">
+                {stockSummary.map(([id, s]) => (
+                  <div key={id} className="flex items-center justify-between px-3 py-2 text-sm gap-2">
+                    <span className="font-medium truncate flex-1">{s.name}</span>
+                    <div className="flex gap-3 text-xs">
+                      {s.added > 0 && <span className="text-green-600 dark:text-green-400">+{s.added} added</span>}
+                      {s.removed > 0 && <span className="text-destructive">-{s.removed} removed</span>}
+                      {s.set > 0 && <span className="text-muted-foreground">{s.set}x set</span>}
+                      <span className="font-medium">Current: {s.current}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {filtered.length === 0 ? (
             <div className="text-sm text-muted-foreground">No adjustments found in this range.</div>
@@ -206,7 +245,13 @@ export function AdminInventoryAdjustments() {
                     <div className="text-xs text-muted-foreground">{fmtDateTime(r.adj.createdAt)}</div>
                   </div>
                   <div className="text-xs text-muted-foreground">
-                    {r.adj.type.toUpperCase()} • delta {r.adj.delta} • {r.adj.before} → {r.adj.after}
+                    <span className={cn(
+                      "font-medium",
+                      r.adj.type === "add" ? "text-green-600 dark:text-green-400" : r.adj.type === "remove" ? "text-destructive" : ""
+                    )}>
+                      {r.adj.type.toUpperCase()}
+                    </span>
+                    {" "}• qty {r.adj.delta} • {r.adj.before} → {r.adj.after}
                     {r.adj.note ? ` • ${r.adj.note}` : ""}
                   </div>
                 </div>

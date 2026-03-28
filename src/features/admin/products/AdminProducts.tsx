@@ -20,7 +20,7 @@ import { Switch } from "@/components/ui/switch";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { db } from "@/db/appDb";
-import type { Category, MenuItem, Settings, StockUnit, ItemVariation, ItemAddOn, ComboIncludedItem } from "@/db/schema";
+import type { Category, MenuItem, Settings, StockUnit, ItemVariation, ItemAddOn, ComboIncludedItem, RecipeIngredient } from "@/db/schema";
 import { STOCK_UNITS } from "@/db/schema";
 import { useToast } from "@/hooks/use-toast";
 import { parseNonDecimalInt, formatIntMoney } from "@/features/pos/format";
@@ -33,6 +33,7 @@ import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { exportMenuItemsToExcel, importMenuItemsFromCSV, downloadExcel } from "./menu-import-export";
 import { ProductsBackup } from "./ProductsBackup";
+import { RecipeEditor } from "./RecipeEditor";
 
 type EditMode =
   | { type: "none" }
@@ -81,6 +82,7 @@ export function AdminProducts() {
   const [itemVariations, setItemVariations] = React.useState<ItemVariation[]>([]);
   const [itemAddOns, setItemAddOns] = React.useState<ItemAddOn[]>([]);
   const [itemIncludedItems, setItemIncludedItems] = React.useState<ComboIncludedItem[]>([]);
+  const [itemRecipe, setItemRecipe] = React.useState<RecipeIngredient[]>([]);
   const [itemSku, setItemSku] = React.useState("");
   const [itemIsActive, setItemIsActive] = React.useState(true);
   const [skuScanning, setSkuScanning] = React.useState(false);
@@ -144,6 +146,7 @@ export function AdminProducts() {
     setItemVariations([]);
     setItemAddOns([]);
     setItemIncludedItems([]);
+    setItemRecipe([]);
     setItemSku("");
     setItemIsActive(true);
     setItemCategoryId(categories[0]?.id ?? "");
@@ -164,6 +167,7 @@ export function AdminProducts() {
     setItemVariations(item.variations ?? []);
     setItemAddOns(item.addOns ?? []);
     setItemIncludedItems(item.includedItems ?? []);
+    setItemRecipe(item.recipe ?? []);
     setItemSku(item.sku ?? "");
     setItemIsActive(item.isActive !== false);
     const inv = await db.inventory.get(item.id);
@@ -226,6 +230,7 @@ export function AdminProducts() {
           variations: itemVariations.length > 0 ? itemVariations.filter(v => v.name.trim() && v.price > 0) : undefined,
           addOns: itemAddOns.length > 0 ? itemAddOns.filter(a => a.name.trim() && a.price > 0) : undefined,
           includedItems: itemIncludedItems.length > 0 ? itemIncludedItems.filter(ci => ci.name.trim() && ci.qty > 0) : undefined,
+          recipe: itemRecipe.length > 0 ? itemRecipe.filter(r => r.itemId && r.qty > 0) : undefined,
           createdAt: mode.item?.createdAt ?? now,
         };
         await db.items.put(next);
@@ -1042,6 +1047,14 @@ export function AdminProducts() {
                   </div>
                 )}
               </div>
+
+              {/* Recipe / Ingredients (BOM) */}
+              <RecipeEditor
+                recipe={itemRecipe}
+                onChange={setItemRecipe}
+                allItems={items}
+                currentItemId={mode.type === "item" ? mode.item?.id ?? itemIdDraft : undefined}
+              />
 
               {/* Expiry date picker */}
               {settings?.expiryDateEnabled && (
