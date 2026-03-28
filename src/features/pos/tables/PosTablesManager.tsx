@@ -348,6 +348,20 @@ export function PosTablesManager() {
         await db.inventory.put({ itemId: realId, quantity: current - l.qty, updatedAt: now });
       }
 
+      // Recipe/BOM: auto-deduct ingredient items for composite products
+      for (const l of cart) {
+        const realId = getRealItemId(l.itemId);
+        const item = itemsById[realId];
+        if (!item?.recipe || item.recipe.length === 0) continue;
+        for (const ingredient of item.recipe) {
+          const ingRow = await db.inventory.get(ingredient.itemId);
+          const ingAvailable = ingRow?.quantity ?? 0;
+          const deductQty = ingredient.qty * l.qty;
+          const newQty = Math.max(0, ingAvailable - deductQty);
+          await db.inventory.put({ itemId: ingredient.itemId, quantity: newQty, updatedAt: now });
+        }
+      }
+
       if (existingOrder) {
         const mergedLines = [...existingOrder.lines];
         for (const newLine of lines) {
