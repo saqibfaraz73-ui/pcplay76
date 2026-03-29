@@ -310,6 +310,7 @@ export function AdminSettings() {
         taxCountry: taxCountry || undefined,
         taxDepartment: taxDepartment || undefined,
         taxApiEnabled,
+        taxApiMode: taxApiEnabled ? taxApiMode : undefined,
         taxApiPosId: taxApiPosId.trim() || undefined,
         taxApiKey: taxApiKey.trim() || undefined,
         taxApiEndpoint: taxApiEndpoint.trim() || undefined,
@@ -352,6 +353,13 @@ export function AdminSettings() {
         recoveryEnabled,
         installmentEnabled,
         kitchenDisplayEnabled,
+        fbrExcelEnabled,
+        fbrQrOnReceipt,
+        fbrBusinessName: fbrBusinessName.trim() || undefined,
+        fbrNtn: fbrNtn.trim() || undefined,
+        fbrPosId: fbrPosId.trim() || undefined,
+        fbrAddress: fbrAddress.trim() || undefined,
+        fbrPhone: fbrPhone.trim() || undefined,
         updatedAt: Date.now(),
       };
       await db.settings.put(next);
