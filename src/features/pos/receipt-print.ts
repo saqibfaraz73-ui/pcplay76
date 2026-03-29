@@ -199,10 +199,17 @@ async function buildEscPosReceipt(
   const colHeader = "Item".padEnd(width - 14) + "Qty".padStart(5) + "Total".padStart(9);
 
   const itemLines = order.lines.flatMap((l) => {
-    const nameCol = l.name.slice(0, width - 14).padEnd(width - 14);
+    const maxNameLen = width - 14;
     const qtyCol = String(l.qty).padStart(5);
     const totalCol = money(l.subtotal).padStart(9);
-    const lines = [nameCol + qtyCol + totalCol];
+    const lines: string[] = [];
+    if (l.name.length > maxNameLen) {
+      // First line: item name (full width), second line: qty + total right-aligned
+      lines.push(l.name.slice(0, width));
+      lines.push("".padEnd(maxNameLen) + qtyCol + totalCol);
+    } else {
+      lines.push(l.name.padEnd(maxNameLen) + qtyCol + totalCol);
+    }
     if (settings.showExpiryOnReceipt && l.expiryDate) {
       const expStr = format(new Date(l.expiryDate), "dd/MM/yy");
       lines.push(line(`  Exp: ${expStr}`));
@@ -240,20 +247,16 @@ async function buildEscPosReceipt(
     qrCommands = buildEscPosBarcode(order.receiptNo, settings.paperSize);
   }
 
-  // Tax authority QR code (NTN + invoice details) — only when tax API is enabled and QR not disabled
+  // Tax authority QR code (NTN + invoice details) — supports both Tax API and custom FBR Excel details
   let taxQrCommands = "";
-  if (
-    settings.taxEnabled &&
-    settings.taxApiEnabled &&
-    !settings.taxQrDisabled &&
-    settings.taxApiBusinessNtn &&
-    !opts?.skipBarcode
-  ) {
-    const { buildTaxQrEscPos: buildTaxQr } = await import("@/features/tax/tax-qr");
-    taxQrCommands = buildTaxQr({
-      settings, receiptNo: order.receiptNo,
-      taxAmount: order.taxAmount, total: order.total, createdAt: order.createdAt,
-    });
+  if (settings.taxEnabled && !opts?.skipBarcode) {
+    const { buildTaxQrEscPos: buildTaxQr, shouldPrintTaxQr } = await import("@/features/tax/tax-qr");
+    if (shouldPrintTaxQr(settings)) {
+      taxQrCommands = buildTaxQr({
+        settings, receiptNo: order.receiptNo,
+        taxAmount: order.taxAmount, total: order.total, createdAt: order.createdAt,
+      });
+    }
   }
 
   const totalContentLines = headerLines.length + 1 + itemLines.length + totals.length + (logoCommands ? 4 : 0);
@@ -306,10 +309,15 @@ async function buildSalesKotSlip(order: Order, settings: Settings): Promise<stri
   out.push(hr);
   for (const item of order.lines) {
     if (item.itemId.includes("__ao_")) continue; // skip add-ons
-    out.push(
-      item.name.slice(0, nameW).padEnd(nameW) +
-      String(item.qty).padStart(5)
-    );
+    if (item.name.length > nameW) {
+      out.push(item.name.slice(0, WIDTH));
+      out.push("".padEnd(nameW) + String(item.qty).padStart(5));
+    } else {
+      out.push(
+        item.name.padEnd(nameW) +
+        String(item.qty).padStart(5)
+      );
+    }
   }
   out.push(hr);
   out.push("");
@@ -353,11 +361,16 @@ async function buildKotReceipt(order: Order, settings: Settings): Promise<string
   out.push("Item".padEnd(nameW) + "Qty".padStart(5) + "Total".padStart(9));
   out.push(hr);
   for (const item of order.lines) {
-    out.push(
-      item.name.slice(0, nameW).padEnd(nameW) +
-      String(item.qty).padStart(5) +
-      money(item.subtotal).padStart(9)
-    );
+    if (item.name.length > nameW) {
+      out.push(item.name.slice(0, WIDTH));
+      out.push("".padEnd(nameW) + String(item.qty).padStart(5) + money(item.subtotal).padStart(9));
+    } else {
+      out.push(
+        item.name.padEnd(nameW) +
+        String(item.qty).padStart(5) +
+        money(item.subtotal).padStart(9)
+      );
+    }
   }
 
   out.push(hr);

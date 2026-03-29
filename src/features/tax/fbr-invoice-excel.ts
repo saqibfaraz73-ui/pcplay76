@@ -86,5 +86,10 @@ export async function generateFbrInvoiceExcel(data: InvoiceData, settings: Setti
 
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "FBR Invoice");
-  XLSX.writeFile(wb, `FBR_Invoice_${data.invoiceNo}.xlsx`);
+  // Use share/save utilities for proper Android support
+  const { shareFileBlob } = await import("@/features/pos/share-utils");
+  const xlsxData = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+  const blob = new Blob([xlsxData], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+  const fileName = `FBR_Invoice_${data.invoiceNo}.xlsx`;
+  await shareFileBlob(blob, fileName);
 }
