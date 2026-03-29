@@ -146,8 +146,12 @@ export async function generateFbrInvoicePdf(data: InvoiceData, settings: Setting
   doc.text(`${curr} ${data.grandTotal}`, w - 4, y, { align: "right" });
   y += 5;
 
-  // QR Code
-  if (settings.taxApiEnabled && settings.taxApiBusinessNtn) {
+  // QR Code — works with Tax API OR custom FBR Excel details
+  const showQr =
+    (settings.taxApiEnabled && settings.taxApiBusinessNtn) ||
+    (settings.fbrQrOnReceipt && settings.fbrNtn);
+
+  if (showQr) {
     try {
       const qrPayload = buildTaxQrPayload({
         settings,
