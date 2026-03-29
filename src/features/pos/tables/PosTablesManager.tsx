@@ -991,10 +991,10 @@ export function PosTablesManager() {
       } style={settings?.posVerticalScroll ? { maxHeight: "50vh" } : { WebkitOverflowScrolling: "touch" }}>
         <div
           className={settings?.posVerticalScroll
-            ? "grid grid-cols-4 gap-2"
+            ? "grid grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2"
             : "grid grid-rows-2 grid-flow-col gap-2"
           }
-          style={settings?.posVerticalScroll ? undefined : { gridAutoColumns: 'calc(25% - 0.375rem)' }}
+          style={settings?.posVerticalScroll ? undefined : { gridAutoColumns: 'min(calc(25% - 0.375rem), 160px)' }}
         >
           {filteredItems.map((item) => {
             const inCart = cart.find((l) => l.itemId === item.id);
