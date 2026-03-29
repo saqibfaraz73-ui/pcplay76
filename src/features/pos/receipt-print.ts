@@ -361,11 +361,16 @@ async function buildKotReceipt(order: Order, settings: Settings): Promise<string
   out.push("Item".padEnd(nameW) + "Qty".padStart(5) + "Total".padStart(9));
   out.push(hr);
   for (const item of order.lines) {
-    out.push(
-      item.name.slice(0, nameW).padEnd(nameW) +
-      String(item.qty).padStart(5) +
-      money(item.subtotal).padStart(9)
-    );
+    if (item.name.length > nameW) {
+      out.push(item.name.slice(0, WIDTH));
+      out.push("".padEnd(nameW) + String(item.qty).padStart(5) + money(item.subtotal).padStart(9));
+    } else {
+      out.push(
+        item.name.padEnd(nameW) +
+        String(item.qty).padStart(5) +
+        money(item.subtotal).padStart(9)
+      );
+    }
   }
 
   out.push(hr);
