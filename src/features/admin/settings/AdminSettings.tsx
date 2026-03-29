@@ -154,6 +154,7 @@ export function AdminSettings() {
   // FBR Excel Export settings
   const [fbrExcelEnabled, setFbrExcelEnabled] = React.useState(false);
   const [fbrQrOnReceipt, setFbrQrOnReceipt] = React.useState(false);
+  const [fbrVerifiedLabel, setFbrVerifiedLabel] = React.useState(false);
   const [fbrBusinessName, setFbrBusinessName] = React.useState("");
   const [fbrNtn, setFbrNtn] = React.useState("");
   const [fbrPosId, setFbrPosId] = React.useState("");
