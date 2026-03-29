@@ -135,8 +135,13 @@ function buildKotEscPos(tableNumber: string, waiterName: string, items: KotItem[
 
   // Items - name and quantity only
   for (const item of items) {
-    const line = `${item.name}`.padEnd(width - 4) + `x${item.qty}`;
-    out.push(line.slice(0, width));
+    if (item.name.length > width - 4) {
+      out.push(item.name.slice(0, width));
+      out.push(`${"".padEnd(width - 4)}x${item.qty}`);
+    } else {
+      const line = `${item.name}`.padEnd(width - 4) + `x${item.qty}`;
+      out.push(line.slice(0, width));
+    }
   }
 
   out.push(hr);
