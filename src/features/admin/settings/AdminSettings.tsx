@@ -95,6 +95,7 @@ export function AdminSettings() {
   const [taxDepartment, setTaxDepartment] = React.useState("");
   // Tax API integration
   const [taxApiEnabled, setTaxApiEnabled] = React.useState(false);
+  const [taxApiMode, setTaxApiMode] = React.useState<"generic" | "fbr">("generic");
   const [taxApiPosId, setTaxApiPosId] = React.useState("");
   const [taxApiKey, setTaxApiKey] = React.useState("");
   const [taxApiEndpoint, setTaxApiEndpoint] = React.useState("");
@@ -150,6 +151,15 @@ export function AdminSettings() {
   const [installmentEnabled, setInstallmentEnabled] = React.useState(false);
   const [kitchenDisplayEnabled, setKitchenDisplayEnabled] = React.useState(false);
 
+  // FBR Excel Export settings
+  const [fbrExcelEnabled, setFbrExcelEnabled] = React.useState(false);
+  const [fbrQrOnReceipt, setFbrQrOnReceipt] = React.useState(false);
+  const [fbrBusinessName, setFbrBusinessName] = React.useState("");
+  const [fbrNtn, setFbrNtn] = React.useState("");
+  const [fbrPosId, setFbrPosId] = React.useState("");
+  const [fbrAddress, setFbrAddress] = React.useState("");
+  const [fbrPhone, setFbrPhone] = React.useState("");
+
   // Admin account
   const [adminAccount, setAdminAccount] = React.useState<AdminAccount | null>(null);
   const [adminName, setAdminName] = React.useState("");
@@ -198,6 +208,7 @@ export function AdminSettings() {
     setTaxCountry(s.taxCountry ?? "");
     setTaxDepartment(s.taxDepartment ?? "");
     setTaxApiEnabled(!!s.taxApiEnabled);
+    setTaxApiMode((s.taxApiMode as "generic" | "fbr") ?? "generic");
     setTaxApiPosId(s.taxApiPosId ?? "");
     setTaxApiKey(s.taxApiKey ?? "");
     setTaxApiEndpoint(s.taxApiEndpoint ?? "");
@@ -240,6 +251,13 @@ export function AdminSettings() {
     setRecoveryEnabled(!!s?.recoveryEnabled);
     setInstallmentEnabled(!!s?.installmentEnabled);
     setKitchenDisplayEnabled(!!s?.kitchenDisplayEnabled);
+    setFbrExcelEnabled(!!s?.fbrExcelEnabled);
+    setFbrQrOnReceipt(!!s?.fbrQrOnReceipt);
+    setFbrBusinessName(s?.fbrBusinessName ?? "");
+    setFbrNtn(s?.fbrNtn ?? "");
+    setFbrPosId(s?.fbrPosId ?? "");
+    setFbrAddress(s?.fbrAddress ?? "");
+    setFbrPhone(s?.fbrPhone ?? "");
 
     // Load admin account
     const admin = await db.adminAccount.get("admin");
@@ -292,6 +310,7 @@ export function AdminSettings() {
         taxCountry: taxCountry || undefined,
         taxDepartment: taxDepartment || undefined,
         taxApiEnabled,
+        taxApiMode: taxApiEnabled ? taxApiMode : undefined,
         taxApiPosId: taxApiPosId.trim() || undefined,
         taxApiKey: taxApiKey.trim() || undefined,
         taxApiEndpoint: taxApiEndpoint.trim() || undefined,
@@ -334,6 +353,13 @@ export function AdminSettings() {
         recoveryEnabled,
         installmentEnabled,
         kitchenDisplayEnabled,
+        fbrExcelEnabled,
+        fbrQrOnReceipt,
+        fbrBusinessName: fbrBusinessName.trim() || undefined,
+        fbrNtn: fbrNtn.trim() || undefined,
+        fbrPosId: fbrPosId.trim() || undefined,
+        fbrAddress: fbrAddress.trim() || undefined,
+        fbrPhone: fbrPhone.trim() || undefined,
         updatedAt: Date.now(),
       };
       await db.settings.put(next);
@@ -1024,6 +1050,59 @@ export function AdminSettings() {
           </div>
           <div className="flex justify-end">
             <Button onClick={() => void save()} disabled={!settings}>Save Charges</Button>
+          </div>
+        </CardContent>
+      </Card>}
+
+      {match("fbr", "excel", "invoice", "ntn") && <Card>
+        <CardHeader>
+          <CardTitle>FBR Invoice & Excel Export</CardTitle>
+          <p className="text-xs text-muted-foreground">Configure FBR tax invoice details for PDF/Excel export and optional QR on receipts.</p>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between gap-3 rounded-md border p-3">
+            <div>
+              <div className="text-sm font-medium">Enable FBR Excel Export</div>
+              <div className="text-xs text-muted-foreground">Show FBR Annexure-C Excel export option in Reports. For manual upload to FBR IRIS portal.</div>
+            </div>
+            <Switch checked={fbrExcelEnabled} onCheckedChange={setFbrExcelEnabled} />
+          </div>
+          {fbrExcelEnabled && (
+            <div className="grid gap-3 sm:grid-cols-2 pl-3 border-l-2 border-primary/20">
+              <p className="text-xs text-muted-foreground col-span-full">Optional: Set separate business details for FBR Excel. If left empty, main settings will be used.</p>
+              <div className="space-y-2">
+                <Label>Business Name (FBR)</Label>
+                <Input value={fbrBusinessName} onChange={e => setFbrBusinessName(e.target.value)} placeholder={`Falls back to "${settings?.restaurantName ?? "SANGI POS"}"`} />
+              </div>
+              <div className="space-y-2">
+                <Label>NTN Number</Label>
+                <Input value={fbrNtn} onChange={e => setFbrNtn(e.target.value)} placeholder="e.g. 1234567-8" />
+              </div>
+              <div className="space-y-2">
+                <Label>POS ID</Label>
+                <Input value={fbrPosId} onChange={e => setFbrPosId(e.target.value)} placeholder="Registered POS device ID" />
+              </div>
+              <div className="space-y-2">
+                <Label>Phone</Label>
+                <Input value={fbrPhone} onChange={e => setFbrPhone(e.target.value)} placeholder={settings?.phone || "Business phone"} />
+              </div>
+              <div className="space-y-2 col-span-full">
+                <Label>Address</Label>
+                <Input value={fbrAddress} onChange={e => setFbrAddress(e.target.value)} placeholder={settings?.address || "Business address"} />
+              </div>
+            </div>
+          )}
+          {fbrExcelEnabled && fbrNtn && (
+            <div className="flex items-center justify-between gap-3 rounded-md border p-3">
+              <div>
+                <div className="text-sm font-medium">Print QR on Receipt</div>
+                <div className="text-xs text-muted-foreground">Print FBR verification QR on all receipts using above NTN & POS ID (no API needed).</div>
+              </div>
+              <Switch checked={fbrQrOnReceipt} onCheckedChange={setFbrQrOnReceipt} />
+            </div>
+          )}
+          <div className="flex justify-end">
+            <Button onClick={() => void save()} disabled={!settings}>Save FBR Settings</Button>
           </div>
         </CardContent>
       </Card>}

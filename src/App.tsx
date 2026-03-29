@@ -33,6 +33,7 @@ import ProductLabelsPage from "./pages/ProductLabelsPage";
 import CustomPrintPage from "./pages/CustomPrintPage";
 import DaybookPage from "./pages/DaybookPage";
 import KitchenPage from "./pages/KitchenPage";
+import FbrInvoicePage from "./pages/FbrInvoicePage";
 import { AuthProvider } from "@/auth/AuthProvider";
 import { ProtectedRoute } from "@/auth/ProtectedRoute";
 import { AppShell } from "@/layout/AppShell";
@@ -223,6 +224,14 @@ const App = () => (
                 />
 
                 <Route path="/about" element={<AboutApp />} />
+                <Route
+                  path="/fbr-invoice"
+                  element={
+                    <ProtectedRoute allow={["admin", "cashier"]}>
+                      <FbrInvoicePage />
+                    </ProtectedRoute>
+                  }
+                />
                 <Route path="/super-login" element={<SuperLogin />} />
                 <Route path="/help" element={<HelpPage />} />
                 <Route path="/privacy-policy" element={<PrivacyPolicy />} />

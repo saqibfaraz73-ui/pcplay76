@@ -1,11 +1,11 @@
 /**
  * Shared tax QR code utilities for ESC/POS thermal printing and PDF receipts.
- * Used across all modules that print receipts with tax information.
+ * Supports both generic format and FBR-compliant QR codes.
  */
 import type { Settings } from "@/db/schema";
 import QRCode from "qrcode";
 
-/** Build the tax QR data payload (JSON string) */
+/** Build the tax QR data payload — FBR format or generic */
 export function buildTaxQrPayload(args: {
   settings: Settings;
   receiptNo: number | string;
@@ -16,9 +16,34 @@ export function buildTaxQrPayload(args: {
   const { settings: s, receiptNo, taxAmount, total, createdAt } = args;
   const dt = new Date(createdAt);
   const dateStr = `${String(dt.getDate()).padStart(2, "0")}/${String(dt.getMonth() + 1).padStart(2, "0")}/${dt.getFullYear()} ${String(dt.getHours()).padStart(2, "0")}:${String(dt.getMinutes()).padStart(2, "0")}`;
+
+  const isFbr = s.taxApiMode === "fbr" || (!s.taxApiEnabled && s.fbrQrOnReceipt);
+
+  if (isFbr) {
+    const posId = s.taxApiPosId || s.fbrPosId || "";
+    const ntn = s.taxApiBusinessNtn || s.fbrNtn || "";
+    const curr = s.currencySymbol || "Rs";
+    const usin = `${posId}-${String(receiptNo).padStart(6, "0")}`;
+    const verifyUrl = `https://tp.fbr.gov.pk/VerifyInvoice?USIN=${usin}&NTN=${ntn}&POSID=${posId}&DateTime=${encodeURIComponent(dateStr)}&TotalSaleValue=${total}&TotalTaxCharged=${taxAmount}`;
+    return [
+      `FBR Verified Invoice`,
+      `NTN: ${ntn}`,
+      `POS ID: ${posId}`,
+      `USIN: ${usin}`,
+      `Date: ${dateStr}`,
+      `Total: ${curr} ${total}`,
+      `Tax: ${curr} ${taxAmount}`,
+      ``,
+      `Verify: ${verifyUrl}`,
+    ].join("\n");
+  }
+
+  // Generic format
+  const ntn = s.taxApiBusinessNtn || s.fbrNtn || "";
+  const posId = s.taxApiPosId || s.fbrPosId || "";
   return [
-    `NTN: ${s.taxApiBusinessNtn ?? ""}`,
-    `POS: ${s.taxApiPosId ?? ""}`,
+    `NTN: ${ntn}`,
+    `POS: ${posId}`,
     `Invoice: ${receiptNo}`,
     `Date: ${dateStr}`,
     `Tax (${s.taxValue ?? 0}%): ${taxAmount}`,
@@ -29,40 +54,30 @@ export function buildTaxQrPayload(args: {
 /** Check if tax QR should be printed */
 export function shouldPrintTaxQr(settings: Settings | null): boolean {
   if (!settings) return false;
-  return !!(
-    settings.taxEnabled &&
-    settings.taxApiEnabled &&
-    !settings.taxQrDisabled &&
-    settings.taxApiBusinessNtn
-  );
+  if (settings.taxQrDisabled) return false;
+  // Via Tax API
+  if (settings.taxEnabled && settings.taxApiEnabled && settings.taxApiBusinessNtn) return true;
+  // Via FBR Excel details (no API needed)
+  if (settings.taxEnabled && settings.fbrQrOnReceipt && settings.fbrNtn) return true;
+  return false;
 }
 
 /**
  * Build ESC/POS native QR code commands.
- * Uses GS ( k function for QR code generation on compatible printers.
  */
 export function buildEscPosQr(data: string, moduleSize = 6): string {
   const CENTER_ON = "\x1ba\x01";
   const LEFT_ON = "\x1ba\x00";
 
   let cmd = CENTER_ON;
-
-  // GS ( k — QR Code: Select model (Model 2)
   cmd += "\x1d\x28\x6b\x04\x00\x31\x41\x32\x00";
-
-  // GS ( k — QR Code: Set module size
   cmd += "\x1d\x28\x6b\x03\x00\x31\x43" + String.fromCharCode(moduleSize);
-
-  // GS ( k — QR Code: Set error correction level (M)
   cmd += "\x1d\x28\x6b\x03\x00\x31\x45\x31";
 
-  // GS ( k — QR Code: Store data
   const storeLen = data.length + 3;
   const pL = storeLen & 0xff;
   const pH = (storeLen >> 8) & 0xff;
   cmd += "\x1d\x28\x6b" + String.fromCharCode(pL, pH) + "\x31\x50\x30" + data;
-
-  // GS ( k — QR Code: Print
   cmd += "\x1d\x28\x6b\x03\x00\x31\x51\x30";
 
   cmd += LEFT_ON;
@@ -79,7 +94,9 @@ export function buildTaxQrEscPos(args: {
 }): string {
   if (!shouldPrintTaxQr(args.settings)) return "";
   const payload = buildTaxQrPayload(args);
-  return "\n" + buildEscPosQr(payload, 5);
+  // FBR QR needs smaller module size since URL is longer
+  const moduleSize = args.settings.taxApiMode === "fbr" ? 4 : 5;
+  return "\n" + buildEscPosQr(payload, moduleSize);
 }
 
 /**
@@ -95,7 +112,7 @@ export async function addTaxQrToPdf(args: {
   createdAt: number;
   x: number;
   y: number;
-  size?: number; // QR size in doc units (default 20)
+  size?: number;
 }): Promise<number> {
   const { doc, settings, x, y, size = 20 } = args;
   if (!shouldPrintTaxQr(settings)) return y;
@@ -108,6 +125,15 @@ export async function addTaxQrToPdf(args: {
       errorCorrectionLevel: "M",
     });
     doc.addImage(dataUrl, "PNG", x, y, size, size);
+
+    // For FBR mode, add "FBR Verified" label below QR
+    if (settings.taxApiMode === "fbr") {
+      doc.setFontSize(6);
+      doc.setFont("helvetica", "normal");
+      doc.text("FBR Verified Invoice", x + size / 2, y + size + 4, { align: "center" });
+      return y + size + 8;
+    }
+
     return y + size + 2;
   } catch (e) {
     console.warn("Failed to generate tax QR for PDF:", e);
