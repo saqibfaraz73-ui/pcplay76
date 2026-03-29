@@ -95,6 +95,7 @@ export function AdminSettings() {
   const [taxDepartment, setTaxDepartment] = React.useState("");
   // Tax API integration
   const [taxApiEnabled, setTaxApiEnabled] = React.useState(false);
+  const [taxApiMode, setTaxApiMode] = React.useState<"generic" | "fbr">("generic");
   const [taxApiPosId, setTaxApiPosId] = React.useState("");
   const [taxApiKey, setTaxApiKey] = React.useState("");
   const [taxApiEndpoint, setTaxApiEndpoint] = React.useState("");
@@ -149,6 +150,15 @@ export function AdminSettings() {
   const [recoveryEnabled, setRecoveryEnabled] = React.useState(false);
   const [installmentEnabled, setInstallmentEnabled] = React.useState(false);
   const [kitchenDisplayEnabled, setKitchenDisplayEnabled] = React.useState(false);
+
+  // FBR Excel Export settings
+  const [fbrExcelEnabled, setFbrExcelEnabled] = React.useState(false);
+  const [fbrQrOnReceipt, setFbrQrOnReceipt] = React.useState(false);
+  const [fbrBusinessName, setFbrBusinessName] = React.useState("");
+  const [fbrNtn, setFbrNtn] = React.useState("");
+  const [fbrPosId, setFbrPosId] = React.useState("");
+  const [fbrAddress, setFbrAddress] = React.useState("");
+  const [fbrPhone, setFbrPhone] = React.useState("");
 
   // Admin account
   const [adminAccount, setAdminAccount] = React.useState<AdminAccount | null>(null);
