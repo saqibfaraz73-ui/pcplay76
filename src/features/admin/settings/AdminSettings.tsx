@@ -1096,22 +1096,24 @@ export function AdminSettings() {
             </div>
           )}
           {fbrExcelEnabled && fbrNtn && (
-            <div className="flex items-center justify-between gap-3 rounded-md border p-3">
-              <div>
-                <div className="text-sm font-medium">Print QR on Receipt</div>
-                <div className="text-xs text-muted-foreground">Print FBR verification QR on all receipts using above NTN & POS ID (no API needed).</div>
-              </div>
-              <Switch checked={fbrQrOnReceipt} onCheckedChange={setFbrQrOnReceipt} />
-            </div>
-            {fbrQrOnReceipt && (
+            <>
               <div className="flex items-center justify-between gap-3 rounded-md border p-3">
                 <div>
-                  <div className="text-sm font-medium">Show "FBR Verified" Label</div>
-                  <div className="text-xs text-muted-foreground">Show "FBR Verified Invoice" text on QR scan. Only enable if FBR API is active.</div>
+                  <div className="text-sm font-medium">Print QR on Receipt</div>
+                  <div className="text-xs text-muted-foreground">Print FBR verification QR on all receipts using above NTN & POS ID (no API needed).</div>
                 </div>
-                <Switch checked={fbrVerifiedLabel} onCheckedChange={setFbrVerifiedLabel} />
+                <Switch checked={fbrQrOnReceipt} onCheckedChange={setFbrQrOnReceipt} />
               </div>
-            )}
+              {fbrQrOnReceipt && (
+                <div className="flex items-center justify-between gap-3 rounded-md border p-3">
+                  <div>
+                    <div className="text-sm font-medium">Show "FBR Verified" Label</div>
+                    <div className="text-xs text-muted-foreground">Show "FBR Verified Invoice" text on QR scan. Only enable if FBR API is active.</div>
+                  </div>
+                  <Switch checked={fbrVerifiedLabel} onCheckedChange={setFbrVerifiedLabel} />
+                </div>
+              )}
+            </>
           )}
           <div className="flex justify-end">
             <Button onClick={() => void save()} disabled={!settings}>Save FBR Settings</Button>
