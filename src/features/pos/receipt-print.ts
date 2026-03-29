@@ -199,10 +199,17 @@ async function buildEscPosReceipt(
   const colHeader = "Item".padEnd(width - 14) + "Qty".padStart(5) + "Total".padStart(9);
 
   const itemLines = order.lines.flatMap((l) => {
-    const nameCol = l.name.slice(0, width - 14).padEnd(width - 14);
+    const maxNameLen = width - 14;
     const qtyCol = String(l.qty).padStart(5);
     const totalCol = money(l.subtotal).padStart(9);
-    const lines = [nameCol + qtyCol + totalCol];
+    const lines: string[] = [];
+    if (l.name.length > maxNameLen) {
+      // First line: item name (full width), second line: qty + total right-aligned
+      lines.push(l.name.slice(0, width));
+      lines.push("".padEnd(maxNameLen) + qtyCol + totalCol);
+    } else {
+      lines.push(l.name.padEnd(maxNameLen) + qtyCol + totalCol);
+    }
     if (settings.showExpiryOnReceipt && l.expiryDate) {
       const expStr = format(new Date(l.expiryDate), "dd/MM/yy");
       lines.push(line(`  Exp: ${expStr}`));
