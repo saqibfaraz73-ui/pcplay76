@@ -437,6 +437,16 @@ export default function Login() {
           </CardContent>
         </Card>
       )}
+      {/* About & Help links */}
+      <div className="mt-6 flex items-center justify-center gap-4">
+        <Button variant="link" className="text-xs text-muted-foreground" onClick={() => navigate("/about")}>
+          About App
+        </Button>
+        <span className="text-muted-foreground">·</span>
+        <Button variant="link" className="text-xs text-muted-foreground" onClick={() => navigate("/help")}>
+          Help & Support
+        </Button>
+      </div>
     </div>
   );
 }
