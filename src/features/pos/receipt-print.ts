@@ -309,10 +309,15 @@ async function buildSalesKotSlip(order: Order, settings: Settings): Promise<stri
   out.push(hr);
   for (const item of order.lines) {
     if (item.itemId.includes("__ao_")) continue; // skip add-ons
-    out.push(
-      item.name.slice(0, nameW).padEnd(nameW) +
-      String(item.qty).padStart(5)
-    );
+    if (item.name.length > nameW) {
+      out.push(item.name.slice(0, WIDTH));
+      out.push("".padEnd(nameW) + String(item.qty).padStart(5));
+    } else {
+      out.push(
+        item.name.padEnd(nameW) +
+        String(item.qty).padStart(5)
+      );
+    }
   }
   out.push(hr);
   out.push("");
