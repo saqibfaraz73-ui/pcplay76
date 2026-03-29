@@ -175,5 +175,9 @@ export async function generateFbrInvoicePdf(data: InvoiceData, settings: Setting
   doc.setFont("helvetica", "normal");
   doc.text("This is a computer generated invoice", w / 2, y, { align: "center" });
 
-  doc.save(`FBR_Invoice_${data.invoiceNo}.pdf`);
+  // Use share/save utilities instead of direct save for proper Android support
+  const { sharePdfBytes } = await import("@/features/pos/share-utils");
+  const bytes = doc.output("arraybuffer");
+  const fileName = `FBR_Invoice_${data.invoiceNo}.pdf`;
+  await sharePdfBytes(new Uint8Array(bytes), fileName, `FBR Invoice #${data.invoiceNo}`);
 }

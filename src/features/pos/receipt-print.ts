@@ -240,20 +240,16 @@ async function buildEscPosReceipt(
     qrCommands = buildEscPosBarcode(order.receiptNo, settings.paperSize);
   }
 
-  // Tax authority QR code (NTN + invoice details) — only when tax API is enabled and QR not disabled
+  // Tax authority QR code (NTN + invoice details) — supports both Tax API and custom FBR Excel details
   let taxQrCommands = "";
-  if (
-    settings.taxEnabled &&
-    settings.taxApiEnabled &&
-    !settings.taxQrDisabled &&
-    settings.taxApiBusinessNtn &&
-    !opts?.skipBarcode
-  ) {
-    const { buildTaxQrEscPos: buildTaxQr } = await import("@/features/tax/tax-qr");
-    taxQrCommands = buildTaxQr({
-      settings, receiptNo: order.receiptNo,
-      taxAmount: order.taxAmount, total: order.total, createdAt: order.createdAt,
-    });
+  if (settings.taxEnabled && !opts?.skipBarcode) {
+    const { buildTaxQrEscPos: buildTaxQr, shouldPrintTaxQr } = await import("@/features/tax/tax-qr");
+    if (shouldPrintTaxQr(settings)) {
+      taxQrCommands = buildTaxQr({
+        settings, receiptNo: order.receiptNo,
+        taxAmount: order.taxAmount, total: order.total, createdAt: order.createdAt,
+      });
+    }
   }
 
   const totalContentLines = headerLines.length + 1 + itemLines.length + totals.length + (logoCommands ? 4 : 0);
