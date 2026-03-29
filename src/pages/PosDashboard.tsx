@@ -452,7 +452,7 @@ export default function PosDashboard() {
     }
     const cartKey = variantPrice !== undefined ? `${item.id}__v${variantPrice}` : item.id;
     const variantName = variantPrice !== undefined 
-      ? `${item.name} (${item.variations?.find(v => v.price === variantPrice)?.name ?? formatIntMoney(variantPrice)})`
+      ? (item.variations?.find(v => v.price === variantPrice)?.name ?? `${item.name} (${formatIntMoney(variantPrice)})`)
       : item.name;
     setCart((prev) => {
       const idx = prev.findIndex((p) => p.itemId === cartKey);
