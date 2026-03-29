@@ -251,6 +251,13 @@ export function AdminSettings() {
     setRecoveryEnabled(!!s?.recoveryEnabled);
     setInstallmentEnabled(!!s?.installmentEnabled);
     setKitchenDisplayEnabled(!!s?.kitchenDisplayEnabled);
+    setFbrExcelEnabled(!!s?.fbrExcelEnabled);
+    setFbrQrOnReceipt(!!s?.fbrQrOnReceipt);
+    setFbrBusinessName(s?.fbrBusinessName ?? "");
+    setFbrNtn(s?.fbrNtn ?? "");
+    setFbrPosId(s?.fbrPosId ?? "");
+    setFbrAddress(s?.fbrAddress ?? "");
+    setFbrPhone(s?.fbrPhone ?? "");
 
     // Load admin account
     const admin = await db.adminAccount.get("admin");
