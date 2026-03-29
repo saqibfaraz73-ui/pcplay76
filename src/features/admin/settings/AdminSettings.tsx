@@ -254,6 +254,7 @@ export function AdminSettings() {
     setKitchenDisplayEnabled(!!s?.kitchenDisplayEnabled);
     setFbrExcelEnabled(!!s?.fbrExcelEnabled);
     setFbrQrOnReceipt(!!s?.fbrQrOnReceipt);
+    setFbrVerifiedLabel(!!s?.fbrVerifiedLabel);
     setFbrBusinessName(s?.fbrBusinessName ?? "");
     setFbrNtn(s?.fbrNtn ?? "");
     setFbrPosId(s?.fbrPosId ?? "");
