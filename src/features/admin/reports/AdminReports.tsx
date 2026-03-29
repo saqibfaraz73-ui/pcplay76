@@ -958,6 +958,83 @@ export function AdminReports() {
     }
   };
 
+  const buildFbrExcelBlob = async (): Promise<Blob | null> => {
+    const XLSX = await import("xlsx");
+    const { fmtDateTime: fmt } = await import("@/features/pos/format");
+
+    let orders: Order[];
+    let tableOrds: TableOrder[];
+    let fromTs: number;
+    let toTs: number;
+
+    if (filterType === "workPeriod" && selectedWorkPeriodId) {
+      orders = await fetchOrdersByWorkPeriod(selectedWorkPeriodId);
+      tableOrds = await fetchTableOrdersByWorkPeriod(selectedWorkPeriodId);
+      const wp = workPeriods.find((w) => w.id === selectedWorkPeriodId);
+      fromTs = wp?.startedAt ?? Date.now();
+      toTs = wp?.endedAt ?? Date.now();
+    } else {
+      fromTs = startOfDay(parseDateInput(from));
+      toTs = endOfDay(parseDateInput(to));
+      orders = await fetchOrdersInRange(fromTs, toTs);
+      tableOrds = await fetchTableOrdersInRange(fromTs, toTs);
+    }
+
+    const completed = orders.filter((o) => o.status === "completed");
+    const completedTable = tableOrds.filter((o) => o.status === "completed");
+    const curr = settings?.currencySymbol || "Rs";
+    const bizName = settings?.fbrBusinessName || settings?.restaurantName || "";
+    const ntn = settings?.fbrNtn || settings?.taxApiBusinessNtn || "";
+    const posId = settings?.fbrPosId || settings?.taxApiPosId || "";
+    const taxPct = settings?.taxType === "percent" ? (settings?.taxValue ?? 0) : 0;
+
+    const rows: any[][] = [];
+    rows.push(["FBR Annexure-C — Sales Tax Invoice Summary"]);
+    rows.push(["Business Name", bizName]);
+    rows.push(["NTN", ntn]);
+    rows.push(["POS ID", posId]);
+    rows.push(["Period", `${fmtDateShort(fromTs)} → ${fmtDateShort(toTs)}`]);
+    rows.push([]);
+    rows.push([
+      "Receipt #", "Date/Time", "Source", "Cashier/Waiter",
+      "Item Name", "Qty", "Unit Price", "Sale Value",
+      `Tax Rate %`, `Tax Charged (${curr})`, `Total (${curr})`
+    ]);
+
+    let grandSaleValue = 0, grandTax = 0, grandTotal = 0;
+    const addOrderRows = (list: Array<Order | any>, source: string) => {
+      for (const o of list) {
+        const rNo = o.receiptNo ?? "";
+        const dt = fmt(o.completedAt ?? o.createdAt);
+        const cashier = o.cashier ?? o.waiterName ?? "";
+        for (const l of o.lines) {
+          const saleValue = l.qty * l.unitPrice;
+          const taxCharged = taxPct > 0 ? Math.round(saleValue * taxPct / 100) : 0;
+          const total = saleValue + taxCharged;
+          grandSaleValue += saleValue;
+          grandTax += taxCharged;
+          grandTotal += total;
+          rows.push([rNo, dt, source, cashier, l.name, l.qty, l.unitPrice, saleValue, taxPct, taxCharged, total]);
+        }
+      }
+    };
+    addOrderRows(completed, "Sales");
+    addOrderRows(completedTable, "Table");
+    rows.push([]);
+    rows.push(["", "", "", "", "TOTALS", "", "", grandSaleValue, "", grandTax, grandTotal]);
+
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    ws["!cols"] = [
+      { wch: 10 }, { wch: 18 }, { wch: 8 }, { wch: 16 },
+      { wch: 24 }, { wch: 6 }, { wch: 12 }, { wch: 14 },
+      { wch: 10 }, { wch: 14 }, { wch: 14 },
+    ];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "FBR Annexure-C");
+    const xlsxData = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+    return new Blob([xlsxData], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+  };
+
   return (
     <div className="space-y-4">
       <Card>
