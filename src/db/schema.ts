@@ -56,6 +56,7 @@ export type MenuItem = {
   isRawMaterial?: boolean; // if true, this is a making/raw material item (hidden from POS, used in recipes)
   minStock?: number; // optional minimum stock level for low-stock reminder
   sku?: string; // optional SKU / barcode
+  pctCode?: string; // PCT/HS code for FBR tax compliance (e.g. "99059090")
   price: number;
   buyingPrice?: number; // optional cost/buying price (integers)
   imagePath?: string; // file reference (never store the image itself)
@@ -323,6 +324,7 @@ export type Settings = {
   taxDepartment?: string; // tax department description
   // Tax API integration (e.g. FBR ePOS, GSTN, ZATCA)
   taxApiEnabled?: boolean; // if true, tax integration with govt API is active
+  taxApiMode?: "generic" | "fbr"; // API format: generic REST or FBR IRIS-compliant
   taxApiPosId?: string; // registered POS device ID
   taxApiKey?: string; // API key / secret token
   taxApiEndpoint?: string; // API endpoint URL
@@ -410,6 +412,14 @@ export type Settings = {
   labelUsbDevice?: string; // USB device name for label printer
   labelUsbLabel?: string; // USB friendly label for label printer
   posVerticalScroll?: boolean; // if true, items grid scrolls vertically instead of horizontally
+  // FBR Excel Export settings (optional, separate from Tax API)
+  fbrExcelEnabled?: boolean; // if true, show FBR Excel export in reports
+  fbrQrOnReceipt?: boolean; // if true, print QR on receipts using FBR Excel details (no API needed)
+  fbrBusinessName?: string;
+  fbrNtn?: string;
+  fbrPosId?: string;
+  fbrAddress?: string;
+  fbrPhone?: string;
   updatedAt: number;
 };
 
