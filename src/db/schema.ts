@@ -415,6 +415,7 @@ export type Settings = {
   // FBR Excel Export settings (optional, separate from Tax API)
   fbrExcelEnabled?: boolean; // if true, show FBR Excel export in reports
   fbrQrOnReceipt?: boolean; // if true, print QR on receipts using FBR Excel details (no API needed)
+  fbrVerifiedLabel?: boolean; // if true, show "FBR Verified Invoice" label on QR for Excel mode (default false, always shown for API mode)
   fbrBusinessName?: string;
   fbrNtn?: string;
   fbrPosId?: string;
