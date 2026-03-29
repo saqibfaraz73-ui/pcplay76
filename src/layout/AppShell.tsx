@@ -395,6 +395,19 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                       Printer
                     </Link>
                   )}
+                   {(isWaiter || isCashier) && syncEnabled && (
+                    <Link
+                      to="/admin/sync"
+                      className={cn(
+                        "rounded-md px-2 py-1.5 text-xs whitespace-nowrap transition-colors",
+                        isActive("/admin/sync")
+                          ? "bg-accent text-accent-foreground"
+                          : "text-muted-foreground hover:text-foreground",
+                      )}
+                    >
+                      Sync
+                    </Link>
+                  )}
                   {isAdmin
                     ? visibleAdminSubNav.map((n) => (
                         <Link
