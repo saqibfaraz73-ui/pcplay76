@@ -208,6 +208,7 @@ export function AdminSettings() {
     setTaxCountry(s.taxCountry ?? "");
     setTaxDepartment(s.taxDepartment ?? "");
     setTaxApiEnabled(!!s.taxApiEnabled);
+    setTaxApiMode((s.taxApiMode as "generic" | "fbr") ?? "generic");
     setTaxApiPosId(s.taxApiPosId ?? "");
     setTaxApiKey(s.taxApiKey ?? "");
     setTaxApiEndpoint(s.taxApiEndpoint ?? "");
