@@ -357,6 +357,7 @@ export function AdminSettings() {
         kitchenDisplayEnabled,
         fbrExcelEnabled,
         fbrQrOnReceipt,
+        fbrVerifiedLabel,
         fbrBusinessName: fbrBusinessName.trim() || undefined,
         fbrNtn: fbrNtn.trim() || undefined,
         fbrPosId: fbrPosId.trim() || undefined,
