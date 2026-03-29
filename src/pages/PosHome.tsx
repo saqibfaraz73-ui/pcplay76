@@ -316,6 +316,13 @@ export default function PosHome() {
           ? `${settings.taxDepartment || settings.taxLabel} — ${settings.taxValue}%`
           : `${settings.taxType === "percent" ? `${settings.taxValue}%` : "Fixed"} ${settings.taxLabel || "Tax"}`,
       });
+      actions.push({
+        to: "/fbr-invoice",
+        label: "FBR Invoice",
+        icon: FileText,
+        color: "bg-red-500/10 text-red-600 border-red-200",
+        description: "FBR tax invoices",
+      });
     }
 
     if (isAdmin) {
