@@ -12,7 +12,7 @@ import type { AdvanceOrder, BookingOrder } from "@/db/booking-schema";
 import { useToast } from "@/hooks/use-toast";
 import { formatIntMoney, fmtDate, fmtDateTime, fmtTime12, fmtDateShort, fmtDuration } from "@/features/pos/format";
 import { sharePdfBytes, savePdfBytes } from "@/features/pos/share-utils";
-import { shareFileBlob } from "@/features/pos/share-utils";
+import { shareFileBlob, saveFileBlob } from "@/features/pos/share-utils";
 import { SaveShareMenu } from "@/components/SaveShareMenu";
 import { SalesReportPreview } from "@/features/admin/reports/SalesReportPreview";
 import { useAuth } from "@/auth/AuthProvider";
@@ -958,6 +958,83 @@ export function AdminReports() {
     }
   };
 
+  const buildFbrExcelBlob = async (): Promise<Blob | null> => {
+    const XLSX = await import("xlsx");
+    const { fmtDateTime: fmt } = await import("@/features/pos/format");
+
+    let orders: Order[];
+    let tableOrds: TableOrder[];
+    let fromTs: number;
+    let toTs: number;
+
+    if (filterType === "workPeriod" && selectedWorkPeriodId) {
+      orders = await fetchOrdersByWorkPeriod(selectedWorkPeriodId);
+      tableOrds = await fetchTableOrdersByWorkPeriod(selectedWorkPeriodId);
+      const wp = workPeriods.find((w) => w.id === selectedWorkPeriodId);
+      fromTs = wp?.startedAt ?? Date.now();
+      toTs = wp?.endedAt ?? Date.now();
+    } else {
+      fromTs = startOfDay(parseDateInput(from));
+      toTs = endOfDay(parseDateInput(to));
+      orders = await fetchOrdersInRange(fromTs, toTs);
+      tableOrds = await fetchTableOrdersInRange(fromTs, toTs);
+    }
+
+    const completed = orders.filter((o) => o.status === "completed");
+    const completedTable = tableOrds.filter((o) => o.status === "completed");
+    const curr = settings?.currencySymbol || "Rs";
+    const bizName = settings?.fbrBusinessName || settings?.restaurantName || "";
+    const ntn = settings?.fbrNtn || settings?.taxApiBusinessNtn || "";
+    const posId = settings?.fbrPosId || settings?.taxApiPosId || "";
+    const taxPct = settings?.taxType === "percent" ? (settings?.taxValue ?? 0) : 0;
+
+    const rows: any[][] = [];
+    rows.push(["FBR Annexure-C — Sales Tax Invoice Summary"]);
+    rows.push(["Business Name", bizName]);
+    rows.push(["NTN", ntn]);
+    rows.push(["POS ID", posId]);
+    rows.push(["Period", `${fmtDateShort(fromTs)} → ${fmtDateShort(toTs)}`]);
+    rows.push([]);
+    rows.push([
+      "Receipt #", "Date/Time", "Source", "Cashier/Waiter",
+      "Item Name", "Qty", "Unit Price", "Sale Value",
+      `Tax Rate %`, `Tax Charged (${curr})`, `Total (${curr})`
+    ]);
+
+    let grandSaleValue = 0, grandTax = 0, grandTotal = 0;
+    const addOrderRows = (list: Array<Order | any>, source: string) => {
+      for (const o of list) {
+        const rNo = o.receiptNo ?? "";
+        const dt = fmt(o.completedAt ?? o.createdAt);
+        const cashier = o.cashier ?? o.waiterName ?? "";
+        for (const l of o.lines) {
+          const saleValue = l.qty * l.unitPrice;
+          const taxCharged = taxPct > 0 ? Math.round(saleValue * taxPct / 100) : 0;
+          const total = saleValue + taxCharged;
+          grandSaleValue += saleValue;
+          grandTax += taxCharged;
+          grandTotal += total;
+          rows.push([rNo, dt, source, cashier, l.name, l.qty, l.unitPrice, saleValue, taxPct, taxCharged, total]);
+        }
+      }
+    };
+    addOrderRows(completed, "Sales");
+    addOrderRows(completedTable, "Table");
+    rows.push([]);
+    rows.push(["", "", "", "", "TOTALS", "", "", grandSaleValue, "", grandTax, grandTotal]);
+
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    ws["!cols"] = [
+      { wch: 10 }, { wch: 18 }, { wch: 8 }, { wch: 16 },
+      { wch: 24 }, { wch: 6 }, { wch: 12 }, { wch: 14 },
+      { wch: 10 }, { wch: 14 }, { wch: 14 },
+    ];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "FBR Annexure-C");
+    const xlsxData = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+    return new Blob([xlsxData], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+  };
+
   return (
     <div className="space-y-4">
       <Card>
@@ -1053,104 +1130,30 @@ export function AdminReports() {
             <CardDescription>Export FBR Annexure-C format Excel with per-item tax breakdown for all orders in the selected range.</CardDescription>
           </CardHeader>
           <CardContent className="flex flex-wrap gap-2">
-            <Button
-              variant="outline"
-              className="gap-1.5"
-              onClick={async () => {
+            <SaveShareMenu
+              label="FBR Tax Excel"
+              getDefaultFileName={() => `FBR_AnnexureC_${from}_${to}.xlsx`}
+              onSave={async (fileName) => {
                 try {
-                  const XLSX = await import("xlsx");
-                  const { fmtDateTime: fmt } = await import("@/features/pos/format");
-
-                  let orders: Order[];
-                  let tableOrds: TableOrder[];
-                  let fromTs: number;
-                  let toTs: number;
-
-                  if (filterType === "workPeriod" && selectedWorkPeriodId) {
-                    orders = await fetchOrdersByWorkPeriod(selectedWorkPeriodId);
-                    tableOrds = await fetchTableOrdersByWorkPeriod(selectedWorkPeriodId);
-                    const wp = workPeriods.find((w) => w.id === selectedWorkPeriodId);
-                    fromTs = wp?.startedAt ?? Date.now();
-                    toTs = wp?.endedAt ?? Date.now();
-                  } else {
-                    fromTs = startOfDay(parseDateInput(from));
-                    toTs = endOfDay(parseDateInput(to));
-                    orders = await fetchOrdersInRange(fromTs, toTs);
-                    tableOrds = await fetchTableOrdersInRange(fromTs, toTs);
-                  }
-
-                  const completed = orders.filter((o) => o.status === "completed");
-                  const completedTable = tableOrds.filter((o) => o.status === "completed");
-
-                  const curr = settings?.currencySymbol || "Rs";
-                  const bizName = settings?.fbrBusinessName || settings?.restaurantName || "";
-                  const ntn = settings?.fbrNtn || settings?.taxApiBusinessNtn || "";
-                  const posId = settings?.fbrPosId || settings?.taxApiPosId || "";
-                  const taxPct = settings?.taxType === "percent" ? (settings?.taxValue ?? 0) : 0;
-
-                  const rows: any[][] = [];
-                  rows.push(["FBR Annexure-C — Sales Tax Invoice Summary"]);
-                  rows.push(["Business Name", bizName]);
-                  rows.push(["NTN", ntn]);
-                  rows.push(["POS ID", posId]);
-                  rows.push(["Period", `${fmtDateShort(fromTs)} → ${fmtDateShort(toTs)}`]);
-                  rows.push([]);
-                  rows.push([
-                    "Receipt #", "Date/Time", "Source", "Cashier/Waiter",
-                    "Item Name", "Qty", "Unit Price", "Sale Value",
-                    `Tax Rate %`, `Tax Charged (${curr})`,
-                    `Total (${curr})`
-                  ]);
-
-                  let grandSaleValue = 0, grandTax = 0, grandTotal = 0;
-
-                  const addOrderRows = (list: Array<Order | any>, source: string) => {
-                    for (const o of list) {
-                      const rNo = o.receiptNo ?? "";
-                      const dt = fmt(o.completedAt ?? o.createdAt);
-                      const cashier = o.cashier ?? o.waiterName ?? "";
-                      for (const l of o.lines) {
-                        const saleValue = l.qty * l.unitPrice;
-                        const taxCharged = taxPct > 0 ? Math.round(saleValue * taxPct / 100) : 0;
-                        const total = saleValue + taxCharged;
-                        grandSaleValue += saleValue;
-                        grandTax += taxCharged;
-                        grandTotal += total;
-                        rows.push([
-                          rNo, dt, source, cashier,
-                          l.name, l.qty, l.unitPrice, saleValue,
-                          taxPct, taxCharged, total,
-                        ]);
-                      }
-                    }
-                  };
-
-                  addOrderRows(completed, "Sales");
-                  addOrderRows(completedTable, "Table");
-
-                  rows.push([]);
-                  rows.push(["", "", "", "", "TOTALS", "", "", grandSaleValue, "", grandTax, grandTotal]);
-
-                  const ws = XLSX.utils.aoa_to_sheet(rows);
-                  ws["!cols"] = [
-                    { wch: 10 }, { wch: 18 }, { wch: 8 }, { wch: 16 },
-                    { wch: 24 }, { wch: 6 }, { wch: 12 }, { wch: 14 },
-                    { wch: 10 }, { wch: 14 }, { wch: 14 },
-                  ];
-                  const wb = XLSX.utils.book_new();
-                  XLSX.utils.book_append_sheet(wb, ws, "FBR Annexure-C");
-                  const xlsxData = XLSX.write(wb, { bookType: "xlsx", type: "array" });
-                  const blob = new Blob([xlsxData], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
-                  const fileName = `FBR_AnnexureC_${from}_${to}.xlsx`;
-                  await shareFileBlob(blob, fileName);
-                  toast({ title: "FBR Excel ready — save or share" });
+                  const blob = await buildFbrExcelBlob();
+                  if (!blob) return;
+                  await saveFileBlob(blob, fileName || `FBR_AnnexureC_${from}_${to}.xlsx`);
+                  toast({ title: "FBR Excel saved to device" });
                 } catch (e: any) {
                   toast({ title: "Export failed", description: e?.message ?? String(e), variant: "destructive" });
                 }
               }}
-            >
-              <FileSpreadsheet className="h-4 w-4" /> FBR Tax Excel
-            </Button>
+              onShare={async () => {
+                try {
+                  const blob = await buildFbrExcelBlob();
+                  if (!blob) return;
+                  const fileName = `FBR_AnnexureC_${from}_${to}.xlsx`;
+                  await shareFileBlob(blob, fileName);
+                } catch (e: any) {
+                  toast({ title: "Share failed", description: e?.message ?? String(e), variant: "destructive" });
+                }
+              }}
+            />
           </CardContent>
         </Card>
       )}
