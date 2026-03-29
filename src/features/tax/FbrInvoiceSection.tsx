@@ -94,7 +94,7 @@ export default function FbrInvoiceSection() {
     try {
       setSaving(true);
       await generateFbrInvoicePdf(invoiceData, settings);
-      toast({ title: "PDF generated" });
+      toast({ title: "PDF ready — save or share" });
     } catch (e: any) {
       toast({ title: "Error", description: e?.message, variant: "destructive" });
     } finally {
@@ -107,7 +107,7 @@ export default function FbrInvoiceSection() {
     try {
       setSaving(true);
       await generateFbrInvoiceExcel(invoiceData, settings);
-      toast({ title: "Excel generated" });
+      toast({ title: "Excel ready — save or share" });
     } catch (e: any) {
       toast({ title: "Error", description: e?.message, variant: "destructive" });
     } finally {
