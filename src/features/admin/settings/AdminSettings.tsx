@@ -1054,6 +1054,59 @@ export function AdminSettings() {
         </CardContent>
       </Card>}
 
+      {match("fbr", "excel", "invoice", "ntn") && <Card>
+        <CardHeader>
+          <CardTitle>FBR Invoice & Excel Export</CardTitle>
+          <p className="text-xs text-muted-foreground">Configure FBR tax invoice details for PDF/Excel export and optional QR on receipts.</p>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between gap-3 rounded-md border p-3">
+            <div>
+              <div className="text-sm font-medium">Enable FBR Excel Export</div>
+              <div className="text-xs text-muted-foreground">Show FBR Annexure-C Excel export option in Reports. For manual upload to FBR IRIS portal.</div>
+            </div>
+            <Switch checked={fbrExcelEnabled} onCheckedChange={setFbrExcelEnabled} />
+          </div>
+          {fbrExcelEnabled && (
+            <div className="grid gap-3 sm:grid-cols-2 pl-3 border-l-2 border-primary/20">
+              <p className="text-xs text-muted-foreground col-span-full">Optional: Set separate business details for FBR Excel. If left empty, main settings will be used.</p>
+              <div className="space-y-2">
+                <Label>Business Name (FBR)</Label>
+                <Input value={fbrBusinessName} onChange={e => setFbrBusinessName(e.target.value)} placeholder={`Falls back to "${settings?.restaurantName ?? "SANGI POS"}"`} />
+              </div>
+              <div className="space-y-2">
+                <Label>NTN Number</Label>
+                <Input value={fbrNtn} onChange={e => setFbrNtn(e.target.value)} placeholder="e.g. 1234567-8" />
+              </div>
+              <div className="space-y-2">
+                <Label>POS ID</Label>
+                <Input value={fbrPosId} onChange={e => setFbrPosId(e.target.value)} placeholder="Registered POS device ID" />
+              </div>
+              <div className="space-y-2">
+                <Label>Phone</Label>
+                <Input value={fbrPhone} onChange={e => setFbrPhone(e.target.value)} placeholder={settings?.phone || "Business phone"} />
+              </div>
+              <div className="space-y-2 col-span-full">
+                <Label>Address</Label>
+                <Input value={fbrAddress} onChange={e => setFbrAddress(e.target.value)} placeholder={settings?.address || "Business address"} />
+              </div>
+            </div>
+          )}
+          {fbrExcelEnabled && fbrNtn && (
+            <div className="flex items-center justify-between gap-3 rounded-md border p-3">
+              <div>
+                <div className="text-sm font-medium">Print QR on Receipt</div>
+                <div className="text-xs text-muted-foreground">Print FBR verification QR on all receipts using above NTN & POS ID (no API needed).</div>
+              </div>
+              <Switch checked={fbrQrOnReceipt} onCheckedChange={setFbrQrOnReceipt} />
+            </div>
+          )}
+          <div className="flex justify-end">
+            <Button onClick={() => void save()} disabled={!settings}>Save FBR Settings</Button>
+          </div>
+        </CardContent>
+      </Card>}
+
 
 
       {match("expiry", "date") && <Card>
