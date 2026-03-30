@@ -398,7 +398,7 @@ export default function PosHome() {
         icon: Hammer,
         color: "text-amber-600",
         bg: "bg-amber-500/10",
-        to: "/pos/labour-wages",
+        to: "/pos/expenses",
         hideValue: true,
       },
       {
