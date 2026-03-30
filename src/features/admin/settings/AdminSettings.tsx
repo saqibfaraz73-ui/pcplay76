@@ -783,6 +783,26 @@ export function AdminSettings() {
               </>
             )}
 
+            {/* Tax Calculation Options */}
+            {taxEnabled && (
+              <div className="space-y-3 pt-2">
+                <div className="flex items-center justify-between gap-3 rounded-md border p-3">
+                  <div>
+                    <div className="text-sm font-medium">Calculate Tax After Discount</div>
+                    <div className="text-xs text-muted-foreground">Tax is applied on the discounted subtotal instead of original subtotal.</div>
+                  </div>
+                  <Switch checked={taxAfterDiscount} onCheckedChange={setTaxAfterDiscount} />
+                </div>
+                <div className="flex items-center justify-between gap-3 rounded-md border p-3">
+                  <div>
+                    <div className="text-sm font-medium">Flat Discount Mode</div>
+                    <div className="text-xs text-muted-foreground">Discount removes the tax portion (e.g. item Rs 300 + 18% tax = Rs 354, discount Rs 54 → total Rs 300).</div>
+                  </div>
+                  <Switch checked={flatDiscountMode} onCheckedChange={setFlatDiscountMode} />
+                </div>
+              </div>
+            )}
+
             {/* Tax API Integration (inside tax section) */}
             {taxEnabled && (
               <div className="space-y-4 pt-2">
