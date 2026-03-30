@@ -254,6 +254,8 @@ export function AdminSettings() {
     setRecoveryEnabled(!!s?.recoveryEnabled);
     setInstallmentEnabled(!!s?.installmentEnabled);
     setKitchenDisplayEnabled(!!s?.kitchenDisplayEnabled);
+    setTaxAfterDiscount(!!s?.taxAfterDiscount);
+    setFlatDiscountMode(!!s?.flatDiscountMode);
     setFbrExcelEnabled(!!s?.fbrExcelEnabled);
     setFbrQrOnReceipt(!!s?.fbrQrOnReceipt);
     setFbrVerifiedLabel(!!s?.fbrVerifiedLabel);
