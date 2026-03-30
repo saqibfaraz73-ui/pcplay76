@@ -344,6 +344,41 @@ export function InstallmentCustomerForm({ open, customer, onClose, onSave }: Pro
               )}
             </div>
 
+            {/* Processing Fee / Service Charges */}
+            <div className="mt-3 rounded-md border p-3">
+              <div className="flex items-center gap-2 mb-2">
+                <Switch checked={processingFeeEnabled} onCheckedChange={setProcessingFeeEnabled} className="scale-75" />
+                <span className="text-sm font-medium">Processing Fee / Service Charges</span>
+              </div>
+              {processingFeeEnabled && (
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <Label className="text-xs">Label</Label>
+                    <Input value={processingFeeLabel} onChange={e => setProcessingFeeLabel(e.target.value)} placeholder="Processing Fee" className="h-9" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Amount</Label>
+                    <Input value={processingFee || ""} onChange={e => setProcessingFee(parseNonDecimalInt(e.target.value))} inputMode="numeric" placeholder="e.g. 500" className="h-9" />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Advance Payment */}
+            <div className="mt-3 rounded-md border p-3">
+              <div className="flex items-center gap-2 mb-2">
+                <Switch checked={advanceEnabled} onCheckedChange={setAdvanceEnabled} className="scale-75" />
+                <span className="text-sm font-medium">Advance Payment</span>
+              </div>
+              {advanceEnabled && (
+                <div className="space-y-1">
+                  <Label className="text-xs">Advance Amount</Label>
+                  <Input value={advancePayment || ""} onChange={e => setAdvancePayment(parseNonDecimalInt(e.target.value))} inputMode="numeric" placeholder="e.g. 5000" className="h-9" />
+                  <p className="text-[10px] text-muted-foreground">This amount will be deducted from the total balance before calculating installments.</p>
+                </div>
+              )}
+            </div>
+
             {/* Auto-calculated preview */}
             <div className="mt-3 rounded-md bg-muted/50 p-3 grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
               <div>
@@ -356,9 +391,25 @@ export function InstallmentCustomerForm({ open, customer, onClose, onSave }: Pro
                   <div className="font-bold text-sm text-orange-600">{taxAmount.toLocaleString()}</div>
                 </div>
               )}
+              {effectiveProcessingFee > 0 && (
+                <div>
+                  <div className="text-muted-foreground">{processingFeeLabel}</div>
+                  <div className="font-bold text-sm text-blue-600">{effectiveProcessingFee.toLocaleString()}</div>
+                </div>
+              )}
               <div>
-                <div className="text-muted-foreground">Total{taxAmount > 0 ? " (incl. Tax)" : ""}</div>
+                <div className="text-muted-foreground">Grand Total</div>
                 <div className="font-bold text-sm">{totalWithTax.toLocaleString()}</div>
+              </div>
+              {effectiveAdvance > 0 && (
+                <div>
+                  <div className="text-muted-foreground">Advance Paid</div>
+                  <div className="font-bold text-sm text-green-600">-{effectiveAdvance.toLocaleString()}</div>
+                </div>
+              )}
+              <div>
+                <div className="text-muted-foreground">Balance</div>
+                <div className="font-bold text-sm">{balanceAfterAdvance.toLocaleString()}</div>
               </div>
               <div>
                 <div className="text-muted-foreground">{frequency === "weekly" ? "Weekly" : frequency === "yearly" ? "Yearly" : "Monthly"}</div>
