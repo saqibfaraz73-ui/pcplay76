@@ -177,10 +177,13 @@ export function InstallmentCustomerForm({ open, customer, onClose, onSave }: Pro
       frequency,
       monthlyInstallment,
       totalPrice,
-      totalBalance: customer?.totalBalance ?? totalWithTax, // keep existing balance on edit
+      totalBalance: customer?.totalBalance ?? balanceAfterAdvance, // keep existing balance on edit
       taxType: taxEnabled && taxValue > 0 ? taxType : undefined,
       taxValue: taxEnabled && taxValue > 0 ? taxValue : undefined,
       taxAmount: taxAmount > 0 ? taxAmount : undefined,
+      processingFee: effectiveProcessingFee > 0 ? effectiveProcessingFee : undefined,
+      processingFeeLabel: effectiveProcessingFee > 0 ? processingFeeLabel.trim() || "Processing Fee" : undefined,
+      advancePayment: effectiveAdvance > 0 ? effectiveAdvance : undefined,
       dueDate: dueDate > 0 ? dueDate : undefined,
       lateFeePerDay: lateFeePerDay > 0 ? lateFeePerDay : undefined,
       agentId: customer?.agentId,
@@ -191,7 +194,7 @@ export function InstallmentCustomerForm({ open, customer, onClose, onSave }: Pro
     };
     // If this is a new customer or product changed, recalculate balance
     if (!customer) {
-      result.totalBalance = totalWithTax;
+      result.totalBalance = balanceAfterAdvance;
     }
     onSave(result);
   };
