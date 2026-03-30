@@ -421,6 +421,9 @@ export type Settings = {
   fbrPosId?: string;
   fbrAddress?: string;
   fbrPhone?: string;
+  // Tax calculation options
+  taxAfterDiscount?: boolean; // if true, calculate tax on subtotal AFTER discount
+  flatDiscountMode?: boolean; // if true, discount = tax portion removed (item stays at base price visually)
   updatedAt: number;
 };
 

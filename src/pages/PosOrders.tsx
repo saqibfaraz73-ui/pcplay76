@@ -11,14 +11,15 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ReceiptDialog } from "@/components/ReceiptDialog";
-import { formatIntMoney, fmtDateTime } from "@/features/pos/format";
+import { formatIntMoney, fmtDateTime, fmtDate } from "@/features/pos/format";
 import { cancelOrder } from "@/features/pos/pos-db";
 import { printAdvanceReceipt, printBookingReceipt } from "@/features/pos/advance-receipt";
 import { printReceiptFromOrder } from "@/features/pos/receipt-print";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/auth/AuthProvider";
 import { isSameLocalDay } from "@/features/pos/time";
-import { Printer } from "lucide-react";
+import { Printer, CalendarDays } from "lucide-react";
+import { format } from "date-fns";
 
 // Convert TableOrder to Order-like shape for ReceiptDialog
 function tableOrderToOrder(t: TableOrder, tablesById: Record<string, RestaurantTable>, waitersById: Record<string, Waiter>): Order {
@@ -60,13 +61,28 @@ type UnifiedOrder = {
   total: number;
   createdAt: number;
   source: "regular" | "table" | "advance" | "booking";
-  order?: Order; // set for regular + table orders
+  order?: Order;
   advanceOrder?: AdvanceOrder;
   bookingOrder?: BookingOrder;
   tableNumber?: string;
   waiterName?: string;
   label?: string;
 };
+
+function toLocalDateStr(ts: number): string {
+  const d = new Date(ts);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function startOfLocalDay(dateStr: string): number {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  return new Date(y, m - 1, d, 0, 0, 0, 0).getTime();
+}
+
+function endOfLocalDay(dateStr: string): number {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  return new Date(y, m - 1, d, 23, 59, 59, 999).getTime();
+}
 
 type OrderTab = "all" | "sales" | "tables" | "delivery" | "synced";
 export default function PosOrders() {
@@ -83,6 +99,11 @@ export default function PosOrders() {
   const [bookingOrders, setBookingOrders] = React.useState<BookingOrder[]>([]);
   const [posSettings, setPosSettings] = React.useState<Settings | null>(null);
 
+  // Date range filter (defaults to today)
+  const todayStr = toLocalDateStr(Date.now());
+  const [dateFrom, setDateFrom] = React.useState(todayStr);
+  const [dateTo, setDateTo] = React.useState(todayStr);
+
   const [cancelDialogOpen, setCancelDialogOpen] = React.useState(false);
   const [cancelTarget, setCancelTarget] = React.useState<{ id: string; source: "regular" | "table" | "advance" | "booking" } | null>(null);
   const [cancelReason, setCancelReason] = React.useState("");
@@ -90,14 +111,14 @@ export default function PosOrders() {
   const refresh = React.useCallback(async () => {
     await ensureSeedData();
     const [ords, custs, dps, tOrds, tbls, wtrs, advOrds, bkOrds, settings] = await Promise.all([
-      db.orders.orderBy("createdAt").reverse().limit(200).toArray(),
+      db.orders.orderBy("createdAt").reverse().toArray(),
       db.customers.orderBy("createdAt").toArray(),
       db.deliveryPersons.orderBy("createdAt").toArray(),
-      db.tableOrders.where("status").anyOf(["open", "completed", "cancelled"]).reverse().limit(200).toArray(),
+      db.tableOrders.where("status").anyOf(["open", "completed", "cancelled"]).reverse().toArray(),
       db.restaurantTables.toArray(),
       db.waiters.toArray(),
-      db.advanceOrders.orderBy("createdAt").reverse().limit(100).toArray(),
-      db.bookingOrders.orderBy("createdAt").reverse().limit(100).toArray(),
+      db.advanceOrders.orderBy("createdAt").reverse().toArray(),
+      db.bookingOrders.orderBy("createdAt").reverse().toArray(),
       db.settings.get("app"),
     ]);
     setOrders(ords);
@@ -119,17 +140,26 @@ export default function PosOrders() {
   const waitersById = React.useMemo(() => Object.fromEntries(waiters.map((w) => [w.id, w])), [waiters]);
 
   const unifiedOrders = React.useMemo<UnifiedOrder[]>(() => {
-    const regular: UnifiedOrder[] = orders.map((o) => ({
-      id: o.id,
-      receiptNo: o.receiptNo,
-      paymentMethod: o.paymentMethod,
-      status: o.status,
-      total: o.total,
-      createdAt: o.createdAt,
-      source: "regular",
-      order: o,
-    }));
+    const rangeStart = startOfLocalDay(dateFrom);
+    const rangeEnd = endOfLocalDay(dateTo);
+
+    const regular: UnifiedOrder[] = orders
+      .filter(o => o.createdAt >= rangeStart && o.createdAt <= rangeEnd)
+      .map((o) => ({
+        id: o.id,
+        receiptNo: o.receiptNo,
+        paymentMethod: o.paymentMethod,
+        status: o.status,
+        total: o.total,
+        createdAt: o.createdAt,
+        source: "regular",
+        order: o,
+      }));
     const table: UnifiedOrder[] = tableOrders
+      .filter(t => {
+        const ts = t.status === "open" ? t.createdAt : (t.completedAt ?? t.updatedAt);
+        return ts >= rangeStart && ts <= rangeEnd;
+      })
       .map((t) => ({
         id: t.id,
         receiptNo: t.receiptNo ?? 0,
@@ -142,30 +172,34 @@ export default function PosOrders() {
         tableNumber: tablesById[t.tableId]?.tableNumber,
         waiterName: waitersById[t.waiterId]?.name,
       }));
-    const advance: UnifiedOrder[] = advanceOrders.map((o) => ({
-      id: o.id,
-      receiptNo: o.receiptNo,
-      paymentMethod: "advance",
-      status: o.status,
-      total: o.total,
-      createdAt: o.createdAt,
-      source: "advance",
-      advanceOrder: o,
-      label: o.lines.map((l) => l.name).join(", ") || "Advance",
-    }));
-    const booking: UnifiedOrder[] = bookingOrders.map((o) => ({
-      id: o.id,
-      receiptNo: o.receiptNo,
-      paymentMethod: "booking",
-      status: o.status,
-      total: o.total,
-      createdAt: o.createdAt,
-      source: "booking",
-      bookingOrder: o,
-      label: o.bookableItemName,
-    }));
-    return [...regular, ...table, ...advance, ...booking].sort((a, b) => b.createdAt - a.createdAt).slice(0, 200);
-  }, [orders, tableOrders, advanceOrders, bookingOrders, tablesById, waitersById]);
+    const advance: UnifiedOrder[] = advanceOrders
+      .filter(o => o.createdAt >= rangeStart && o.createdAt <= rangeEnd)
+      .map((o) => ({
+        id: o.id,
+        receiptNo: o.receiptNo,
+        paymentMethod: "advance",
+        status: o.status,
+        total: o.total,
+        createdAt: o.createdAt,
+        source: "advance",
+        advanceOrder: o,
+        label: o.lines.map((l) => l.name).join(", ") || "Advance",
+      }));
+    const booking: UnifiedOrder[] = bookingOrders
+      .filter(o => o.createdAt >= rangeStart && o.createdAt <= rangeEnd)
+      .map((o) => ({
+        id: o.id,
+        receiptNo: o.receiptNo,
+        paymentMethod: "booking",
+        status: o.status,
+        total: o.total,
+        createdAt: o.createdAt,
+        source: "booking",
+        bookingOrder: o,
+        label: o.bookableItemName,
+      }));
+    return [...regular, ...table, ...advance, ...booking].sort((a, b) => b.createdAt - a.createdAt);
+  }, [orders, tableOrders, advanceOrders, bookingOrders, tablesById, waitersById, dateFrom, dateTo]);
 
   const filteredOrders = React.useMemo(() => {
     if (activeTab === "all") return unifiedOrders;
@@ -226,7 +260,6 @@ export default function PosOrders() {
         const bk = bookingOrders.find((o) => o.id === cancelTarget.id);
         if (!bk) throw new Error("Booking not found");
         if (bk.status === "cancelled") throw new Error("Already cancelled");
-        // Cancelling frees up the time slot
         await db.bookingOrders.update(cancelTarget.id, {
           status: "cancelled",
           cancelledReason: cancelReason.trim(),
@@ -248,7 +281,6 @@ export default function PosOrders() {
       } else if (o.source === "booking" && o.bookingOrder) {
         await printBookingReceipt(o.bookingOrder);
       } else if (o.order) {
-        // Regular or table order — reprint receipt
         const custName = o.order.creditCustomerId
           ? customersById[o.order.creditCustomerId]?.name
           : undefined;
@@ -284,6 +316,20 @@ export default function PosOrders() {
         <p className="text-sm text-muted-foreground">View receipts and cancel orders.</p>
       </header>
 
+      {/* Date Range Filter */}
+      <div className="flex flex-wrap items-center gap-2 rounded-md border p-3 bg-muted/30">
+        <CalendarDays className="h-4 w-4 text-muted-foreground shrink-0" />
+        <div className="flex items-center gap-1.5">
+          <Label className="text-xs text-muted-foreground shrink-0">From</Label>
+          <Input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className="h-8 w-[140px] text-xs" />
+        </div>
+        <div className="flex items-center gap-1.5">
+          <Label className="text-xs text-muted-foreground shrink-0">To</Label>
+          <Input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} className="h-8 w-[140px] text-xs" />
+        </div>
+        <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={() => { setDateFrom(todayStr); setDateTo(todayStr); }}>Today</Button>
+      </div>
+
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as OrderTab)}>
         <TabsList className="w-full flex-wrap h-auto gap-1">
           <TabsTrigger value="all">All</TabsTrigger>
@@ -296,11 +342,11 @@ export default function PosOrders() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Recent Orders ({filteredOrders.length})</CardTitle>
+          <CardTitle>Orders ({filteredOrders.length})</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
           {filteredOrders.length === 0 ? (
-            <div className="text-sm text-muted-foreground">No orders in this section.</div>
+            <div className="text-sm text-muted-foreground">No orders in this date range.</div>
           ) : (
             <div className="space-y-2">
               {filteredOrders.map((o) => {
@@ -310,7 +356,6 @@ export default function PosOrders() {
                   (o.source === "regular" && o.status === "completed" && isSameLocalDay(o.createdAt, now)) ||
                   (o.source === "table" && (o.status === "open" || (o.status === "completed" && isSameLocalDay(o.createdAt, now)))) ||
                   ((o.source === "advance" || o.source === "booking") && o.status !== "cancelled"));
-                  ((o.source === "advance" || o.source === "booking") && o.status !== "cancelled");
                 const isOpenTableOrder = o.source === "table" && o.status === "open";
                 const src = sourceLabel(o);
                 return (

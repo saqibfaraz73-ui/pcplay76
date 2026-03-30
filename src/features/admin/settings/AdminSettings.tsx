@@ -150,6 +150,8 @@ export function AdminSettings() {
   const [recoveryEnabled, setRecoveryEnabled] = React.useState(false);
   const [installmentEnabled, setInstallmentEnabled] = React.useState(false);
   const [kitchenDisplayEnabled, setKitchenDisplayEnabled] = React.useState(false);
+  const [taxAfterDiscount, setTaxAfterDiscount] = React.useState(false);
+  const [flatDiscountMode, setFlatDiscountMode] = React.useState(false);
 
   // FBR Excel Export settings
   const [fbrExcelEnabled, setFbrExcelEnabled] = React.useState(false);
@@ -252,6 +254,8 @@ export function AdminSettings() {
     setRecoveryEnabled(!!s?.recoveryEnabled);
     setInstallmentEnabled(!!s?.installmentEnabled);
     setKitchenDisplayEnabled(!!s?.kitchenDisplayEnabled);
+    setTaxAfterDiscount(!!s?.taxAfterDiscount);
+    setFlatDiscountMode(!!s?.flatDiscountMode);
     setFbrExcelEnabled(!!s?.fbrExcelEnabled);
     setFbrQrOnReceipt(!!s?.fbrQrOnReceipt);
     setFbrVerifiedLabel(!!s?.fbrVerifiedLabel);
@@ -355,6 +359,8 @@ export function AdminSettings() {
         recoveryEnabled,
         installmentEnabled,
         kitchenDisplayEnabled,
+        taxAfterDiscount,
+        flatDiscountMode,
         fbrExcelEnabled,
         fbrQrOnReceipt,
         fbrVerifiedLabel,
@@ -775,6 +781,26 @@ export function AdminSettings() {
                   </div>
                 </div>
               </>
+            )}
+
+            {/* Tax Calculation Options */}
+            {taxEnabled && (
+              <div className="space-y-3 pt-2">
+                <div className="flex items-center justify-between gap-3 rounded-md border p-3">
+                  <div>
+                    <div className="text-sm font-medium">Calculate Tax After Discount</div>
+                    <div className="text-xs text-muted-foreground">Tax is applied on the discounted subtotal instead of original subtotal.</div>
+                  </div>
+                  <Switch checked={taxAfterDiscount} onCheckedChange={setTaxAfterDiscount} />
+                </div>
+                <div className="flex items-center justify-between gap-3 rounded-md border p-3">
+                  <div>
+                    <div className="text-sm font-medium">Flat Discount Mode</div>
+                    <div className="text-xs text-muted-foreground">Discount removes the tax portion (e.g. item Rs 300 + 18% tax = Rs 354, discount Rs 54 → total Rs 300).</div>
+                  </div>
+                  <Switch checked={flatDiscountMode} onCheckedChange={setFlatDiscountMode} />
+                </div>
+              </div>
             )}
 
             {/* Tax API Integration (inside tax section) */}

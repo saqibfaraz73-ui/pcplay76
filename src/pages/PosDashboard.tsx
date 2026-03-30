@@ -37,7 +37,9 @@ type CartLine = {
 // Helper to calculate tax/service charge amounts
 function calculateCharges(
   subtotalAfterDiscount: number,
-  settings: Settings | null
+  settings: Settings | null,
+  originalSubtotal?: number,
+  discountAmount?: number
 ): { taxAmount: number; serviceChargeAmount: number; taxLabel: string; serviceLabel: string } {
   let taxAmount = 0;
   let serviceChargeAmount = 0;
@@ -51,7 +53,19 @@ function calculateCharges(
       if (settings.taxValue && settings.taxValue > 0 && settings.taxType !== "percent") {
         taxAmount = Math.round(settings.taxValue);
       } else {
-        taxAmount = Math.round((subtotalAfterDiscount * rate) / 100);
+        // Flat discount mode: if discount equals the tax portion, calculate tax on original subtotal then subtract
+        if (settings.flatDiscountMode && originalSubtotal && discountAmount && discountAmount > 0) {
+          // Tax is always on original subtotal; discount removes tax portion
+          const fullTax = Math.round((originalSubtotal * rate) / 100);
+          const netDiscount = Math.min(discountAmount, fullTax);
+          taxAmount = Math.max(0, fullTax - netDiscount);
+        } else if (settings.taxAfterDiscount) {
+          // Tax after discount: calculate on discounted subtotal
+          taxAmount = Math.round((subtotalAfterDiscount * rate) / 100);
+        } else {
+          // Default: tax on subtotal after discount (same as before)
+          taxAmount = Math.round((subtotalAfterDiscount * rate) / 100);
+        }
       }
     }
     // Add per-receipt fee (e.g. FBR Rs 1)
@@ -411,7 +425,7 @@ export default function PosDashboard() {
   const subtotal = cart.reduce((sum, l) => sum + l.qty * l.unitPrice, 0);
   const discountTotal = Math.min(discountAmount, subtotal);
   const subtotalAfterDiscount = subtotal - discountTotal;
-  const { taxAmount: calcTaxAmount, serviceChargeAmount: calcServiceAmount, taxLabel, serviceLabel } = calculateCharges(subtotalAfterDiscount, posSettings);
+  const { taxAmount: calcTaxAmount, serviceChargeAmount: calcServiceAmount, taxLabel, serviceLabel } = calculateCharges(subtotalAfterDiscount, posSettings, subtotal, discountTotal);
   const taxAmount = editTaxAmount ?? calcTaxAmount;
   const serviceChargeAmount = editServiceAmount ?? calcServiceAmount;
   const total = subtotalAfterDiscount + taxAmount + serviceChargeAmount;

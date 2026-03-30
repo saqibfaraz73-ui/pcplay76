@@ -66,6 +66,11 @@ export function InstallmentCustomerForm({ open, customer, onClose, onSave }: Pro
   const [taxType, setTaxType] = React.useState<"percent" | "fixed">("percent");
   const [taxValue, setTaxValue] = React.useState(0);
   const [taxEnabled, setTaxEnabled] = React.useState(false);
+  const [processingFee, setProcessingFee] = React.useState(0);
+  const [processingFeeLabel, setProcessingFeeLabel] = React.useState("Processing Fee");
+  const [processingFeeEnabled, setProcessingFeeEnabled] = React.useState(false);
+  const [advancePayment, setAdvancePayment] = React.useState(0);
+  const [advanceEnabled, setAdvanceEnabled] = React.useState(false);
   const [allItems, setAllItems] = React.useState<MenuItem[]>([]);
   const [itemQuery, setItemQuery] = React.useState("");
   const [showItemPicker, setShowItemPicker] = React.useState(false);
@@ -97,12 +102,19 @@ export function InstallmentCustomerForm({ open, customer, onClose, onSave }: Pro
         setTaxEnabled(!!(customer.taxType && customer.taxValue));
         setTaxType(customer.taxType ?? "percent");
         setTaxValue(customer.taxValue ?? 0);
+        setProcessingFee(customer.processingFee ?? 0);
+        setProcessingFeeLabel(customer.processingFeeLabel ?? "Processing Fee");
+        setProcessingFeeEnabled(!!(customer.processingFee && customer.processingFee > 0));
+        setAdvancePayment(customer.advancePayment ?? 0);
+        setAdvanceEnabled(!!(customer.advancePayment && customer.advancePayment > 0));
       } else {
         setName(""); setPhone(""); setAddress(""); setWhatsapp(""); setEmail("");
         setProductName(""); setMarketPrice(0); setProfitType("percent"); setProfitValue(0);
         setTenureMonths(12); setTenureUnit("months"); setDueDate(0); setLateFeePerDay(0);
         setFrequency("monthly"); setCustomFields([]); setImages([]);
         setTaxEnabled(false); setTaxType("percent"); setTaxValue(0);
+        setProcessingFee(0); setProcessingFeeLabel("Processing Fee"); setProcessingFeeEnabled(false);
+        setAdvancePayment(0); setAdvanceEnabled(false);
       }
     }
   }, [open, customer]);
@@ -115,8 +127,11 @@ export function InstallmentCustomerForm({ open, customer, onClose, onSave }: Pro
   const taxAmount = taxEnabled && taxValue > 0
     ? (taxType === "percent" ? Math.round(totalPrice * taxValue / 100) : Math.round(taxValue))
     : 0;
-  const totalWithTax = totalPrice + taxAmount;
-  const monthlyInstallment = totalPeriods > 0 ? Math.round(totalWithTax / totalPeriods) : totalWithTax;
+  const effectiveProcessingFee = processingFeeEnabled && processingFee > 0 ? processingFee : 0;
+  const totalWithTax = totalPrice + taxAmount + effectiveProcessingFee;
+  const effectiveAdvance = advanceEnabled && advancePayment > 0 ? Math.min(advancePayment, totalWithTax) : 0;
+  const balanceAfterAdvance = totalWithTax - effectiveAdvance;
+  const monthlyInstallment = totalPeriods > 0 ? Math.round(balanceAfterAdvance / totalPeriods) : balanceAfterAdvance;
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -162,10 +177,13 @@ export function InstallmentCustomerForm({ open, customer, onClose, onSave }: Pro
       frequency,
       monthlyInstallment,
       totalPrice,
-      totalBalance: customer?.totalBalance ?? totalWithTax, // keep existing balance on edit
+      totalBalance: customer?.totalBalance ?? balanceAfterAdvance, // keep existing balance on edit
       taxType: taxEnabled && taxValue > 0 ? taxType : undefined,
       taxValue: taxEnabled && taxValue > 0 ? taxValue : undefined,
       taxAmount: taxAmount > 0 ? taxAmount : undefined,
+      processingFee: effectiveProcessingFee > 0 ? effectiveProcessingFee : undefined,
+      processingFeeLabel: effectiveProcessingFee > 0 ? processingFeeLabel.trim() || "Processing Fee" : undefined,
+      advancePayment: effectiveAdvance > 0 ? effectiveAdvance : undefined,
       dueDate: dueDate > 0 ? dueDate : undefined,
       lateFeePerDay: lateFeePerDay > 0 ? lateFeePerDay : undefined,
       agentId: customer?.agentId,
@@ -176,7 +194,7 @@ export function InstallmentCustomerForm({ open, customer, onClose, onSave }: Pro
     };
     // If this is a new customer or product changed, recalculate balance
     if (!customer) {
-      result.totalBalance = totalWithTax;
+      result.totalBalance = balanceAfterAdvance;
     }
     onSave(result);
   };
@@ -326,6 +344,41 @@ export function InstallmentCustomerForm({ open, customer, onClose, onSave }: Pro
               )}
             </div>
 
+            {/* Processing Fee / Service Charges */}
+            <div className="mt-3 rounded-md border p-3">
+              <div className="flex items-center gap-2 mb-2">
+                <Switch checked={processingFeeEnabled} onCheckedChange={setProcessingFeeEnabled} className="scale-75" />
+                <span className="text-sm font-medium">Processing Fee / Service Charges</span>
+              </div>
+              {processingFeeEnabled && (
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <Label className="text-xs">Label</Label>
+                    <Input value={processingFeeLabel} onChange={e => setProcessingFeeLabel(e.target.value)} placeholder="Processing Fee" className="h-9" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Amount</Label>
+                    <Input value={processingFee || ""} onChange={e => setProcessingFee(parseNonDecimalInt(e.target.value))} inputMode="numeric" placeholder="e.g. 500" className="h-9" />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Advance Payment */}
+            <div className="mt-3 rounded-md border p-3">
+              <div className="flex items-center gap-2 mb-2">
+                <Switch checked={advanceEnabled} onCheckedChange={setAdvanceEnabled} className="scale-75" />
+                <span className="text-sm font-medium">Advance Payment</span>
+              </div>
+              {advanceEnabled && (
+                <div className="space-y-1">
+                  <Label className="text-xs">Advance Amount</Label>
+                  <Input value={advancePayment || ""} onChange={e => setAdvancePayment(parseNonDecimalInt(e.target.value))} inputMode="numeric" placeholder="e.g. 5000" className="h-9" />
+                  <p className="text-[10px] text-muted-foreground">This amount will be deducted from the total balance before calculating installments.</p>
+                </div>
+              )}
+            </div>
+
             {/* Auto-calculated preview */}
             <div className="mt-3 rounded-md bg-muted/50 p-3 grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
               <div>
@@ -338,9 +391,25 @@ export function InstallmentCustomerForm({ open, customer, onClose, onSave }: Pro
                   <div className="font-bold text-sm text-orange-600">{taxAmount.toLocaleString()}</div>
                 </div>
               )}
+              {effectiveProcessingFee > 0 && (
+                <div>
+                  <div className="text-muted-foreground">{processingFeeLabel}</div>
+                  <div className="font-bold text-sm text-blue-600">{effectiveProcessingFee.toLocaleString()}</div>
+                </div>
+              )}
               <div>
-                <div className="text-muted-foreground">Total{taxAmount > 0 ? " (incl. Tax)" : ""}</div>
+                <div className="text-muted-foreground">Grand Total</div>
                 <div className="font-bold text-sm">{totalWithTax.toLocaleString()}</div>
+              </div>
+              {effectiveAdvance > 0 && (
+                <div>
+                  <div className="text-muted-foreground">Advance Paid</div>
+                  <div className="font-bold text-sm text-green-600">-{effectiveAdvance.toLocaleString()}</div>
+                </div>
+              )}
+              <div>
+                <div className="text-muted-foreground">Balance</div>
+                <div className="font-bold text-sm">{balanceAfterAdvance.toLocaleString()}</div>
               </div>
               <div>
                 <div className="text-muted-foreground">{frequency === "weekly" ? "Weekly" : frequency === "yearly" ? "Yearly" : "Monthly"}</div>
