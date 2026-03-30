@@ -1,5 +1,5 @@
 import React from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -36,13 +36,13 @@ import {
   CheckCircle2,
   Tags,
   BookOpen,
+  Hammer,
 } from "lucide-react";
 import appLogo from "@/assets/app-logo.jpg";
 
 type TodayStats = {
   totalSales: number;
   totalOrders: number;
-  cashSales: number;
   creditSales: number;
   deliverySales: number;
   totalExpenses: number;
@@ -136,6 +136,7 @@ function AdminKdsQueue() {
 
 export default function PosHome() {
   const { session } = useAuth();
+  const navigate = useNavigate();
   const { isWorkPeriodActive } = useWorkPeriod();
   const [stats, setStats] = React.useState<TodayStats | null>(null);
   const [settings, setSettings] = React.useState<{ tableManagementEnabled?: boolean; advanceBookingEnabled?: boolean; deliveryEnabled?: boolean; recoveryEnabled?: boolean; syncEnabled?: boolean; kitchenDisplayEnabled?: boolean; installmentEnabled?: boolean; businessName?: string; taxEnabled?: boolean; taxLabel?: string; taxValue?: number; taxType?: string; taxCountry?: string; taxDepartment?: string } | null>(null);
@@ -157,16 +158,13 @@ export default function PosHome() {
       (o) => o.status === "completed" && isSameLocalDay(o.createdAt, now)
     );
 
-    const cashSales = todayOrders
-      .filter((o) => o.paymentMethod === "cash")
-      .reduce((s, o) => s + o.total, 0);
     const creditSales = todayOrders
       .filter((o) => o.paymentMethod === "credit")
       .reduce((s, o) => s + o.total, 0);
     const deliverySales = todayOrders
       .filter((o) => o.paymentMethod === "delivery")
       .reduce((s, o) => s + o.total, 0);
-    const totalSales = cashSales + creditSales + deliverySales;
+    const totalSales = todayOrders.reduce((s, o) => s + o.total, 0);
 
     const allExpenses = await db.expenses.toArray();
     const todayExpenses = allExpenses.filter((e) => isSameLocalDay(e.createdAt, now));
@@ -175,7 +173,6 @@ export default function PosHome() {
     setStats({
       totalSales,
       totalOrders: todayOrders.length,
-      cashSales,
       creditSales,
       deliverySales,
       totalExpenses,
@@ -359,6 +356,7 @@ export default function PosHome() {
     return actions;
   }, [isAdmin, isWaiter, settings]);
 
+  // Clickable stat cards with navigation
   const statCards = React.useMemo(() => {
     if (!stats) return [];
     return [
@@ -368,6 +366,7 @@ export default function PosHome() {
         icon: TrendingUp,
         color: "text-emerald-600",
         bg: "bg-emerald-500/10",
+        to: "/admin/reports",
       },
       {
         label: "Orders",
@@ -375,13 +374,7 @@ export default function PosHome() {
         icon: Receipt,
         color: "text-blue-600",
         bg: "bg-blue-500/10",
-      },
-      {
-        label: "Cash Sales",
-        value: formatIntMoney(stats.cashSales),
-        icon: Banknote,
-        color: "text-green-600",
-        bg: "bg-green-500/10",
+        to: "/pos/orders",
       },
       {
         label: "Credit Sales",
@@ -389,6 +382,7 @@ export default function PosHome() {
         icon: CreditCard,
         color: "text-purple-600",
         bg: "bg-purple-500/10",
+        to: "/pos/credit-lodge",
       },
       {
         label: "Expenses",
@@ -396,6 +390,16 @@ export default function PosHome() {
         icon: TrendingDown,
         color: "text-red-600",
         bg: "bg-red-500/10",
+        to: "/pos/expenses",
+      },
+      {
+        label: "Staff Wages",
+        value: "",
+        icon: Hammer,
+        color: "text-amber-600",
+        bg: "bg-amber-500/10",
+        to: "/pos/labour-wages",
+        hideValue: true,
       },
       {
         label: "Net Revenue",
@@ -445,20 +449,30 @@ export default function PosHome() {
         </div>
       </div>
 
-      {/* Stats grid */}
+      {/* Stats grid — clickable */}
       {!isWaiter && (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-          {statCards.map((s) => (
-            <Card key={s.label} className={`border shadow-sm ${s.bg} ${s.color}`}>
-              <CardContent className="flex items-center gap-3 p-4">
-                <s.icon className="h-6 w-6 shrink-0" />
-                <div className="min-w-0">
-                  <p className="font-semibold text-sm truncate">{s.value}</p>
-                  <p className="text-xs opacity-75 truncate">{s.label}</p>
+          {statCards.map((s) => {
+            const inner = (
+              <Card key={s.label} className={`border shadow-sm ${s.bg} ${s.color} ${s.to ? "cursor-pointer hover:shadow-md hover:scale-[1.02] transition-all" : ""}`}>
+                <CardContent className="flex items-center gap-3 p-4">
+                  <s.icon className="h-6 w-6 shrink-0" />
+                  <div className="min-w-0">
+                    {!(s as any).hideValue && <p className="font-semibold text-sm truncate">{s.value}</p>}
+                    <p className="text-xs opacity-75 truncate">{s.label}</p>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+            if (s.to) {
+              return (
+                <div key={s.label} onClick={() => navigate(s.to!)} className="cursor-pointer">
+                  {inner}
                 </div>
-              </CardContent>
-            </Card>
-          ))}
+              );
+            }
+            return <div key={s.label}>{inner}</div>;
+          })}
         </div>
       )}
 

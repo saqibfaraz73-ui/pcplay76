@@ -38,6 +38,13 @@ export type InstallmentCustomer = {
   // Installment frequency
   frequency?: InstallmentFrequency; // defaults to "monthly" if not set
 
+  // Processing fee / service charges (optional, added to total bill)
+  processingFee?: number;
+  processingFeeLabel?: string; // e.g. "Processing Fee", "Service Charges"
+
+  // Advance payment (deducted from balance before installment calculation)
+  advancePayment?: number;
+
   // Due date & late fee
   dueDate?: number; // day of month (1-28) when installment is due
   lateFeePerDay?: number; // per-day late fee
