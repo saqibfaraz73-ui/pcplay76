@@ -359,6 +359,8 @@ export function AdminSettings() {
         recoveryEnabled,
         installmentEnabled,
         kitchenDisplayEnabled,
+        taxAfterDiscount,
+        flatDiscountMode,
         fbrExcelEnabled,
         fbrQrOnReceipt,
         fbrVerifiedLabel,
