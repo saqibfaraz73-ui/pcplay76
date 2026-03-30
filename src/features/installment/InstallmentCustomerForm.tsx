@@ -66,6 +66,11 @@ export function InstallmentCustomerForm({ open, customer, onClose, onSave }: Pro
   const [taxType, setTaxType] = React.useState<"percent" | "fixed">("percent");
   const [taxValue, setTaxValue] = React.useState(0);
   const [taxEnabled, setTaxEnabled] = React.useState(false);
+  const [processingFee, setProcessingFee] = React.useState(0);
+  const [processingFeeLabel, setProcessingFeeLabel] = React.useState("Processing Fee");
+  const [processingFeeEnabled, setProcessingFeeEnabled] = React.useState(false);
+  const [advancePayment, setAdvancePayment] = React.useState(0);
+  const [advanceEnabled, setAdvanceEnabled] = React.useState(false);
   const [allItems, setAllItems] = React.useState<MenuItem[]>([]);
   const [itemQuery, setItemQuery] = React.useState("");
   const [showItemPicker, setShowItemPicker] = React.useState(false);
