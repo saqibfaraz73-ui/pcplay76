@@ -127,8 +127,11 @@ export function InstallmentCustomerForm({ open, customer, onClose, onSave }: Pro
   const taxAmount = taxEnabled && taxValue > 0
     ? (taxType === "percent" ? Math.round(totalPrice * taxValue / 100) : Math.round(taxValue))
     : 0;
-  const totalWithTax = totalPrice + taxAmount;
-  const monthlyInstallment = totalPeriods > 0 ? Math.round(totalWithTax / totalPeriods) : totalWithTax;
+  const effectiveProcessingFee = processingFeeEnabled && processingFee > 0 ? processingFee : 0;
+  const totalWithTax = totalPrice + taxAmount + effectiveProcessingFee;
+  const effectiveAdvance = advanceEnabled && advancePayment > 0 ? Math.min(advancePayment, totalWithTax) : 0;
+  const balanceAfterAdvance = totalWithTax - effectiveAdvance;
+  const monthlyInstallment = totalPeriods > 0 ? Math.round(balanceAfterAdvance / totalPeriods) : balanceAfterAdvance;
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
