@@ -102,12 +102,19 @@ export function InstallmentCustomerForm({ open, customer, onClose, onSave }: Pro
         setTaxEnabled(!!(customer.taxType && customer.taxValue));
         setTaxType(customer.taxType ?? "percent");
         setTaxValue(customer.taxValue ?? 0);
+        setProcessingFee(customer.processingFee ?? 0);
+        setProcessingFeeLabel(customer.processingFeeLabel ?? "Processing Fee");
+        setProcessingFeeEnabled(!!(customer.processingFee && customer.processingFee > 0));
+        setAdvancePayment(customer.advancePayment ?? 0);
+        setAdvanceEnabled(!!(customer.advancePayment && customer.advancePayment > 0));
       } else {
         setName(""); setPhone(""); setAddress(""); setWhatsapp(""); setEmail("");
         setProductName(""); setMarketPrice(0); setProfitType("percent"); setProfitValue(0);
         setTenureMonths(12); setTenureUnit("months"); setDueDate(0); setLateFeePerDay(0);
         setFrequency("monthly"); setCustomFields([]); setImages([]);
         setTaxEnabled(false); setTaxType("percent"); setTaxValue(0);
+        setProcessingFee(0); setProcessingFeeLabel("Processing Fee"); setProcessingFeeEnabled(false);
+        setAdvancePayment(0); setAdvanceEnabled(false);
       }
     }
   }, [open, customer]);
