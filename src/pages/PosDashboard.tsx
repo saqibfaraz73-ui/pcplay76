@@ -425,7 +425,7 @@ export default function PosDashboard() {
   const subtotal = cart.reduce((sum, l) => sum + l.qty * l.unitPrice, 0);
   const discountTotal = Math.min(discountAmount, subtotal);
   const subtotalAfterDiscount = subtotal - discountTotal;
-  const { taxAmount: calcTaxAmount, serviceChargeAmount: calcServiceAmount, taxLabel, serviceLabel } = calculateCharges(subtotalAfterDiscount, posSettings);
+  const { taxAmount: calcTaxAmount, serviceChargeAmount: calcServiceAmount, taxLabel, serviceLabel } = calculateCharges(subtotalAfterDiscount, posSettings, subtotal, discountTotal);
   const taxAmount = editTaxAmount ?? calcTaxAmount;
   const serviceChargeAmount = editServiceAmount ?? calcServiceAmount;
   const total = subtotalAfterDiscount + taxAmount + serviceChargeAmount;
