@@ -150,6 +150,8 @@ export function AdminSettings() {
   const [recoveryEnabled, setRecoveryEnabled] = React.useState(false);
   const [installmentEnabled, setInstallmentEnabled] = React.useState(false);
   const [kitchenDisplayEnabled, setKitchenDisplayEnabled] = React.useState(false);
+  const [taxAfterDiscount, setTaxAfterDiscount] = React.useState(false);
+  const [flatDiscountMode, setFlatDiscountMode] = React.useState(false);
 
   // FBR Excel Export settings
   const [fbrExcelEnabled, setFbrExcelEnabled] = React.useState(false);
