@@ -110,6 +110,7 @@ export function AdminCustomers() {
     setMobile("");
     setWhatsapp("");
     setEmail("");
+    setPreviousBalance(0);
     setMode({ open: true });
   };
 
