@@ -306,6 +306,11 @@ export function AdminCustomers() {
                   <Label htmlFor="custEmail">Email (optional)</Label>
                   <Input id="custEmail" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="e.g., customer@email.com" />
                 </div>
+                <div className="space-y-2">
+                  <Label htmlFor="custPrevBal">Previous Balance (optional)</Label>
+                  <Input id="custPrevBal" type="number" inputMode="numeric" value={previousBalance || ""} onChange={(e) => setPreviousBalance(Number(e.target.value) || 0)} placeholder="Opening balance carried forward" />
+                  <p className="text-xs text-muted-foreground">If this customer already has an outstanding balance from before.</p>
+                </div>
               </div>
 
               <DialogFooter>
