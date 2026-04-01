@@ -96,6 +96,7 @@ export type CreditCustomer = {
   mobile?: string;
   whatsapp?: string;
   email?: string;
+  previousBalance?: number; // opening / previous balance carried forward
   createdAt: number;
 };
 

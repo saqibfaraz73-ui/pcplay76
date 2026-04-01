@@ -46,6 +46,8 @@ export type BookingOrderStatus = "pending" | "completed" | "cancelled";
 
 export type BookingLabel = "Booking" | "Appointment";
 
+export type BookingPricingType = "fixed" | "per_head";
+
 export type BookingOrder = {
   id: string;
   receiptNo: number;
@@ -53,6 +55,9 @@ export type BookingOrder = {
   bookableItemName: string;
   status: BookingOrderStatus;
   label?: BookingLabel; // "Booking" (default) or "Appointment"
+  pricingType?: BookingPricingType; // "fixed" (default) or "per_head"
+  headCount?: number; // number of guests (per_head mode)
+  perHeadPrice?: number; // price per head (per_head mode)
   date: number; // date as timestamp (start of day)
   startTime: string; // e.g. "09:00"
   durationHours: number; // e.g. 1.5
