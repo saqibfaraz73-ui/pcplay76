@@ -521,6 +521,9 @@ export default function PosAdvanceBooking() {
     setBookCustAddress("");
     setBookIsMaintenance(false);
     setBookLabel("Booking");
+    setBookPricingType("fixed");
+    setBookHeadCount("");
+    setBookPerHeadPrice("");
     setBookTaxEnabled(false);
     setBookDlg(true);
   };
