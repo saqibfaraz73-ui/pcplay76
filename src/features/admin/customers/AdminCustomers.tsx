@@ -134,6 +134,7 @@ export function AdminCustomers() {
         mobile: mobile.trim() || undefined,
         whatsapp: whatsapp.trim() || undefined,
         email: email.trim() || undefined,
+        previousBalance: previousBalance || undefined,
         createdAt: mode.open && mode.customer ? mode.customer.createdAt : now,
       };
       await db.customers.put(next);
