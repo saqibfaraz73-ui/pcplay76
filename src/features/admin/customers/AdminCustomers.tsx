@@ -94,14 +94,16 @@ export function AdminCustomers() {
 
   // Calculate balances
   const getCustomerBalance = React.useCallback((customerId: string) => {
+    const cust = customers.find(c => c.id === customerId);
+    const prevBal = cust?.previousBalance ?? 0;
     const customerOrders = orders.filter(
       (o) => o.creditCustomerId === customerId && o.paymentMethod === "credit" && o.status === "completed"
     );
-    const totalCredit = customerOrders.reduce((sum, o) => sum + o.total, 0);
+    const totalCredit = customerOrders.reduce((sum, o) => sum + o.total, 0) + prevBal;
     const customerPayments = payments.filter((p) => p.customerId === customerId);
     const totalPaid = customerPayments.reduce((sum, p) => sum + p.amount, 0);
     return { totalCredit, totalPaid, balance: totalCredit - totalPaid };
-  }, [orders, payments]);
+  }, [orders, payments, customers]);
 
   const openNew = () => {
     setName("");
