@@ -485,12 +485,18 @@ export default function PosAdvanceBooking() {
   const [bookCustAddress, setBookCustAddress] = React.useState("");
   const [bookIsMaintenance, setBookIsMaintenance] = React.useState(false);
   const [bookLabel, setBookLabel] = React.useState<BookingLabel>("Booking");
+  const [bookPricingType, setBookPricingType] = React.useState<"fixed" | "per_head">("fixed");
+  const [bookHeadCount, setBookHeadCount] = React.useState("");
+  const [bookPerHeadPrice, setBookPerHeadPrice] = React.useState("");
 
   const [bookTaxEnabled, setBookTaxEnabled] = React.useState(false);
 
   const selectedBookItem = bookableItems.find((b) => b.id === bookItemId);
   const bookItemPrice = selectedBookItem?.price ?? 0;
-  const bookPrice = bookManualPrice !== "" ? (Number(bookManualPrice) || 0) : bookItemPrice;
+  const bookComputedPrice = bookPricingType === "per_head"
+    ? (Number(bookHeadCount) || 0) * (Number(bookPerHeadPrice) || 0)
+    : (bookManualPrice !== "" ? (Number(bookManualPrice) || 0) : bookItemPrice);
+  const bookPrice = bookComputedPrice;
   const bookEndTime = calcEndTime(bookStart, Number(bookDuration) || 0, bookDurationUnit);
   const bookDiscountAmt = Math.min(Math.max(0, Number(bookDiscount) || 0), bookPrice);
   const bookAfterDiscount = Math.max(0, bookPrice - bookDiscountAmt);
