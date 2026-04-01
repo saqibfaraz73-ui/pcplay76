@@ -119,6 +119,7 @@ export function AdminCustomers() {
     setMobile(c.mobile ?? "");
     setWhatsapp(c.whatsapp ?? "");
     setEmail(c.email ?? "");
+    setPreviousBalance(c.previousBalance ?? 0);
     setMode({ open: true, customer: c });
   };
 
