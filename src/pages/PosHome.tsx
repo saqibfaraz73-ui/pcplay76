@@ -158,13 +158,20 @@ export default function PosHome() {
       (o) => o.status === "completed" && isSameLocalDay(o.createdAt, now)
     );
 
+    // Include table orders in today's sales
+    const allTableOrders = await db.tableOrders.toArray();
+    const todayTableOrders = allTableOrders.filter(
+      (o) => o.status === "completed" && isSameLocalDay(o.createdAt, now)
+    );
+    const tableSales = todayTableOrders.reduce((s, o) => s + o.total, 0);
+
     const creditSales = todayOrders
       .filter((o) => o.paymentMethod === "credit")
       .reduce((s, o) => s + o.total, 0);
     const deliverySales = todayOrders
       .filter((o) => o.paymentMethod === "delivery")
       .reduce((s, o) => s + o.total, 0);
-    const totalSales = todayOrders.reduce((s, o) => s + o.total, 0);
+    const totalSales = todayOrders.reduce((s, o) => s + o.total, 0) + tableSales;
 
     const allExpenses = await db.expenses.toArray();
     const todayExpenses = allExpenses.filter((e) => isSameLocalDay(e.createdAt, now));
@@ -172,7 +179,7 @@ export default function PosHome() {
 
     setStats({
       totalSales,
-      totalOrders: todayOrders.length,
+      totalOrders: todayOrders.length + todayTableOrders.length,
       creditSales,
       deliverySales,
       totalExpenses,

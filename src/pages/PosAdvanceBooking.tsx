@@ -908,6 +908,7 @@ export default function PosAdvanceBooking() {
                            {fmtDate(o.date)} • {o.startTime} → {o.endTime} ({o.durationHours >= 24 ? `${Math.round(o.durationHours / 24)}d` : o.durationHours >= 1 ? `${o.durationHours}h` : `${Math.round(o.durationHours * 60)}min`})
                          </div>
                          {o.customerName && <div className="text-xs text-muted-foreground">{o.customerName} {o.customerPhone ? `• ${o.customerPhone}` : ""}</div>}
+                         {o.pricingType === "per_head" && <div className="text-xs text-muted-foreground">Per Head: {o.headCount} × {formatIntMoney(o.perHeadPrice ?? 0)}</div>}
                        </div>
                        <Badge variant={o.isMaintenance ? "outline" : statusColor(o.status)}>
                          {o.isMaintenance ? "🔧 Maintenance" : o.status}
