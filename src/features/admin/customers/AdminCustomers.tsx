@@ -58,6 +58,7 @@ export function AdminCustomers() {
   const [mobile, setMobile] = React.useState("");
   const [whatsapp, setWhatsapp] = React.useState("");
   const [email, setEmail] = React.useState("");
+  const [previousBalance, setPreviousBalance] = React.useState(0);
 
   // Payment dialog
   const [paymentMode, setPaymentMode] = React.useState<PaymentMode>({ open: false });
