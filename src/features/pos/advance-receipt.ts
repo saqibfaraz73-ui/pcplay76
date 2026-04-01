@@ -151,6 +151,7 @@ function buildBookingEscPos(order: BookingOrder, settings: Settings): string {
     LEFT_ON,
     hr,
     line(`Item: ${order.bookableItemName}`),
+    order.pricingType === "per_head" ? line(`Heads: ${order.headCount} × ${money(order.perHeadPrice ?? 0)}`) : null,
     line(`Date: ${dateStr}`),
     line(`Time: ${order.startTime} - ${order.endTime}`),
     line(`Duration: ${order.durationHours}h`),

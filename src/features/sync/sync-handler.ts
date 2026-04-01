@@ -156,14 +156,57 @@ async function handleOrderSync(order: Order, sourceDeviceId?: string): Promise<v
   }
 }
 
-/** Save a synced table order (keeps Sub's original workPeriodId). Only saves completed/cancelled orders to avoid "stuck" open orders on Main. */
+/** Save a synced table order (keeps Sub's original workPeriodId). Saves open orders too so they appear on Main. */
 async function handleTableOrderSync(tableOrder: TableOrder & { _waiterName?: string; _tableNumber?: string }, sourceDeviceId?: string): Promise<void> {
   const isOpenOrder = tableOrder.status === "open";
 
-  // For open table orders: don't save to Main's table management (they'd get stuck),
-  // but DO create kitchen orders so they appear on displays
+  // For open table orders: save them to Main so they show as open orders
   if (isOpenOrder) {
-    console.log(`[Sync] Open table order ${tableOrder.id} — creating kitchen order only (not saving to Main tables)`);
+    console.log(`[Sync] Open table order ${tableOrder.id} — saving to Main as open order`);
+
+    // Map waiter and table IDs first
+    if (tableOrder.waiterId) {
+      const existingWaiter = await db.waiters.get(tableOrder.waiterId);
+      if (!existingWaiter && tableOrder._waiterName) {
+        const mainWaiter = await db.waiters.filter(
+          (w) => w.name.toLowerCase() === tableOrder._waiterName!.toLowerCase()
+        ).first();
+        if (mainWaiter) {
+          tableOrder.waiterId = mainWaiter.id;
+        } else {
+          await db.waiters.put({ id: tableOrder.waiterId, name: tableOrder._waiterName, createdAt: Date.now() });
+        }
+      }
+    }
+    if (tableOrder.tableId && tableOrder._tableNumber) {
+      const existingTable = await db.restaurantTables.get(tableOrder.tableId);
+      if (!existingTable) {
+        const mainTable = await db.restaurantTables.filter(
+          (t) => t.tableNumber.toLowerCase() === tableOrder._tableNumber!.toLowerCase()
+        ).first();
+        if (mainTable) {
+          tableOrder.tableId = mainTable.id;
+        } else {
+          await db.restaurantTables.put({ id: tableOrder.tableId, tableNumber: tableOrder._tableNumber, createdAt: Date.now() });
+        }
+      }
+    }
+
+    const { _waiterName, _tableNumber, ...cleanOpenOrder } = tableOrder;
+    if (_waiterName && !cleanOpenOrder.waiterName) cleanOpenOrder.waiterName = _waiterName;
+    if (_tableNumber && !cleanOpenOrder.tableNumber) cleanOpenOrder.tableNumber = _tableNumber;
+    if (sourceDeviceId) cleanOpenOrder.syncedFrom = sourceDeviceId;
+
+    // Upsert: update if exists, insert if new
+    const existing = await db.tableOrders.get(cleanOpenOrder.id);
+    if (existing) {
+      await db.tableOrders.update(cleanOpenOrder.id, cleanOpenOrder);
+    } else {
+      await db.tableOrders.put(cleanOpenOrder);
+    }
+    console.log(`[Sync] Open table order saved to Main`);
+
+    // Also create kitchen order if KDS enabled
     try {
       const settings = await db.settings.get("app");
       if (settings?.kitchenDisplayEnabled) {
@@ -175,7 +218,7 @@ async function handleTableOrderSync(tableOrder: TableOrder & { _waiterName?: str
             tableOrder.receiptNo ?? 0,
             tableOrder.lines.map((l: any) => ({ name: l.name, qty: l.qty })),
             "table",
-            { tableNumber: tableOrder._tableNumber, waiterName: tableOrder._waiterName }
+            { tableNumber: _tableNumber, waiterName: _waiterName }
           );
           console.log(`[Sync] Kitchen order created for open table order`);
         }

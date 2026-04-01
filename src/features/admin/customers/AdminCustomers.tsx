@@ -58,6 +58,7 @@ export function AdminCustomers() {
   const [mobile, setMobile] = React.useState("");
   const [whatsapp, setWhatsapp] = React.useState("");
   const [email, setEmail] = React.useState("");
+  const [previousBalance, setPreviousBalance] = React.useState(0);
 
   // Payment dialog
   const [paymentMode, setPaymentMode] = React.useState<PaymentMode>({ open: false });
@@ -93,20 +94,23 @@ export function AdminCustomers() {
 
   // Calculate balances
   const getCustomerBalance = React.useCallback((customerId: string) => {
+    const cust = customers.find(c => c.id === customerId);
+    const prevBal = cust?.previousBalance ?? 0;
     const customerOrders = orders.filter(
       (o) => o.creditCustomerId === customerId && o.paymentMethod === "credit" && o.status === "completed"
     );
-    const totalCredit = customerOrders.reduce((sum, o) => sum + o.total, 0);
+    const totalCredit = customerOrders.reduce((sum, o) => sum + o.total, 0) + prevBal;
     const customerPayments = payments.filter((p) => p.customerId === customerId);
     const totalPaid = customerPayments.reduce((sum, p) => sum + p.amount, 0);
     return { totalCredit, totalPaid, balance: totalCredit - totalPaid };
-  }, [orders, payments]);
+  }, [orders, payments, customers]);
 
   const openNew = () => {
     setName("");
     setMobile("");
     setWhatsapp("");
     setEmail("");
+    setPreviousBalance(0);
     setMode({ open: true });
   };
 
@@ -115,6 +119,7 @@ export function AdminCustomers() {
     setMobile(c.mobile ?? "");
     setWhatsapp(c.whatsapp ?? "");
     setEmail(c.email ?? "");
+    setPreviousBalance(c.previousBalance ?? 0);
     setMode({ open: true, customer: c });
   };
 
@@ -129,6 +134,7 @@ export function AdminCustomers() {
         mobile: mobile.trim() || undefined,
         whatsapp: whatsapp.trim() || undefined,
         email: email.trim() || undefined,
+        previousBalance: previousBalance || undefined,
         createdAt: mode.open && mode.customer ? mode.customer.createdAt : now,
       };
       await db.customers.put(next);
@@ -299,6 +305,11 @@ export function AdminCustomers() {
                 <div className="space-y-2">
                   <Label htmlFor="custEmail">Email (optional)</Label>
                   <Input id="custEmail" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="e.g., customer@email.com" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="custPrevBal">Previous Balance (optional)</Label>
+                  <Input id="custPrevBal" type="number" inputMode="numeric" value={previousBalance || ""} onChange={(e) => setPreviousBalance(Number(e.target.value) || 0)} placeholder="Opening balance carried forward" />
+                  <p className="text-xs text-muted-foreground">If this customer already has an outstanding balance from before.</p>
                 </div>
               </div>
 

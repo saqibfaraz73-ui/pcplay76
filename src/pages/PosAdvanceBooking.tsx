@@ -485,12 +485,18 @@ export default function PosAdvanceBooking() {
   const [bookCustAddress, setBookCustAddress] = React.useState("");
   const [bookIsMaintenance, setBookIsMaintenance] = React.useState(false);
   const [bookLabel, setBookLabel] = React.useState<BookingLabel>("Booking");
+  const [bookPricingType, setBookPricingType] = React.useState<"fixed" | "per_head">("fixed");
+  const [bookHeadCount, setBookHeadCount] = React.useState("");
+  const [bookPerHeadPrice, setBookPerHeadPrice] = React.useState("");
 
   const [bookTaxEnabled, setBookTaxEnabled] = React.useState(false);
 
   const selectedBookItem = bookableItems.find((b) => b.id === bookItemId);
   const bookItemPrice = selectedBookItem?.price ?? 0;
-  const bookPrice = bookManualPrice !== "" ? (Number(bookManualPrice) || 0) : bookItemPrice;
+  const bookComputedPrice = bookPricingType === "per_head"
+    ? (Number(bookHeadCount) || 0) * (Number(bookPerHeadPrice) || 0)
+    : (bookManualPrice !== "" ? (Number(bookManualPrice) || 0) : bookItemPrice);
+  const bookPrice = bookComputedPrice;
   const bookEndTime = calcEndTime(bookStart, Number(bookDuration) || 0, bookDurationUnit);
   const bookDiscountAmt = Math.min(Math.max(0, Number(bookDiscount) || 0), bookPrice);
   const bookAfterDiscount = Math.max(0, bookPrice - bookDiscountAmt);
@@ -515,6 +521,9 @@ export default function PosAdvanceBooking() {
     setBookCustAddress("");
     setBookIsMaintenance(false);
     setBookLabel("Booking");
+    setBookPricingType("fixed");
+    setBookHeadCount("");
+    setBookPerHeadPrice("");
     setBookTaxEnabled(false);
     setBookDlg(true);
   };
@@ -557,6 +566,9 @@ export default function PosAdvanceBooking() {
       bookableItemName: selectedBookItem.name,
       status: "pending",
       label: bookLabel,
+      pricingType: bookPricingType !== "fixed" ? bookPricingType : undefined,
+      headCount: bookPricingType === "per_head" ? (Number(bookHeadCount) || 0) : undefined,
+      perHeadPrice: bookPricingType === "per_head" ? (Number(bookPerHeadPrice) || 0) : undefined,
       date: new Date(bookDate).setHours(0, 0, 0, 0),
       startTime: bookStart,
       durationHours: durationToHours(Number(bookDuration) || 1, bookDurationUnit),
@@ -896,6 +908,7 @@ export default function PosAdvanceBooking() {
                            {fmtDate(o.date)} • {o.startTime} → {o.endTime} ({o.durationHours >= 24 ? `${Math.round(o.durationHours / 24)}d` : o.durationHours >= 1 ? `${o.durationHours}h` : `${Math.round(o.durationHours * 60)}min`})
                          </div>
                          {o.customerName && <div className="text-xs text-muted-foreground">{o.customerName} {o.customerPhone ? `• ${o.customerPhone}` : ""}</div>}
+                         {o.pricingType === "per_head" && <div className="text-xs text-muted-foreground">Per Head: {o.headCount} × {formatIntMoney(o.perHeadPrice ?? 0)}</div>}
                        </div>
                        <Badge variant={o.isMaintenance ? "outline" : statusColor(o.status)}>
                          {o.isMaintenance ? "🔧 Maintenance" : o.status}
@@ -1138,16 +1151,51 @@ export default function PosAdvanceBooking() {
 
             {!bookIsMaintenance && (
               <>
-                <div className="grid grid-cols-2 gap-3 border-t pt-3">
-                  <div className="space-y-1">
-                    <Label className="text-xs">Price {bookItemPrice > 0 ? `(default: ${formatIntMoney(bookItemPrice)})` : ""}</Label>
-                    <Input type="number" inputMode="numeric" value={bookManualPrice} onChange={(e) => setBookManualPrice(e.target.value)} placeholder={bookItemPrice > 0 ? String(bookItemPrice) : "Enter price"} />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs">Discount</Label>
-                    <Input type="number" inputMode="numeric" value={bookDiscount} onChange={(e) => setBookDiscount(e.target.value)} placeholder="0" />
-                  </div>
+                {/* Pricing type toggle */}
+                <div className="space-y-1 border-t pt-3">
+                  <Label className="text-xs">Pricing Type</Label>
+                  <select value={bookPricingType} onChange={(e) => setBookPricingType(e.target.value as "fixed" | "per_head")} className="h-10 w-full rounded-md border bg-background px-3 text-sm">
+                    <option value="fixed">Fixed Price</option>
+                    <option value="per_head">Per Head (e.g. Marriage Hall)</option>
+                  </select>
                 </div>
+
+                {bookPricingType === "per_head" ? (
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="space-y-1">
+                      <Label className="text-xs">No. of Heads</Label>
+                      <Input type="number" inputMode="numeric" value={bookHeadCount} onChange={(e) => setBookHeadCount(e.target.value)} placeholder="e.g. 100" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Price per Head</Label>
+                      <Input type="number" inputMode="numeric" value={bookPerHeadPrice} onChange={(e) => setBookPerHeadPrice(e.target.value)} placeholder="e.g. 1500" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Total Price</Label>
+                      <div className="h-10 flex items-center text-sm font-semibold border rounded-md px-3 bg-muted/30">{formatIntMoney(bookPrice)}</div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <Label className="text-xs">Price {bookItemPrice > 0 ? `(default: ${formatIntMoney(bookItemPrice)})` : ""}</Label>
+                      <Input type="number" inputMode="numeric" value={bookManualPrice} onChange={(e) => setBookManualPrice(e.target.value)} placeholder={bookItemPrice > 0 ? String(bookItemPrice) : "Enter price"} />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Discount</Label>
+                      <Input type="number" inputMode="numeric" value={bookDiscount} onChange={(e) => setBookDiscount(e.target.value)} placeholder="0" />
+                    </div>
+                  </div>
+                )}
+
+                {bookPricingType === "per_head" && (
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <Label className="text-xs">Discount</Label>
+                      <Input type="number" inputMode="numeric" value={bookDiscount} onChange={(e) => setBookDiscount(e.target.value)} placeholder="0" />
+                    </div>
+                  </div>
+                )}
 
                 {/* Tax toggle */}
                 {settings?.taxEnabled && (

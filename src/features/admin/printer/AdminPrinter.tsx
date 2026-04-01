@@ -138,7 +138,11 @@ export function AdminPrinter() {
     setDefaultPrinterType(s.defaultPrinterType ?? s.printerConnection ?? "none");
     setKotPrinterType(s.kotPrinterType ?? "none");
     setSalesDashboardPrinterType(s.salesDashboardPrinterType ?? "none");
-    setPrinterSections(s.printerSections ?? []);
+    // Load category-based sections automatically
+    const cats = await db.categories.orderBy("name").toArray();
+    const catSections = cats.filter(c => c.printerSection).map(c => c.printerSection!);
+    const uniqueSections = [...new Set([...(s.printerSections ?? []), ...catSections])];
+    setPrinterSections(uniqueSections);
     setSectionPrinterMap(s.sectionPrinterMap ?? {});
     setLabelPrinterType(s.labelPrinterType ?? "none");
     setLabelPrinterLanguage(s.labelPrinterLanguage ?? "escpos");
